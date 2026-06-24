@@ -1,0 +1,38 @@
+# Project: Wedding planning SaaS (couples + planners)
+
+## Stack
+- Next.js (App Router, TypeScript, React Server Components)
+- Supabase (Postgres, Auth, Row Level Security)
+- Tailwind CSS
+- Data: Supabase server client in server components for reads; server actions for writes
+
+## Architecture principles (do not violate)
+- Multi-tenant. A "couple" is an account that owns exactly ONE project (a wedding).
+  A "planner" is an account that owns MANY projects (one per client).
+  NEVER fork the data model or UI by audience — it's the same model, different counts.
+- Everything scopes to a project via `project_id`.
+- Authorization lives in the DATABASE via RLS, never in app code. The SQL function
+  `can_access_project(uuid)` is the single access rule. Do NOT write "and the user
+  owns this" filters in queries, and do NOT add manual permission checks in components
+  or actions. RLS enforces access; trust it.
+- Before writing any query, READ the schema in `supabase/migrations/`. Do not invent
+  tables or columns. If a feature needs a new column, write a new migration file.
+
+## Data access conventions
+- Server components read via the Supabase server client, scoped by `project_id`.
+- Mutations are server actions (`'use server'`) that write by `id` or `project_id`
+  and call `revalidatePath` afterward. RLS silently blocks unauthorized writes.
+- Never expose or use the service-role key anywhere reachable by the browser.
+  Use the anon key plus the user's session only.
+
+## Code conventions
+- TypeScript strict. Generate types with `supabase gen types typescript` and use them.
+- Server components by default. Add `'use client'` only for interactive bits
+  (status toggles, forms, inline edits).
+- Keep components small, colocated under `components/<feature>/`.
+- No localStorage or sessionStorage.
+
+## Out of bounds
+- No auth/permission logic in app code.
+- No new tables/columns without a migration in `supabase/migrations/`.
+- Build only what the current prompt asks for — do not scaffold future slices ahead of time.
