@@ -1,9 +1,9 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { sendAllOutreachDrafts } from "@/app/(app)/projects/[projectId]/vendors/outreach/actions";
+import { Button, ButtonLink } from "@/components/ui/button";
 
 export function SendAllDraftsButton({
   projectId,
@@ -39,7 +39,7 @@ export function SendAllDraftsButton({
         setSummary(`Sent ${result.sent} email${result.sent === 1 ? "" : "s"}.`);
       } else {
         setSummary(
-          `Sent ${result.sent}. ${result.failures.length} failed — see errors below.`
+          `Sent ${result.sent}. ${result.failures.length} failed — see errors below.`,
         );
       }
 
@@ -50,26 +50,16 @@ export function SendAllDraftsButton({
   return (
     <div className="flex flex-wrap items-center gap-3">
       {gmailConnected ? (
-        <button
-          type="button"
-          onClick={handleSendAll}
-          disabled={isPending}
-          className="rounded-md bg-zinc-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50"
-        >
+        <Button type="button" onClick={handleSendAll} disabled={isPending}>
           {isPending ? "Sending…" : `Send all drafts (${draftCount})`}
-        </button>
+        </Button>
       ) : (
-        <Link
-          href={connectHref}
-          className="rounded-md bg-zinc-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-zinc-800"
-        >
-          Connect Gmail to send all
-        </Link>
+        <ButtonLink href={connectHref}>Connect Gmail to send all</ButtonLink>
       )}
       {summary ? (
-        <span className="text-sm text-green-700">{summary}</span>
+        <span className="text-sm text-sage">{summary}</span>
       ) : null}
-      {error ? <span className="text-sm text-red-600">{error}</span> : null}
+      {error ? <span className="text-sm text-rosewood">{error}</span> : null}
     </div>
   );
 }

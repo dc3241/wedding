@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
+import { getPostLoginPath } from "@/lib/post-login-path";
 import { createClient } from "@/utils/supabase/server";
 
 export async function login(formData: FormData) {
@@ -21,7 +22,7 @@ export async function login(formData: FormData) {
   }
 
   revalidatePath("/", "layout");
-  redirect("/projects");
+  redirect(await getPostLoginPath(supabase));
 }
 
 export async function signup(formData: FormData) {

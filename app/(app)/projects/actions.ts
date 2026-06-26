@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { getCoupleDestinationPath } from "@/lib/onboarding-gate";
 import { createClient } from "@/utils/supabase/server";
 
 export async function bootstrapAccountAndProject(formData: FormData) {
@@ -27,7 +28,13 @@ export async function bootstrapAccountAndProject(formData: FormData) {
   }
 
   revalidatePath("/projects");
-  redirect(`/projects/${projectId}`);
+  revalidatePath("/dashboard");
+
+  if (accountKind === "business") {
+    redirect("/dashboard");
+  }
+
+  redirect(await getCoupleDestinationPath(supabase, projectId as string));
 }
 
 export async function createProject(formData: FormData) {
@@ -58,5 +65,6 @@ export async function createProject(formData: FormData) {
   }
 
   revalidatePath("/projects");
+  revalidatePath("/dashboard");
   redirect(`/projects/${project.id}`);
 }

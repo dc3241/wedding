@@ -14,10 +14,10 @@ export default async function VendorSearchPage({
   const defaultLocation = "";
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <Link
         href={`/projects/${projectId}/vendors`}
-        className="text-sm text-zinc-500 hover:text-zinc-700"
+        className="text-[13px] text-ink-muted hover:text-ink"
       >
         ← Back to vendors
       </Link>

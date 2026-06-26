@@ -1,3 +1,5 @@
+import { ANTHROPIC_MODEL } from "@/lib/anthropic-model";
+
 export type OutreachBrief = {
   date: string;
   venueArea: string;
@@ -62,7 +64,7 @@ Respond with JSON only, no markdown:
         "anthropic-version": "2023-06-01",
       },
       body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
+        model: ANTHROPIC_MODEL,
         max_tokens: 1024,
         messages: [{ role: "user", content: prompt }],
       }),

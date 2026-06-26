@@ -1,26 +1,83 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --porcelain: #fcfcfb;
+  --ink: #1c1b1a;
+  --ink-muted: #6e6a66;
+  --plum: #7a5c6e;
+  --plum-deep: #4a3340;
+  --plum-tint: #f0e9ed;
+  --stone: #e4ddd6;
+  --surface: #ffffff;
+  --sage: #5e7a6b;
+  --clay: #b5894e;
+  --rosewood: #9b5c5c;
+  --radius: 12px;
+  --radius-lg: 16px;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-porcelain: var(--porcelain);
+  --color-ink: var(--ink);
+  --color-ink-muted: var(--ink-muted);
+  --color-plum: var(--plum);
+  --color-plum-deep: var(--plum-deep);
+  --color-plum-tint: var(--plum-tint);
+  --color-stone: var(--stone);
+  --color-surface: var(--surface);
+  --color-sage: var(--sage);
+  --color-clay: var(--clay);
+  --color-rosewood: var(--rosewood);
+  --font-sans: var(--font-sans);
+  --font-serif: var(--font-serif);
+  --radius-DEFAULT: var(--radius);
+  --radius-lg: var(--radius-lg);
+  --animate-rise: rise 0.7s ease forwards;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@keyframes rise {
+  to {
+    opacity: 1;
+    transform: none;
   }
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--porcelain);
+  color: var(--ink);
+  font-family: var(--font-sans, "Hanken Grotesk", system-ui, -apple-system, sans-serif);
+  font-weight: 400;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+.font-display {
+  font-family: var(--font-serif, "Cormorant Garamond", Georgia, serif);
+  font-weight: 600;
+  line-height: 1.05;
+}
+
+.tabnum {
+  font-variant-numeric: tabular-nums;
+}
+
+.animate-rise {
+  opacity: 0;
+  transform: translateY(8px);
+  animation: rise 0.7s ease forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-rise {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+}
+
+:focus-visible {
+  outline: 2px solid var(--plum);
+  outline-offset: 2px;
+  border-radius: 4px;
 }

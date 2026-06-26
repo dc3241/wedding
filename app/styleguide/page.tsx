@@ -1,0 +1,153 @@
+"use client";
+
+import {
+  Button,
+  Card,
+  Eyebrow,
+  NavLink,
+  NavLinks,
+  Pill,
+  SegmentedToggle,
+  SegmentedToggleItem,
+  SlimHero,
+  Topbar,
+  WeddingHero,
+  Wordmark,
+} from "@/components/ui";
+import { useState } from "react";
+
+const DEMO_DATE = "2026-11-14";
+
+export default function StyleguidePage() {
+  const [surface, setSurface] = useState<"couple" | "planner">("couple");
+
+  return (
+    <div className="min-h-full bg-porcelain text-ink">
+      <Topbar>
+        <Wordmark />
+        <NavLinks style={{ visibility: surface === "couple" ? "visible" : "hidden" }}>
+          <NavLink href="#" active>
+            Overview
+          </NavLink>
+          <NavLink href="#">Checklist</NavLink>
+          <NavLink href="#">Vendors</NavLink>
+          <NavLink href="#">Budget</NavLink>
+          <NavLink href="#">Guests</NavLink>
+        </NavLinks>
+        <SegmentedToggle aria-label="Switch surface">
+          <SegmentedToggleItem
+            active={surface === "couple"}
+            onClick={() => setSurface("couple")}
+          >
+            Couple
+          </SegmentedToggleItem>
+          <SegmentedToggleItem
+            active={surface === "planner"}
+            onClick={() => setSurface("planner")}
+          >
+            Planner
+          </SegmentedToggleItem>
+        </SegmentedToggle>
+      </Topbar>
+
+      {surface === "couple" ? (
+        <main className="mx-auto max-w-[760px] px-6 pb-24 pt-14">
+          <section className="mb-12">
+            <Eyebrow className="mb-4 block">WeddingHero</Eyebrow>
+            <WeddingHero
+              coupleNames="Maya & Theo"
+              weddingDate={DEMO_DATE}
+              dateLabel="Saturday, November 14, 2026 · Sedona, Arizona"
+            />
+          </section>
+
+          <section className="mb-12">
+            <Eyebrow className="mb-4 block">Pills</Eyebrow>
+            <div className="flex flex-wrap gap-3">
+              <Pill>In progress</Pill>
+              <Pill variant="sage">Done</Pill>
+              <Pill variant="clay">Due in 9 days</Pill>
+              <Pill variant="rosewood">Overdue</Pill>
+              <Pill variant="plum">Featured</Pill>
+            </div>
+          </section>
+
+          <section className="mb-12">
+            <Eyebrow className="mb-4 block">Buttons</Eyebrow>
+            <div className="flex flex-wrap gap-3">
+              <Button variant="default">Secondary action</Button>
+              <Button variant="primary">Primary action</Button>
+            </div>
+          </section>
+
+          <section>
+            <Eyebrow className="mb-4 block">Card</Eyebrow>
+            <Card className="p-6">
+              <p className="text-[15px] text-ink">
+                Surface card with stone border and 16px radius.
+              </p>
+            </Card>
+          </section>
+        </main>
+      ) : (
+        <main className="mx-auto max-w-[1180px] px-8 pb-20 pt-7">
+          <p className="mb-5 text-[13px] text-ink-muted">
+            Same tokens, tighter density —{" "}
+            <span className="font-medium text-ink">more data per screen</span>,
+            the wedding hero shrinks to a slim header.
+          </p>
+
+          <section className="mb-8">
+            <Eyebrow className="mb-4 block">SlimHero</Eyebrow>
+            <SlimHero
+              coupleNames="Maya & Theo"
+              weddingDate={DEMO_DATE}
+              dateLabel="Nov 14, 2026 · Sedona"
+            />
+          </section>
+
+          <section className="mb-8">
+            <Eyebrow className="mb-4 block">Pills</Eyebrow>
+            <div className="flex flex-wrap gap-3">
+              <Pill>To contact</Pill>
+              <Pill variant="clay">Replied</Pill>
+              <Pill variant="sage">Booked</Pill>
+              <Pill variant="rosewood">Declined</Pill>
+            </div>
+          </section>
+
+          <section className="mb-8">
+            <Eyebrow className="mb-4 block">Stat cards</Eyebrow>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+              <Card className="px-[18px] py-4">
+                <div className="tabnum text-[26px] font-medium text-ink">7</div>
+                <div className="mt-0.5 text-[13px] text-ink-muted">
+                  Tasks due this week
+                </div>
+              </Card>
+              <Card className="px-[18px] py-4">
+                <div className="tabnum text-[26px] font-medium text-ink">
+                  3 / 8
+                </div>
+                <div className="mt-0.5 text-[13px] text-ink-muted">
+                  Vendors booked
+                </div>
+              </Card>
+              <Card className="px-[18px] py-4">
+                <div className="tabnum text-[26px] font-medium text-ink">58%</div>
+                <div className="mt-0.5 text-[13px] text-ink-muted">
+                  Budget committed
+                </div>
+              </Card>
+            </div>
+          </section>
+
+          <section>
+            <Eyebrow className="mb-4 block">Buttons</Eyebrow>
+            <Button variant="primary">Draft outreach</Button>
+          </section>
+        </main>
+      )}
+    </div>
+  );
+}

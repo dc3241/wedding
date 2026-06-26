@@ -1,12 +1,17 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import {
   sendOutreach,
   updateOutreachDraft,
 } from "@/app/(app)/projects/[projectId]/vendors/outreach/actions";
+import { Button, ButtonLink } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Eyebrow } from "@/components/ui/eyebrow";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/cn";
 
 export type OutreachDraft = {
   id: string;
@@ -56,9 +61,6 @@ export function OutreachDraftEditor({
         const sendResult = await sendOutreach(draft.id);
         if (!sendResult.ok) {
           setError(sendResult.error);
-          if (sendResult.needsConnect) {
-            // keep saved state; user can connect and retry
-          }
         }
       }
 
@@ -88,30 +90,31 @@ export function OutreachDraftEditor({
   }
 
   return (
-    <article
-      className={`rounded-md border p-4 ${
-        draft.status === "failed"
-          ? "border-red-200 bg-red-50/30"
-          : "border-zinc-200"
-      }`}
+    <Card
+      className={cn(
+        "p-6",
+        draft.status === "failed" && "border-rosewood/40",
+      )}
     >
-      <header className="mb-3">
-        <h3 className="font-medium text-zinc-900">{draft.vendorName}</h3>
-        <p className="text-sm text-zinc-500">
-          {draft.vendorCategory ?? "Vendor"} ·{" "}
-          {draft.status === "failed" ? "Send failed" : "Email draft"}
+      <header className="mb-5">
+        <h3 className="text-[15px] font-medium text-ink">{draft.vendorName}</h3>
+        <p className="mt-px text-[13px] text-ink-muted">
+          {draft.vendorCategory ?? "Vendor"}
+          {draft.status === "failed" ? (
+            <span className="text-rosewood"> · Send failed</span>
+          ) : null}
         </p>
       </header>
 
-      <div className="space-y-3">
-        <div className="space-y-1">
+      <div className="space-y-4">
+        <div className="space-y-1.5">
           <label
             htmlFor={`subject-${draft.id}`}
-            className="text-xs font-medium text-zinc-600"
+            className="text-sm font-medium text-ink"
           >
             Subject
           </label>
-          <input
+          <Input
             id={`subject-${draft.id}`}
             type="text"
             value={subject}
@@ -120,18 +123,17 @@ export function OutreachDraftEditor({
               setSaved(false);
             }}
             disabled={isPending}
-            className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-zinc-500 disabled:opacity-50"
           />
         </div>
 
-        <div className="space-y-1">
+        <div className="space-y-1.5">
           <label
             htmlFor={`body-${draft.id}`}
-            className="text-xs font-medium text-zinc-600"
+            className="text-sm font-medium text-ink"
           >
             Body
           </label>
-          <textarea
+          <Textarea
             id={`body-${draft.id}`}
             value={body}
             onChange={(e) => {
@@ -140,44 +142,43 @@ export function OutreachDraftEditor({
             }}
             rows={10}
             disabled={isPending}
-            className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm leading-relaxed outline-none focus:border-zinc-500 disabled:opacity-50"
+            className="leading-relaxed"
           />
         </div>
       </div>
 
-      <div className="mt-3 flex flex-wrap items-center gap-3">
-        <button
+      <div className="mt-5 flex flex-wrap items-center gap-3 border-t border-stone pt-5">
+        <Button
           type="button"
+          variant="default"
           onClick={() => handleSave(false)}
           disabled={isPending || !isDirty}
-          className="rounded-md border border-zinc-300 px-3 py-1.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50 disabled:opacity-50"
         >
           {isPending ? "Saving…" : "Save draft"}
-        </button>
+        </Button>
 
         {gmailConnected ? (
-          <button
+          <Button
             type="button"
+            variant="primary"
             onClick={handleSend}
             disabled={isPending}
-            className="rounded-md bg-zinc-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50"
           >
             {isPending ? "Sending…" : "Send"}
-          </button>
+          </Button>
         ) : (
-          <Link
-            href={connectHref}
-            className="rounded-md bg-zinc-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-zinc-800"
-          >
+          <ButtonLink href={connectHref} variant="primary">
             Connect Gmail to send
-          </Link>
+          </ButtonLink>
         )}
 
         {saved && !isDirty ? (
-          <span className="text-xs text-green-700">Saved</span>
+          <span className="text-[13px] text-sage">Saved</span>
         ) : null}
-        {error ? <span className="text-sm text-red-600">{error}</span> : null}
+        {error ? (
+          <span className="text-sm text-rosewood">{error}</span>
+        ) : null}
       </div>
-    </article>
+    </Card>
   );
 }

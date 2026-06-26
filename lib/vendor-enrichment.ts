@@ -1,3 +1,4 @@
+import { ANTHROPIC_MODEL } from "@/lib/anthropic-model";
 import { createClient } from "@/utils/supabase/server";
 
 export type EnrichmentResult =
@@ -206,7 +207,7 @@ ${siteText}`;
         "anthropic-version": "2023-06-01",
       },
       body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
+        model: ANTHROPIC_MODEL,
         max_tokens: 1024,
         messages: [{ role: "user", content: prompt }],
       }),

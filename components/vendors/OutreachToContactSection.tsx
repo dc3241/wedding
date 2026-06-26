@@ -6,8 +6,13 @@ import {
   draftOutreach,
   type OutreachBrief,
 } from "@/app/(app)/projects/[projectId]/vendors/outreach/actions";
-import type { OutreachVendor } from "@/components/vendors/OutreachVendorRow";
-import { OutreachVendorCard } from "@/components/vendors/OutreachVendorRow";
+import type { OutreachVendor } from "@/components/vendors/outreach-vendor";
+import { OutreachShortlistRow } from "@/components/vendors/OutreachVendorRow";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Eyebrow } from "@/components/ui/eyebrow";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 
 export function OutreachToContactSection({
   projectId,
@@ -54,11 +59,7 @@ export function OutreachToContactSection({
 
     startTransition(async () => {
       setError(null);
-      const result = await draftOutreach(
-        projectId,
-        [...selected],
-        brief
-      );
+      const result = await draftOutreach(projectId, [...selected], brief);
 
       if (result?.ok === false) {
         setError(result.error);
@@ -72,148 +73,129 @@ export function OutreachToContactSection({
   if (items.length === 0) return null;
 
   return (
-    <div className="space-y-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <label className="flex items-center gap-2 text-xs text-zinc-600">
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <label className="flex items-center gap-2 text-[13px] text-ink-muted">
           <input
             type="checkbox"
             checked={selected.size === items.length && items.length > 0}
             onChange={toggleAll}
-            className="rounded border-zinc-300"
+            className="size-4 rounded border-stone accent-plum"
           />
           Select all
         </label>
 
-        <button
+        <Button
           type="button"
+          variant="primary"
           disabled={selected.size === 0 || isPending}
           onClick={() => {
             setError(null);
             setShowForm(true);
           }}
-          className="rounded-md bg-zinc-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50"
         >
-          Draft outreach{selected.size > 0 ? ` (${selected.size})` : ""}
-        </button>
+          Draft outreach
+          {selected.size > 0 ? ` (${selected.size})` : ""}
+        </Button>
       </div>
 
       {showForm ? (
-        <form
-          onSubmit={handleSubmit}
-          className="space-y-3 rounded-md border border-zinc-200 bg-zinc-50 p-4"
-        >
-          <h4 className="text-sm font-medium">Outreach brief</h4>
-          <p className="text-xs text-zinc-500">
-            We&apos;ll draft a tailored email for each selected vendor using
-            these details.
-          </p>
+        <Card className="p-6">
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <Eyebrow>Outreach brief</Eyebrow>
+              <p className="mt-1 text-[13px] text-ink-muted">
+                We&apos;ll draft a tailored email for each selected vendor using
+                these details.
+              </p>
+            </div>
 
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="space-y-1">
-              <label htmlFor="brief-date" className="text-xs font-medium text-zinc-600">
-                Date
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <label htmlFor="brief-date" className="text-sm font-medium text-ink">
+                  Date
+                </label>
+                <Input
+                  id="brief-date"
+                  name="date"
+                  type="text"
+                  defaultValue={defaultDate}
+                  placeholder="e.g. October 18, 2026"
+                  disabled={isPending}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label htmlFor="brief-venue" className="text-sm font-medium text-ink">
+                  Venue / area
+                </label>
+                <Input
+                  id="brief-venue"
+                  name="venueArea"
+                  type="text"
+                  placeholder="e.g. Phoenix, AZ"
+                  disabled={isPending}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label htmlFor="brief-budget" className="text-sm font-medium text-ink">
+                Budget vibe
               </label>
-              <input
-                id="brief-date"
-                name="date"
+              <Input
+                id="brief-budget"
+                name="budgetVibe"
                 type="text"
-                defaultValue={defaultDate}
-                placeholder="e.g. October 18, 2026"
+                placeholder="e.g. mid-range, flexible on florals"
                 disabled={isPending}
-                className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-zinc-500 disabled:opacity-50"
               />
             </div>
-            <div className="space-y-1">
-              <label
-                htmlFor="brief-venue"
-                className="text-xs font-medium text-zinc-600"
+
+            <div className="space-y-1.5">
+              <label htmlFor="brief-asking" className="text-sm font-medium text-ink">
+                What you&apos;re asking for
+              </label>
+              <Textarea
+                id="brief-asking"
+                name="askingFor"
+                required
+                rows={3}
+                placeholder="e.g. Full wedding florals — bouquets, ceremony arch, and 12 reception centerpieces"
+                disabled={isPending}
+              />
+            </div>
+
+            {error ? (
+              <p className="text-sm text-rosewood">{error}</p>
+            ) : null}
+
+            <div className="flex gap-3">
+              <Button type="submit" variant="primary" disabled={isPending}>
+                {isPending ? "Drafting…" : "Generate drafts"}
+              </Button>
+              <Button
+                type="button"
+                variant="default"
+                disabled={isPending}
+                onClick={() => setShowForm(false)}
               >
-                Venue / area
-              </label>
-              <input
-                id="brief-venue"
-                name="venueArea"
-                type="text"
-                placeholder="e.g. Phoenix, AZ"
-                disabled={isPending}
-                className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-zinc-500 disabled:opacity-50"
-              />
+                Cancel
+              </Button>
             </div>
-          </div>
-
-          <div className="space-y-1">
-            <label
-              htmlFor="brief-budget"
-              className="text-xs font-medium text-zinc-600"
-            >
-              Budget vibe
-            </label>
-            <input
-              id="brief-budget"
-              name="budgetVibe"
-              type="text"
-              placeholder="e.g. mid-range, flexible on florals"
-              disabled={isPending}
-              className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-zinc-500 disabled:opacity-50"
-            />
-          </div>
-
-          <div className="space-y-1">
-            <label
-              htmlFor="brief-asking"
-              className="text-xs font-medium text-zinc-600"
-            >
-              What you&apos;re asking for
-            </label>
-            <textarea
-              id="brief-asking"
-              name="askingFor"
-              required
-              rows={3}
-              placeholder="e.g. Full wedding florals — bouquets, ceremony arch, and 12 reception centerpieces"
-              disabled={isPending}
-              className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-zinc-500 disabled:opacity-50"
-            />
-          </div>
-
-          {error ? (
-            <p className="text-sm text-red-600">{error}</p>
-          ) : null}
-
-          <div className="flex gap-2">
-            <button
-              type="submit"
-              disabled={isPending}
-              className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50"
-            >
-              {isPending ? "Drafting…" : "Generate drafts"}
-            </button>
-            <button
-              type="button"
-              disabled={isPending}
-              onClick={() => setShowForm(false)}
-              className="rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 disabled:opacity-50"
-            >
-              Cancel
-            </button>
-          </div>
-        </form>
+          </form>
+        </Card>
       ) : null}
 
-      <div className="space-y-3">
+      <div className="divide-y divide-stone">
         {items.map((item) => (
-          <div key={item.id} className="flex gap-3">
-            <input
-              type="checkbox"
-              checked={selected.has(item.id)}
-              onChange={() => toggle(item.id)}
-              className="mt-5 shrink-0 rounded border-zinc-300"
-              aria-label={`Select ${item.vendor.name}`}
-            />
-            <div className="min-w-0 flex-1">
-              <OutreachVendorCard projectId={projectId} item={item} />
-            </div>
-          </div>
+          <OutreachShortlistRow
+            key={item.id}
+            projectId={projectId}
+            item={item}
+            selectable
+            selected={selected.has(item.id)}
+            onToggleSelect={() => toggle(item.id)}
+          />
         ))}
       </div>
     </div>

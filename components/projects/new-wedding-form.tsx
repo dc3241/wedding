@@ -2,55 +2,46 @@
 
 import { useState } from "react";
 import { createProject } from "@/app/(app)/projects/actions";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 
 export function NewWeddingForm() {
   const [open, setOpen] = useState(false);
 
   if (!open) {
     return (
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800"
-      >
+      <Button type="button" onClick={() => setOpen(true)}>
         New wedding
-      </button>
+      </Button>
     );
   }
 
   return (
-    <form
-      action={createProject}
-      className="flex flex-col gap-3 rounded-md border border-zinc-200 p-4 sm:flex-row sm:items-end"
-    >
-      <div className="flex-1 space-y-1">
-        <label htmlFor="new-wedding-name" className="text-sm font-medium">
-          Wedding name
-        </label>
-        <input
-          id="new-wedding-name"
-          name="name"
-          type="text"
-          required
-          placeholder="Emma & Noah — June 2027"
-          className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-zinc-500"
-        />
-      </div>
-      <div className="flex gap-2">
-        <button
-          type="submit"
-          className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800"
-        >
-          Create
-        </button>
-        <button
-          type="button"
-          onClick={() => setOpen(false)}
-          className="rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium hover:bg-zinc-50"
-        >
-          Cancel
-        </button>
-      </div>
-    </form>
+    <Card className="p-4">
+      <form
+        action={createProject}
+        className="flex flex-col gap-3 sm:flex-row sm:items-end"
+      >
+        <div className="min-w-0 flex-1 space-y-1.5">
+          <label htmlFor="new-wedding-name" className="text-sm font-medium text-ink">
+            Wedding name
+          </label>
+          <Input
+            id="new-wedding-name"
+            name="name"
+            type="text"
+            required
+            placeholder="Emma & Noah — June 2027"
+          />
+        </div>
+        <div className="flex gap-2">
+          <Button type="submit">Create</Button>
+          <Button type="button" variant="secondary" onClick={() => setOpen(false)}>
+            Cancel
+          </Button>
+        </div>
+      </form>
+    </Card>
   );
 }

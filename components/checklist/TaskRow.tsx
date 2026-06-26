@@ -5,6 +5,9 @@ import {
   toggleTask,
   updateTaskTitle,
 } from "@/app/(app)/projects/[projectId]/checklist/actions";
+import { useAccountKind } from "@/components/account-density-provider";
+import { dataRowClass } from "@/lib/density";
+import { cn } from "@/lib/cn";
 
 export type ChecklistTask = {
   id: string;
@@ -28,12 +31,6 @@ const STATUS_LABEL: Record<ChecklistTask["status"], string> = {
   done: "Done",
 };
 
-const STATUS_PILL: Record<ChecklistTask["status"], string> = {
-  todo: "bg-zinc-100 text-zinc-600",
-  in_progress: "bg-amber-50 text-amber-700",
-  done: "bg-green-50 text-green-700",
-};
-
 function formatDueDate(date: string | null) {
   if (!date) return null;
   return new Date(date + "T00:00:00").toLocaleDateString(undefined, {
@@ -42,10 +39,27 @@ function formatDueDate(date: string | null) {
   });
 }
 
+function isOverdue(dueDate: string | null, status: ChecklistTask["status"]) {
+  if (!dueDate || status === "done") return false;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const due = new Date(dueDate + "T00:00:00");
+  return due < today;
+}
+
+function dueDateClass(task: ChecklistTask) {
+  if (task.status === "done") return "text-sage";
+  if (isOverdue(task.due_date, task.status)) return "text-rosewood";
+  return "text-ink-muted";
+}
+
 export function TaskRow({ task }: { task: ChecklistTask }) {
+  const accountKind = useAccountKind();
   const [title, setTitle] = useState(task.title);
   const [isPending, startTransition] = useTransition();
   const dueDate = formatDueDate(task.due_date);
+  const done = task.status === "done";
+  const inProgress = task.status === "in_progress";
 
   useEffect(() => {
     setTitle(task.title);
@@ -71,29 +85,39 @@ export function TaskRow({ task }: { task: ChecklistTask }) {
 
   return (
     <li
-      className={`flex items-center gap-3 rounded-md px-2 py-2 hover:bg-zinc-50 ${isPending ? "opacity-60" : ""}`}
+      className={cn(
+        "flex items-center gap-3",
+        dataRowClass(accountKind),
+        isPending && "opacity-60",
+      )}
     >
       <button
         type="button"
         onClick={handleStatusClick}
         aria-label={`Status: ${STATUS_LABEL[task.status]}. Click to change.`}
-        className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border ${
-          task.status === "done"
-            ? "border-green-600 bg-green-600 text-white"
-            : "border-zinc-300 bg-white"
-        }`}
+        className={cn(
+          "flex size-5 shrink-0 items-center justify-center rounded border transition-colors",
+          done
+            ? "border-sage bg-sage text-surface"
+            : inProgress
+              ? "border-clay bg-surface"
+              : "border-stone bg-surface hover:border-ink-muted",
+        )}
       >
-        {task.status === "done" && (
+        {done ? (
           <svg
             viewBox="0 0 12 12"
-            className="h-3 w-3"
+            className="size-3"
             fill="none"
             stroke="currentColor"
             strokeWidth="2"
+            aria-hidden
           >
             <path d="M2 6l3 3 5-5" />
           </svg>
-        )}
+        ) : inProgress ? (
+          <span className="size-2 rounded-full bg-clay" aria-hidden />
+        ) : null}
       </button>
 
       <input
@@ -106,22 +130,23 @@ export function TaskRow({ task }: { task: ChecklistTask }) {
             e.currentTarget.blur();
           }
         }}
-        className={`min-w-0 flex-1 bg-transparent text-sm outline-none ${
-          task.status === "done" ? "text-zinc-400 line-through" : ""
-        }`}
+        className={cn(
+          "min-w-0 flex-1 bg-transparent outline-none",
+          accountKind === "business" ? "text-[13px]" : "text-sm",
+          done ? "text-ink-muted line-through" : "text-ink",
+        )}
       />
 
-      {dueDate && (
-        <span className="shrink-0 text-xs text-zinc-400">{dueDate}</span>
-      )}
-
-      <button
-        type="button"
-        onClick={handleStatusClick}
-        className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_PILL[task.status]}`}
-      >
-        {STATUS_LABEL[task.status]}
-      </button>
+      {dueDate ? (
+        <span
+          className={cn(
+            "tabnum shrink-0 text-xs",
+            dueDateClass(task),
+          )}
+        >
+          {dueDate}
+        </span>
+      ) : null}
     </li>
   );
 }

@@ -1,23 +1,8 @@
-import Link from "next/link";
+import { redirect } from "next/navigation";
 import { OnboardingForm } from "@/components/projects/onboarding-form";
-import { NewWeddingForm } from "@/components/projects/new-wedding-form";
+import { getAccountContext } from "@/lib/account-context";
+import { getCoupleDestinationPath } from "@/lib/onboarding-gate";
 import { createClient } from "@/utils/supabase/server";
-
-type Project = {
-  id: string;
-  name: string;
-  wedding_date: string | null;
-  created_at: string;
-};
-
-function formatWeddingDate(date: string | null) {
-  if (!date) return null;
-  return new Date(date + "T00:00:00").toLocaleDateString(undefined, {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-}
 
 export default async function ProjectsPage({
   searchParams,
@@ -26,13 +11,9 @@ export default async function ProjectsPage({
 }) {
   const { error } = await searchParams;
   const supabase = await createClient();
+  const accountContext = await getAccountContext(supabase);
 
-  const { data: memberships } = await supabase
-    .from("account_members")
-    .select("account_id")
-    .limit(1);
-
-  if (!memberships?.length) {
+  if (!accountContext) {
     return (
       <div className="flex flex-1 items-center justify-center px-4 py-12">
         <OnboardingForm />
@@ -40,63 +21,24 @@ export default async function ProjectsPage({
     );
   }
 
-  const { data: account } = await supabase
-    .from("accounts")
-    .select("kind")
-    .eq("id", memberships[0].account_id)
-    .single();
+  if (accountContext.kind === "personal" && accountContext.singleProjectId) {
+    redirect(
+      await getCoupleDestinationPath(supabase, accountContext.singleProjectId),
+    );
+  }
 
-  const accountKind = account?.kind;
-
-  const { data: projects } = await supabase
-    .from("projects")
-    .select("*")
-    .order("wedding_date", { ascending: true, nullsFirst: false })
-    .order("created_at", { ascending: true });
-
-  const projectList = (projects ?? []) as Project[];
+  if (accountContext.kind === "business") {
+    redirect("/dashboard");
+  }
 
   return (
-    <div className="mx-auto w-full max-w-2xl flex-1 px-4 py-12">
-      <div className="mb-8 flex items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Projects</h1>
-          <p className="text-sm text-zinc-500">Your weddings</p>
-        </div>
-        {accountKind === "business" && <NewWeddingForm />}
-      </div>
-
-      {error && (
-        <p className="mb-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
+    <div className="mx-auto flex w-full max-w-[760px] flex-1 flex-col px-4 py-12">
+      {error ? (
+        <p className="mb-4 rounded border border-stone bg-surface px-3 py-2 text-sm text-rosewood">
           {error}
         </p>
-      )}
-
-      {projectList.length === 0 ? (
-        <p className="text-sm text-zinc-500">No projects yet.</p>
-      ) : (
-        <ul className="divide-y divide-zinc-200 rounded-md border border-zinc-200">
-          {projectList.map((project) => {
-            const weddingDate = formatWeddingDate(project.wedding_date);
-
-            return (
-              <li key={project.id}>
-                <Link
-                  href={`/projects/${project.id}`}
-                  className="flex items-center justify-between px-4 py-3 hover:bg-zinc-50"
-                >
-                  <span className="font-medium">{project.name}</span>
-                  {weddingDate ? (
-                    <span className="text-sm text-zinc-500">{weddingDate}</span>
-                  ) : (
-                    <span className="text-sm text-zinc-400">No date set</span>
-                  )}
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
-      )}
+      ) : null}
+      <p className="text-sm text-ink-muted">No projects yet.</p>
     </div>
   );
 }

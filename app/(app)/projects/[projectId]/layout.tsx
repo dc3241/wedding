@@ -1,16 +1,11 @@
-import Link from "next/link";
-import { notFound } from "next/navigation";
-import { ProjectNav } from "@/components/projects/project-nav";
+import { notFound, redirect } from "next/navigation";
+import { AssistantPanel } from "@/components/assistant/AssistantPanel";
+import type { AssistantMessage } from "@/components/assistant/types";
+import { ProjectShell } from "@/components/projects/project-shell";
+import { ProjectWorkspaceNav } from "@/components/projects/project-workspace-nav";
+import { getAccountContext } from "@/lib/account-context";
+import { coupleOnboardingRedirect } from "@/lib/onboarding-gate";
 import { createClient } from "@/utils/supabase/server";
-
-function formatWeddingDate(date: string | null) {
-  if (!date) return null;
-  return new Date(date + "T00:00:00").toLocaleDateString(undefined, {
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-  });
-}
 
 export default async function ProjectLayout({
   children,
@@ -21,6 +16,7 @@ export default async function ProjectLayout({
 }) {
   const { projectId } = await params;
   const supabase = await createClient();
+  const account = await getAccountContext(supabase);
 
   const { data: project } = await supabase
     .from("projects")
@@ -32,32 +28,41 @@ export default async function ProjectLayout({
     notFound();
   }
 
-  const weddingDate = formatWeddingDate(project.wedding_date);
+  const onboardingRedirect = await coupleOnboardingRedirect(
+    supabase,
+    account,
+    projectId,
+  );
+  if (onboardingRedirect) {
+    redirect(onboardingRedirect);
+  }
+
+  const accountKind = account?.kind ?? "personal";
+
+  const { data: messageRows } = await supabase
+    .from("assistant_messages")
+    .select("id, role, content, created_at")
+    .eq("project_id", projectId)
+    .order("created_at", { ascending: true });
+
+  const initialMessages = (messageRows ?? []) as AssistantMessage[];
 
   return (
-    <div className="mx-auto w-full max-w-2xl flex-1 px-4 py-8">
-      <Link
-        href="/projects"
-        className="text-sm text-zinc-500 hover:text-zinc-700"
+    <>
+      <ProjectShell
+        projectId={projectId}
+        coupleNames={project.name}
+        weddingDate={project.wedding_date}
+        accountKind={accountKind}
       >
-        ← All projects
-      </Link>
-
-      <header className="mt-4 mb-6">
-        <h1 className="text-2xl font-semibold tracking-tight">
-          {project.name}
-        </h1>
-        {weddingDate ? (
-          <p className="mt-1 text-sm text-zinc-500">{weddingDate}</p>
-        ) : (
-          <p className="mt-1 text-sm text-zinc-400">No date set</p>
-        )}
-        <div className="mt-6">
-          <ProjectNav projectId={projectId} />
-        </div>
-      </header>
-
-      {children}
-    </div>
+        <ProjectWorkspaceNav projectId={projectId} accountKind={accountKind} />
+        {children}
+      </ProjectShell>
+      <AssistantPanel
+        projectId={projectId}
+        accountKind={accountKind}
+        initialMessages={initialMessages}
+      />
+    </>
   );
 }

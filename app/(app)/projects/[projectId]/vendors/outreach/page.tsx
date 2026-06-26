@@ -5,6 +5,11 @@ import {
 } from "@/components/vendors/OutreachDraftEditor";
 import { GmailConnection } from "@/components/vendors/GmailConnection";
 import { SendAllDraftsButton } from "@/components/vendors/SendAllDraftsButton";
+import { VendorListRow } from "@/components/vendors/VendorListRow";
+import { Eyebrow } from "@/components/ui/eyebrow";
+import { Pill } from "@/components/ui/pill";
+import { getAccountContext } from "@/lib/account-context";
+import { sectionStackClass } from "@/lib/density";
 import { getGmailConnectionEmail } from "@/lib/gmail-connection-status";
 import { createClient } from "@/utils/supabase/server";
 
@@ -14,6 +19,13 @@ type SentMessage = {
   sent_at: string | null;
   vendorName: string;
 };
+
+function formatSentAt(iso: string) {
+  return new Date(iso).toLocaleString(undefined, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
+}
 
 export default async function OutreachDraftsPage({
   params,
@@ -26,6 +38,8 @@ export default async function OutreachDraftsPage({
   const { gmail_error: gmailError, gmail_connected: gmailConnected } =
     await searchParams;
   const supabase = await createClient();
+  const account = await getAccountContext(supabase);
+  const stackClass = sectionStackClass(account?.kind ?? "personal");
   const connectedEmail = await getGmailConnectionEmail();
   const returnTo = `/projects/${projectId}/vendors/outreach`;
   const connectHref = `/auth/google?returnTo=${encodeURIComponent(returnTo)}`;
@@ -44,7 +58,7 @@ export default async function OutreachDraftsPage({
         project_id,
         vendors ( name, category )
       )
-    `
+    `,
     )
     .eq("project_vendors.project_id", projectId)
     .eq("direction", "outbound")
@@ -89,7 +103,7 @@ export default async function OutreachDraftsPage({
         project_id,
         vendors ( name )
       )
-    `
+    `,
     )
     .eq("project_vendors.project_id", projectId)
     .eq("direction", "outbound")
@@ -129,17 +143,18 @@ export default async function OutreachDraftsPage({
   const vendorNames = Object.keys(grouped).sort((a, b) => a.localeCompare(b));
 
   return (
-    <div className="space-y-6">
+    <div className={stackClass}>
       <Link
         href={`/projects/${projectId}/vendors`}
-        className="text-sm text-zinc-500 hover:text-zinc-700"
+        className="text-[13px] text-ink-muted hover:text-ink"
       >
         ← Back to vendors
       </Link>
 
-      <header className="space-y-1">
-        <h2 className="text-lg font-semibold tracking-tight">Outreach drafts</h2>
-        <p className="text-sm text-zinc-500">
+      <header className="mt-2">
+        <Eyebrow>Outreach</Eyebrow>
+        <h1 className="mt-1 text-[20px] font-medium text-ink">Drafts</h1>
+        <p className="mt-1 text-[13px] text-ink-muted">
           Review, edit, and send emails from your connected Gmail. Replies go to
           your inbox.
         </p>
@@ -162,16 +177,16 @@ export default async function OutreachDraftsPage({
       ) : null}
 
       {vendorNames.length === 0 ? (
-        <p className="text-sm text-zinc-500">
+        <p className="text-[13px] text-ink-muted">
           No drafts ready to send. Select vendors on your outreach list and
           click Draft outreach.
         </p>
       ) : (
         <div className="space-y-8">
           {vendorNames.map((name) => (
-            <section key={name} className="space-y-3">
-              <h3 className="text-sm font-medium text-zinc-900">{name}</h3>
-              <div className="space-y-3">
+            <section key={name}>
+              <Eyebrow className="mb-4 block">{name}</Eyebrow>
+              <div className="space-y-4">
                 {grouped[name].map((draft) => (
                   <OutreachDraftEditor
                     key={draft.id}
@@ -187,28 +202,27 @@ export default async function OutreachDraftsPage({
       )}
 
       {sent.length > 0 ? (
-        <section className="space-y-3 border-t border-zinc-100 pt-6">
-          <h3 className="text-sm font-medium text-zinc-900">Sent</h3>
-          <ul className="space-y-2">
+        <section className="mt-12 border-t border-stone pt-8">
+          <Eyebrow className="mb-4 block">Sent</Eyebrow>
+          <div className="divide-y divide-stone">
             {sent.map((item) => (
-              <li
+              <VendorListRow
                 key={item.id}
-                className="rounded-md border border-zinc-200 px-4 py-3 text-sm"
-              >
-                <p className="font-medium text-zinc-900">{item.vendorName}</p>
-                <p className="text-zinc-600">{item.subject ?? "(no subject)"}</p>
-                {item.sent_at ? (
-                  <p className="mt-1 text-xs text-zinc-400">
-                    Sent{" "}
-                    {new Date(item.sent_at).toLocaleString(undefined, {
-                      dateStyle: "medium",
-                      timeStyle: "short",
-                    })}
-                  </p>
-                ) : null}
-              </li>
+                name={item.vendorName}
+                meta={item.subject ?? "(no subject)"}
+                trailing={
+                  item.sent_at ? (
+                    <Pill variant="sage">
+                      Sent{" "}
+                      <span className="tabnum">{formatSentAt(item.sent_at)}</span>
+                    </Pill>
+                  ) : (
+                    <Pill variant="sage">Sent</Pill>
+                  )
+                }
+              />
             ))}
-          </ul>
+          </div>
         </section>
       ) : null}
     </div>

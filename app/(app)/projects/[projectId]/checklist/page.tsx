@@ -1,6 +1,9 @@
+import { ChecklistTimeline } from "@/components/checklist/ChecklistTimeline";
 import { GenerateStarterChecklist } from "@/components/checklist/GenerateStarterChecklist";
 import { PhaseGroup } from "@/components/checklist/PhaseGroup";
 import type { ChecklistTask } from "@/components/checklist/TaskRow";
+import { getAccountContext } from "@/lib/account-context";
+import { sectionStackClass } from "@/lib/density";
 import { createClient } from "@/utils/supabase/server";
 
 const PHASE_ORDER = [
@@ -46,10 +49,11 @@ export default async function ChecklistPage({
 }) {
   const { projectId } = await params;
   const supabase = await createClient();
+  const account = await getAccountContext(supabase);
+  const stackClass = sectionStackClass(account?.kind ?? "personal");
 
   const { data: tasks } = await supabase
     .from("tasks")
-    // TODO: link tasks.vendor_id to vendors roster rows for coordination UI
     .select("id, title, status, phase, due_date, vendor_id, position")
     .eq("project_id", projectId)
     .order("phase", { ascending: true })
@@ -66,7 +70,8 @@ export default async function ChecklistPage({
   const extraPhases = [...byPhase.keys()]
     .filter(
       (phase): phase is string =>
-        phase !== null && !PHASE_ORDER.includes(phase as (typeof PHASE_ORDER)[number])
+        phase !== null &&
+        !PHASE_ORDER.includes(phase as (typeof PHASE_ORDER)[number]),
     )
     .sort()
     .map((phase) => ({ phase, label: phase }));
@@ -78,19 +83,25 @@ export default async function ChecklistPage({
   ];
 
   return (
-    <div className="space-y-8">
+    <div className={stackClass}>
       {taskList.length === 0 && (
         <GenerateStarterChecklist projectId={projectId} />
       )}
-      {sections.map(({ phase, label }) => (
-        <PhaseGroup
-          key={label}
-          label={label}
-          phase={phase}
-          tasks={byPhase.get(phase) ?? []}
-          projectId={projectId}
-        />
-      ))}
+
+      {taskList.length > 0 ? (
+        <ChecklistTimeline>
+          {sections.map(({ phase, label }, index) => (
+            <PhaseGroup
+              key={label}
+              label={label}
+              phase={phase}
+              tasks={byPhase.get(phase) ?? []}
+              projectId={projectId}
+              isLast={index === sections.length - 1}
+            />
+          ))}
+        </ChecklistTimeline>
+      ) : null}
     </div>
   );
 }

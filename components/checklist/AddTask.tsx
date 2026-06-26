@@ -1,7 +1,8 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useRef, useTransition } from "react";
 import { addTask } from "@/app/(app)/projects/[projectId]/checklist/actions";
+import { cn } from "@/lib/cn";
 
 export function AddTask({
   projectId,
@@ -27,13 +28,16 @@ export function AddTask({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="mt-1">
+    <form onSubmit={handleSubmit} className="mt-2">
       <input
         ref={inputRef}
         type="text"
         placeholder="Add a task…"
         disabled={isPending}
-        className="w-full rounded-md border border-dashed border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none placeholder:text-zinc-400 focus:border-zinc-500 disabled:opacity-50"
+        className={cn(
+          "w-full rounded border border-dashed border-stone bg-transparent px-3 py-2 text-sm text-ink outline-none transition-colors",
+          "placeholder:text-ink-muted focus:border-plum disabled:opacity-50",
+        )}
       />
     </form>
   );

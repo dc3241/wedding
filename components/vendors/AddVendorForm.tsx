@@ -2,6 +2,10 @@
 
 import { useTransition } from "react";
 import { addVendor } from "@/app/(app)/projects/[projectId]/vendors/actions";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Eyebrow } from "@/components/ui/eyebrow";
+import { Input } from "@/components/ui/input";
 
 export function AddVendorForm({ projectId }: { projectId: string }) {
   const [isPending, startTransition] = useTransition();
@@ -22,42 +26,61 @@ export function AddVendorForm({ projectId }: { projectId: string }) {
   }
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="space-y-3 rounded-md border border-zinc-200 p-4"
-    >
-      <h2 className="text-sm font-medium">Add vendor</h2>
-      <div className="grid gap-3 sm:grid-cols-3">
-        <input
-          name="name"
-          type="text"
-          required
-          placeholder="Vendor name"
-          disabled={isPending}
-          className="rounded-md border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-zinc-500 disabled:opacity-50"
-        />
-        <input
-          name="category"
-          type="text"
-          placeholder="Category (e.g. florist)"
-          disabled={isPending}
-          className="rounded-md border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-zinc-500 disabled:opacity-50"
-        />
-        <input
-          name="contact_email"
-          type="email"
-          placeholder="Contact email"
-          disabled={isPending}
-          className="rounded-md border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-zinc-500 disabled:opacity-50"
-        />
-      </div>
-      <button
-        type="submit"
-        disabled={isPending}
-        className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50"
-      >
-        Add vendor
-      </button>
-    </form>
+    <Card className="p-6">
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <Eyebrow>Add manually</Eyebrow>
+          <h2 className="mt-1 text-[20px] font-medium text-ink">Add vendor</h2>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-3">
+          <div className="space-y-1.5">
+            <label htmlFor="vendor-name" className="text-sm font-medium text-ink">
+              Name
+            </label>
+            <Input
+              id="vendor-name"
+              name="name"
+              type="text"
+              required
+              placeholder="Vendor name"
+              disabled={isPending}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label
+              htmlFor="vendor-category"
+              className="text-sm font-medium text-ink"
+            >
+              Category
+            </label>
+            <Input
+              id="vendor-category"
+              name="category"
+              type="text"
+              placeholder="e.g. florist"
+              disabled={isPending}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label
+              htmlFor="vendor-email"
+              className="text-sm font-medium text-ink"
+            >
+              Contact email
+            </label>
+            <Input
+              id="vendor-email"
+              name="contact_email"
+              type="email"
+              placeholder="hello@vendor.com"
+              disabled={isPending}
+            />
+          </div>
+        </div>
+        <Button type="submit" variant="primary" disabled={isPending}>
+          {isPending ? "Adding…" : "Add vendor"}
+        </Button>
+      </form>
+    </Card>
   );
 }
