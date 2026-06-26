@@ -216,6 +216,28 @@ export async function addVendor(
   revalidatePath(vendorsPath(projectId));
 }
 
+export async function addVendorTarget(
+  projectId: string,
+  category: string,
+  note?: string | null,
+) {
+  const trimmedCategory = category.trim();
+  if (!trimmedCategory) return;
+
+  const supabase = await createClient();
+
+  const { error } = await supabase.from("vendor_targets").insert({
+    project_id: projectId,
+    category: trimmedCategory,
+    note: note?.trim() || null,
+    status: "needed",
+  });
+
+  if (error) throw error;
+
+  revalidatePath(vendorsPath(projectId));
+}
+
 export async function updateProjectVendorStatus(
   projectVendorId: string,
   nextStatus: string

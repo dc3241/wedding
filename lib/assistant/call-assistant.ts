@@ -4,9 +4,19 @@ import {
   executeReadTool,
   READ_TOOL_DEFINITIONS,
 } from "@/lib/assistant/read-tools";
+import {
+  executeWriteTool,
+  isWriteTool,
+  WRITE_TOOL_DEFINITIONS,
+} from "@/lib/assistant/write-tools";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-const MAX_TOOL_ITERATIONS = 6;
+const ASSISTANT_TOOL_DEFINITIONS = [
+  ...READ_TOOL_DEFINITIONS,
+  ...WRITE_TOOL_DEFINITIONS,
+];
+
+const MAX_TOOL_ITERATIONS = 8;
 
 type AnthropicTextBlock = { type: "text"; text: string };
 type AnthropicToolUseBlock = {
@@ -45,7 +55,7 @@ function buildSystemPrompt(ctx: AssistantContext): string {
 
   const tone =
     ctx.accountKind === "business"
-      ? "Be efficient and professional — concise bullet points when listing multiple items."
+      ? "Be efficient and professional — use concise sentences when listing multiple items."
       : "Be warm and personal — supportive, never overwhelming.";
 
   const dateLine = ctx.weddingDate
@@ -54,7 +64,11 @@ function buildSystemPrompt(ctx: AssistantContext): string {
 
   return `${audience} Project: "${ctx.projectName}". ${dateLine}
 
-${tone} Use the read tools to look up live project data — never guess counts, names, or amounts. Keep answers brief (a short paragraph or a few bullets). If data is empty, say so kindly and suggest what they could add in the app. You cannot change anything in this conversation — only answer questions.`;
+${tone} Write in plain conversational prose — no markdown headers, no hashtags, and no emojis.
+
+You can answer questions using read tools and take actions using write tools when the user clearly asks. Available actions: add a checklist task, update a task's status, add a guest, update a guest's RSVP, set the budget target, add a budget line item, add a vendor category to book, add a note, and add a day-of timeline event (the wedding-day run sheet — not the long-range checklist). Only call a write tool when the user clearly requests that specific action — otherwise suggest what they could do but do not act. After taking an action, confirm in plain prose exactly what you did. If asked to delete anything, send emails to vendors, or make bulk changes, explain that you cannot do that and point them to the right tab (Checklist, Day-of timeline, Guests, Budget, Vendors, or Notes).
+
+Use read tools to look up live project data — never guess counts, names, amounts, or IDs. When updating a task or guest, use get_checklist or get_guests first if you need an ID. Keep answers brief (a short paragraph or a few simple sentences). If data is empty, say so kindly and suggest what they could add in the app.`;
 }
 
 function extractText(blocks: AnthropicContentBlock[]): string {
@@ -92,7 +106,7 @@ async function callClaude(
         model: ANTHROPIC_MODEL,
         max_tokens: 2048,
         system,
-        tools: READ_TOOL_DEFINITIONS,
+        tools: ASSISTANT_TOOL_DEFINITIONS,
         messages,
       }),
     });
@@ -166,22 +180,22 @@ export async function runAssistantWithTools(
     const toolResults: AnthropicToolResultBlock[] = [];
     for (const toolUse of toolUses) {
       try {
-        const data = await executeReadTool(
-          supabase,
-          projectId,
-          toolUse.name,
-        );
+        const data = isWriteTool(toolUse.name)
+          ? await executeWriteTool(projectId, toolUse.name, toolUse.input)
+          : await executeReadTool(supabase, projectId, toolUse.name);
         toolResults.push({
           type: "tool_result",
           tool_use_id: toolUse.id,
           content: JSON.stringify(data),
         });
       } catch {
+        const verb = isWriteTool(toolUse.name) ? "complete" : "load data for";
         toolResults.push({
           type: "tool_result",
           tool_use_id: toolUse.id,
           content: JSON.stringify({
-            error: `Failed to load data for ${toolUse.name}`,
+            success: false,
+            error: `Failed to ${verb} ${toolUse.name}`,
           }),
         });
       }

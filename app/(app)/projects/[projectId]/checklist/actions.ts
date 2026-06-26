@@ -31,7 +31,8 @@ async function maxPosition(projectId: string, phase: string | null) {
 export async function addTask(
   projectId: string,
   phase: string | null,
-  title: string
+  title: string,
+  dueDate?: string | null,
 ) {
   const trimmed = title.trim();
   if (!trimmed) return;
@@ -42,6 +43,7 @@ export async function addTask(
     project_id: projectId,
     title: trimmed,
     phase,
+    due_date: dueDate ?? null,
     position: await maxPosition(projectId, phase),
   });
 

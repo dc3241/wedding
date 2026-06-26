@@ -9,6 +9,7 @@ export type ProjectTab = {
 export const PROJECT_TABS: ProjectTab[] = [
   { label: "Overview", segment: "" },
   { label: "Checklist", segment: "checklist" },
+  { label: "Day-of timeline", segment: "timeline" },
   { label: "Budget", segment: "budget" },
   { label: "Vendors", segment: "vendors" },
   { label: "Guests", segment: "guests" },
