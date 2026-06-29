@@ -4,6 +4,7 @@ export type ProjectFile = {
   mime_type: string | null;
   size_bytes: number | null;
   created_at: string;
+  status?: string | null;
 };
 
 export type FileKind = "file" | "contract";

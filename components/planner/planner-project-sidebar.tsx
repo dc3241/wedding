@@ -42,11 +42,15 @@ export function PlannerProjectSidebar({
   const pathname = usePathname();
   const activeProjectId = extractProjectId(pathname);
   const onDashboard = pathname === "/dashboard" || pathname.startsWith("/dashboard?");
+  const onLeads = pathname === "/leads" || pathname.startsWith("/leads?");
+  const onBilling =
+    pathname === "/account/billing" ||
+    pathname.startsWith("/account/billing?");
 
   return (
     <aside className="w-[260px] shrink-0">
       <Card className="p-1.5">
-        <div className="px-2.5 pb-3 pt-2">
+        <div className="flex flex-col gap-0.5 px-2.5 pb-3 pt-2">
           <Link
             href="/dashboard"
             className={cn(
@@ -57,6 +61,28 @@ export function PlannerProjectSidebar({
             )}
           >
             Dashboard
+          </Link>
+          <Link
+            href="/leads"
+            className={cn(
+              "block rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+              onLeads
+                ? "bg-plum-tint text-plum-deep"
+                : "text-ink-muted hover:bg-porcelain hover:text-ink",
+            )}
+          >
+            Leads
+          </Link>
+          <Link
+            href="/account/billing"
+            className={cn(
+              "block rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+              onBilling
+                ? "bg-plum-tint text-plum-deep"
+                : "text-ink-muted hover:bg-porcelain hover:text-ink",
+            )}
+          >
+            Billing
           </Link>
         </div>
         <div className="px-2.5 pb-2">

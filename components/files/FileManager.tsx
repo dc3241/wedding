@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useRef, useState, useTransition, type ReactNode } from "react";
 import { deleteFile, getDownloadUrl, recordFile } from "./actions";
 import {
   buildStoragePath,
@@ -22,9 +22,11 @@ import { cn } from "@/lib/cn";
 function FileRow({
   file,
   disabled,
+  trailing,
 }: {
   file: ProjectFile;
   disabled: boolean;
+  trailing?: ReactNode;
 }) {
   const [isPending, startTransition] = useTransition();
   const [actionError, setActionError] = useState<string | null>(null);
@@ -73,7 +75,8 @@ function FileRow({
           <p className="mt-1 text-[13px] text-rosewood">{actionError}</p>
         ) : null}
       </div>
-      <div className="flex shrink-0 gap-2">
+      <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+        {trailing}
         <Button
           type="button"
           variant="default"
@@ -100,10 +103,16 @@ export function FileManager({
   projectId,
   kind = "file",
   files,
+  label = "Files",
+  emptyState = "No files yet. Upload a PDF, image, or document to get started.",
+  trailingSlots = {},
 }: {
   projectId: string;
   kind?: FileKind;
   files: ProjectFile[];
+  label?: string;
+  emptyState?: string;
+  trailingSlots?: Record<string, ReactNode>;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -167,7 +176,7 @@ export function FileManager({
     <section>
       <div className="mb-[18px] flex flex-wrap items-end justify-between gap-4">
         <div>
-          <Eyebrow>Files</Eyebrow>
+          <Eyebrow>{label}</Eyebrow>
           <p className="mt-1 text-[13px] text-ink-muted">
             PDFs, images, and documents up to 25 MB.
           </p>
@@ -199,13 +208,18 @@ export function FileManager({
 
       {files.length === 0 ? (
         <p className="px-1 text-[13px] text-ink-muted">
-          No files yet. Upload a PDF, image, or document to get started.
+          {emptyState}
         </p>
       ) : (
         <Card className="px-5 py-1">
           <ul className="divide-y divide-stone">
             {files.map((file) => (
-              <FileRow key={file.id} file={file} disabled={isUploading} />
+              <FileRow
+                key={file.id}
+                file={file}
+                disabled={isUploading}
+                trailing={trailingSlots[file.id]}
+              />
             ))}
           </ul>
         </Card>
