@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { AddGuestForms } from "./AddGuestForms";
 import { GuestRow } from "./GuestRow";
+import { RsvpSubmissionsPanel } from "./RsvpSubmissionsPanel";
+import type { RsvpSubmission } from "./rsvp-submissions";
 import {
   RSVP_STATUSES,
   sumPartySize,
@@ -53,6 +55,14 @@ export default async function GuestsPage({
     .order("household", { ascending: true, nullsFirst: false })
     .order("full_name", { ascending: true });
 
+  const { data: submissionRows } = await supabase
+    .from("rsvp_submissions")
+    .select("id, project_id, name, response, party_size, email, message, status, created_at")
+    .eq("project_id", projectId)
+    .order("created_at", { ascending: false });
+
+  const rsvpSubmissions = (submissionRows ?? []) as RsvpSubmission[];
+
   const allGuests = (guests ?? []) as Guest[];
   const statusFilter = RSVP_STATUSES.includes(statusParam as RsvpStatus)
     ? (statusParam as RsvpStatus)
@@ -102,6 +112,8 @@ export default async function GuestsPage({
       </header>
 
       <AddGuestForms projectId={projectId} />
+
+      <RsvpSubmissionsPanel submissions={rsvpSubmissions} />
 
       <section>
         <div className="mb-[18px] flex flex-wrap items-baseline justify-between gap-4">

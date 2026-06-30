@@ -30,6 +30,7 @@
   --color-rosewood: var(--rosewood);
   --font-sans: var(--font-sans);
   --font-serif: var(--font-serif);
+  --font-script: var(--font-script);
   --radius-DEFAULT: var(--radius);
   --radius-lg: var(--radius-lg);
   --animate-rise: rise 0.7s ease forwards;
@@ -56,6 +57,12 @@ body {
   font-family: var(--font-serif, "Cormorant Garamond", Georgia, serif);
   font-weight: 600;
   line-height: 1.05;
+}
+
+.font-script {
+  font-family: var(--font-script, "Great Vibes", cursive);
+  font-weight: 400;
+  line-height: 1.2;
 }
 
 .tabnum {
