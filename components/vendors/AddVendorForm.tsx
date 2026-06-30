@@ -30,7 +30,7 @@ export function AddVendorForm({ projectId }: { projectId: string }) {
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <Eyebrow>Add manually</Eyebrow>
-          <h2 className="mt-1 text-[20px] font-medium text-ink">Add vendor</h2>
+          <h2 className="font-display mt-1.5 text-2xl text-ink">Add vendor</h2>
         </div>
         <div className="grid gap-4 sm:grid-cols-3">
           <div className="space-y-1.5">

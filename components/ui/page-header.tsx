@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 
 type PageHeaderProps = {
   title: string;
-  description?: string;
+  description?: ReactNode;
   eyebrow?: string;
   className?: string;
   actions?: ReactNode;
@@ -24,11 +24,18 @@ export function PageHeader({
         className,
       )}
     >
-      <div className="space-y-1">
+      <div>
         {eyebrow ? <Eyebrow>{eyebrow}</Eyebrow> : null}
-        <h1 className="text-xl font-medium text-ink">{title}</h1>
+        <h1
+          className={cn(
+            "font-display text-[46px] leading-[1.02] tracking-[-0.01em] text-ink",
+            eyebrow && "mt-1.5",
+          )}
+        >
+          {title}
+        </h1>
         {description ? (
-          <p className="text-sm text-ink-muted">{description}</p>
+          <p className="mt-2 text-base text-ink-muted">{description}</p>
         ) : null}
       </div>
       {actions ? <div className="shrink-0">{actions}</div> : null}

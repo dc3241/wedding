@@ -4,6 +4,7 @@ import { useEffect, useState, useTransition } from "react";
 import { setBudgetTarget } from "./actions";
 import { formatCurrency } from "./types";
 import { Card } from "@/components/ui/card";
+import { Eyebrow } from "@/components/ui/eyebrow";
 import { cn } from "@/lib/cn";
 
 export function BudgetSummary({
@@ -56,13 +57,15 @@ export function BudgetSummary({
   }
 
   return (
-    <Card className={cn("p-6", isPending && "opacity-60")}>
-      <dl className="mb-4 grid gap-6 sm:grid-cols-3">
+    <Card className={cn("px-[34px] py-[30px]", isPending && "opacity-60")}>
+      <dl className="mb-6 grid gap-6 sm:grid-cols-3">
         <div>
-          <dt className="text-[13px] text-ink-muted">Target</dt>
-          <dd className="mt-1">
+          <Eyebrow className="mb-2.5 block">Target</Eyebrow>
+          <dd>
             <div className="flex items-baseline gap-1">
-              <span className="text-[22px] font-medium text-ink-muted">$</span>
+              <span className="font-display text-[42px] leading-none tracking-[-0.01em] text-ink-muted">
+                $
+              </span>
               <input
                 type="text"
                 inputMode="decimal"
@@ -74,23 +77,23 @@ export function BudgetSummary({
                 }}
                 placeholder="0"
                 aria-label="Budget target"
-                className="w-full min-w-0 bg-transparent text-[22px] font-medium tabular-nums text-ink outline-none placeholder:text-ink-muted"
+                className="font-display w-full min-w-0 bg-transparent text-[42px] leading-none tracking-[-0.01em] tabular-nums text-ink outline-none placeholder:text-ink-muted"
               />
             </div>
           </dd>
         </div>
         <div>
-          <dt className="text-[13px] text-ink-muted">Allocated</dt>
-          <dd className="mt-1 text-[22px] font-medium tabular-nums text-ink">
+          <Eyebrow className="mb-2.5 block">Allocated</Eyebrow>
+          <dd className="font-display text-[42px] leading-none tracking-[-0.01em] tabular-nums text-plum">
             {formatCurrency(allocated)}
           </dd>
         </div>
         <div>
-          <dt className="text-[13px] text-ink-muted">Remaining</dt>
+          <Eyebrow className="mb-2.5 block">Remaining</Eyebrow>
           <dd
             className={cn(
-              "mt-1 text-[22px] font-medium tabular-nums",
-              overBudget ? "text-rosewood" : "text-ink",
+              "font-display text-[42px] leading-none tracking-[-0.01em] tabular-nums",
+              overBudget ? "text-rosewood" : "text-ink-muted",
             )}
           >
             {remaining !== null ? formatCurrency(remaining) : "—"}
@@ -99,7 +102,7 @@ export function BudgetSummary({
       </dl>
 
       {target !== null && target > 0 ? (
-        <div className="h-2 overflow-hidden rounded-full bg-stone">
+        <div className="h-2 overflow-hidden rounded-full bg-stone-soft">
           <div
             className="h-full rounded-full bg-plum transition-[width] duration-300"
             style={{ width: `${progressPct}%` }}

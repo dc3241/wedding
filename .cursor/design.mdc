@@ -1,84 +1,95 @@
 ---
-description: Visual design system (Modern romantic) — tokens, type scale, and components for the wedding app. Match design/reference.html for exact styling.
+description: Visual design system (Modern romantic v3) — tokens, type scale, and components for the wedding app. Match design/theme-direction.html for exact styling.
 alwaysApply: false
 ---
-# Wedding planning app — design system v2
-## Direction: "Modern romantic" (the approved mockup is the reference)
+# Wedding planning app — design system v3
+## Direction: "Modern romantic" — warmer, bolder
 
-A calm, fast tool with restrained romance. Whitespace and precise type carry it; serif and
-plum appear only at emotional moments; couple surfaces breathe, planner surfaces tighten.
-The approved mockup at `design/reference.html` is the canonical visual spec — match it for
-exact sizing, spacing, and component structure.
+A calm, fast tool with restrained romance. The canvas warms to ivory so white cards lift;
+plum reads as confident wine; huge serif moments sit against tight sans UI. Couple names
+carry romance in the data, not decoration.
 
-Tokens and fonts are fixed (see bottom). Don't change them.
+The canonical visual spec is `design/theme-direction.html` (v3). `design/reference.html`
+remains for couple-surface component detail (hero, timeline, vendor stepper).
+
+Tokens and fonts are fixed (see bottom). Don't change them without updating the mockup.
 
 ---
 
 ## Type scale (bold, high-contrast)
 
-The look comes from contrast: huge display moments against small, quiet UI. Don't make
-everything bigger — make the hero bigger and keep the chrome tight.
+The look comes from contrast: huge display moments against small, quiet UI.
 
-Display (Cormorant Garamond 600, emotional moments only)
+Display (Cormorant Garamond 600)
+- Page title: 46px, letter-spacing -0.01em
+- Stat number (dashboard cards): 54px, color plum
+- Budget summary figure: 42px
+- Couple names (sidebar, lists, rows): 21–23px serif
 - Couple-names hero: `clamp(40px, 6vw, 54px)` — can push toward 64px for more drama
 - Countdown number: 64px, color plum
-- Planner slim-hero names: 26px
+- Wordmark: 25px serif + 9px plum dot
 
 UI (Hanken Grotesk, 400/500)
-- Panel/section title: 20px / 500 · Stat number: 26px / 500 · Budget figure: 22px / 500
-- Body & rows: 15–16px · Table cells: 14px · Captions/meta: 12–13px
-- Eyebrow label: 12px / 500, letter-spacing 0.06em, sentence case
+- Body & rows: 15–16px · Table cells: 14px · Captions/meta: 12–14px
+- Eyebrow: 11.5–12px / 500, uppercase, letter-spacing 0.15em, color plum
+- Section subhead: 15px / 500
 
-One or two big serif moments per screen (hero, countdown); everything else small sans.
-The gap between them is the design.
+Serif for page titles, stat figures, budget figures, couple-identifying text, and hero
+moments. Sans for nav, forms, tables, and all other chrome. The gap between scales is
+the design.
 
 ---
 
-## Component inventory (exact CSS lives in design/reference.html)
+## Component inventory (exact CSS lives in design/theme-direction.html)
 
-- Topbar: porcelain, 1px stone bottom border, wordmark with 7px plum dot, nav pill links
-  (active = plum-deep on plum-tint), segmented Couple/Planner toggle (active = plum/white).
+- Topbar: canvas bg, 1px stone bottom border, serif wordmark (25px) with 9px plum dot.
 - Pill/status: 12px, dot + label; variants default, sage, clay, rosewood, plum.
-- Button: radius 12, 9/18 padding; primary = plum/white, hover plum-deep; secondary =
+- Button: radius 12, 11/22 padding; primary = plum/white, hover plum-deep; secondary =
   surface + stone border.
-- Card: surface bg, 1px stone border, radius-lg (16).
+- Card: surface bg, 1px stone border, radius-lg (16), whisper card-shadow.
+- StatCard: padded card with 54px plum serif number + muted label.
+- EmptyState: plum-tint wash, 21px serif plum-deep message, no stark white void.
+- SectionHeader: uppercase plum eyebrow + hairline stone rule.
 - WeddingHero (signature): centered names (display, clamp 40–54) + date (sans muted) +
   64px plum countdown + label, hairline rule beneath, gentle rise-in (respect reduced-motion).
 - Timeline: vertical 1px stone spine, nodes (done = sage, current = plum + plum-tint ring),
   tasks as quiet rows with pills.
 - Vendor stepper: dot + label + connector; lit steps in plum.
-- Budget: figure + progress bar (stone track, plum fill) + line items (tabular-nums).
-- Planner: slim-hero strip, 3 stat cards, planner-grid (260px couples rail + dense outreach
-  table; right-aligned tabular Quote column).
+- Budget: serif figures + progress bar (stone-soft track, plum fill) + line items (tabular-nums).
+- Planner: sidebar with serif couple names, 3 stat cards, 260px rail + dense tables.
 
 ---
 
 ## Layout & density
 - Couple: single column, max-width 760px, padding 56px 24px 96px, generous rhythm.
-- Planner: max-width 1180px, compact rows, slim hero, 260px rail + table grid.
-- Hairline stone separators + whitespace, not heavy gray cards.
+- Planner: max-width 1180px, compact rows, 260px rail + table grid.
+- Hairline stone separators + whitespace; cards lift via subtle shadow, not heavy gray fills.
 - :focus-visible = 2px plum outline. Honor prefers-reduced-motion.
 
 ---
 
 ## Hard don'ts (these keep it off the generic look)
-- No script fonts, floral graphics, gold gradients, or blush-pink floods.
-- Serif ONLY for hero/countdown and >=28px emotional moments — never UI chrome.
-- Plum is an accent, never a background flood.
-- Flat only: no gradients, heavy shadows, glow. Two sans weights (400/500).
+- No script fonts (except public wedding website templates), floral graphics, gold gradients,
+  or blush-pink floods.
+- No serif on nav labels, table headers, or form field labels.
+- Plum is an accent, never a full-page background flood (plum-tint washes for empty states OK).
+- No heavy shadows, glow, or gradients. One whisper card-shadow only. Two sans weights (400/500).
 
 ---
 
 ## Tokens (fixed)
 ```css
 :root{
-  --porcelain:#FCFCFB; --ink:#1C1B1A; --ink-muted:#6E6A66;
-  --plum:#7A5C6E; --plum-deep:#4A3340; --plum-tint:#F0E9ED;
-  --stone:#E4DDD6; --surface:#FFFFFF;
+  --canvas:#FAF5EE; --porcelain:var(--canvas);
+  --surface:#FFFFFF; --surface-2:#FFFDFA;
+  --ink:#221A1D; --ink-soft:#4A3F42; --ink-muted:#8C8083;
+  --plum:#7E3E57; --plum-deep:#531F37; --plum-tint:#F6E9EE;
+  --rose:#C98BA0;
+  --stone:#E8DCCE; --stone-soft:#F1E8DD;
   --sage:#5E7A6B; --clay:#B5894E; --rosewood:#9B5C5C;
   --radius:12px; --radius-lg:16px;
+  --card-shadow:0 1px 2px rgba(70,45,52,.04), 0 8px 22px rgba(70,45,52,.05);
 }
 ```
 Fonts: Cormorant Garamond (500,600) + Hanken Grotesk (400,500) via next/font/google,
-exposed as --font-serif / --font-sans. Map all tokens into Tailwind (v4 @theme inline or
-v3 config extend).
+exposed as --font-serif / --font-sans. Map all tokens into Tailwind (v4 @theme inline).

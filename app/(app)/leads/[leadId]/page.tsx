@@ -109,7 +109,9 @@ export default async function LeadDetailPage({
         </Link>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h1 className="text-xl font-medium text-ink">{lead.couple_name}</h1>
+            <h1 className="couple-name text-[46px] tracking-[-0.01em] text-ink">
+              {lead.couple_name}
+            </h1>
             <div className="mt-2 flex flex-wrap items-center gap-2.5">
               <Pill variant={LEAD_STAGE_VARIANT[lead.stage]}>
                 {LEAD_STAGE_LABEL[lead.stage]}

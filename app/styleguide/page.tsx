@@ -3,13 +3,16 @@
 import {
   Button,
   Card,
+  EmptyState,
   Eyebrow,
   NavLink,
   NavLinks,
   Pill,
+  SectionHeader,
   SegmentedToggle,
   SegmentedToggleItem,
   SlimHero,
+  StatCard,
   Topbar,
   WeddingHero,
   Wordmark,
@@ -84,9 +87,14 @@ export default function StyleguidePage() {
             <Eyebrow className="mb-4 block">Card</Eyebrow>
             <Card className="p-6">
               <p className="text-[15px] text-ink">
-                Surface card with stone border and 16px radius.
+                Surface card with stone border, 16px radius, and whisper shadow.
               </p>
             </Card>
+          </section>
+
+          <section className="mb-12">
+            <Eyebrow className="mb-4 block">EmptyState</Eyebrow>
+            <EmptyState>Nothing urgent right now — you&apos;re in good shape.</EmptyState>
           </section>
         </main>
       ) : (
@@ -118,28 +126,19 @@ export default function StyleguidePage() {
 
           <section className="mb-8">
             <Eyebrow className="mb-4 block">Stat cards</Eyebrow>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-              <Card className="px-[18px] py-4">
-                <div className="tabnum text-[26px] font-medium text-ink">7</div>
-                <div className="mt-0.5 text-[13px] text-ink-muted">
-                  Tasks due this week
-                </div>
-              </Card>
-              <Card className="px-[18px] py-4">
-                <div className="tabnum text-[26px] font-medium text-ink">
-                  3 / 8
-                </div>
-                <div className="mt-0.5 text-[13px] text-ink-muted">
-                  Vendors booked
-                </div>
-              </Card>
-              <Card className="px-[18px] py-4">
-                <div className="tabnum text-[26px] font-medium text-ink">58%</div>
-                <div className="mt-0.5 text-[13px] text-ink-muted">
-                  Budget committed
-                </div>
-              </Card>
+            <div className="grid grid-cols-1 gap-[18px] md:grid-cols-3">
+              <StatCard value={7} label="Tasks due this week" />
+              <StatCard value="3 / 8" label="Vendors booked" />
+              <StatCard value="58%" label="Budget committed" />
             </div>
+          </section>
+
+          <section className="mb-8">
+            <SectionHeader>All weddings</SectionHeader>
+            <Card className="px-[26px] py-[22px]">
+              <div className="couple-name text-[23px] text-ink">Maya & Theo</div>
+              <div className="mt-0.5 text-[13.5px] text-ink-muted">Nov 14, 2026</div>
+            </Card>
           </section>
 
           <section>

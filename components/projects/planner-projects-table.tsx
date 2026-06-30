@@ -62,12 +62,12 @@ export function PlannerProjectsTable({
               return (
                 <tr
                   key={project.id}
-                  className="border-b border-stone last:border-b-0 hover:bg-porcelain"
+                  className="border-b border-stone last:border-b-0 hover:bg-stone-soft"
                 >
                   <td className="px-3 py-3 text-sm">
                     <Link
                       href={`/projects/${project.id}`}
-                      className="font-medium text-ink hover:text-plum-deep"
+                      className="couple-name text-[21px] text-ink hover:text-plum-deep"
                     >
                       {project.name}
                     </Link>

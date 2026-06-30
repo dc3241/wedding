@@ -39,7 +39,7 @@ export function AddBudgetItemForm({ projectId }: { projectId: string }) {
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <Eyebrow>Add item</Eyebrow>
-          <h2 className="mt-1 text-[20px] font-medium text-ink">
+          <h2 className="font-display mt-1.5 text-2xl text-ink">
             Other expense
           </h2>
         </div>

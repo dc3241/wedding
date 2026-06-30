@@ -1,9 +1,12 @@
 export { Button, ButtonLink } from "./button";
 export { Card } from "./card";
+export { EmptyState } from "./empty-state";
 export { Eyebrow } from "./eyebrow";
 export { Input } from "./input";
 export { PageHeader } from "./page-header";
 export { Pill, type PillVariant } from "./pill";
+export { SectionHeader } from "./section-header";
+export { StatCard } from "./stat-card";
 export { Select } from "./select";
 export { SlimHero } from "./slim-hero";
 export { StatusPill } from "./status-pill";

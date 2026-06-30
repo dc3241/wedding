@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { ContractStatusControl } from "@/components/contracts/ContractStatusControl";
 import { FileManager } from "@/components/files/FileManager";
 import type { ProjectFile } from "@/components/files/types";
-import { Eyebrow } from "@/components/ui/eyebrow";
+import { PageHeader } from "@/components/ui/page-header";
 import { getAccountContext } from "@/lib/account-context";
 import { sectionStackClass } from "@/lib/density";
 import { createClient } from "@/utils/supabase/server";
@@ -54,15 +54,11 @@ export default async function ContractsPage({
 
   return (
     <div className={stackClass}>
-      <header>
-        <Eyebrow>Contracts</Eyebrow>
-        <h1 className="mt-1 text-[20px] font-medium text-ink">
-          Wedding contracts
-        </h1>
-        <p className="mt-1 text-[13px] text-ink-muted">
-          Signed contracts, proposals, and agreements for this wedding.
-        </p>
-      </header>
+      <PageHeader
+        eyebrow="Contracts"
+        title="Wedding contracts"
+        description="Signed contracts, proposals, and agreements for this wedding."
+      />
 
       <FileManager
         projectId={projectId}

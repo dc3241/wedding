@@ -28,13 +28,13 @@ export function Wordmark({ className, children = "Aisle", ...props }: WordmarkPr
   return (
     <div
       className={cn(
-        "flex items-center gap-2 text-base font-medium tracking-[0.01em] text-ink",
+        "font-display flex items-center gap-2.5 text-[25px] tracking-[0.01em] text-ink",
         className,
       )}
       {...props}
     >
       <span
-        className="size-[7px] shrink-0 rounded-full bg-plum"
+        className="size-[9px] shrink-0 rounded-full bg-plum"
         aria-hidden
       />
       {children}

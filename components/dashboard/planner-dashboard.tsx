@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ButtonLink } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Pill } from "@/components/ui/pill";
+import { StatCard } from "@/components/ui/stat-card";
 import type { OutreachVendor } from "@/components/vendors/outreach-vendor";
 import { vendorStatusPill } from "@/components/vendors/vendor-status";
 
@@ -72,7 +73,7 @@ function PlannerOutreachTable({
   return (
     <Card className="px-5 py-[18px]">
       <div className="mb-4 flex items-center justify-between gap-4">
-        <h2 className="text-[20px] font-medium text-ink">Vendor outreach</h2>
+        <h2 className="font-display text-[28px] text-ink">Vendor outreach</h2>
         <ButtonLink href={`/projects/${projectId}/vendors`} variant="primary">
           Draft outreach
         </ButtonLink>
@@ -115,7 +116,7 @@ function PlannerOutreachTable({
                 return (
                   <tr
                     key={vendor.id}
-                    className="border-b border-stone last:border-b-0 hover:bg-porcelain"
+                    className="border-b border-stone last:border-b-0 hover:bg-stone-soft"
                   >
                     <td className="px-3 py-3 align-middle text-sm">
                       <Link
@@ -163,29 +164,13 @@ export function PlannerDashboard({
 }: PlannerDashboardProps) {
   return (
     <>
-      <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-3">
-        <Card className="px-[18px] py-4">
-          <div className="tabnum text-[26px] font-medium text-ink">
-            {tasksDueThisWeek}
-          </div>
-          <div className="mt-0.5 text-[13px] text-ink-muted">
-            Tasks due this week
-          </div>
-        </Card>
-        <Card className="px-[18px] py-4">
-          <div className="tabnum text-[26px] font-medium text-ink">
-            {vendorsBooked} / {vendorsTotal}
-          </div>
-          <div className="mt-0.5 text-[13px] text-ink-muted">Vendors booked</div>
-        </Card>
-        <Card className="px-[18px] py-4">
-          <div className="tabnum text-[26px] font-medium text-ink">
-            {budgetCommittedPercent}
-          </div>
-          <div className="mt-0.5 text-[13px] text-ink-muted">
-            Budget committed
-          </div>
-        </Card>
+      <div className="mb-6 grid grid-cols-1 gap-[18px] md:grid-cols-3">
+        <StatCard value={tasksDueThisWeek} label="Tasks due this week" />
+        <StatCard
+          value={`${vendorsBooked} / ${vendorsTotal}`}
+          label="Vendors booked"
+        />
+        <StatCard value={budgetCommittedPercent} label="Budget committed" />
       </div>
 
       <PlannerOutreachTable projectId={projectId} vendors={vendors} />

@@ -12,6 +12,7 @@ import {
 } from "./types";
 import { Card } from "@/components/ui/card";
 import { Eyebrow } from "@/components/ui/eyebrow";
+import { PageHeader } from "@/components/ui/page-header";
 import { getAccountContext } from "@/lib/account-context";
 import { cn } from "@/lib/cn";
 import { dataRowClass, sectionStackClass } from "@/lib/density";
@@ -79,32 +80,29 @@ export default async function GuestsPage({
   return (
     <div className={stackClass}>
       <header className="flex flex-wrap items-end justify-between gap-6">
-        <div>
-          <Eyebrow>Guest list</Eyebrow>
-          <h1 className="mt-1 text-[20px] font-medium text-ink">RSVP & meals</h1>
-        </div>
-        <dl className="flex flex-wrap gap-x-6 gap-y-3 text-[13px] tabular-nums">
+        <PageHeader title="RSVP & meals" eyebrow="Guest list" />
+        <dl className="flex flex-wrap gap-x-6 gap-y-3">
           <div>
-            <dt className="text-ink-muted">Invited</dt>
-            <dd className="text-[26px] font-medium leading-tight text-ink">
+            <Eyebrow className="mb-2 block">Invited</Eyebrow>
+            <dd className="font-display tabnum text-[42px] leading-none tracking-[-0.01em] text-plum">
               {invited}
             </dd>
           </div>
           <div>
-            <dt className="text-sage">Attending</dt>
-            <dd className="text-[26px] font-medium leading-tight text-ink">
+            <Eyebrow className="mb-2 block">Attending</Eyebrow>
+            <dd className="font-display tabnum text-[42px] leading-none tracking-[-0.01em] text-sage">
               {attending}
             </dd>
           </div>
           <div>
-            <dt className="text-rosewood">Declined</dt>
-            <dd className="text-[26px] font-medium leading-tight text-ink">
+            <Eyebrow className="mb-2 block">Declined</Eyebrow>
+            <dd className="font-display tabnum text-[42px] leading-none tracking-[-0.01em] text-rosewood">
               {declined}
             </dd>
           </div>
           <div>
-            <dt className="text-ink-muted">Pending</dt>
-            <dd className="text-[26px] font-medium leading-tight text-ink">
+            <Eyebrow className="mb-2 block">Pending</Eyebrow>
+            <dd className="font-display tabnum text-[42px] leading-none tracking-[-0.01em] text-ink-muted">
               {pending}
             </dd>
           </div>

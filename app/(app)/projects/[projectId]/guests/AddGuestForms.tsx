@@ -47,7 +47,7 @@ export function AddGuestForms({ projectId }: { projectId: string }) {
         <form onSubmit={handleAddSubmit} className="space-y-4">
           <div>
             <Eyebrow>Add guest</Eyebrow>
-            <h2 className="mt-1 text-[20px] font-medium text-ink">One at a time</h2>
+            <h2 className="font-display mt-1.5 text-2xl text-ink">One at a time</h2>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1.5 sm:col-span-2">
@@ -117,7 +117,7 @@ export function AddGuestForms({ projectId }: { projectId: string }) {
         <form onSubmit={handleBulkSubmit} className="space-y-4">
           <div>
             <Eyebrow>Bulk add</Eyebrow>
-            <h2 className="mt-1 text-[20px] font-medium text-ink">Paste a list</h2>
+            <h2 className="font-display mt-1.5 text-2xl text-ink">Paste a list</h2>
             <p className="mt-1 text-[13px] text-ink-muted">
               One name per line. Each becomes a guest with party size 1.
             </p>

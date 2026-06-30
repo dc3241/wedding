@@ -1,7 +1,7 @@
 import { AddEventForm } from "./AddEventForm";
 import { TimelineRunSheet } from "./TimelineRunSheet";
 import type { TimelineEvent } from "./types";
-import { Eyebrow } from "@/components/ui/eyebrow";
+import { PageHeader } from "@/components/ui/page-header";
 import { getAccountContext } from "@/lib/account-context";
 import { sectionStackClass } from "@/lib/density";
 import { createClient } from "@/utils/supabase/server";
@@ -29,14 +29,11 @@ export default async function TimelinePage({
 
   return (
     <div className={stackClass}>
-      <header>
-        <Eyebrow>Day-of timeline</Eyebrow>
-        <h1 className="mt-1 text-[20px] font-medium text-ink">Run sheet</h1>
-        <p className="mt-1 text-[13px] text-ink-muted">
-          The hour-by-hour schedule for the wedding day — distinct from your
-          long-range planning checklist.
-        </p>
-      </header>
+      <PageHeader
+        eyebrow="Day-of timeline"
+        title="Run sheet"
+        description="The hour-by-hour schedule for the wedding day — distinct from your long-range planning checklist."
+      />
 
       <AddEventForm projectId={projectId} />
 

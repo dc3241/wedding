@@ -19,7 +19,7 @@ export function GmailConnection({
   return (
     <Card className="p-6">
       <Eyebrow>Gmail</Eyebrow>
-      <h3 className="mt-1 text-[20px] font-medium text-ink">Outreach mailbox</h3>
+      <h3 className="font-display mt-1.5 text-2xl text-ink">Outreach mailbox</h3>
       <p className="mt-1 text-[13px] text-ink-muted">
         Connect your mailbox so outreach sends from your own address. Replies
         land in your Gmail inbox.

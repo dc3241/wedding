@@ -11,6 +11,7 @@ import {
 } from "./types";
 import { Card } from "@/components/ui/card";
 import { Eyebrow } from "@/components/ui/eyebrow";
+import { PageHeader } from "@/components/ui/page-header";
 import { getAccountContext } from "@/lib/account-context";
 import { dataRowClass, sectionStackClass } from "@/lib/density";
 import { createClient } from "@/utils/supabase/server";
@@ -89,12 +90,7 @@ export default async function BudgetPage({
 
   return (
     <div className={stackClass}>
-      <header>
-        <Eyebrow>Budget</Eyebrow>
-        <h1 className="mt-1 text-[20px] font-medium text-ink">
-          Wedding budget
-        </h1>
-      </header>
+      <PageHeader title="Wedding budget" eyebrow="Budget" />
 
       <BudgetSummary
         projectId={projectId}

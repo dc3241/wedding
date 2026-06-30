@@ -63,7 +63,7 @@ export function VendorSearchForm({
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
             <Eyebrow>Discover</Eyebrow>
-            <h2 className="mt-1 text-[20px] font-medium text-ink">
+            <h2 className="font-display mt-1.5 text-2xl text-ink">
               Search vendors
             </h2>
             <p className="mt-1 text-[13px] text-ink-muted">

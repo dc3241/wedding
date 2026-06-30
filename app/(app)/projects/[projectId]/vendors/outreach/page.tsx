@@ -7,6 +7,7 @@ import { GmailConnection } from "@/components/vendors/GmailConnection";
 import { SendAllDraftsButton } from "@/components/vendors/SendAllDraftsButton";
 import { VendorListRow } from "@/components/vendors/VendorListRow";
 import { Eyebrow } from "@/components/ui/eyebrow";
+import { PageHeader } from "@/components/ui/page-header";
 import { Pill } from "@/components/ui/pill";
 import { getAccountContext } from "@/lib/account-context";
 import { sectionStackClass } from "@/lib/density";
@@ -151,14 +152,12 @@ export default async function OutreachDraftsPage({
         ← Back to vendors
       </Link>
 
-      <header className="mt-2">
-        <Eyebrow>Outreach</Eyebrow>
-        <h1 className="mt-1 text-[20px] font-medium text-ink">Drafts</h1>
-        <p className="mt-1 text-[13px] text-ink-muted">
-          Review, edit, and send emails from your connected Gmail. Replies go to
-          your inbox.
-        </p>
-      </header>
+      <PageHeader
+        className="mt-2"
+        eyebrow="Outreach"
+        title="Drafts"
+        description="Review, edit, and send emails from your connected Gmail. Replies go to your inbox."
+      />
 
       <GmailConnection
         connectedEmail={connectedEmail}

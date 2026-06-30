@@ -18,7 +18,7 @@ export function CoupleShellNav() {
           "rounded-lg px-3 py-2 text-sm font-medium no-underline transition-colors",
           onBilling
             ? "bg-plum-tint text-plum-deep"
-            : "text-ink-muted hover:bg-porcelain hover:text-ink",
+            : "text-ink-muted hover:bg-stone-soft hover:text-ink",
         )}
       >
         Billing

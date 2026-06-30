@@ -3,7 +3,7 @@ import { NoteCard } from "./NoteCard";
 import type { Note } from "./types";
 import { FileManager } from "@/components/files/FileManager";
 import type { ProjectFile } from "@/components/files/types";
-import { Eyebrow } from "@/components/ui/eyebrow";
+import { PageHeader } from "@/components/ui/page-header";
 import { getAccountContext } from "@/lib/account-context";
 import { sectionStackClass } from "@/lib/density";
 import { createClient } from "@/utils/supabase/server";
@@ -46,16 +46,13 @@ export default async function NotesPage({
 
   return (
     <div className={stackClass}>
-      <header className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <Eyebrow>Notes & files</Eyebrow>
-          <h1 className="mt-1 text-[20px] font-medium text-ink">Project notes</h1>
-          <p className="mt-1 text-[13px] text-ink-muted">
-            Meeting notes and freeform thoughts for this wedding.
-          </p>
-        </div>
-        <AddNoteButton projectId={projectId} />
-      </header>
+      <PageHeader
+        eyebrow="Notes & files"
+        title="Project notes"
+        description="Meeting notes and freeform thoughts for this wedding."
+        actions={<AddNoteButton projectId={projectId} />}
+        className="mb-0"
+      />
 
       {noteList.length === 0 ? (
         <p className="px-1 text-[13px] text-ink-muted">

@@ -58,7 +58,7 @@ export function SlimHero({
   return (
     <div
       className={cn(
-        "mb-6 flex items-center justify-between gap-6 rounded-lg border border-stone bg-surface px-5 py-3.5",
+        "mb-6 flex items-center justify-between gap-6 rounded-lg border border-stone bg-surface px-5 py-3.5 shadow-card",
         className,
       )}
     >

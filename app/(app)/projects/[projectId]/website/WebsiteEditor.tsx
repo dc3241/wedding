@@ -12,7 +12,7 @@ import { weddingTemplateOptions } from "@/components/website/templates/registry"
 import { weddingThemeOptions } from "@/components/website/themes";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Eyebrow } from "@/components/ui/eyebrow";
+import { PageHeader } from "@/components/ui/page-header";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/cn";
@@ -243,14 +243,16 @@ export function WebsiteEditor({ projectId, website, accountKind }: WebsiteEditor
 
   return (
     <div className={cn("space-y-6", isPending && "opacity-90")}>
-      <header>
-        <Eyebrow>Website</Eyebrow>
-        <h1 className="mt-1 text-[20px] font-medium text-ink">Your wedding website</h1>
-        <p className="mt-1 text-[13px] text-ink-muted">
-          Edit content, preview your site, and publish when you are ready. Guests will visit{" "}
-          <span className="text-ink">/w/{savedSlug || "your-link"}</span> once live.
-        </p>
-      </header>
+      <PageHeader
+        eyebrow="Website"
+        title="Your wedding website"
+        description={
+          <>
+            Edit content, preview your site, and publish when you are ready. Guests will visit{" "}
+            <span className="text-ink">/w/{savedSlug || "your-link"}</span> once live.
+          </>
+        }
+      />
 
       <Card className="space-y-5 p-5">
         <div className="grid gap-5 sm:grid-cols-2">
