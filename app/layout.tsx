@@ -22,8 +22,8 @@ const greatVibes = Great_Vibes({
 
 export const metadata: Metadata = {
   title: {
-    default: "Aisle — Wedding planning",
-    template: "%s — Aisle",
+    default: "First Look — Wedding planning",
+    template: "%s — First Look",
   },
   description: "Calm wedding planning for couples and professional planners.",
 };

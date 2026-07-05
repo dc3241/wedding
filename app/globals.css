@@ -106,6 +106,22 @@ body {
   }
 }
 
+.marketing-card-hover {
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.marketing-card-hover:hover {
+  transform: translateY(-2px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marketing-card-hover:hover {
+    transform: none;
+  }
+}
+
 :focus-visible {
   outline: 2px solid var(--plum);
   outline-offset: 2px;

@@ -1,5 +1,6 @@
 "use client";
 
+import { LogoutButton } from "@/components/auth/logout-button";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Card } from "@/components/ui/card";
@@ -68,6 +69,9 @@ export function PlannerProjectSidebar({
           <Link href="/account/billing" className={navLinkClass(onBilling)}>
             Billing
           </Link>
+          <div className="px-1.5 pt-1">
+            <LogoutButton />
+          </div>
         </div>
         <div className="mb-3.5 h-px bg-stone" />
         <div className="px-2.5 pb-3.5">

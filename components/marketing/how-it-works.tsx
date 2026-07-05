@@ -1,11 +1,12 @@
 import { Eyebrow } from "@/components/ui/eyebrow";
+import { RevealOnScroll } from "@/components/ui/reveal-on-scroll";
 import { SectionHeader } from "@/components/ui/section-header";
 
 const STEPS = [
   {
     title: "Tell us about your wedding",
     description:
-      "Share your date, vibe, traditions, and budget. Aisle builds a personalized checklist and budget to start from.",
+      "Share your date, vibe, traditions, and budget. First Look builds a personalized checklist and budget to start from.",
   },
   {
     title: "Track everything in one place",
@@ -22,10 +23,12 @@ const STEPS = [
 export function HowItWorks() {
   return (
     <section className="mx-auto max-w-[760px] px-6 pb-20">
-      <SectionHeader>How it works</SectionHeader>
+      <RevealOnScroll>
+        <SectionHeader>How it works</SectionHeader>
+      </RevealOnScroll>
       <ol className="relative space-y-10 pl-7">
         <div
-          className="absolute bottom-2 left-[7px] top-2 w-px bg-stone"
+          className="absolute bottom-2 left-[7px] top-2 w-px origin-top bg-stone"
           aria-hidden
         />
         {STEPS.map((step, index) => (
@@ -36,13 +39,15 @@ export function HowItWorks() {
             >
               <span className="size-[7px] rounded-full bg-plum" />
             </span>
-            <Eyebrow className="mb-2 block">Step {index + 1}</Eyebrow>
-            <h3 className="font-display text-[23px] leading-tight text-ink">
-              {step.title}
-            </h3>
-            <p className="mt-2 text-[15px] leading-relaxed text-ink-muted">
-              {step.description}
-            </p>
+            <RevealOnScroll delay={index * 100}>
+              <Eyebrow className="mb-2 block">Step {index + 1}</Eyebrow>
+              <h3 className="font-display text-[23px] leading-tight text-ink">
+                {step.title}
+              </h3>
+              <p className="mt-2 text-[15px] leading-relaxed text-ink-muted">
+                {step.description}
+              </p>
+            </RevealOnScroll>
           </li>
         ))}
       </ol>

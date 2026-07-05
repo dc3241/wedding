@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
+import { AskAssistantLink } from "@/components/assistant/AskAssistantLink";
+import { ASSISTANT_PREFILLS } from "@/components/assistant/prefills";
 import { setBudgetTarget } from "./actions";
 import { formatCurrency } from "./types";
 import { Card } from "@/components/ui/card";
@@ -113,6 +115,15 @@ export function BudgetSummary({
       {overBudget && remaining !== null ? (
         <p className="mt-2 text-[13px] tabular-nums text-rosewood">
           {formatCurrency(Math.abs(remaining))} over target
+        </p>
+      ) : null}
+
+      {allocated === 0 ? (
+        <p className="mt-4 text-[13px] text-ink-muted">
+          Nothing allocated yet.{" "}
+          <AskAssistantLink prefill={ASSISTANT_PREFILLS.budget}>
+            Ask assistant to estimate your budget
+          </AskAssistantLink>
         </p>
       ) : null}
     </Card>

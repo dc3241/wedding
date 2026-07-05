@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { AssistantNavEntry } from "@/components/assistant/AssistantNavEntry";
 import type { AccountKind } from "@/lib/account-context";
 import { cn } from "@/lib/cn";
 import { projectTabHref, tabsForAccountKind } from "@/lib/project-tabs";
@@ -17,7 +18,7 @@ export function ProjectWorkspaceNav({
   const tabs = tabsForAccountKind(accountKind);
 
   return (
-    <nav className="mb-6 flex flex-wrap gap-1 border-b border-stone pb-3">
+    <nav className="mb-6 flex flex-wrap items-center gap-1 border-b border-stone pb-3">
       {tabs.map(({ label, segment }) => {
         const href = projectTabHref(projectId, segment);
         const active =
@@ -38,6 +39,7 @@ export function ProjectWorkspaceNav({
           </Link>
         );
       })}
+      <AssistantNavEntry projectId={projectId} />
     </nav>
   );
 }

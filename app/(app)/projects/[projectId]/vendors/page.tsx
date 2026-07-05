@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { AddVendorForm } from "@/components/vendors/AddVendorForm";
+import { AskAssistantLink } from "@/components/assistant/AskAssistantLink";
+import { ASSISTANT_PREFILLS } from "@/components/assistant/prefills";
 import { GmailConnection } from "@/components/vendors/GmailConnection";
 import { OutreachToContactSection } from "@/components/vendors/OutreachToContactSection";
 import { OutreachShortlistRow } from "@/components/vendors/OutreachVendorRow";
@@ -145,7 +147,10 @@ export default async function VendorsPage({
         {outreachList.length === 0 ? (
           <p className="px-1 text-[13px] text-ink-muted">
             No vendors on your outreach list yet. Search for vendors or add one
-            manually.
+            manually.{" "}
+            <AskAssistantLink prefill={ASSISTANT_PREFILLS.vendors}>
+              Ask assistant to find vendors
+            </AskAssistantLink>
           </p>
         ) : (
           <div className="space-y-5">

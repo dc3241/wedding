@@ -1,5 +1,5 @@
 import { notFound, redirect } from "next/navigation";
-import { AssistantPanel } from "@/components/assistant/AssistantPanel";
+import { AssistantWorkspace } from "@/components/assistant/AssistantWorkspace";
 import type { AssistantMessage } from "@/components/assistant/types";
 import { ProjectShell } from "@/components/projects/project-shell";
 import { ProjectWorkspaceNav } from "@/components/projects/project-workspace-nav";
@@ -48,7 +48,11 @@ export default async function ProjectLayout({
   const initialMessages = (messageRows ?? []) as AssistantMessage[];
 
   return (
-    <>
+    <AssistantWorkspace
+      projectId={projectId}
+      accountKind={accountKind}
+      initialMessages={initialMessages}
+    >
       <ProjectShell
         projectId={projectId}
         coupleNames={project.name}
@@ -58,11 +62,6 @@ export default async function ProjectLayout({
         <ProjectWorkspaceNav projectId={projectId} accountKind={accountKind} />
         {children}
       </ProjectShell>
-      <AssistantPanel
-        projectId={projectId}
-        accountKind={accountKind}
-        initialMessages={initialMessages}
-      />
-    </>
+    </AssistantWorkspace>
   );
 }

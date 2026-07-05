@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
+import { useAssistant } from "@/components/assistant/assistant-context";
 import { sendAssistantMessage } from "@/components/assistant/actions";
 import type { AssistantMessage } from "@/components/assistant/types";
 import { Button } from "@/components/ui/button";
@@ -31,7 +32,8 @@ export function AssistantPanel({
   initialMessages,
 }: AssistantPanelProps) {
   const isPlanner = isPlannerAccount(accountKind);
-  const [open, setOpen] = useState(false);
+  const { open, closeAssistant, pendingPrefill, clearPendingPrefill } =
+    useAssistant();
   const [messages, setMessages] = useState(initialMessages);
   const [input, setInput] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -41,6 +43,12 @@ export function AssistantPanel({
   useEffect(() => {
     setMessages(initialMessages);
   }, [initialMessages]);
+
+  useEffect(() => {
+    if (!open || !pendingPrefill) return;
+    setInput(pendingPrefill);
+    clearPendingPrefill();
+  }, [open, pendingPrefill, clearPendingPrefill]);
 
   useEffect(() => {
     if (!open) return;
@@ -97,24 +105,10 @@ export function AssistantPanel({
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setOpen((value) => !value)}
-        className={cn(
-          "fixed bottom-6 right-6 z-40 flex items-center gap-2 rounded-full border border-plum bg-plum px-4 py-3 text-sm font-medium text-surface shadow-sm transition-colors hover:border-plum-deep hover:bg-plum-deep focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-plum",
-          isPlanner && "bottom-5 right-5 px-3.5 py-2.5 text-[13px]",
-        )}
-        aria-expanded={open}
-        aria-controls="assistant-panel"
-      >
-        <span className="inline-block size-2 rounded-full bg-surface/90" aria-hidden />
-        {open ? "Close assistant" : "Ask assistant"}
-      </button>
-
       {open ? (
         <div
           className="fixed inset-0 z-30 bg-ink/20"
-          onClick={() => setOpen(false)}
+          onClick={closeAssistant}
           aria-hidden
         />
       ) : null}
@@ -147,7 +141,7 @@ export function AssistantPanel({
           </div>
           <button
             type="button"
-            onClick={() => setOpen(false)}
+            onClick={closeAssistant}
             className="shrink-0 rounded border border-transparent px-2 py-1 text-[13px] text-ink-muted hover:border-stone hover:bg-plum-tint hover:text-ink"
             aria-label="Close assistant"
           >

@@ -4,7 +4,8 @@ import Link from "next/link";
 
 export function MarketingTopbar() {
   return (
-    <Topbar>
+    <div className="animate-rise">
+      <Topbar>
       <Link href="/" className="no-underline">
         <Wordmark />
       </Link>
@@ -25,6 +26,7 @@ export function MarketingTopbar() {
           Get started
         </ButtonLink>
       </div>
-    </Topbar>
+      </Topbar>
+    </div>
   );
 }

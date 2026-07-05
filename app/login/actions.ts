@@ -47,3 +47,16 @@ export async function signup(formData: FormData) {
 
   redirect("/login?message=Check your email to confirm your account.");
 }
+
+export async function logout() {
+  const supabase = await createClient();
+
+  const { error } = await supabase.auth.signOut();
+
+  if (error) {
+    redirect(`/login?error=${encodeURIComponent(error.message)}`);
+  }
+
+  revalidatePath("/", "layout");
+  redirect("/");
+}

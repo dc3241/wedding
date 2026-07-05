@@ -1,5 +1,6 @@
 import { Card } from "@/components/ui/card";
 import { Eyebrow } from "@/components/ui/eyebrow";
+import { RevealOnScroll } from "@/components/ui/reveal-on-scroll";
 import { SectionHeader } from "@/components/ui/section-header";
 
 const FEATURES = [
@@ -44,16 +45,20 @@ const FEATURES = [
 export function FeatureGrid() {
   return (
     <section id="features" className="mx-auto max-w-[1180px] px-6 pb-20">
-      <SectionHeader>Everything in one place</SectionHeader>
+      <RevealOnScroll>
+        <SectionHeader>Everything in one place</SectionHeader>
+      </RevealOnScroll>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 lg:gap-5">
-        {FEATURES.map((feature) => (
-          <Card key={feature.eyebrow} className="p-6">
-            <Eyebrow className="mb-2.5 block">{feature.eyebrow}</Eyebrow>
-            <h3 className="text-[15px] font-medium text-ink">{feature.title}</h3>
-            <p className="mt-2 text-sm leading-relaxed text-ink-muted">
-              {feature.description}
-            </p>
-          </Card>
+        {FEATURES.map((feature, index) => (
+          <RevealOnScroll key={feature.eyebrow} delay={index * 80}>
+            <Card className="marketing-card-hover h-full p-6">
+              <Eyebrow className="mb-2.5 block">{feature.eyebrow}</Eyebrow>
+              <h3 className="text-[15px] font-medium text-ink">{feature.title}</h3>
+              <p className="mt-2 text-sm leading-relaxed text-ink-muted">
+                {feature.description}
+              </p>
+            </Card>
+          </RevealOnScroll>
         ))}
       </div>
     </section>

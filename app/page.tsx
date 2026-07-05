@@ -5,7 +5,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 export const metadata: Metadata = {
-  title: "Aisle — Wedding planning, modern romantic",
+  title: "First Look — Wedding planning, modern romantic",
   description:
     "Checklist, budget, vendors, guests, and a shareable wedding website — calm planning for couples and professional planners.",
 };

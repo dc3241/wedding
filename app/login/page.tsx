@@ -9,7 +9,7 @@ import Link from "next/link";
 
 export const metadata: Metadata = {
   title: "Log in",
-  description: "Sign in to your Aisle wedding planning account.",
+  description: "Sign in to your First Look wedding planning account.",
 };
 
 export default async function LoginPage({
@@ -83,6 +83,7 @@ export default async function LoginPage({
 
             <div className="flex flex-col gap-3 pt-2 sm:flex-row">
               <Button
+                type="submit"
                 formAction={login}
                 variant="primary"
                 className="flex-1 text-[15px]"
@@ -90,6 +91,7 @@ export default async function LoginPage({
                 Log in
               </Button>
               <Button
+                type="submit"
                 formAction={signup}
                 variant="default"
                 className="flex-1 text-[15px]"
@@ -102,7 +104,7 @@ export default async function LoginPage({
           <p className="mt-6 text-center text-[13px] text-ink-muted">
             New here?{" "}
             <Link href="/" className="text-plum no-underline hover:text-plum-deep">
-              Learn about Aisle
+              Learn about First Look
             </Link>
           </p>
         </Card>

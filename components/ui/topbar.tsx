@@ -24,7 +24,7 @@ type WordmarkProps = HTMLAttributes<HTMLDivElement> & {
   children?: ReactNode;
 };
 
-export function Wordmark({ className, children = "Aisle", ...props }: WordmarkProps) {
+export function Wordmark({ className, children = "First Look", ...props }: WordmarkProps) {
   return (
     <div
       className={cn(

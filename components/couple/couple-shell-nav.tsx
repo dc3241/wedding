@@ -1,5 +1,6 @@
 "use client";
 
+import { LogoutButton } from "@/components/auth/logout-button";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/cn";
@@ -23,6 +24,7 @@ export function CoupleShellNav() {
       >
         Billing
       </Link>
+      <LogoutButton />
     </nav>
   );
 }
