@@ -58,6 +58,63 @@ export async function addEvent(
   revalidatePath(timelinePath(projectId));
 }
 
+export type TimelineEventFields = {
+  title: string;
+  start_time?: string | null;
+  end_time?: string | null;
+  description?: string | null;
+  section?: string | null;
+  owner?: string | null;
+};
+
+export type AddEventsResult = {
+  count: number;
+  latest_start_time: string | null;
+};
+
+function latestStartTime(times: (string | null)[]): string | null {
+  const valid = times.filter((t): t is string => t != null);
+  if (valid.length === 0) return null;
+  return valid.reduce((latest, t) => (t > latest ? t : latest));
+}
+
+export async function addEvents(
+  projectId: string,
+  events: TimelineEventFields[],
+): Promise<AddEventsResult> {
+  if (events.length === 0) {
+    return { count: 0, latest_start_time: null };
+  }
+
+  const supabase = await createClient();
+  let position = await maxPosition(projectId);
+
+  const rows = events.map((event) => {
+    const row = {
+      project_id: projectId,
+      title: event.title.trim(),
+      start_time: normalizeTime(event.start_time),
+      end_time: normalizeTime(event.end_time),
+      description: event.description?.trim() || null,
+      section: event.section?.trim() || null,
+      owner: event.owner?.trim() || null,
+      position: position++,
+    };
+    return row;
+  });
+
+  const { error } = await supabase.from("timeline_events").insert(rows);
+
+  if (error) throw error;
+
+  revalidatePath(timelinePath(projectId));
+
+  return {
+    count: rows.length,
+    latest_start_time: latestStartTime(rows.map((row) => row.start_time)),
+  };
+}
+
 export async function updateEvent(
   eventId: string,
   fields: {

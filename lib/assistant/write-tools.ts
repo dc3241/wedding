@@ -7,7 +7,10 @@ import {
 } from "@/app/(app)/projects/[projectId]/budget/actions";
 import { addNote, updateNote } from "@/app/(app)/projects/[projectId]/notes/actions";
 import { addVendorTarget } from "@/app/(app)/projects/[projectId]/vendors/actions";
-import { addEvent } from "@/app/(app)/projects/[projectId]/timeline/actions";
+import {
+  addEvent,
+  addEvents,
+} from "@/app/(app)/projects/[projectId]/timeline/actions";
 
 const TASK_STATUSES = ["todo", "in_progress", "done"] as const;
 const RSVP_STATUSES = ["pending", "attending", "declined"] as const;
@@ -187,6 +190,51 @@ export const WRITE_TOOL_DEFINITIONS = [
         },
       },
       required: ["title"] as string[],
+    },
+  },
+  {
+    name: "add_timeline_events",
+    description:
+      "Add multiple events to the day-of wedding timeline in one batch. Use when generating a full run sheet or adding several events at once — not for a single event.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        events: {
+          type: "array",
+          description: "List of timeline events to add",
+          items: {
+            type: "object",
+            properties: {
+              title: {
+                type: "string",
+                description: "Event title (e.g. Ceremony, First dance)",
+              },
+              start_time: {
+                type: "string",
+                description: "Optional start time in HH:MM 24-hour format (e.g. 16:00 for 4pm)",
+              },
+              end_time: {
+                type: "string",
+                description: "Optional end time in HH:MM 24-hour format",
+              },
+              description: {
+                type: "string",
+                description: "Optional details for the run sheet",
+              },
+              section: {
+                type: "string",
+                description: "Optional section grouping (e.g. Ceremony, Reception)",
+              },
+              owner: {
+                type: "string",
+                description: "Optional person responsible (e.g. DJ, photographer)",
+              },
+            },
+            required: ["title"] as string[],
+          },
+        },
+      },
+      required: ["events"] as string[],
     },
   },
 ] as const;
@@ -403,6 +451,62 @@ export async function executeWriteTool(
         description: description?.trim() || null,
         section: section?.trim() || null,
         owner: owner?.trim() || null,
+      };
+    }
+
+    case "add_timeline_events": {
+      if (!Array.isArray(input.events) || input.events.length === 0) {
+        return toolError("events must be a non-empty array");
+      }
+
+      const parsedEvents: {
+        title: string;
+        start_time: string | null;
+        end_time: string | null;
+        description: string | null;
+        section: string | null;
+        owner: string | null;
+      }[] = [];
+
+      for (const raw of input.events) {
+        if (typeof raw !== "object" || raw === null) {
+          return toolError("each event must be an object with a title");
+        }
+
+        const event = raw as Record<string, unknown>;
+        const title = asString(event.title)?.trim();
+        if (!title) return toolError("each event requires a title");
+
+        const startTime = asString(event.start_time)?.trim() || null;
+        const endTime = asString(event.end_time)?.trim() || null;
+        if (startTime && !isValidTime(startTime)) {
+          return toolError("start_time must be in HH:MM 24-hour format");
+        }
+        if (endTime && !isValidTime(endTime)) {
+          return toolError("end_time must be in HH:MM 24-hour format");
+        }
+
+        const description = asString(event.description);
+        const section = asString(event.section);
+        const owner = asString(event.owner);
+
+        parsedEvents.push({
+          title,
+          start_time: startTime,
+          end_time: endTime,
+          description: description ?? null,
+          section: section ?? null,
+          owner: owner ?? null,
+        });
+      }
+
+      const result = await addEvents(projectId, parsedEvents);
+
+      return {
+        success: true,
+        action: "add_timeline_events",
+        count: result.count,
+        latest_start_time: result.latest_start_time,
       };
     }
   }

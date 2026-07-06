@@ -5,6 +5,8 @@ import { getAccountContext } from "@/lib/account-context";
 import type { SendAssistantResult } from "@/components/assistant/types";
 import { createClient } from "@/utils/supabase/server";
 
+const ASSISTANT_HISTORY_WINDOW = 10;
+
 export async function sendAssistantMessage(
   projectId: string,
   userText: string,
@@ -28,14 +30,15 @@ export async function sendAssistantMessage(
       .from("assistant_messages")
       .select("role, content")
       .eq("project_id", projectId)
-      .order("created_at", { ascending: true }),
+      .order("created_at", { ascending: false })
+      .limit(ASSISTANT_HISTORY_WINDOW),
   ]);
 
   if (!project) {
     return { success: false, error: "Project not found." };
   }
 
-  const conversation = (history ?? []).map((row) => ({
+  const conversation = [...(history ?? [])].reverse().map((row) => ({
     role: row.role as "user" | "assistant",
     content: row.content,
   }));
