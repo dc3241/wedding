@@ -24,6 +24,18 @@ export type SeatingTable = {
   rotation: number;
 };
 
+export type SeatingAssignment = {
+  id: string;
+  table_id: string;
+  guest_id: string;
+  seat_index: number | null;
+};
+
+export type RosterGuest = {
+  id: string;
+  full_name: string | null;
+};
+
 export const CANVAS_WIDTH = 1200;
 export const CANVAS_HEIGHT = 800;
 

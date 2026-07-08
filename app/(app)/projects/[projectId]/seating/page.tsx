@@ -1,5 +1,9 @@
 import { SeatingWorkspace } from "./SeatingWorkspace";
-import type { SeatingTable } from "./types";
+import type {
+  RosterGuest,
+  SeatingAssignment,
+  SeatingTable,
+} from "./types";
 import { PageHeader } from "@/components/ui/page-header";
 import { getAccountContext } from "@/lib/account-context";
 import { sectionStackClass } from "@/lib/density";
@@ -15,15 +19,25 @@ export default async function SeatingPage({
   const account = await getAccountContext(supabase);
   const stackClass = sectionStackClass(account?.kind ?? "personal");
 
-  const { data: rows } = await supabase
-    .from("seating_tables")
-    .select(
-      "id, label, shape, seat_count, kind, pos_x, pos_y, rotation",
-    )
-    .eq("project_id", projectId)
-    .order("created_at", { ascending: true });
+  const [{ data: tableRows }, { data: guestRows }, { data: assignmentRows }] =
+    await Promise.all([
+      supabase
+        .from("seating_tables")
+        .select("id, label, shape, seat_count, kind, pos_x, pos_y, rotation")
+        .eq("project_id", projectId)
+        .order("created_at", { ascending: true }),
+      supabase
+        .from("guests")
+        .select("id, full_name")
+        .eq("project_id", projectId)
+        .order("full_name", { ascending: true }),
+      supabase
+        .from("seating_assignments")
+        .select("id, table_id, guest_id, seat_index")
+        .eq("project_id", projectId),
+    ]);
 
-  const tables: SeatingTable[] = (rows ?? []).map((row) => ({
+  const tables: SeatingTable[] = (tableRows ?? []).map((row) => ({
     id: row.id,
     label: row.label,
     shape: row.shape,
@@ -34,15 +48,23 @@ export default async function SeatingPage({
     rotation: Number(row.rotation),
   }));
 
+  const guests = (guestRows ?? []) as RosterGuest[];
+  const assignments = (assignmentRows ?? []) as SeatingAssignment[];
+
   return (
     <div className={stackClass}>
       <PageHeader
         eyebrow="Seating"
         title="Floor plan"
-        description="Arm a shape to place tables, select one to move or remove it, and use arrow keys for fine adjustments."
+        description="Place tables, then select a guest and click a table to seat them."
       />
 
-      <SeatingWorkspace projectId={projectId} tables={tables} />
+      <SeatingWorkspace
+        projectId={projectId}
+        tables={tables}
+        guests={guests}
+        assignments={assignments}
+      />
     </div>
   );
 }

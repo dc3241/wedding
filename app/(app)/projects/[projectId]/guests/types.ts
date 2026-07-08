@@ -14,6 +14,14 @@ export type Guest = {
 
 export const RSVP_STATUSES: RsvpStatus[] = ["pending", "attending", "declined"];
 
+// Guests store a single `full_name` (see 0006). Format tolerantly: trim, and
+// fall back rather than ever surfacing an empty string / "null". Shared so the
+// roster, table guest-lists, and later seat labels all render names the same.
+export function formatGuestName(guest: { full_name: string | null }): string {
+  const name = guest.full_name?.trim();
+  return name ? name : "Unnamed guest";
+}
+
 export const MEAL_OPTIONS = [
   { value: "", label: "—" },
   { value: "chicken", label: "Chicken" },

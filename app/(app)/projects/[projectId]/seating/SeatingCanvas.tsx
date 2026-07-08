@@ -15,8 +15,10 @@ type SeatingCanvasProps = {
   tables: SeatingTable[];
   armedShape: SeatingTableShape | null;
   selectedId: string | null;
+  occupancyByTable: Record<string, number>;
+  assignMode: boolean;
   onPlace: (posX: number, posY: number) => void;
-  onSelectTable: (id: string) => void;
+  onTableClick: (id: string) => void;
   onEmptyCanvasClick: (posX: number, posY: number) => void;
 };
 
@@ -48,26 +50,30 @@ function SeatingTableGraphic({
   table,
   selected,
   interactive,
-  onSelect,
+  occupied,
+  onClick,
 }: {
   table: SeatingTable;
   selected: boolean;
   interactive: boolean;
-  onSelect: () => void;
+  occupied: number;
+  onClick: () => void;
 }) {
   const body = tableBodyForShape(table.shape);
   const seats = seatPositionsForTable(table.shape, table.seat_count);
   const outline = kindStroke(table.kind, selected);
+  const full = occupied >= table.seat_count;
+  const countColor = full ? "var(--sage)" : "var(--ink-muted)";
 
   return (
     <g
       transform={`translate(${table.pos_x} ${table.pos_y}) rotate(${table.rotation})`}
-      aria-label={`${table.label}, ${table.seat_count} seats`}
+      aria-label={`${table.label}, ${occupied} of ${table.seat_count} seats filled`}
       style={{ pointerEvents: interactive ? "auto" : "none" }}
       onClick={(event) => {
         if (!interactive) return;
         event.stopPropagation();
-        onSelect();
+        onClick();
       }}
     >
       {table.shape === "round" ? (
@@ -94,7 +100,7 @@ function SeatingTableGraphic({
 
       <text
         x={0}
-        y={0}
+        y={-4}
         textAnchor="middle"
         dominantBaseline="middle"
         fill="var(--ink)"
@@ -106,14 +112,28 @@ function SeatingTableGraphic({
         {table.label}
       </text>
 
+      <text
+        x={0}
+        y={12}
+        textAnchor="middle"
+        dominantBaseline="middle"
+        fill={countColor}
+        fontSize={11}
+        fontFamily="var(--font-sans)"
+        fontWeight={500}
+        style={{ pointerEvents: "none" }}
+      >
+        {occupied}/{table.seat_count}
+      </text>
+
       {seats.map((seat, index) => (
         <circle
           key={`${table.id}-seat-${index}`}
           cx={seat.x}
           cy={seat.y}
           r={SEAT_RADIUS}
-          fill="var(--surface-2)"
-          stroke="var(--stone)"
+          fill={index < occupied ? "var(--sage)" : "var(--surface-2)"}
+          stroke={index < occupied ? "var(--sage)" : "var(--stone)"}
           strokeWidth={1}
           style={{ pointerEvents: "none" }}
         />
@@ -140,8 +160,10 @@ export function SeatingCanvas({
   tables,
   armedShape,
   selectedId,
+  occupancyByTable,
+  assignMode,
   onPlace,
-  onSelectTable,
+  onTableClick,
   onEmptyCanvasClick,
 }: SeatingCanvasProps) {
   const viewportRef = useRef<HTMLDivElement>(null);
@@ -299,7 +321,7 @@ export function SeatingCanvas({
       ref={viewportRef}
       className={cn(
         "relative overflow-hidden rounded-lg border border-stone bg-surface-2",
-        placing ? "cursor-crosshair" : selectedId ? "cursor-crosshair" : "cursor-default",
+        placing || assignMode || selectedId ? "cursor-crosshair" : "cursor-default",
         viewportGesturesEnabled && "touch-pan-x touch-pan-y",
       )}
       style={{ aspectRatio: `${CANVAS_WIDTH} / ${CANVAS_HEIGHT}` }}
@@ -362,7 +384,8 @@ export function SeatingCanvas({
             table={table}
             selected={selectedId === table.id}
             interactive={!placing}
-            onSelect={() => onSelectTable(table.id)}
+            occupied={occupancyByTable[table.id] ?? 0}
+            onClick={() => onTableClick(table.id)}
           />
         ))}
       </svg>

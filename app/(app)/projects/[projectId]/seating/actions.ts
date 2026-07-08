@@ -99,3 +99,77 @@ export async function moveSeatingTable(
 
   revalidatePath(seatingPath(data.project_id));
 }
+
+export type AssignResult = { ok: true } | { ok: false; error: string };
+
+export async function assignGuestToTable(
+  projectId: string,
+  input: { guestId: string; tableId: string },
+): Promise<AssignResult> {
+  const supabase = await createClient();
+
+  // Derive project scope from the table itself (RLS-scoped read), rather than
+  // trusting the client-sent projectId for the written row.
+  const { data: table, error: tableError } = await supabase
+    .from("seating_tables")
+    .select("id, label, seat_count, project_id")
+    .eq("id", input.tableId)
+    .maybeSingle();
+
+  if (tableError) throw tableError;
+  if (!table) {
+    return { ok: false, error: "That table no longer exists." };
+  }
+
+  // OCCUPANCY (value validation, not a permission filter). Count assignments
+  // already at this table, excluding this guest so a re-seat onto the same
+  // table doesn't count them twice.
+  const { count, error: countError } = await supabase
+    .from("seating_assignments")
+    .select("*", { count: "exact", head: true })
+    .eq("table_id", table.id)
+    .neq("guest_id", input.guestId);
+
+  if (countError) throw countError;
+
+  if ((count ?? 0) >= table.seat_count) {
+    return {
+      ok: false,
+      error: `${table.label} is full (${table.seat_count} seats).`,
+    };
+  }
+
+  // ALREADY-SEATED -> MOVE: unique(project_id, guest_id) means an upsert on
+  // that pair reseats the guest (clearing seat_index) instead of duplicating.
+  const { error } = await supabase
+    .from("seating_assignments")
+    .upsert(
+      {
+        project_id: table.project_id,
+        table_id: table.id,
+        guest_id: input.guestId,
+        seat_index: null,
+      },
+      { onConflict: "project_id,guest_id" },
+    );
+
+  if (error) throw error;
+
+  revalidatePath(seatingPath(table.project_id));
+  return { ok: true };
+}
+
+export async function unassignGuest(assignmentId: string) {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("seating_assignments")
+    .delete()
+    .eq("id", assignmentId)
+    .select("project_id")
+    .single();
+
+  if (error) throw error;
+
+  revalidatePath(seatingPath(data.project_id));
+}
