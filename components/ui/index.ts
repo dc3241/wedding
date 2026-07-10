@@ -1,7 +1,9 @@
 export { Button, ButtonLink } from "./button";
 export { Card } from "./card";
+export { DisplayHeading } from "./display-heading";
 export { EmptyState } from "./empty-state";
 export { Eyebrow } from "./eyebrow";
+export { FeatureRow } from "./feature-row";
 export { Input } from "./input";
 export { PageHeader } from "./page-header";
 export { Pill, type PillVariant } from "./pill";
