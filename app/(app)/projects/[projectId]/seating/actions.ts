@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import {
   CANVAS_HEIGHT,
   CANVAS_WIDTH,
+  isSeatingTableKind,
   isSeatingTableShape,
   SEAT_COUNT_MAX,
   SEAT_COUNT_MIN,
@@ -101,6 +102,73 @@ export async function moveSeatingTable(
 }
 
 export type AssignResult = { ok: true } | { ok: false; error: string };
+
+const ROTATION_STEP = 15;
+
+function normalizeRotation(value: number) {
+  return ((value % 360) + 360) % 360;
+}
+
+export async function setSeatingTableKind(
+  tableId: string,
+  kind: string,
+): Promise<AssignResult> {
+  if (!isSeatingTableKind(kind)) {
+    return { ok: false, error: "Unknown table kind." };
+  }
+
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("seating_tables")
+    .update({ kind })
+    .eq("id", tableId)
+    .select("project_id")
+    .single();
+
+  if (error) throw error;
+
+  revalidatePath(seatingPath(data.project_id));
+  return { ok: true };
+}
+
+export async function rotateSeatingTable(
+  tableId: string,
+  direction: "cw" | "ccw",
+): Promise<AssignResult> {
+  if (direction !== "cw" && direction !== "ccw") {
+    return { ok: false, error: "Invalid rotation direction." };
+  }
+
+  const supabase = await createClient();
+
+  const { data: table, error: readError } = await supabase
+    .from("seating_tables")
+    .select("rotation, project_id")
+    .eq("id", tableId)
+    .maybeSingle();
+
+  if (readError) throw readError;
+  if (!table) {
+    return { ok: false, error: "That table no longer exists." };
+  }
+
+  const current = Number(table.rotation);
+  const delta = direction === "cw" ? ROTATION_STEP : -ROTATION_STEP;
+  const next = normalizeRotation(current + delta);
+
+  const { data, error } = await supabase
+    .from("seating_tables")
+    .update({ rotation: next })
+    .eq("id", tableId)
+    .select("project_id")
+    .single();
+
+  if (error) throw error;
+
+  revalidatePath(seatingPath(data.project_id));
+  return { ok: true };
+}
 
 export async function assignGuestToTable(
   projectId: string,

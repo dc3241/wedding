@@ -4,8 +4,11 @@ import {
   DEFAULT_SEAT_COUNT_BY_SHAPE,
   SEAT_COUNT_MAX,
   SEAT_COUNT_MIN,
+  SEATING_TABLE_KINDS,
   SEATING_TABLE_SHAPES,
   seatingShapeLabel,
+  seatingTableKindLabel,
+  type SeatingTableKind,
   type SeatingTableShape,
 } from "./types";
 import { Button } from "@/components/ui/button";
@@ -17,9 +20,12 @@ type SeatingPaletteProps = {
   armedShape: SeatingTableShape | null;
   seatCount: number;
   selectedId: string | null;
+  selectedKind: SeatingTableKind | null;
   isPending: boolean;
   onToggleShape: (shape: SeatingTableShape) => void;
   onSeatCountChange: (seatCount: number) => void;
+  onKindChange: (kind: SeatingTableKind) => void;
+  onRotate: (direction: "cw" | "ccw") => void;
   onDelete: () => void;
 };
 
@@ -53,11 +59,17 @@ export function SeatingPalette({
   armedShape,
   seatCount,
   selectedId,
+  selectedKind,
   isPending,
   onToggleShape,
   onSeatCountChange,
+  onKindChange,
+  onRotate,
   onDelete,
 }: SeatingPaletteProps) {
+  const selectionControlsDisabled =
+    !selectedId || Boolean(armedShape) || isPending;
+
   return (
     <aside className="w-full shrink-0 rounded-lg border border-stone bg-surface p-4 lg:w-56">
       <Eyebrow className="mb-3 block">Add table</Eyebrow>
@@ -108,11 +120,67 @@ export function SeatingPalette({
 
       <div className="mt-5 border-t border-stone pt-4">
         <Eyebrow className="mb-3 block">Selected</Eyebrow>
+
+        <div className="mb-4">
+          <p className="mb-2 text-[12px] font-medium text-ink-muted">Kind</p>
+          <div className="flex flex-wrap gap-1">
+            {SEATING_TABLE_KINDS.map((kind) => {
+              const active = selectedKind === kind;
+              return (
+                <button
+                  key={kind}
+                  type="button"
+                  disabled={selectionControlsDisabled}
+                  aria-pressed={active}
+                  onClick={() => onKindChange(kind)}
+                  className={cn(
+                    "rounded px-2 py-1 text-[12px] font-medium transition-colors",
+                    active
+                      ? "bg-stone-soft text-ink underline decoration-stone decoration-1 underline-offset-4"
+                      : "text-ink-muted hover:bg-stone-soft/60 hover:text-ink",
+                    selectionControlsDisabled && "opacity-60",
+                  )}
+                >
+                  {seatingTableKindLabel(kind)}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="mb-4">
+          <p className="mb-2 text-[12px] font-medium text-ink-muted">Rotate</p>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              disabled={selectionControlsDisabled}
+              onClick={() => onRotate("ccw")}
+              className={cn(
+                "flex-1 rounded border border-stone bg-surface px-2 py-2 text-[12px] font-medium text-ink-muted transition-colors hover:border-ink-muted hover:text-ink",
+                selectionControlsDisabled && "opacity-60",
+              )}
+            >
+              ⟲ −15°
+            </button>
+            <button
+              type="button"
+              disabled={selectionControlsDisabled}
+              onClick={() => onRotate("cw")}
+              className={cn(
+                "flex-1 rounded border border-stone bg-surface px-2 py-2 text-[12px] font-medium text-ink-muted transition-colors hover:border-ink-muted hover:text-ink",
+                selectionControlsDisabled && "opacity-60",
+              )}
+            >
+              ⟳ +15°
+            </button>
+          </div>
+        </div>
+
         <Button
           type="button"
           variant="default"
           className="w-full"
-          disabled={!selectedId || Boolean(armedShape) || isPending}
+          disabled={selectionControlsDisabled}
           onClick={onDelete}
         >
           Delete table

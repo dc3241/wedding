@@ -6,6 +6,8 @@ import {
   assignGuestToTable,
   deleteSeatingTable,
   moveSeatingTable,
+  rotateSeatingTable,
+  setSeatingTableKind,
   unassignGuest,
 } from "./actions";
 import { GuestRoster } from "./GuestRoster";
@@ -17,6 +19,7 @@ import {
   NUDGE_STEP,
   type RosterGuest,
   type SeatingAssignment,
+  type SeatingTableKind,
   type SeatingTable,
   type SeatingTableShape,
 } from "./types";
@@ -90,6 +93,30 @@ export function SeatingWorkspace({
       }
     });
   }, [armedShape, selectedTableId]);
+
+  const handleKindChange = useCallback(
+    (kind: SeatingTableKind) => {
+      if (!selectedTableId || armedShape) return;
+
+      const id = selectedTableId;
+      startTransition(async () => {
+        await setSeatingTableKind(id, kind);
+      });
+    },
+    [armedShape, selectedTableId],
+  );
+
+  const handleRotate = useCallback(
+    (direction: "cw" | "ccw") => {
+      if (!selectedTableId || armedShape) return;
+
+      const id = selectedTableId;
+      startTransition(async () => {
+        await rotateSeatingTable(id, direction);
+      });
+    },
+    [armedShape, selectedTableId],
+  );
 
   const handleMove = useCallback(
     (posX: number, posY: number) => {
@@ -293,9 +320,12 @@ export function SeatingWorkspace({
         armedShape={armedShape}
         seatCount={seatCount}
         selectedId={selectedTableId}
+        selectedKind={selectedTable?.kind ?? null}
         isPending={isPending}
         onToggleShape={toggleShape}
         onSeatCountChange={setSeatCount}
+        onKindChange={handleKindChange}
+        onRotate={handleRotate}
         onDelete={handleDelete}
       />
 

@@ -5,8 +5,8 @@ import { seatPositionsForTable, tableBodyForShape, SEAT_RADIUS } from "./seat-la
 import {
   CANVAS_HEIGHT,
   CANVAS_WIDTH,
+  seatingTableKindLabel,
   type SeatingTable,
-  type SeatingTableKind,
   type SeatingTableShape,
 } from "./types";
 import { cn } from "@/lib/cn";
@@ -31,20 +31,7 @@ type ViewportState = {
 const MIN_SCALE = 1;
 const MAX_SCALE = 2.5;
 
-function kindStroke(kind: SeatingTableKind, selected: boolean) {
-  if (selected) {
-    return { stroke: "var(--plum)", strokeWidth: 2 };
-  }
-
-  switch (kind) {
-    case "sweetheart":
-      return { stroke: "var(--rosewood)", strokeWidth: 2 };
-    case "head":
-      return { stroke: "var(--clay)", strokeWidth: 2 };
-    default:
-      return { stroke: "var(--stone)", strokeWidth: 1.5 };
-  }
-}
+const INSET_RING_OFFSET = 5;
 
 function SeatingTableGraphic({
   table,
@@ -60,14 +47,16 @@ function SeatingTableGraphic({
   onClick: () => void;
 }) {
   const body = tableBodyForShape(table.shape);
-  const seats = seatPositionsForTable(table.shape, table.seat_count);
-  const outline = kindStroke(table.kind, selected);
+  const seats = seatPositionsForTable(table.shape, table.seat_count, table.kind);
+  const stroke = selected ? "var(--plum)" : "var(--stone)";
+  const strokeWidth = selected ? 2 : 1.5;
+  const distinguished = table.kind !== "standard";
   const full = occupied >= table.seat_count;
   const countColor = full ? "var(--sage)" : "var(--ink-muted)";
 
   return (
     <g
-      transform={`translate(${table.pos_x} ${table.pos_y}) rotate(${table.rotation})`}
+      transform={`translate(${table.pos_x} ${table.pos_y})`}
       aria-label={`${table.label}, ${occupied} of ${table.seat_count} seats filled`}
       style={{ pointerEvents: interactive ? "auto" : "none" }}
       onClick={(event) => {
@@ -76,27 +65,84 @@ function SeatingTableGraphic({
         onClick();
       }}
     >
-      {table.shape === "round" ? (
-        <circle
-          cx={0}
-          cy={0}
-          r={body.halfWidth}
-          fill="var(--surface)"
-          stroke={outline.stroke}
-          strokeWidth={outline.strokeWidth}
-        />
-      ) : (
-        <rect
-          x={-body.halfWidth}
-          y={-body.halfHeight}
-          width={body.halfWidth * 2}
-          height={body.halfHeight * 2}
-          rx={table.shape === "square" ? 4 : 6}
-          fill="var(--surface)"
-          stroke={outline.stroke}
-          strokeWidth={outline.strokeWidth}
-        />
-      )}
+      <g transform={`rotate(${table.rotation})`}>
+        {table.shape === "round" ? (
+          <circle
+            cx={0}
+            cy={0}
+            r={body.halfWidth}
+            fill="var(--surface)"
+            stroke={stroke}
+            strokeWidth={strokeWidth}
+          />
+        ) : (
+          <rect
+            x={-body.halfWidth}
+            y={-body.halfHeight}
+            width={body.halfWidth * 2}
+            height={body.halfHeight * 2}
+            rx={table.shape === "square" ? 4 : 6}
+            fill="var(--surface)"
+            stroke={stroke}
+            strokeWidth={strokeWidth}
+          />
+        )}
+
+        {distinguished ? (
+          table.shape === "round" ? (
+            <circle
+              cx={0}
+              cy={0}
+              r={body.halfWidth - INSET_RING_OFFSET}
+              fill="none"
+              stroke="var(--stone)"
+              strokeWidth={1}
+              style={{ pointerEvents: "none" }}
+            />
+          ) : (
+            <rect
+              x={-body.halfWidth + INSET_RING_OFFSET}
+              y={-body.halfHeight + INSET_RING_OFFSET}
+              width={body.halfWidth * 2 - INSET_RING_OFFSET * 2}
+              height={body.halfHeight * 2 - INSET_RING_OFFSET * 2}
+              rx={table.shape === "square" ? 2 : 4}
+              fill="none"
+              stroke="var(--stone)"
+              strokeWidth={1}
+              style={{ pointerEvents: "none" }}
+            />
+          )
+        ) : null}
+
+        {seats.map((seat, index) => (
+          <circle
+            key={`${table.id}-seat-${index}`}
+            cx={seat.x}
+            cy={seat.y}
+            r={SEAT_RADIUS}
+            fill={index < occupied ? "var(--sage)" : "var(--surface-2)"}
+            stroke={index < occupied ? "var(--sage)" : "var(--stone)"}
+            strokeWidth={1}
+            style={{ pointerEvents: "none" }}
+          />
+        ))}
+      </g>
+
+      {distinguished ? (
+        <text
+          x={0}
+          y={-18}
+          textAnchor="middle"
+          dominantBaseline="middle"
+          fill="var(--ink-muted)"
+          fontSize={10}
+          fontFamily="var(--font-sans)"
+          fontWeight={400}
+          style={{ pointerEvents: "none" }}
+        >
+          {seatingTableKindLabel(table.kind)}
+        </text>
+      ) : null}
 
       <text
         x={0}
@@ -125,19 +171,6 @@ function SeatingTableGraphic({
       >
         {occupied}/{table.seat_count}
       </text>
-
-      {seats.map((seat, index) => (
-        <circle
-          key={`${table.id}-seat-${index}`}
-          cx={seat.x}
-          cy={seat.y}
-          r={SEAT_RADIUS}
-          fill={index < occupied ? "var(--sage)" : "var(--surface-2)"}
-          stroke={index < occupied ? "var(--sage)" : "var(--stone)"}
-          strokeWidth={1}
-          style={{ pointerEvents: "none" }}
-        />
-      ))}
     </g>
   );
 }

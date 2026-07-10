@@ -2,7 +2,9 @@ export const SEATING_TABLE_SHAPES = ["round", "square", "rectangle"] as const;
 
 export type SeatingTableShape = (typeof SEATING_TABLE_SHAPES)[number];
 
-export type SeatingTableKind = "standard" | "sweetheart" | "head";
+export const SEATING_TABLE_KINDS = ["standard", "sweetheart", "head"] as const;
+
+export type SeatingTableKind = (typeof SEATING_TABLE_KINDS)[number];
 
 export const DEFAULT_SEAT_COUNT_BY_SHAPE: Record<SeatingTableShape, number> = {
   round: 8,
@@ -44,6 +46,21 @@ export const NUDGE_FINE_STEP = 3;
 
 export function isSeatingTableShape(value: string): value is SeatingTableShape {
   return (SEATING_TABLE_SHAPES as readonly string[]).includes(value);
+}
+
+export function isSeatingTableKind(value: string): value is SeatingTableKind {
+  return (SEATING_TABLE_KINDS as readonly string[]).includes(value);
+}
+
+export function seatingTableKindLabel(kind: SeatingTableKind) {
+  switch (kind) {
+    case "standard":
+      return "Standard";
+    case "sweetheart":
+      return "Sweetheart";
+    case "head":
+      return "Head";
+  }
 }
 
 export function seatingShapeLabel(shape: SeatingTableShape) {

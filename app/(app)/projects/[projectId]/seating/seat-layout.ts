@@ -1,4 +1,4 @@
-import type { SeatingTableShape } from "./types";
+import type { SeatingTableKind, SeatingTableShape } from "./types";
 
 export type TableBody = {
   halfWidth: number;
@@ -11,6 +11,8 @@ const RECT_HALF_WIDTH = 64;
 const RECT_HALF_HEIGHT = 36;
 const SEAT_OFFSET = 14;
 const SEAT_RADIUS = 5;
+const PER_SEAT_DEG = 30;
+const FRONT_ARC_MAX_DEG = 160;
 
 export function tableBodyForShape(shape: SeatingTableShape): TableBody {
   switch (shape) {
@@ -82,8 +84,61 @@ function perimeterSeatPositions(count: number, halfWidth: number, halfHeight: nu
   return positions;
 }
 
-export function seatPositionsForTable(shape: SeatingTableShape, seatCount: number) {
+function frontEdgeSeatPositions(
+  count: number,
+  halfWidth: number,
+  halfHeight: number,
+) {
+  const positions: { x: number; y: number }[] = [];
+  const width = halfWidth * 2;
+  const y = halfHeight + SEAT_OFFSET;
+
+  for (let index = 0; index < count; index += 1) {
+    positions.push({
+      x: -halfWidth + (index + 0.5) * (width / count),
+      y,
+    });
+  }
+
+  return positions;
+}
+
+function frontArcSeatPositions(count: number, radius: number) {
+  const positions: { x: number; y: number }[] = [];
+  const orbit = radius + SEAT_OFFSET;
+  const spanDeg = Math.min(count * PER_SEAT_DEG, FRONT_ARC_MAX_DEG);
+  const spanRad = (spanDeg * Math.PI) / 180;
+  const frontRad = Math.PI / 2;
+
+  for (let index = 0; index < count; index += 1) {
+    const angle = frontRad - spanRad / 2 + (index + 0.5) * (spanRad / count);
+    positions.push({
+      x: orbit * Math.cos(angle),
+      y: orbit * Math.sin(angle),
+    });
+  }
+
+  return positions;
+}
+
+function isFrontClusteredKind(kind: SeatingTableKind) {
+  return kind === "sweetheart" || kind === "head";
+}
+
+export function seatPositionsForTable(
+  shape: SeatingTableShape,
+  seatCount: number,
+  kind: SeatingTableKind = "standard",
+) {
   const body = tableBodyForShape(shape);
+
+  if (isFrontClusteredKind(kind)) {
+    if (shape === "round") {
+      return frontArcSeatPositions(seatCount, body.halfWidth);
+    }
+
+    return frontEdgeSeatPositions(seatCount, body.halfWidth, body.halfHeight);
+  }
 
   if (shape === "round") {
     return roundSeatPositions(seatCount, body.halfWidth);
@@ -92,4 +147,4 @@ export function seatPositionsForTable(shape: SeatingTableShape, seatCount: numbe
   return perimeterSeatPositions(seatCount, body.halfWidth, body.halfHeight);
 }
 
-export { SEAT_RADIUS };
+export { SEAT_RADIUS, SEAT_OFFSET };
