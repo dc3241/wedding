@@ -14,6 +14,7 @@ type ProjectShellProps = {
 };
 
 export function ProjectShell({
+  projectId,
   coupleNames,
   weddingDate,
   accountKind,
@@ -25,7 +26,11 @@ export function ProjectShell({
     <div className={shellLayoutClass(accountKind, isPlanner)}>
       {isPlanner ? (
         <div className="mb-6">
-          <SlimHero coupleNames={coupleNames} weddingDate={weddingDate} />
+          <SlimHero
+            coupleNames={coupleNames}
+            weddingDate={weddingDate}
+            projectId={projectId}
+          />
         </div>
       ) : null}
 

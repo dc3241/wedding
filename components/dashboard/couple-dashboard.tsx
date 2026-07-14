@@ -11,6 +11,7 @@ import {
   VENDOR_PIPELINE_STEPS,
   type OutreachVendor,
 } from "@/components/vendors/outreach-vendor";
+import { PHASE_ORDER, isCanonicalPhase } from "@/lib/checklist-phases";
 import { cn } from "@/lib/cn";
 
 type TaskSummary = {
@@ -28,15 +29,6 @@ type CoupleDashboardProps = {
   tasks: TaskSummary[];
   vendors: OutreachVendor[];
 };
-
-const PHASE_ORDER = [
-  "12+ months",
-  "9 months",
-  "6 months",
-  "3 months",
-  "1 month",
-  "week of",
-] as const;
 
 const DUE_SOON_DAYS = 14;
 
@@ -99,8 +91,7 @@ function buildPhaseSections(tasks: TaskSummary[]) {
   const extraPhases = [...byPhase.keys()]
     .filter(
       (phase): phase is string =>
-        phase !== null &&
-        !PHASE_ORDER.includes(phase as (typeof PHASE_ORDER)[number]),
+        phase !== null && !isCanonicalPhase(phase),
     )
     .sort()
     .map((phase) => ({ phase, label: phase }));
@@ -548,7 +539,11 @@ export function CoupleDashboard({
 }: CoupleDashboardProps) {
   return (
     <>
-      <WeddingHero coupleNames={coupleNames} weddingDate={weddingDate} />
+      <WeddingHero
+        coupleNames={coupleNames}
+        weddingDate={weddingDate}
+        projectId={projectId}
+      />
 
       <NextUpSection projectId={projectId} tasks={tasks} />
       <TimelineSection projectId={projectId} tasks={tasks} />

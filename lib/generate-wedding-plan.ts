@@ -1,13 +1,7 @@
 import { ANTHROPIC_MODEL } from "@/lib/anthropic-model";
+import { PHASE_ORDER } from "@/lib/checklist-phases";
 
-const VALID_PHASES = new Set([
-  "12+ months",
-  "9 months",
-  "6 months",
-  "3 months",
-  "1 month",
-  "week of",
-]);
+const VALID_PHASES = new Set<string>(PHASE_ORDER);
 
 export type WeddingProfileInput = {
   projectName: string;

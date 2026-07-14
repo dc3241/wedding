@@ -1,11 +1,14 @@
 "use client";
 
+import { WeddingDateEditor } from "@/components/ui/wedding-date-editor";
 import { cn } from "@/lib/cn";
 import { useEffect, useState } from "react";
 
 type SlimHeroProps = {
   coupleNames: string;
   weddingDate: string | null;
+  /** When set, enables the inline wedding-date editor (SET-01). */
+  projectId?: string;
   dateLabel?: string | null;
   className?: string;
 };
@@ -48,12 +51,13 @@ function SlimCountdown({ weddingDate }: { weddingDate: string }) {
 export function SlimHero({
   coupleNames,
   weddingDate,
+  projectId,
   dateLabel,
   className,
 }: SlimHeroProps) {
   const displayDate =
-    dateLabel ??
-    (weddingDate ? formatSlimDate(weddingDate) : null);
+    dateLabel ?? (weddingDate ? formatSlimDate(weddingDate) : null);
+  const canEdit = Boolean(projectId);
 
   return (
     <div
@@ -62,7 +66,7 @@ export function SlimHero({
         className,
       )}
     >
-      <div className="flex min-w-0 items-baseline gap-4">
+      <div className="flex min-w-0 flex-wrap items-baseline gap-x-4 gap-y-2">
         <span className="font-display text-[26px] leading-none text-ink">
           {coupleNames}
         </span>
@@ -73,6 +77,12 @@ export function SlimHero({
         ) : (
           <span className="text-sm text-ink-muted">No date set</span>
         )}
+        {canEdit && projectId ? (
+          <WeddingDateEditor
+            projectId={projectId}
+            weddingDate={weddingDate}
+          />
+        ) : null}
       </div>
       {weddingDate ? <SlimCountdown weddingDate={weddingDate} /> : null}
     </div>

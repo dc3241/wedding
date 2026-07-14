@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { addEvent } from "./actions";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -10,6 +10,7 @@ import { cn } from "@/lib/cn";
 
 export function AddEventForm({ projectId }: { projectId: string }) {
   const formRef = useRef<HTMLFormElement>(null);
+  const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -37,12 +38,38 @@ export function AddEventForm({ projectId }: { projectId: string }) {
       );
       form.reset();
       formRef.current?.reset();
+      setOpen(false);
     });
+  }
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className={cn(
+          "w-full rounded-[var(--radius)] border border-dashed border-stone bg-transparent px-3 py-2.5 text-left text-[14px] text-ink-muted transition-colors",
+          "hover:border-plum hover:text-plum focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-plum",
+        )}
+      >
+        + Add event
+      </button>
+    );
   }
 
   return (
     <Card className={cn("p-5", isPending && "opacity-60")}>
-      <h2 className="text-[15px] font-medium text-ink">Add event</h2>
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="text-[15px] font-medium text-ink">Add event</h2>
+        <button
+          type="button"
+          onClick={() => setOpen(false)}
+          disabled={isPending}
+          className="text-[13px] text-ink-muted hover:text-ink disabled:opacity-50"
+        >
+          Cancel
+        </button>
+      </div>
       <form
         ref={formRef}
         onSubmit={handleSubmit}

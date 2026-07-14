@@ -1,28 +1,20 @@
-import { ChecklistTimeline } from "@/components/checklist/ChecklistTimeline";
+import { ChecklistBoard } from "@/components/checklist/ChecklistBoard";
 import { GenerateStarterChecklist } from "@/components/checklist/GenerateStarterChecklist";
-import { PhaseGroup } from "@/components/checklist/PhaseGroup";
 import type { ChecklistTask } from "@/components/checklist/TaskRow";
 import { getAccountContext } from "@/lib/account-context";
+import {
+  computeChecklistAggregates,
+  type AggregateTask,
+} from "@/lib/checklist-aggregates";
+import {
+  isCanonicalPhase,
+  PHASE_ORDER,
+} from "@/lib/checklist-phases";
 import { sectionStackClass } from "@/lib/density";
 import { createClient } from "@/utils/supabase/server";
 
-const PHASE_ORDER = [
-  "12+ months",
-  "9 months",
-  "6 months",
-  "3 months",
-  "1 month",
-  "week of",
-] as const;
-
-type TaskRow = {
-  id: string;
-  title: string;
-  status: ChecklistTask["status"];
-  phase: string | null;
-  due_date: string | null;
+type TaskRow = AggregateTask & {
   vendor_id: string | null;
-  position: number;
 };
 
 function groupByPhase(tasks: TaskRow[]) {
@@ -42,6 +34,48 @@ function groupByPhase(tasks: TaskRow[]) {
   return groups;
 }
 
+function buildSections(tasks: TaskRow[]) {
+  const byPhase = groupByPhase(tasks);
+
+  const knownPhases = PHASE_ORDER.map((phase) => ({
+    phase: phase as string | null,
+    label: phase,
+  }));
+
+  const extraPhases = [...byPhase.keys()]
+    .filter(
+      (phase): phase is string =>
+        phase !== null && !isCanonicalPhase(phase),
+    )
+    .sort()
+    .map((phase) => ({ phase: phase as string | null, label: phase }));
+
+  const sectionDefs = [
+    ...knownPhases,
+    ...extraPhases,
+    { phase: null as string | null, label: "Other" },
+  ];
+
+  return sectionDefs
+    .map(({ phase, label }) => {
+      const phaseTasks = byPhase.get(phase) ?? [];
+      const done = phaseTasks.filter((t) => t.status === "done").length;
+      return {
+        phase,
+        label,
+        tasks: phaseTasks,
+        done,
+        total: phaseTasks.length,
+      };
+    })
+    .filter((section) => section.total > 0 || section.phase !== null)
+    .filter((section) => {
+      // Keep empty canonical phases so add-task stays available for each bucket.
+      if (section.phase === null) return section.total > 0;
+      return true;
+    });
+}
+
 export default async function ChecklistPage({
   params,
 }: {
@@ -52,56 +86,37 @@ export default async function ChecklistPage({
   const account = await getAccountContext(supabase);
   const stackClass = sectionStackClass(account?.kind ?? "personal");
 
-  const { data: tasks } = await supabase
-    .from("tasks")
-    .select("id, title, status, phase, due_date, vendor_id, position")
-    .eq("project_id", projectId)
-    .order("phase", { ascending: true })
-    .order("position", { ascending: true });
+  const [{ data: tasks }, { data: project }] = await Promise.all([
+    supabase
+      .from("tasks")
+      .select("id, title, status, phase, due_date, vendor_id, position")
+      .eq("project_id", projectId)
+      .order("phase", { ascending: true })
+      .order("position", { ascending: true }),
+    supabase
+      .from("projects")
+      .select("wedding_date")
+      .eq("id", projectId)
+      .maybeSingle(),
+  ]);
 
   const taskList = (tasks ?? []) as TaskRow[];
-  const byPhase = groupByPhase(taskList);
-
-  const knownPhases = PHASE_ORDER.map((phase) => ({
-    phase,
-    label: phase,
-  }));
-
-  const extraPhases = [...byPhase.keys()]
-    .filter(
-      (phase): phase is string =>
-        phase !== null &&
-        !PHASE_ORDER.includes(phase as (typeof PHASE_ORDER)[number]),
-    )
-    .sort()
-    .map((phase) => ({ phase, label: phase }));
-
-  const sections = [
-    ...knownPhases,
-    ...extraPhases,
-    { phase: null, label: "Other" },
-  ];
+  const weddingDate = project?.wedding_date ?? null;
+  const aggregates = computeChecklistAggregates(taskList, weddingDate);
+  const sections = buildSections(taskList);
 
   return (
     <div className={stackClass}>
-      {taskList.length === 0 && (
+      {taskList.length === 0 ? (
         <GenerateStarterChecklist projectId={projectId} />
+      ) : (
+        <ChecklistBoard
+          projectId={projectId}
+          weddingDate={weddingDate}
+          aggregates={aggregates}
+          sections={sections}
+        />
       )}
-
-      {taskList.length > 0 ? (
-        <ChecklistTimeline>
-          {sections.map(({ phase, label }, index) => (
-            <PhaseGroup
-              key={label}
-              label={label}
-              phase={phase}
-              tasks={byPhase.get(phase) ?? []}
-              projectId={projectId}
-              isLast={index === sections.length - 1}
-            />
-          ))}
-        </ChecklistTimeline>
-      ) : null}
     </div>
   );
 }

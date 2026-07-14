@@ -8,16 +8,8 @@ import { Card } from "@/components/ui/card";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { PHASE_ORDER as PHASE_OPTIONS } from "@/lib/checklist-phases";
 import { cn } from "@/lib/cn";
-
-const PHASE_OPTIONS = [
-  "12+ months",
-  "9 months",
-  "6 months",
-  "3 months",
-  "1 month",
-  "week of",
-] as const;
 
 function formatCurrency(amount: number) {
   return new Intl.NumberFormat("en-US", {

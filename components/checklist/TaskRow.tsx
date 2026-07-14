@@ -48,9 +48,10 @@ function isOverdue(dueDate: string | null, status: ChecklistTask["status"]) {
 }
 
 function dueDateClass(task: ChecklistTask) {
-  if (task.status === "done") return "text-sage";
-  if (isOverdue(task.due_date, task.status)) return "text-rosewood";
-  return "text-ink-muted";
+  if (task.status === "done") return "border-sage/40 text-sage";
+  if (isOverdue(task.due_date, task.status))
+    return "border-rosewood/40 text-rosewood";
+  return "border-stone text-ink-muted";
 }
 
 export function TaskRow({ task }: { task: ChecklistTask }) {
@@ -88,6 +89,7 @@ export function TaskRow({ task }: { task: ChecklistTask }) {
       className={cn(
         "flex items-center gap-3",
         dataRowClass(accountKind),
+        accountKind === "personal" && "py-2",
         isPending && "opacity-60",
       )}
     >
@@ -140,7 +142,7 @@ export function TaskRow({ task }: { task: ChecklistTask }) {
       {dueDate ? (
         <span
           className={cn(
-            "tabnum shrink-0 text-xs",
+            "shrink-0 rounded-full border border-stone px-2 py-0.5 text-[11px] tabular-nums",
             dueDateClass(task),
           )}
         >

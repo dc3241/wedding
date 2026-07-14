@@ -1,11 +1,14 @@
 "use client";
 
+import { WeddingDateEditor } from "@/components/ui/wedding-date-editor";
 import { cn } from "@/lib/cn";
 import { useEffect, useState } from "react";
 
 type WeddingHeroProps = {
   coupleNames: string;
   weddingDate: string | null;
+  /** When set, enables the inline wedding-date editor (SET-01). */
+  projectId?: string;
   dateLabel?: string | null;
   className?: string;
 };
@@ -54,20 +57,18 @@ function CountdownNumber({ weddingDate }: { weddingDate: string }) {
 export function WeddingHero({
   coupleNames,
   weddingDate,
+  projectId,
   dateLabel,
   className,
 }: WeddingHeroProps) {
   const displayDate =
-    dateLabel ??
-    (weddingDate ? formatWeddingDate(weddingDate) : null);
+    dateLabel ?? (weddingDate ? formatWeddingDate(weddingDate) : null);
+  const canEdit = Boolean(projectId);
 
   return (
     <>
       <section
-        className={cn(
-          "animate-rise px-0 py-2 pb-10 text-center",
-          className,
-        )}
+        className={cn("animate-rise px-0 py-2 pb-10 text-center", className)}
       >
         <div className="font-display text-[clamp(40px,6vw,54px)] tracking-[0.005em] text-ink">
           {coupleNames}
@@ -79,6 +80,15 @@ export function WeddingHero({
         ) : (
           <div className="mt-3.5 text-base text-ink-muted">No date set</div>
         )}
+        {canEdit && projectId ? (
+          <div className="mt-3 flex justify-center">
+            <WeddingDateEditor
+              projectId={projectId}
+              weddingDate={weddingDate}
+              align="center"
+            />
+          </div>
+        ) : null}
         {weddingDate ? <CountdownNumber weddingDate={weddingDate} /> : null}
       </section>
       <div className="mt-2 h-px bg-stone" aria-hidden />

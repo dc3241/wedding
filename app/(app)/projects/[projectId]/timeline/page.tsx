@@ -1,9 +1,9 @@
-import { AddEventForm } from "./AddEventForm";
-import { TimelineRunSheet } from "./TimelineRunSheet";
+import { TimelineBoard } from "./TimelineBoard";
 import type { TimelineEvent } from "./types";
 import { PageHeader } from "@/components/ui/page-header";
 import { getAccountContext } from "@/lib/account-context";
 import { sectionStackClass } from "@/lib/density";
+import { computeTimelineAggregates } from "@/lib/timeline-aggregates";
 import { createClient } from "@/utils/supabase/server";
 
 export default async function TimelinePage({
@@ -16,6 +16,7 @@ export default async function TimelinePage({
   const account = await getAccountContext(supabase);
   const stackClass = sectionStackClass(account?.kind ?? "personal");
 
+  // RLS-scoped; no manual ownership filter.
   const { data: rows } = await supabase
     .from("timeline_events")
     .select(
@@ -26,25 +27,18 @@ export default async function TimelinePage({
     .order("position", { ascending: true });
 
   const events = (rows ?? []) as TimelineEvent[];
+  const aggregates = computeTimelineAggregates(events);
 
   return (
     <div className={stackClass}>
       <PageHeader
         eyebrow="Day-of timeline"
-        title="Run sheet"
+        title="Day-of timeline"
         description="The hour-by-hour schedule for the wedding day — distinct from your long-range planning checklist."
+        className="[&_h1]:font-[family-name:var(--font-sans)] [&_h1]:font-medium"
       />
 
-      <AddEventForm projectId={projectId} />
-
-      {events.length === 0 ? (
-        <p className="px-1 text-[13px] text-ink-muted">
-          No events yet. Add the first moment — ceremony, cocktail hour, first
-          dance, and so on.
-        </p>
-      ) : (
-        <TimelineRunSheet events={events} />
-      )}
+      <TimelineBoard projectId={projectId} aggregates={aggregates} />
     </div>
   );
 }
