@@ -5,6 +5,7 @@ export type BudgetItem = {
   planned_amount: number;
   actual_amount: number | null;
   notes: string | null;
+  project_vendor_id: string | null;
 };
 
 export type BookedVendorCost = {
@@ -15,14 +16,6 @@ export type BookedVendorCost = {
     category: string | null;
   };
 };
-
-export function formatCurrency(amount: number) {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    maximumFractionDigits: 0,
-  }).format(amount);
-}
 
 export function sumPlanned(items: BudgetItem[]) {
   return items.reduce((sum, item) => sum + item.planned_amount, 0);

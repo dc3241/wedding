@@ -252,7 +252,9 @@ async function getBudget(supabase: SupabaseClient, projectId: string) {
       .single(),
     supabase
       .from("budget_items")
-      .select("id, category, label, planned_amount, actual_amount, notes")
+      .select(
+        "id, category, label, planned_amount, actual_amount, notes, project_vendor_id",
+      )
       .eq("project_id", projectId)
       .order("category", { ascending: true, nullsFirst: false })
       .order("label", { ascending: true }),
@@ -284,6 +286,7 @@ async function getBudget(supabase: SupabaseClient, projectId: string) {
         ? null
         : Number(row.actual_amount),
     notes: row.notes,
+    project_vendor_id: row.project_vendor_id ?? null,
   }));
 
   const bookedVendors: BookedVendorCost[] = (vendorRows ?? []).flatMap(

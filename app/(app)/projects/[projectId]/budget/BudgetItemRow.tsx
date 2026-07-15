@@ -1,8 +1,16 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import { removeBudgetItem, updateBudgetItem } from "./actions";
-import type { BudgetItem } from "./types";
+import {
+  removeBudgetItem,
+  setBudgetItemProjectVendor,
+  updateBudgetItem,
+} from "./actions";
+import type {
+  BudgetItemForAggregate,
+  ProjectVendorOption,
+} from "@/lib/budget-aggregates";
+import { formatCurrency } from "@/lib/format-currency";
 import { cn } from "@/lib/cn";
 
 function parseAmount(value: string) {
@@ -12,24 +20,96 @@ function parseAmount(value: string) {
   return Number.isNaN(parsed) ? null : Math.max(0, parsed);
 }
 
+function AmountField({
+  id,
+  value,
+  onChange,
+  onBlur,
+  ariaLabel,
+  placeholder,
+  muted = false,
+}: {
+  id?: string;
+  value: string;
+  onChange: (value: string) => void;
+  onBlur: () => void;
+  ariaLabel: string;
+  placeholder?: string;
+  muted?: boolean;
+}) {
+  return (
+    <div className="flex h-8 items-center gap-1 rounded border-[0.5px] border-stone bg-surface px-2">
+      <span className="shrink-0 text-[13px] text-ink-muted" aria-hidden>
+        $
+      </span>
+      <input
+        id={id}
+        type="text"
+        inputMode="decimal"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onBlur={onBlur}
+        placeholder={placeholder}
+        aria-label={ariaLabel}
+        className={cn(
+          "min-w-0 flex-1 border-0 bg-transparent text-right text-[14px] tabular-nums outline-none placeholder:text-ink-muted",
+          muted ? "text-ink-muted" : "font-medium text-ink",
+        )}
+      />
+    </div>
+  );
+}
+
+function VendorVariance({ item }: { item: BudgetItemForAggregate }) {
+  const linked = item.linkedVendor;
+  if (!linked) return null;
+
+  if (linked.quotedPrice == null || item.quoteVariance == null) {
+    return (
+      <span className="text-[13px] text-ink-muted">{linked.name}</span>
+    );
+  }
+
+  const over = item.quoteVariance > 0;
+  const equal = item.quoteVariance === 0;
+  const varianceLabel = equal
+    ? "on plan"
+    : over
+      ? `${formatCurrency(item.quoteVariance)} over plan`
+      : `${formatCurrency(Math.abs(item.quoteVariance))} under plan`;
+
+  return (
+    <span className="text-[13px] text-ink-muted">
+      <span className="tabular-nums">
+        {formatCurrency(linked.quotedPrice)} quoted
+      </span>
+      {" · "}
+      <span
+        className={cn(
+          "tabular-nums",
+          over ? "text-rosewood" : "text-ink-muted",
+        )}
+      >
+        {varianceLabel}
+      </span>
+    </span>
+  );
+}
+
 export function BudgetItemRow({
   item,
-  rowClass,
+  projectVendors,
 }: {
-  item: BudgetItem;
-  rowClass: string;
+  item: BudgetItemForAggregate;
+  projectVendors: ProjectVendorOption[];
 }) {
-  const [category, setCategory] = useState(item.category ?? "");
   const [label, setLabel] = useState(item.label);
   const [planned, setPlanned] = useState(String(item.planned_amount));
   const [actual, setActual] = useState(
     item.actual_amount !== null ? String(item.actual_amount) : "",
   );
+  const [linkError, setLinkError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
-
-  useEffect(() => {
-    setCategory(item.category ?? "");
-  }, [item.category]);
 
   useEffect(() => {
     setLabel(item.label);
@@ -42,18 +122,6 @@ export function BudgetItemRow({
   useEffect(() => {
     setActual(item.actual_amount !== null ? String(item.actual_amount) : "");
   }, [item.actual_amount]);
-
-  function saveCategory() {
-    const next = category.trim();
-    const current = item.category ?? "";
-    if (next === current) {
-      setCategory(current);
-      return;
-    }
-    startTransition(async () => {
-      await updateBudgetItem(item.id, { category: next });
-    });
-  }
 
   function saveLabel() {
     const trimmed = label.trim();
@@ -102,20 +170,23 @@ export function BudgetItemRow({
     });
   }
 
+  function handleVendorChange(value: string) {
+    const next = value === "" ? null : value;
+    const current = item.project_vendor_id;
+    if (next === current) return;
+
+    setLinkError(null);
+    startTransition(async () => {
+      const result = await setBudgetItemProjectVendor(item.id, next);
+      if (!result.ok) {
+        setLinkError(result.error);
+      }
+    });
+  }
+
   return (
-    <tr className={cn(isPending && "opacity-60", rowClass)}>
-      <td className="py-2.5 pr-3">
-        <input
-          type="text"
-          value={category}
-          onChange={(e) => setCategory(e.target.value)}
-          onBlur={saveCategory}
-          placeholder="Category"
-          aria-label={`Category for ${item.label}`}
-          className="w-full min-w-[5rem] bg-transparent text-[14px] text-ink-muted outline-none placeholder:text-ink-muted"
-        />
-      </td>
-      <td className="py-2.5 pr-3">
+    <li className={cn("space-y-2.5 py-2.5", isPending && "opacity-60")}>
+      <div className="grid grid-cols-[minmax(0,1fr)_96px_96px_52px] items-center gap-x-2">
         <input
           type="text"
           value={label}
@@ -125,42 +196,64 @@ export function BudgetItemRow({
             if (e.key === "Enter") e.currentTarget.blur();
           }}
           aria-label="Line item label"
-          className="w-full min-w-[8rem] bg-transparent text-[15px] text-ink outline-none"
+          className="min-w-0 truncate bg-transparent text-[14px] text-ink outline-none"
         />
-      </td>
-      <td className="py-2.5 pr-3 text-right">
-        <input
-          type="text"
-          inputMode="decimal"
+        <AmountField
           value={planned}
-          onChange={(e) => setPlanned(e.target.value)}
+          onChange={setPlanned}
           onBlur={savePlanned}
-          aria-label={`Planned amount for ${item.label}`}
-          className="w-full min-w-[4.5rem] bg-transparent text-right text-[14px] font-medium tabular-nums text-ink outline-none"
+          ariaLabel={`Planned amount for ${item.label}`}
         />
-      </td>
-      <td className="py-2.5 pr-3 text-right">
-        <input
-          type="text"
-          inputMode="decimal"
+        <AmountField
           value={actual}
-          onChange={(e) => setActual(e.target.value)}
+          onChange={setActual}
           onBlur={saveActual}
-          placeholder="—"
-          aria-label={`Actual amount for ${item.label}`}
-          className="w-full min-w-[4.5rem] bg-transparent text-right text-[14px] tabular-nums text-ink-muted outline-none placeholder:text-ink-muted"
+          ariaLabel={`Actual amount for ${item.label}`}
+          placeholder="0"
+          muted
         />
-      </td>
-      <td className="py-2.5 text-right">
         <button
           type="button"
           onClick={handleDelete}
           disabled={isPending}
-          className="text-[13px] text-ink-muted transition-colors hover:text-rosewood disabled:opacity-50"
+          className="justify-self-end text-[13px] text-ink-muted transition-colors hover:text-rosewood disabled:opacity-50"
         >
           Delete
         </button>
-      </td>
-    </tr>
+      </div>
+
+      {projectVendors.length > 0 ? (
+        <div className="space-y-1.5">
+          <label
+            htmlFor={`budget-vendor-${item.id}`}
+            className="text-[11px] font-medium uppercase tracking-[0.08em] text-ink-muted"
+          >
+            Vendor
+          </label>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+            <select
+              id={`budget-vendor-${item.id}`}
+              value={item.project_vendor_id ?? ""}
+              onChange={(e) => handleVendorChange(e.target.value)}
+              disabled={isPending}
+              className="h-8 max-w-full rounded border-[0.5px] border-stone bg-surface px-2.5 text-[13px] text-ink outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-plum disabled:opacity-50"
+            >
+              <option value="">Not linked</option>
+              {projectVendors.map((vendor) => (
+                <option key={vendor.id} value={vendor.id}>
+                  {vendor.name}
+                </option>
+              ))}
+            </select>
+            {item.linkedVendor ? <VendorVariance item={item} /> : null}
+            {linkError ? (
+              <p className="text-[13px] text-rosewood" role="alert">
+                {linkError}
+              </p>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+    </li>
   );
 }

@@ -19,9 +19,12 @@ export function AddVendorForm({ projectId }: { projectId: string }) {
 
     if (!name.trim()) return;
 
+    // Capture before the await — React nulls the synthetic event's currentTarget.
+    const formEl = e.currentTarget;
+
     startTransition(async () => {
       await addVendor(projectId, name, category, contactEmail);
-      e.currentTarget.reset();
+      formEl.reset();
     });
   }
 

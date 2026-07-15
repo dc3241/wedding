@@ -12,8 +12,6 @@ import {
 } from "@/lib/send-outreach";
 import { createClient } from "@/utils/supabase/server";
 
-export type { OutreachBrief };
-
 function vendorsPath(projectId: string) {
   return `/projects/${projectId}/vendors`;
 }

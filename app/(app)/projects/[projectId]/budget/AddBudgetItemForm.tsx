@@ -3,11 +3,15 @@
 import { useTransition } from "react";
 import { addBudgetItem } from "./actions";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Eyebrow } from "@/components/ui/eyebrow";
 import { Input } from "@/components/ui/input";
 
-export function AddBudgetItemForm({ projectId }: { projectId: string }) {
+export function AddBudgetItemForm({
+  projectId,
+  onAdded,
+}: {
+  projectId: string;
+  onAdded?: () => void;
+}) {
   const [isPending, startTransition] = useTransition();
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -22,88 +26,93 @@ export function AddBudgetItemForm({ projectId }: { projectId: string }) {
 
     if (!label.trim()) return;
 
+    // Capture before the await — React nulls the synthetic event's currentTarget.
+    const formEl = e.currentTarget;
+
     startTransition(async () => {
       await addBudgetItem(
         projectId,
         category,
         label,
         Number.isNaN(plannedAmount) ? 0 : plannedAmount,
-        actualAmount !== null && !Number.isNaN(actualAmount) ? actualAmount : null,
+        actualAmount !== null && !Number.isNaN(actualAmount)
+          ? actualAmount
+          : null,
       );
-      e.currentTarget.reset();
+      formEl.reset();
+      onAdded?.();
     });
   }
 
   return (
-    <Card className="p-6">
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <Eyebrow>Add item</Eyebrow>
-          <h2 className="font-display mt-1.5 text-2xl text-ink">
-            Other expense
-          </h2>
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="space-y-1.5">
+          <label
+            htmlFor="budget-category"
+            className="text-sm font-medium text-ink"
+          >
+            Category
+          </label>
+          <Input
+            id="budget-category"
+            name="category"
+            type="text"
+            placeholder="e.g. attire"
+            disabled={isPending}
+          />
         </div>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="space-y-1.5">
-            <label htmlFor="budget-category" className="text-sm font-medium text-ink">
-              Category
-            </label>
-            <Input
-              id="budget-category"
-              name="category"
-              type="text"
-              placeholder="e.g. attire"
-              disabled={isPending}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <label htmlFor="budget-label" className="text-sm font-medium text-ink">
-              Label
-            </label>
-            <Input
-              id="budget-label"
-              name="label"
-              type="text"
-              required
-              placeholder="Line item name"
-              disabled={isPending}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <label
-              htmlFor="budget-planned"
-              className="text-sm font-medium text-ink"
-            >
-              Planned
-            </label>
-            <Input
-              id="budget-planned"
-              name="planned_amount"
-              type="number"
-              min={0}
-              step="0.01"
-              defaultValue={0}
-              disabled={isPending}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <label htmlFor="budget-actual" className="text-sm font-medium text-ink">
-              Actual <span className="font-normal text-ink-muted">(optional)</span>
-            </label>
-            <Input
-              id="budget-actual"
-              name="actual_amount"
-              type="number"
-              min={0}
-              step="0.01"
-              disabled={isPending}
-            />
-          </div>
+        <div className="space-y-1.5">
+          <label htmlFor="budget-label" className="text-sm font-medium text-ink">
+            Label
+          </label>
+          <Input
+            id="budget-label"
+            name="label"
+            type="text"
+            required
+            placeholder="Line item name"
+            disabled={isPending}
+          />
         </div>
-        <Button type="submit" variant="primary" disabled={isPending}>
-          {isPending ? "Adding…" : "Add item"}
-        </Button>
-      </form>
-    </Card>
+        <div className="space-y-1.5">
+          <label
+            htmlFor="budget-planned"
+            className="text-sm font-medium text-ink"
+          >
+            Planned
+          </label>
+          <Input
+            id="budget-planned"
+            name="planned_amount"
+            type="number"
+            min={0}
+            step="0.01"
+            defaultValue={0}
+            disabled={isPending}
+          />
+        </div>
+        <div className="space-y-1.5">
+          <label
+            htmlFor="budget-actual"
+            className="text-sm font-medium text-ink"
+          >
+            Actual{" "}
+            <span className="font-normal text-ink-muted">(optional)</span>
+          </label>
+          <Input
+            id="budget-actual"
+            name="actual_amount"
+            type="number"
+            min={0}
+            step="0.01"
+            disabled={isPending}
+          />
+        </div>
+      </div>
+      <Button type="submit" variant="primary" disabled={isPending}>
+        {isPending ? "Adding…" : "Add item"}
+      </Button>
+    </form>
   );
 }

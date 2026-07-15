@@ -2,10 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import {
-  draftOutreach,
-  type OutreachBrief,
-} from "@/app/(app)/projects/[projectId]/vendors/outreach/actions";
+import { draftOutreach } from "@/app/(app)/projects/[projectId]/vendors/outreach/actions";
+import type { OutreachBrief } from "@/lib/generate-outreach-draft";
 import type { OutreachVendor } from "@/components/vendors/outreach-vendor";
 import { OutreachShortlistRow } from "@/components/vendors/OutreachVendorRow";
 import { Button } from "@/components/ui/button";

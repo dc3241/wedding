@@ -109,3 +109,40 @@ export async function removeBudgetItem(itemId: string) {
 
   revalidatePath(budgetPath(data.project_id));
 }
+
+export type SetBudgetItemProjectVendorResult =
+  | { ok: true }
+  | { ok: false; error: string };
+
+export async function setBudgetItemProjectVendor(
+  itemId: string,
+  projectVendorId: string | null,
+): Promise<SetBudgetItemProjectVendorResult> {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("budget_items")
+    .update({ project_vendor_id: projectVendorId })
+    .eq("id", itemId)
+    .select("project_id")
+    .single();
+
+  if (error) {
+    if (error.code === "23505") {
+      return {
+        ok: false,
+        error: "That vendor is already linked to another budget item.",
+      };
+    }
+    if (error.code === "23503") {
+      return {
+        ok: false,
+        error: "That vendor isn't part of this project.",
+      };
+    }
+    return { ok: false, error: error.message };
+  }
+
+  revalidatePath(budgetPath(data.project_id));
+  return { ok: true };
+}
