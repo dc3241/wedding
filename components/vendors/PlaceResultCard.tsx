@@ -6,32 +6,52 @@ import {
   type DiscoveredPlace,
 } from "@/app/(app)/projects/[projectId]/vendors/actions";
 import type { PlaceResult } from "@/app/(app)/projects/[projectId]/vendors/search/actions";
-import { GooglePlaceRating } from "@/components/vendors/GooglePlaceRating";
-import { VendorListRow } from "@/components/vendors/VendorListRow";
-import { formatPriceLevel } from "@/components/vendors/format-price-level";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Pill } from "@/components/ui/pill";
+
+function humanizePrimaryType(type: string): string {
+  return type
+    .split("_")
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+}
+
+function websiteHost(uri?: string): string | null {
+  if (!uri?.trim()) return null;
+  try {
+    const host = new URL(uri).hostname.replace(/^www\./, "");
+    return host || null;
+  } catch {
+    return null;
+  }
+}
 
 export function PlaceResultCard({
   projectId,
   place,
-  category,
+  categoryId,
   isAdded,
   onAdded,
 }: {
   projectId: string;
   place: PlaceResult;
-  category: string;
+  categoryId: string;
   isAdded: boolean;
   onAdded: (placeId: string) => void;
 }) {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
-  const priceLabel = formatPriceLevel(place.priceLevel);
+
+  const address = place.formattedAddress?.trim();
+  const host = websiteHost(place.websiteUri);
+  const typeLabel = place.primaryType
+    ? humanizePrimaryType(place.primaryType)
+    : null;
   const hasRating = place.rating !== undefined;
 
   function handleAdd() {
+    if (isAdded) return;
+
     const persistable: DiscoveredPlace = {
       id: place.id,
       displayName: place.displayName,
@@ -43,7 +63,7 @@ export function PlaceResultCard({
       const result = await addDiscoveredVendor(
         projectId,
         persistable,
-        category,
+        categoryId,
       );
 
       if (!result.ok) {
@@ -56,51 +76,79 @@ export function PlaceResultCard({
   }
 
   return (
-    <Card className="overflow-hidden">
-      <VendorListRow
-        name={place.displayName}
-        category={place.formattedAddress ?? category}
-        meta={
-          <div className="mt-1 space-y-1">
-            {hasRating ? (
-              <GooglePlaceRating
-                rating={place.rating!}
-                userRatingCount={place.userRatingCount}
-              />
-            ) : null}
-            {priceLabel ? <span>{priceLabel}</span> : null}
-            {place.websiteUri ? (
-              <a
-                href={place.websiteUri}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="block text-plum hover:text-plum-deep"
-              >
-                Website
-              </a>
+    <div className="rounded-lg border-[0.5px] border-stone bg-surface px-3.5 py-3">
+      <div className="flex items-center gap-3">
+        <div className="min-w-0 flex-1">
+          <div className="flex min-w-0 items-center gap-2">
+            <span className="min-w-0 truncate text-[15px] font-medium text-ink">
+              {place.displayName}
+            </span>
+            {typeLabel ? (
+              <span className="shrink-0 rounded bg-stone-soft px-1.5 py-0.5 text-[11px] text-ink-muted">
+                {typeLabel}
+              </span>
             ) : null}
           </div>
-        }
-        trailing={
-          isAdded ? (
-            <Pill variant="sage">Added</Pill>
+
+          {hasRating ? (
+            <p className="mt-0.5 truncate text-[13px]">
+              <span className="tabnum font-medium text-ink">
+                {place.rating!.toFixed(1)}
+              </span>
+              {place.userRatingCount != null ? (
+                <span className="text-ink-muted">
+                  {" "}
+                  ·{" "}
+                  <span className="tabnum">
+                    {place.userRatingCount.toLocaleString()}
+                  </span>{" "}
+                  {place.userRatingCount === 1 ? "review" : "reviews"}
+                </span>
+              ) : null}
+            </p>
+          ) : null}
+
+          <p className="mt-0.5 truncate text-[13px] text-ink-muted">
+            {address ? address : "Travels to your venue"}
+            {host ? (
+              <>
+                {" "}
+                ·{" "}
+                <a
+                  href={place.websiteUri}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-ink-muted hover:text-ink"
+                >
+                  {host}
+                </a>
+              </>
+            ) : null}
+          </p>
+        </div>
+
+        <div className="shrink-0">
+          {isAdded ? (
+            <span className="text-[13px] font-medium text-sage">
+              On your list
+            </span>
           ) : (
             <Button
               type="button"
               onClick={handleAdd}
               disabled={isPending}
-              variant="primary"
+              variant="secondary"
+              className="border-[0.5px] bg-transparent px-3 py-1.5 text-[13px]"
             >
               {isPending ? "Adding…" : "Add to list"}
             </Button>
-          )
-        }
-      />
+          )}
+        </div>
+      </div>
+
       {error ? (
-        <p className="border-t border-stone px-5 py-3 text-sm text-rosewood">
-          {error}
-        </p>
+        <p className="mt-2 text-[13px] text-rosewood">{error}</p>
       ) : null}
-    </Card>
+    </div>
   );
 }

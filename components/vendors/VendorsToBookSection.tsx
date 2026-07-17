@@ -1,5 +1,6 @@
 import { Pill, type PillVariant } from "@/components/ui/pill";
 import { Eyebrow } from "@/components/ui/eyebrow";
+import { vendorCategoryLabel } from "@/lib/vendor-categories";
 
 export type VendorTargetRow = {
   id: string;
@@ -41,7 +42,9 @@ export function VendorsToBookSection({
             className="flex flex-wrap items-center justify-between gap-3 px-4 py-3.5"
           >
             <div className="min-w-0">
-              <p className="text-[15px] text-ink">{target.category}</p>
+              <p className="text-[15px] text-ink">
+                {vendorCategoryLabel(target.category)}
+              </p>
               {target.note ? (
                 <p className="mt-0.5 text-[13px] text-ink-muted">
                   {target.note}

@@ -1,9 +1,24 @@
 "use client";
 
 import { useState } from "react";
+import { useFormStatus } from "react-dom";
 import { bootstrapAccountAndProject } from "@/app/(app)/projects/actions";
 
 type AccountKindChoice = "couple" | "planner";
+
+function SubmitButton() {
+  const { pending } = useFormStatus();
+
+  return (
+    <button
+      type="submit"
+      disabled={pending}
+      className="w-full rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60"
+    >
+      {pending ? "Setting up…" : "Get started"}
+    </button>
+  );
+}
 
 export function OnboardingForm() {
   const [choice, setChoice] = useState<AccountKindChoice>("couple");
@@ -101,12 +116,7 @@ export function OnboardingForm() {
           />
         </div>
 
-        <button
-          type="submit"
-          className="w-full rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800"
-        >
-          Get started
-        </button>
+        <SubmitButton />
       </form>
     </div>
   );

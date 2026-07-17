@@ -7,8 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { PHASE_ORDER as PHASE_OPTIONS } from "@/lib/checklist-phases";
+import { VENDOR_CATEGORIES } from "@/lib/vendor-categories";
 import { cn } from "@/lib/cn";
 
 function formatCurrency(amount: number) {
@@ -336,7 +338,7 @@ export function PlanPreviewStep({ projectId, onBack }: PlanPreviewStepProps) {
                   className="flex flex-col gap-3 p-4 sm:flex-row sm:items-start"
                 >
                   <div className="min-w-0 flex-1 space-y-2">
-                    <Input
+                    <Select
                       value={item.category}
                       onChange={(event) =>
                         updateVendorCategory(
@@ -346,7 +348,13 @@ export function PlanPreviewStep({ projectId, onBack }: PlanPreviewStepProps) {
                         )
                       }
                       aria-label="Vendor category"
-                    />
+                    >
+                      {VENDOR_CATEGORIES.map((cat) => (
+                        <option key={cat.id} value={cat.id}>
+                          {cat.label}
+                        </option>
+                      ))}
+                    </Select>
                     <Textarea
                       rows={2}
                       value={item.note}

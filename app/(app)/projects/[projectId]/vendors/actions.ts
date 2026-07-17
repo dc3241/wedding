@@ -2,6 +2,7 @@
 
 import { after } from "next/server";
 import { revalidatePath } from "next/cache";
+import { getVendorCategoryById } from "@/lib/vendor-categories";
 import { runVendorEnrichment } from "@/lib/vendor-enrichment";
 import { createClient } from "@/utils/supabase/server";
 
@@ -75,9 +76,13 @@ export async function getAddedPlaceIds(projectId: string): Promise<string[]> {
 export async function addDiscoveredVendor(
   projectId: string,
   place: DiscoveredPlace,
-  category: string
+  categoryId: string
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  const trimmedCategory = category.trim() || null;
+  const category = getVendorCategoryById(categoryId.trim());
+  if (!category) {
+    return { ok: false, error: "Choose a valid vendor category." };
+  }
+  const trimmedCategory = category.label;
   const trimmedName = place.displayName.trim();
 
   if (!trimmedName) {
@@ -220,22 +225,45 @@ export async function addVendorTarget(
   projectId: string,
   category: string,
   note?: string | null,
-) {
-  const trimmedCategory = category.trim();
-  if (!trimmedCategory) return;
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const resolved = getVendorCategoryById(category.trim());
+  if (!resolved) {
+    return {
+      ok: false,
+      error:
+        "That isn't a known vendor category. Pick one of the supported categories.",
+    };
+  }
 
   const supabase = await createClient();
 
+  const { data: existing } = await supabase
+    .from("vendor_targets")
+    .select("id")
+    .eq("project_id", projectId)
+    .eq("category", resolved.id)
+    .maybeSingle();
+
+  if (existing) {
+    return {
+      ok: false,
+      error: "That vendor category is already on your list to book.",
+    };
+  }
+
   const { error } = await supabase.from("vendor_targets").insert({
     project_id: projectId,
-    category: trimmedCategory,
+    category: resolved.id,
     note: note?.trim() || null,
     status: "needed",
   });
 
-  if (error) throw error;
+  if (error) {
+    return { ok: false, error: error.message };
+  }
 
   revalidatePath(vendorsPath(projectId));
+  return { ok: true };
 }
 
 export async function updateProjectVendorStatus(

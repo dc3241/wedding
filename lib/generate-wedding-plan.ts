@@ -1,7 +1,9 @@
 import { ANTHROPIC_MODEL } from "@/lib/anthropic-model";
-import { PHASE_ORDER } from "@/lib/checklist-phases";
-
-const VALID_PHASES = new Set<string>(PHASE_ORDER);
+import { monthsBefore } from "@/lib/date-months";
+import {
+  VENDOR_CATEGORIES,
+  getVendorCategoryById,
+} from "@/lib/vendor-categories";
 
 export type WeddingProfileInput = {
   projectName: string;
@@ -17,7 +19,6 @@ export type WeddingProfileInput = {
 
 type RawChecklistItem = {
   title: string;
-  phase: string;
   monthsBeforeWedding: number;
 };
 
@@ -35,6 +36,12 @@ export type RawGeneratedPlan = {
   checklist: RawChecklistItem[];
   budget: RawBudgetItem[];
   vendorCategories: RawVendorCategory[];
+};
+
+type ValidatedPlanShape = {
+  checklist: RawChecklistItem[];
+  budget: RawBudgetItem[];
+  vendorCategories: unknown[];
 };
 
 function stripJsonFences(raw: string): string {
@@ -60,8 +67,6 @@ function validateChecklistItem(value: unknown): value is RawChecklistItem {
   if (!isRecord(value)) return false;
   return (
     isNonEmptyString(value.title) &&
-    isNonEmptyString(value.phase) &&
-    VALID_PHASES.has(value.phase.trim()) &&
     isFiniteNumber(value.monthsBeforeWedding) &&
     value.monthsBeforeWedding >= 0
   );
@@ -76,15 +81,53 @@ function validateBudgetItem(value: unknown): value is RawBudgetItem {
   );
 }
 
-function validateVendorCategory(value: unknown): value is RawVendorCategory {
-  if (!isRecord(value)) return false;
-  return (
-    isNonEmptyString(value.category) &&
-    typeof value.note === "string"
-  );
+/** Keep canonical vendor category entries; drop and log the rest. */
+export function filterCanonicalVendorCategories(
+  entries: unknown[],
+): RawVendorCategory[] {
+  const kept: RawVendorCategory[] = [];
+
+  for (const entry of entries) {
+    if (!isRecord(entry) || typeof entry.note !== "string") {
+      console.log(
+        "[generate-wedding-plan] dropping malformed vendorCategories entry",
+        entry,
+      );
+      continue;
+    }
+
+    if (!isNonEmptyString(entry.category)) {
+      console.log(
+        "[generate-wedding-plan] dropping vendorCategories entry with empty category",
+        entry,
+      );
+      continue;
+    }
+
+    const id = entry.category.trim();
+    if (!getVendorCategoryById(id)) {
+      console.log(
+        "[generate-wedding-plan] dropping non-canonical vendor category",
+        id,
+      );
+      continue;
+    }
+
+    kept.push({ category: id, note: entry.note.trim() });
+  }
+
+  if (kept.length === 0) {
+    console.log(
+      "[generate-wedding-plan] vendorCategories empty after filtering",
+    );
+  }
+
+  return kept;
 }
 
-export function validateGeneratedPlan(parsed: unknown): parsed is RawGeneratedPlan {
+export function validateGeneratedPlan(
+  parsed: unknown,
+): parsed is ValidatedPlanShape {
   if (!isRecord(parsed)) return false;
   if (!Array.isArray(parsed.checklist) || parsed.checklist.length === 0) {
     return false;
@@ -92,37 +135,48 @@ export function validateGeneratedPlan(parsed: unknown): parsed is RawGeneratedPl
   if (!Array.isArray(parsed.budget) || parsed.budget.length === 0) {
     return false;
   }
-  if (
-    !Array.isArray(parsed.vendorCategories) ||
-    parsed.vendorCategories.length === 0
-  ) {
+  // vendorCategories: array required; may be empty. Per-entry filtering is separate.
+  if (!Array.isArray(parsed.vendorCategories)) {
     return false;
   }
 
   return (
     parsed.checklist.every(validateChecklistItem) &&
-    parsed.budget.every(validateBudgetItem) &&
-    parsed.vendorCategories.every(validateVendorCategory)
+    parsed.budget.every(validateBudgetItem)
   );
 }
 
 export function dueDateFromMonthsBefore(
   weddingDate: string,
-  monthsBefore: number,
+  monthsBeforeCount: number,
 ): string {
-  const date = new Date(weddingDate + "T00:00:00");
-  date.setMonth(date.getMonth() - monthsBefore);
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
+  return monthsBefore(weddingDate, monthsBeforeCount);
 }
 
-function buildPrompt(profile: WeddingProfileInput): string {
+function buildPrompt(
+  profile: WeddingProfileInput,
+  todayIso: string,
+  runwayMonths: number | null,
+): string {
+  const vendorCategoryIds = VENDOR_CATEGORIES.map((c) => c.id).join(", ");
+
+  const runwayBlock =
+    runwayMonths !== null
+      ? `Today: ${todayIso}
+Runway: ${runwayMonths} whole months until the wedding`
+      : `Today: ${todayIso}
+Runway: unknown (wedding date not set yet)`;
+
+  const runwayGuidance =
+    runwayMonths !== null
+      ? `- Every monthsBeforeWedding MUST be <= ${runwayMonths}. For a short runway, compress the plan into the available months rather than emitting a 12-month horizon.`
+      : `- Wedding date is not set; use reasonable monthsBeforeWedding values (0–12).`;
+
   return `Create a personalized starting wedding plan for this couple.
 
 Couple / project: ${profile.projectName}
 Wedding date: ${profile.weddingDate ?? "not set yet"}
+${runwayBlock}
 Location: ${profile.location ?? "not specified"}
 Estimated guests: ${profile.guestEstimate ?? "not specified"}
 Total budget target: ${profile.totalBudget !== null ? `$${profile.totalBudget}` : "not specified"}
@@ -133,21 +187,24 @@ Anything else: ${profile.vibeNotes ?? "none"}
 
 Return STRICT JSON ONLY — no prose, no markdown, no code fences — matching exactly this shape:
 {
-  "checklist": [ { "title": string, "phase": string, "monthsBeforeWedding": number } ],
+  "checklist": [ { "title": string, "monthsBeforeWedding": number } ],
   "budget": [ { "category": string, "plannedAmount": number } ],
   "vendorCategories": [ { "category": string, "note": string } ]
 }
 
 Guidance:
-- Use phase buckets exactly from: "12+ months", "9 months", "6 months", "3 months", "1 month", "week of".
 - Include 10–18 checklist tasks with monthsBeforeWedding as whole months before the wedding (0 for week-of tasks).
+${runwayGuidance}
 - Budget categories should sum to roughly the couple's total budget target (within about 10% if a target is given).
 - Reflect their style, traditions, and priorities in task titles, budget splits, and vendor category notes.
-- Include essential vendor categories (venue, catering, photography, etc.) tailored to their wedding.`;
+- vendorCategories[].category MUST be exactly one of these ids (no labels, no synonyms): ${vendorCategoryIds}.
+- Include essential vendor categories from that id list tailored to their wedding. note stays free text.`;
 }
 
 export async function callClaudeForWeddingPlan(
   profile: WeddingProfileInput,
+  todayIso: string,
+  runwayMonths: number | null,
 ): Promise<RawGeneratedPlan | null> {
   const apiKey = process.env.MODEL_API_KEY;
   if (!apiKey) return null;
@@ -165,7 +222,12 @@ export async function callClaudeForWeddingPlan(
         max_tokens: 4096,
         system:
           "You are a wedding planning assistant. Respond with STRICT JSON ONLY — no prose, no markdown, no code fences.",
-        messages: [{ role: "user", content: buildPrompt(profile) }],
+        messages: [
+          {
+            role: "user",
+            content: buildPrompt(profile, todayIso, runwayMonths),
+          },
+        ],
       }),
     });
 
@@ -184,17 +246,13 @@ export async function callClaudeForWeddingPlan(
     return {
       checklist: parsed.checklist.map((item) => ({
         title: item.title.trim(),
-        phase: item.phase.trim(),
         monthsBeforeWedding: Math.round(item.monthsBeforeWedding),
       })),
       budget: parsed.budget.map((item) => ({
         category: item.category.trim(),
         plannedAmount: Math.round(item.plannedAmount),
       })),
-      vendorCategories: parsed.vendorCategories.map((item) => ({
-        category: item.category.trim(),
-        note: item.note.trim(),
-      })),
+      vendorCategories: filterCanonicalVendorCategories(parsed.vendorCategories),
     };
   } catch {
     return null;

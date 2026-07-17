@@ -11,9 +11,12 @@ import {
   addEvent,
   addEvents,
 } from "@/app/(app)/projects/[projectId]/timeline/actions";
+import { VENDOR_CATEGORIES } from "@/lib/vendor-categories";
 
 const TASK_STATUSES = ["todo", "in_progress", "done"] as const;
 const RSVP_STATUSES = ["pending", "attending", "declined"] as const;
+const VENDOR_CATEGORY_IDS = VENDOR_CATEGORIES.map((c) => c.id);
+
 
 type TaskStatus = (typeof TASK_STATUSES)[number];
 
@@ -131,13 +134,15 @@ export const WRITE_TOOL_DEFINITIONS = [
   {
     name: "add_vendor_target",
     description:
-      "Add a vendor category the couple still needs to book. Use when the user clearly asks to track a new vendor type to find.",
+      "Add a vendor category the couple still needs to book. Use when the user clearly asks to track a new vendor type to find. category must be one of the canonical ids.",
     input_schema: {
       type: "object" as const,
       properties: {
         category: {
           type: "string",
-          description: "Vendor category (e.g. Florist, DJ, Caterer)",
+          enum: VENDOR_CATEGORY_IDS,
+          description:
+            "Canonical vendor category id from the allowed list (e.g. florist, dj, photographer)",
         },
         note: {
           type: "string",
@@ -381,7 +386,11 @@ export async function executeWriteTool(
       if (!category) return toolError("category is required");
 
       const note = asString(input.note);
-      await addVendorTarget(projectId, category, note ?? null);
+      const result = await addVendorTarget(projectId, category, note ?? null);
+      if (!result.ok) {
+        return toolError(result.error);
+      }
+
       return {
         success: true,
         action: "add_vendor_target",

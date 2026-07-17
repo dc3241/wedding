@@ -10,6 +10,7 @@ import {
   type Guest,
 } from "@/app/(app)/projects/[projectId]/guests/types";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { vendorCategoryLabel } from "@/lib/vendor-categories";
 
 const CHECKLIST_ITEMS_CAP = 25;
 const GUESTS_ITEMS_CAP = 40;
@@ -422,7 +423,7 @@ async function getVendorTargets(supabase: SupabaseClient, projectId: string) {
   const total = list.length;
   const trimmed = list.map((target) => ({
     id: target.id,
-    category: target.category,
+    category: vendorCategoryLabel(target.category),
     status: target.status,
     note: excerpt(target.note),
   }));

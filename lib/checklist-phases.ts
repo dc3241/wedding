@@ -1,3 +1,5 @@
+import { monthsBefore } from "@/lib/date-months";
+
 /** Canonical checklist phase order — single source for checklist + aggregates. */
 export const PHASE_ORDER = [
   "12+ months",
@@ -29,6 +31,20 @@ export function phaseMonthsBefore(phase: string): number | null {
   return PHASE_MONTHS_BEFORE[phase];
 }
 
+/**
+ * Inverse of PHASE_MONTHS_BEFORE: highest bucket whose offset is <= months.
+ * 0 → "week of"; months >= 12 → "12+ months".
+ */
+export function phaseFromMonthsBefore(months: number): ChecklistPhase {
+  const m = Math.max(0, months);
+  for (const phase of PHASE_ORDER) {
+    if (PHASE_MONTHS_BEFORE[phase] <= m) {
+      return phase;
+    }
+  }
+  return "week of";
+}
+
 /** Absolute target window start for a phase when a wedding date is set. */
 export function phaseTargetDate(
   weddingDate: string,
@@ -36,12 +52,7 @@ export function phaseTargetDate(
 ): string | null {
   const months = phaseMonthsBefore(phase);
   if (months === null) return null;
-  const d = new Date(weddingDate + "T00:00:00");
-  d.setMonth(d.getMonth() - months);
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
+  return monthsBefore(weddingDate, months);
 }
 
 export function formatPhaseTargetLabel(isoDate: string): string {

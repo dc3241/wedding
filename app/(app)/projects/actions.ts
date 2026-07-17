@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getCoupleDestinationPath } from "@/lib/onboarding-gate";
+import { getPostLoginPath } from "@/lib/post-login-path";
 import { createClient } from "@/utils/supabase/server";
 
 export async function bootstrapAccountAndProject(formData: FormData) {
@@ -22,6 +23,9 @@ export async function bootstrapAccountAndProject(formData: FormData) {
   );
 
   if (error) {
+    if (error.message.includes("already_bootstrapped")) {
+      redirect(await getPostLoginPath(supabase));
+    }
     redirect(
       `/projects?error=${encodeURIComponent(error.message)}`
     );

@@ -1,5 +1,11 @@
 "use server";
 
+import {
+  composeVendorTextQuery,
+  getVendorCategoryById,
+} from "@/lib/vendor-categories";
+import { createClient } from "@/utils/supabase/server";
+
 export type PlaceResult = {
   id: string;
   displayName: string;
@@ -7,11 +13,17 @@ export type PlaceResult = {
   rating?: number;
   userRatingCount?: number;
   websiteUri?: string;
-  priceLevel?: string;
+  primaryType?: string;
+  types?: string[];
 };
 
 export type SearchPlacesResponse =
-  | { ok: true; places: PlaceResult[] }
+  | {
+      ok: true;
+      results: PlaceResult[];
+      filteredCount: number;
+      composedQuery: string;
+    }
   | { ok: false; error: string };
 
 type GooglePlace = {
@@ -21,7 +33,8 @@ type GooglePlace = {
   rating?: number;
   userRatingCount?: number;
   websiteUri?: string;
-  priceLevel?: string;
+  primaryType?: string;
+  types?: string[];
 };
 
 type GoogleSearchResponse = {
@@ -30,18 +43,30 @@ type GoogleSearchResponse = {
 };
 
 export async function searchPlaces(
-  category: string,
-  location: string
+  projectId: string,
+  categoryId: string,
+  location: string,
+  refinement = "",
 ): Promise<SearchPlacesResponse> {
-  const trimmedCategory = category.trim();
   const trimmedLocation = location.trim();
-
-  if (!trimmedCategory) {
-    return { ok: false, error: "Enter a category or keyword to search." };
-  }
-
   if (!trimmedLocation) {
     return { ok: false, error: "Enter a location to search near." };
+  }
+
+  const category = getVendorCategoryById(categoryId.trim());
+  if (!category) {
+    return { ok: false, error: "Choose a valid vendor category." };
+  }
+
+  const supabase = await createClient();
+  const { data: project } = await supabase
+    .from("projects")
+    .select("id")
+    .eq("id", projectId)
+    .maybeSingle();
+
+  if (!project) {
+    return { ok: false, error: "Project not found." };
   }
 
   const apiKey = process.env.GOOGLE_MAPS_API_KEY;
@@ -52,7 +77,20 @@ export async function searchPlaces(
     };
   }
 
-  const textQuery = `${trimmedCategory} ${trimmedLocation}`;
+  const textQuery = composeVendorTextQuery(category, trimmedLocation, refinement);
+
+  const requestBody: Record<string, unknown> = {
+    textQuery,
+    maxResultCount: 20,
+    includePureServiceAreaBusinesses: true,
+  };
+
+  if (category.includedType) {
+    requestBody.includedType = category.includedType;
+    requestBody.strictTypeFiltering = true;
+  }
+
+  console.log("[searchPlaces] places:searchText body", requestBody);
 
   let response: Response;
   try {
@@ -64,13 +102,10 @@ export async function searchPlaces(
           "Content-Type": "application/json",
           "X-Goog-Api-Key": apiKey,
           "X-Goog-FieldMask":
-            "places.id,places.displayName,places.formattedAddress,places.rating,places.userRatingCount,places.websiteUri,places.priceLevel",
+            "places.id,places.displayName,places.formattedAddress,places.rating,places.userRatingCount,places.websiteUri,places.primaryType,places.types",
         },
-        body: JSON.stringify({
-          textQuery,
-          maxResultCount: 20,
-        }),
-      }
+        body: JSON.stringify(requestBody),
+      },
     );
   } catch {
     return {
@@ -93,7 +128,7 @@ export async function searchPlaces(
     return { ok: false, error: message };
   }
 
-  const places: PlaceResult[] = (data.places ?? [])
+  const mapped: PlaceResult[] = (data.places ?? [])
     .filter((place) => place.id && place.displayName?.text)
     .map((place) => ({
       id: place.id!,
@@ -102,8 +137,25 @@ export async function searchPlaces(
       rating: place.rating,
       userRatingCount: place.userRatingCount,
       websiteUri: place.websiteUri,
-      priceLevel: place.priceLevel,
+      primaryType: place.primaryType,
+      types: place.types,
     }));
 
-  return { ok: true, places };
+  let results = mapped;
+  let filteredCount = 0;
+
+  if (category.includedType === null && category.deniedPrimaryTypes.length > 0) {
+    const denied = new Set(category.deniedPrimaryTypes);
+    results = mapped.filter(
+      (place) => !place.primaryType || !denied.has(place.primaryType),
+    );
+    filteredCount = mapped.length - results.length;
+  }
+
+  return {
+    ok: true,
+    results,
+    filteredCount,
+    composedQuery: textQuery,
+  };
 }

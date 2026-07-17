@@ -15,11 +15,11 @@ export default async function OnboardingPage() {
     redirect("/dashboard");
   }
 
-  if (!account.singleProjectId) {
+  if (!account.firstProjectId) {
     redirect("/projects");
   }
 
-  const projectId = account.singleProjectId;
+  const projectId = account.firstProjectId;
 
   const needsOnboarding = await needsCoupleOnboarding(supabase, projectId);
   if (!needsOnboarding) {

@@ -3,30 +3,59 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import type { GeneratePlanResult, WeddingPlan } from "./plan-types";
+import { phaseFromMonthsBefore } from "@/lib/checklist-phases";
+import { wholeMonthsBetween } from "@/lib/date-months";
 import {
   callClaudeForWeddingPlan,
   dueDateFromMonthsBefore,
   type RawGeneratedPlan,
 } from "@/lib/generate-wedding-plan";
+import { getVendorCategoryById } from "@/lib/vendor-categories";
 import { createClient } from "@/utils/supabase/server";
 
 function projectPath(projectId: string) {
   return `/projects/${projectId}`;
 }
 
+function todayIsoDate(): string {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 function toWeddingPlan(
   raw: RawGeneratedPlan,
   weddingDate: string | null,
+  todayIso: string,
 ): WeddingPlan {
+  const runwayMonths =
+    weddingDate !== null
+      ? Math.max(0, wholeMonthsBetween(todayIso, weddingDate))
+      : null;
+
   return {
-    checklist: raw.checklist.map((item) => ({
-      title: item.title,
-      phase: item.phase,
-      dueDate:
-        weddingDate !== null
-          ? dueDateFromMonthsBefore(weddingDate, item.monthsBeforeWedding)
-          : null,
-    })),
+    checklist: raw.checklist.map((item) => {
+      if (weddingDate === null || runwayMonths === null) {
+        return {
+          title: item.title,
+          phase: phaseFromMonthsBefore(item.monthsBeforeWedding),
+          dueDate: null,
+        };
+      }
+
+      const effective = Math.max(
+        0,
+        Math.min(item.monthsBeforeWedding, runwayMonths),
+      );
+
+      return {
+        title: item.title,
+        phase: phaseFromMonthsBefore(effective),
+        dueDate: dueDateFromMonthsBefore(weddingDate, effective),
+      };
+    }),
     budget: raw.budget.map((item) => ({
       category: item.category,
       plannedAmount: item.plannedAmount,
@@ -67,17 +96,27 @@ export async function generatePlan(
       ? null
       : Number(project.total_budget);
 
-  const raw = await callClaudeForWeddingPlan({
-    projectName: project.name,
-    weddingDate: project.wedding_date,
-    totalBudget: totalBudgetTarget,
-    location: profile?.location ?? null,
-    guestEstimate: profile?.guest_estimate ?? null,
-    style: profile?.style ?? null,
-    traditions: profile?.traditions ?? null,
-    priorities: profile?.priorities ?? null,
-    vibeNotes: profile?.vibe_notes ?? null,
-  });
+  const todayIso = todayIsoDate();
+  const runwayMonths =
+    project.wedding_date !== null
+      ? Math.max(0, wholeMonthsBetween(todayIso, project.wedding_date))
+      : null;
+
+  const raw = await callClaudeForWeddingPlan(
+    {
+      projectName: project.name,
+      weddingDate: project.wedding_date,
+      totalBudget: totalBudgetTarget,
+      location: profile?.location ?? null,
+      guestEstimate: profile?.guest_estimate ?? null,
+      style: profile?.style ?? null,
+      traditions: profile?.traditions ?? null,
+      priorities: profile?.priorities ?? null,
+      vibeNotes: profile?.vibe_notes ?? null,
+    },
+    todayIso,
+    runwayMonths,
+  );
 
   if (!raw) {
     return {
@@ -89,7 +128,7 @@ export async function generatePlan(
 
   return {
     ok: true,
-    plan: toWeddingPlan(raw, project.wedding_date),
+    plan: toWeddingPlan(raw, project.wedding_date, todayIso),
     totalBudgetTarget,
   };
 }
@@ -141,19 +180,34 @@ export async function commitPlan(projectId: string, approvedPlan: WeddingPlan) {
     })
     .filter((row): row is NonNullable<typeof row> => row !== null);
 
-  const vendorRows = approvedPlan.vendorCategories
-    .map((item) => {
-      const category = item.category.trim();
-      if (!category) return null;
+  const vendorRows: {
+    project_id: string;
+    category: string;
+    note: string | null;
+    status: "needed";
+  }[] = [];
+  const seenVendorCategories = new Set<string>();
 
-      return {
-        project_id: projectId,
-        category,
-        note: item.note.trim() || null,
-        status: "needed" as const,
-      };
-    })
-    .filter((row): row is NonNullable<typeof row> => row !== null);
+  for (const item of approvedPlan.vendorCategories) {
+    const categoryId = item.category.trim();
+    if (!getVendorCategoryById(categoryId)) {
+      console.log(
+        "[commitPlan] rejecting non-canonical vendor category",
+        categoryId,
+      );
+      continue;
+    }
+    if (seenVendorCategories.has(categoryId)) {
+      continue;
+    }
+    seenVendorCategories.add(categoryId);
+    vendorRows.push({
+      project_id: projectId,
+      category: categoryId,
+      note: item.note.trim() || null,
+      status: "needed",
+    });
+  }
 
   if (taskRows.length > 0) {
     const { error } = await supabase.from("tasks").insert(taskRows);
