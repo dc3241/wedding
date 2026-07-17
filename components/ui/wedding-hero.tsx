@@ -66,7 +66,7 @@ export function WeddingHero({
   const canEdit = Boolean(projectId);
 
   return (
-    <>
+    <div className="mx-auto w-full max-w-[760px]">
       <section
         className={cn("animate-rise px-0 py-2 pb-10 text-center", className)}
       >
@@ -92,6 +92,6 @@ export function WeddingHero({
         {weddingDate ? <CountdownNumber weddingDate={weddingDate} /> : null}
       </section>
       <div className="mt-2 h-px bg-stone" aria-hidden />
-    </>
+    </div>
   );
 }

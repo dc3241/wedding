@@ -23,7 +23,7 @@ export function ProjectShell({
   const isPlanner = accountKind === "business";
 
   return (
-    <div className={shellLayoutClass(accountKind, isPlanner)}>
+    <div className={shellLayoutClass(accountKind, isPlanner, "working")}>
       {isPlanner ? (
         <div className="mb-6">
           <SlimHero

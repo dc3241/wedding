@@ -52,7 +52,7 @@ export default async function BillingPage({
     : await getCoupleSubscription(supabase);
   const plan = isPlanner ? BILLING_PLANS.planner : BILLING_PLANS.couple;
   const renewalDate = formatRenewalDate(subscription.currentPeriodEnd);
-  const shellClass = shellLayoutClass(account.kind);
+  const shellClass = shellLayoutClass(account.kind, false, "reading");
 
   return (
     <div className={shellClass}>

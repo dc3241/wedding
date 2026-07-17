@@ -4,12 +4,22 @@ export function isPlannerAccount(kind: AccountKind) {
   return kind === "business";
 }
 
+/** Couple surface width: working = workspace tabs; reading = billing / prose. */
+export type CoupleSurface = "working" | "reading";
+
 /** Outer page / project shell width and padding */
-export function shellLayoutClass(kind: AccountKind, embedded = false) {
+export function shellLayoutClass(
+  kind: AccountKind,
+  embedded: boolean,
+  surface: CoupleSurface,
+) {
   if (isPlannerAccount(kind)) {
     return embedded
       ? "w-full flex-1 pb-12"
       : "mx-auto w-full max-w-[1180px] flex-1 px-8 pt-7 pb-20";
+  }
+  if (surface === "working") {
+    return "mx-auto w-full max-w-6xl flex-1 px-6 md:px-8 pt-8 pb-24";
   }
   return "mx-auto w-full max-w-[760px] flex-1 px-6 pt-8 pb-24";
 }

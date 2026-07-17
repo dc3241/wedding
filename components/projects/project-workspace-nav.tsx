@@ -18,7 +18,7 @@ export function ProjectWorkspaceNav({
   const tabs = tabsForAccountKind(accountKind);
 
   return (
-    <nav className="mb-6 flex flex-wrap items-center gap-1 border-b border-stone pb-3">
+    <nav className="mb-6 flex flex-wrap items-center gap-1 border-b border-stone pb-3 md:flex-nowrap">
       {tabs.map(({ label, segment }) => {
         const href = projectTabHref(projectId, segment);
         const active =

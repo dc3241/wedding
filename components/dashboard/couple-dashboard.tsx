@@ -8,18 +8,39 @@ import {
   WeddingHero,
 } from "@/components/ui";
 import {
-  VENDOR_PIPELINE_STEPS,
+  OUTREACH_STATUS_HEADING,
+  OUTREACH_STATUS_ORDER,
   type OutreachVendor,
 } from "@/components/vendors/outreach-vendor";
-import { PHASE_ORDER, isCanonicalPhase } from "@/lib/checklist-phases";
+import {
+  computeChecklistAggregates,
+  type AggregateTask,
+} from "@/lib/checklist-aggregates";
+import {
+  computeBudgetAggregates,
+  type ProjectVendorOption,
+} from "@/lib/budget-aggregates";
+import { formatCurrency } from "@/lib/format-currency";
 import { cn } from "@/lib/cn";
 
-type TaskSummary = {
+type TaskSummary = AggregateTask;
+
+type BudgetItemInput = {
   id: string;
-  title: string;
-  status: "todo" | "in_progress" | "done";
-  due_date: string | null;
-  phase: string | null;
+  category: string | null;
+  label: string;
+  planned_amount: number;
+  actual_amount: number | null;
+  notes: string | null;
+  project_vendor_id: string | null;
+};
+
+type GuestStats = {
+  invited: number;
+  attending: number;
+  declined: number;
+  pending: number;
+  householdCount: number;
 };
 
 type CoupleDashboardProps = {
@@ -28,6 +49,10 @@ type CoupleDashboardProps = {
   weddingDate: string | null;
   tasks: TaskSummary[];
   vendors: OutreachVendor[];
+  totalBudget: number | null;
+  budgetItems: BudgetItemInput[];
+  guestStats: GuestStats;
+  website: { published: boolean } | null;
 };
 
 const DUE_SOON_DAYS = 14;
@@ -37,14 +62,6 @@ function formatDueDate(date: string) {
     month: "short",
     day: "numeric",
   });
-}
-
-function formatCurrency(amount: number) {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    maximumFractionDigits: 0,
-  }).format(amount);
 }
 
 function daysUntil(dueDate: string) {
@@ -63,53 +80,6 @@ function isDueSoon(dueDate: string | null) {
   if (!dueDate) return false;
   const days = daysUntil(dueDate);
   return days >= 0 && days <= DUE_SOON_DAYS;
-}
-
-function phaseDisplayLabel(phase: string, isCurrent: boolean) {
-  let label: string;
-  if (phase === "12+ months") label = "12 months out";
-  else if (phase === "week of") label = "Week of";
-  else if (phase.endsWith("months")) label = `${phase} out`;
-  else label = phase;
-
-  return isCurrent ? `${label} · you're here` : label;
-}
-
-function groupByPhase(tasks: TaskSummary[]) {
-  const groups = new Map<string | null, TaskSummary[]>();
-  for (const task of tasks) {
-    const bucket = groups.get(task.phase) ?? [];
-    bucket.push(task);
-    groups.set(task.phase, bucket);
-  }
-  return groups;
-}
-
-function buildPhaseSections(tasks: TaskSummary[]) {
-  const byPhase = groupByPhase(tasks);
-  const knownPhases = PHASE_ORDER.map((phase) => ({ phase, label: phase }));
-  const extraPhases = [...byPhase.keys()]
-    .filter(
-      (phase): phase is string =>
-        phase !== null && !isCanonicalPhase(phase),
-    )
-    .sort()
-    .map((phase) => ({ phase, label: phase }));
-
-  return [...knownPhases, ...extraPhases].filter(
-    ({ phase }) => (byPhase.get(phase)?.length ?? 0) > 0,
-  );
-}
-
-function findCurrentPhaseIndex(
-  sections: { phase: string | null }[],
-  byPhase: Map<string | null, TaskSummary[]>,
-) {
-  for (let index = 0; index < sections.length; index++) {
-    const phaseTasks = byPhase.get(sections[index].phase) ?? [];
-    if (phaseTasks.some((task) => task.status !== "done")) return index;
-  }
-  return sections.length > 0 ? sections.length - 1 : -1;
 }
 
 function focusPill(task: TaskSummary): { variant: PillVariant; label: string } {
@@ -138,56 +108,6 @@ function focusMeta(task: TaskSummary) {
     return `Due ${formatDueDate(task.due_date)}`;
   }
   return "Not started yet";
-}
-
-function timelinePill(
-  task: TaskSummary,
-  phaseState: "done" | "current" | "upcoming",
-): { variant: PillVariant; label: string } | null {
-  if (phaseState === "upcoming") return null;
-  if (task.status === "done") return { variant: "sage", label: "Done" };
-  if (isOverdue(task.due_date)) return { variant: "rosewood", label: "Overdue" };
-  if (isDueSoon(task.due_date)) return { variant: "clay", label: "Due soon" };
-  if (task.status === "in_progress") {
-    return { variant: "default", label: "In progress" };
-  }
-  return { variant: "default", label: "Not started" };
-}
-
-function vendorPipelineStep(vendor: OutreachVendor) {
-  if (vendor.status === "booked") return 3;
-  if (vendor.status === "contacted" && vendor.quoted_price !== null) return 2;
-  if (vendor.status === "contacted") return 1;
-  if (vendor.status === "to_contact") return 0;
-  return 0;
-}
-
-function vendorPill(vendor: OutreachVendor): {
-  variant: PillVariant;
-  label: string;
-} {
-  switch (vendor.status) {
-    case "booked":
-      return { variant: "sage", label: "Booked" };
-    case "declined":
-      return { variant: "rosewood", label: "Declined" };
-    case "contacted":
-      return vendor.quoted_price !== null
-        ? { variant: "clay", label: "Replied" }
-        : { variant: "default", label: "Contacted" };
-    default:
-      return { variant: "default", label: "To contact" };
-  }
-}
-
-function aggregatePipelineLitStep(vendors: OutreachVendor[]) {
-  if (vendors.length === 0) return -1;
-
-  let maxStep = -1;
-  for (const vendor of vendors) {
-    maxStep = Math.max(maxStep, vendorPipelineStep(vendor));
-  }
-  return maxStep;
 }
 
 function BlockHead({
@@ -227,12 +147,12 @@ function NextUpSection({
       if (a.due_date && b.due_date) return a.due_date.localeCompare(b.due_date);
       if (a.due_date) return -1;
       if (b.due_date) return 1;
-      return 0;
+      return a.position - b.position;
     })
-    .slice(0, 3);
+    .slice(0, 5);
 
   return (
-    <section className="mt-12">
+    <section>
       <BlockHead
         title="Next up"
         href={`/projects/${projectId}/checklist`}
@@ -244,7 +164,7 @@ function NextUpSection({
           {tasks.length === 0 ? (
             <div className="space-y-3">
               <p className="text-[13px] text-ink-muted">
-                Your timeline will show what to tackle next.
+                Your checklist will show what to tackle next.
               </p>
               <GenerateStarterChecklist projectId={projectId} compact />
             </div>
@@ -279,254 +199,288 @@ function NextUpSection({
   );
 }
 
-function TimelineSection({
+function YourPhasesSection({
   projectId,
   tasks,
+  weddingDate,
 }: {
   projectId: string;
   tasks: TaskSummary[];
+  weddingDate: string | null;
 }) {
-  const byPhase = groupByPhase(tasks);
-  const sections = buildPhaseSections(tasks);
-  const currentIndex = findCurrentPhaseIndex(sections, byPhase);
+  const aggregates = computeChecklistAggregates(tasks, weddingDate);
+  const { phases, activePhase, total } = aggregates;
 
   return (
-    <section className="mt-12">
-      <BlockHead title="Your timeline" />
+    <section>
+      <BlockHead
+        title="Your phases"
+        href={`/projects/${projectId}/checklist`}
+        linkLabel="Open checklist"
+      />
 
-      {sections.length === 0 ? (
+      {total === 0 ? (
         <div className="px-1">
           <p className="text-[13px] text-ink-muted">
-            Generate a starter timeline to see your phases here.
+            Generate a starter checklist to see your phases here.
           </p>
           <div className="mt-3">
             <GenerateStarterChecklist projectId={projectId} compact />
           </div>
         </div>
       ) : (
-        <div className="relative pl-7 before:absolute before:top-1.5 before:bottom-1.5 before:left-[5px] before:w-px before:bg-stone">
-          {sections.map(({ phase, label }, index) => {
-            const phaseTasks = byPhase.get(phase) ?? [];
-            const allDone = phaseTasks.every((task) => task.status === "done");
-            const isCurrent = index === currentIndex;
-            const phaseState: "done" | "current" | "upcoming" = allDone
-              ? "done"
-              : isCurrent
-                ? "current"
-                : index > currentIndex
-                  ? "upcoming"
-                  : "current";
-
+        <ul className="flex flex-wrap gap-2">
+          {phases.map((phase) => {
+            const here = phase.phase === activePhase;
             return (
-              <div
-                key={label}
+              <li
+                key={phase.phase}
                 className={cn(
-                  "relative pb-7 last:pb-0",
-                  phaseState === "done" && "phase-done",
+                  "rounded-full border px-3 py-1.5 text-[13px] tabular-nums",
+                  here
+                    ? "border-plum text-plum"
+                    : "border-stone text-ink-muted",
                 )}
               >
-                <span
-                  className={cn(
-                    "absolute top-[3px] -left-7 size-[11px] rounded-full border-[1.5px]",
-                    phaseState === "done" && "border-sage bg-sage",
-                    phaseState === "current" &&
-                      "border-plum bg-plum shadow-[0_0_0_4px_var(--plum-tint)]",
-                    phaseState === "upcoming" && "border-stone bg-surface",
-                  )}
-                  aria-hidden
-                />
-                <div
-                  className={cn(
-                    "text-[13px] font-medium",
-                    phaseState === "current" ? "text-plum-deep" : "text-ink",
-                  )}
-                >
-                  {phaseDisplayLabel(phase ?? label, isCurrent)}
-                </div>
-                <div className="mt-2.5 flex flex-col gap-[9px]">
-                  {phaseTasks.map((task) => {
-                    const pill = timelinePill(task, phaseState);
-                    const muted =
-                      phaseState === "upcoming" || task.status === "done";
-
-                    return (
-                      <div
-                        key={task.id}
-                        className={cn(
-                          "flex items-center justify-between gap-3 text-[15px]",
-                          muted ? "text-ink-muted" : "text-ink",
-                        )}
-                      >
-                        <span>{task.title}</span>
-                        {pill ? (
-                          <Pill variant={pill.variant} className="shrink-0">
-                            {pill.label}
-                          </Pill>
-                        ) : null}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
+                <span className={here ? "font-medium text-plum-deep" : undefined}>
+                  {phase.phase}
+                </span>
+                <span className="text-ink-muted">
+                  {" "}
+                  · {phase.done}/{phase.total}
+                </span>
+                {here ? (
+                  <span className="ml-1.5 text-[11px] font-medium uppercase tracking-[0.08em] text-plum">
+                    you&apos;re here
+                  </span>
+                ) : null}
+              </li>
             );
           })}
-        </div>
+        </ul>
       )}
     </section>
   );
 }
 
-function AggregateVendorStepper({ vendors }: { vendors: OutreachVendor[] }) {
-  const litThrough = aggregatePipelineLitStep(vendors);
+function BudgetRailCard({
+  projectId,
+  totalBudget,
+  budgetItems,
+  vendors,
+}: {
+  projectId: string;
+  totalBudget: number | null;
+  budgetItems: BudgetItemInput[];
+  vendors: OutreachVendor[];
+}) {
+  const projectVendors: ProjectVendorOption[] = vendors.map((v) => ({
+    id: v.id,
+    name: v.vendor.name,
+    quoted_price: v.quoted_price,
+    status: v.status,
+  }));
+
+  const aggregates = computeBudgetAggregates(
+    budgetItems,
+    totalBudget,
+    projectVendors,
+  );
+  const { allocated, spent, unallocated } = aggregates;
+  const overAllocated = unallocated !== null && unallocated < 0;
+
+  // Bar tracks SPEND against ALLOCATED (BUD-01 CategoryBar vocabulary) —
+  // allocation-vs-target is the separate text line below, never a fill.
+  const spentPct =
+    allocated > 0 ? Math.min(100, (spent / allocated) * 100) : 0;
 
   return (
-    <div className="mb-5 flex items-center">
-      {VENDOR_PIPELINE_STEPS.map((step, index) => {
-        const lit = index <= litThrough;
-        const isLast = index === VENDOR_PIPELINE_STEPS.length - 1;
-
-        return (
-          <div
-            key={step.id}
-            className={cn("flex items-center gap-2.5", !isLast && "flex-1")}
-          >
-            <span
-              className={cn(
-                "size-[9px] shrink-0 rounded-full",
-                lit ? "bg-plum" : "bg-stone",
-              )}
-              aria-hidden
-            />
-            <span
-              className={cn(
-                "text-xs",
-                lit ? "font-medium text-plum-deep" : "text-ink-muted",
-              )}
+    <Link
+      href={`/projects/${projectId}/budget`}
+      className="block no-underline transition-opacity hover:opacity-90"
+    >
+      <Card className="p-4 sm:p-5">
+        <Eyebrow>Budget</Eyebrow>
+        {budgetItems.length === 0 ? (
+          <p className="mt-3 text-[13px] text-ink-muted">
+            No budget items yet.
+          </p>
+        ) : (
+          <>
+            <dl className="mt-3 grid grid-cols-2 gap-3">
+              <div>
+                <dt className="text-[11px] font-medium uppercase tracking-[0.08em] text-ink-muted">
+                  Allocated
+                </dt>
+                <dd className="mt-1 text-[18px] tabular-nums text-ink">
+                  {formatCurrency(allocated)}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-[11px] font-medium uppercase tracking-[0.08em] text-ink-muted">
+                  Spent
+                </dt>
+                <dd className="mt-1 text-[18px] tabular-nums text-ink">
+                  {formatCurrency(spent)}
+                </dd>
+              </div>
+            </dl>
+            <div
+              className="mt-3 h-[3px] overflow-hidden rounded-[2px] bg-stone/40"
+              role="img"
+              aria-label={`Spent ${formatCurrency(spent)} of ${formatCurrency(allocated)} allocated`}
             >
-              {step.label}
-            </span>
-            {!isLast ? <span className="h-px flex-1 bg-stone" aria-hidden /> : null}
-          </div>
-        );
-      })}
-    </div>
+              {spentPct > 0 ? (
+                <div
+                  className="h-full bg-sage transition-[width] duration-300"
+                  style={{ width: `${spentPct}%` }}
+                />
+              ) : null}
+            </div>
+            {unallocated !== null ? (
+              <p
+                className={cn(
+                  "mt-2 text-[13px] tabular-nums",
+                  overAllocated ? "text-rosewood" : "text-ink-muted",
+                )}
+              >
+                {overAllocated
+                  ? `${formatCurrency(Math.abs(unallocated))} over target`
+                  : `${formatCurrency(unallocated)} unallocated`}
+              </p>
+            ) : null}
+          </>
+        )}
+      </Card>
+    </Link>
   );
 }
 
-function VendorsSection({
+function VendorsRailCard({
   projectId,
   vendors,
 }: {
   projectId: string;
   vendors: OutreachVendor[];
 }) {
-  return (
-    <section className="mt-12">
-      <BlockHead
-        title="Vendors"
-        href={`/projects/${projectId}/vendors`}
-        linkLabel="Manage outreach"
-      />
+  const counts = Object.fromEntries(
+    OUTREACH_STATUS_ORDER.map((status) => [
+      status,
+      vendors.filter((v) => v.status === status).length,
+    ]),
+  ) as Record<(typeof OUTREACH_STATUS_ORDER)[number], number>;
 
-      {vendors.length === 0 ? (
-        <p className="px-1 text-[13px] text-ink-muted">
-          Search local vendors or add your favorites to track outreach.
-        </p>
-      ) : (
-        <>
-          <AggregateVendorStepper vendors={vendors} />
-          {vendors.map((item) => {
-            const pill = vendorPill(item);
-            return (
-              <div
-                key={item.id}
-                className="flex items-center justify-between gap-4 border-b border-stone px-1 py-3.5 last:border-b-0"
-              >
-                <div className="min-w-0">
-                  <div className="text-[15px] text-ink">{item.vendor.name}</div>
-                  {item.vendor.category ? (
-                    <div className="mt-px text-[13px] text-ink-muted">
-                      {item.vendor.category}
-                    </div>
-                  ) : null}
+  return (
+    <Link
+      href={`/projects/${projectId}/vendors`}
+      className="block no-underline transition-opacity hover:opacity-90"
+    >
+      <Card className="p-4 sm:p-5">
+        <Eyebrow>Vendors</Eyebrow>
+        {vendors.length === 0 ? (
+          <p className="mt-3 text-[13px] text-ink-muted">
+            No vendors on your list yet.
+          </p>
+        ) : (
+          <dl className="mt-3 space-y-2 text-[14px]">
+            {OUTREACH_STATUS_ORDER.map((status) => {
+              const n = counts[status];
+              if (n === 0) return null;
+              return (
+                <div
+                  key={status}
+                  className="flex items-baseline justify-between gap-3"
+                >
+                  <dt className="text-ink-muted">
+                    {OUTREACH_STATUS_HEADING[status]}
+                  </dt>
+                  <dd className="tabular-nums text-ink">{n}</dd>
                 </div>
-                <Pill variant={pill.variant} className="shrink-0">
-                  {pill.label}
-                </Pill>
-              </div>
-            );
-          })}
-        </>
-      )}
-    </section>
+              );
+            })}
+            <div className="flex items-baseline justify-between gap-3 border-t border-stone pt-2">
+              <dt className="text-ink-muted">Total</dt>
+              <dd className="tabular-nums font-medium text-ink">
+                {vendors.length}
+              </dd>
+            </div>
+          </dl>
+        )}
+      </Card>
+    </Link>
   );
 }
 
-function BudgetSection({ vendors }: { vendors: OutreachVendor[] }) {
-  const lineItems = vendors
-    .filter((item) => item.quoted_price !== null)
-    .map((item) => ({
-      id: item.id,
-      label: item.vendor.category
-        ? `${item.vendor.category} — ${item.vendor.name}`
-        : item.vendor.name,
-      amount: item.quoted_price!,
-      pending: item.status !== "booked",
-    }));
-
-  const committed = lineItems.reduce((sum, item) => sum + item.amount, 0);
-  const hasBudget = lineItems.length > 0;
-
+function GuestsRailCard({
+  projectId,
+  guestStats,
+}: {
+  projectId: string;
+  guestStats: GuestStats;
+}) {
   return (
-    <section className="mt-12">
-      <BlockHead title="Budget" />
-
-      <Card className="p-6">
-        {hasBudget ? (
-          <>
-            <div className="mb-3.5 flex items-baseline justify-between gap-4">
-              <div className="tabnum text-[22px] font-medium text-ink">
-                {formatCurrency(committed)}{" "}
-                <span className="text-sm font-normal text-ink-muted">
-                  committed
-                </span>
-              </div>
-            </div>
-            <div
-              className="h-2 overflow-hidden rounded-full bg-stone"
-              role="progressbar"
-              aria-valuenow={100}
-              aria-valuemin={0}
-              aria-valuemax={100}
-              aria-label="Budget committed"
-            >
-              <span className="block h-full w-full rounded-full bg-plum" />
-            </div>
-            <div className="mt-5">
-              {lineItems.map((item) => (
-                <div
-                  key={item.id}
-                  className="flex items-center justify-between gap-3 border-b border-stone px-1 py-3 text-[15px] last:border-b-0"
-                >
-                  <span className="min-w-0 text-ink">
-                    {item.label}
-                    {item.pending ? " — pending quote" : ""}
-                  </span>
-                  <span className="tabnum shrink-0 font-medium text-ink">
-                    {item.pending ? "~" : ""}
-                    {formatCurrency(item.amount)}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </>
+    <Link
+      href={`/projects/${projectId}/guests`}
+      className="block no-underline transition-opacity hover:opacity-90"
+    >
+      <Card className="p-4 sm:p-5">
+        <Eyebrow>Guests</Eyebrow>
+        {guestStats.householdCount === 0 ? (
+          <p className="mt-3 text-[13px] text-ink-muted">No guests yet.</p>
         ) : (
-          <p className="text-[13px] text-ink-muted">
-            Vendor quotes will appear here as you collect them.
+          <dl className="mt-3 space-y-2 text-[14px]">
+            <div className="flex items-baseline justify-between gap-3">
+              <dt className="text-ink-muted">Invited</dt>
+              <dd className="tabular-nums text-ink">{guestStats.invited}</dd>
+            </div>
+            <div className="flex items-baseline justify-between gap-3">
+              <dt className="text-ink-muted">Attending</dt>
+              <dd className="tabular-nums text-ink">{guestStats.attending}</dd>
+            </div>
+            <div className="flex items-baseline justify-between gap-3">
+              <dt className="text-ink-muted">Pending</dt>
+              <dd className="tabular-nums text-ink">{guestStats.pending}</dd>
+            </div>
+            <div className="flex items-baseline justify-between gap-3">
+              <dt className="text-ink-muted">Declined</dt>
+              <dd className="tabular-nums text-ink">{guestStats.declined}</dd>
+            </div>
+          </dl>
+        )}
+      </Card>
+    </Link>
+  );
+}
+
+function WebsiteRailCard({
+  projectId,
+  website,
+}: {
+  projectId: string;
+  website: { published: boolean } | null;
+}) {
+  return (
+    <Link
+      href={`/projects/${projectId}/website`}
+      className="block no-underline transition-opacity hover:opacity-90"
+    >
+      <Card className="p-4 sm:p-5">
+        <Eyebrow>Website</Eyebrow>
+        {website === null ? (
+          <p className="mt-3 text-[13px] text-ink-muted">
+            No website yet — create one.
+          </p>
+        ) : (
+          <p className="mt-3 text-[14px] text-ink">
+            {website.published ? (
+              <span className="text-sage">Published</span>
+            ) : (
+              <span className="text-ink-muted">Draft</span>
+            )}
           </p>
         )}
       </Card>
-    </section>
+    </Link>
   );
 }
 
@@ -536,6 +490,10 @@ export function CoupleDashboard({
   weddingDate,
   tasks,
   vendors,
+  totalBudget,
+  budgetItems,
+  guestStats,
+  website,
 }: CoupleDashboardProps) {
   return (
     <>
@@ -545,10 +503,28 @@ export function CoupleDashboard({
         projectId={projectId}
       />
 
-      <NextUpSection projectId={projectId} tasks={tasks} />
-      <TimelineSection projectId={projectId} tasks={tasks} />
-      <VendorsSection projectId={projectId} vendors={vendors} />
-      <BudgetSection vendors={vendors} />
+      <div className="mt-10 grid grid-cols-1 gap-6 text-left lg:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)] lg:gap-8">
+        <div className="min-w-0 space-y-10">
+          <NextUpSection projectId={projectId} tasks={tasks} />
+          <YourPhasesSection
+            projectId={projectId}
+            tasks={tasks}
+            weddingDate={weddingDate}
+          />
+        </div>
+
+        <aside className="min-w-0 space-y-4 lg:sticky lg:top-6 lg:self-start">
+          <BudgetRailCard
+            projectId={projectId}
+            totalBudget={totalBudget}
+            budgetItems={budgetItems}
+            vendors={vendors}
+          />
+          <VendorsRailCard projectId={projectId} vendors={vendors} />
+          <GuestsRailCard projectId={projectId} guestStats={guestStats} />
+          <WebsiteRailCard projectId={projectId} website={website} />
+        </aside>
+      </div>
     </>
   );
 }
