@@ -8,13 +8,17 @@ alwaysApply: true
 
 1. **`app/globals.css`** — canonical for **token VALUES**. If a hex disagrees with any document,
    `globals.css` wins.
-2. **`.cursor/rules/design.mdc`** (this file) — canonical for **RULES**. If a rule disagrees with
-   any document, this file wins.
+2. **`wedding-app/.cursor/design.mdc`** (this file) — canonical for **RULES**. If a rule disagrees
+   with any document, this file wins.
 3. **`design/reference.html`** — a **rendered example** of these rules. Non-normative. It is
    regenerated to match; it never defines.
 4. **`design/theme-direction.html`** — **superseded; scheduled for deletion in STYLE-01.**
 5. The Project Bible §10 — a **pointer** to this file. It must not restate token values or rules.
    Any §10 content that contradicts this file is stale by definition.
+
+`main.mdc` (beside this file) is canonical for **architecture** — multi-tenancy, RLS-as-sole-
+authorization, data-access conventions. This file governs **visual design only** and defers to
+`main.mdc` on everything else. Neither file restates the other.
 
 ---
 
@@ -38,9 +42,11 @@ global hard don'ts (below) still apply everywhere unless a tier explicitly carve
 
 ### Tier 1 — App chrome (Soft stack)
 
-**Where:** everything under `app/(app)/` and `components/` **except** `components/website/`, plus
-all other in-app working surfaces (dashboards, project tabs, forms, tables, seating builder,
-assistant panel, settings). If a surface is not explicitly Tier 2 or Tier 3, it is Tier 1.
+**Where:** **Tier 1 is everything not explicitly named Tier 2 or Tier 3.** Named exclusions:
+`components/website/` (Tier 3); `components/marketing/`, the onboarding hero, and empty-state
+heroes (Tier 2). Everything else — including `app/login/`, `app/styleguide/`, all project tabs,
+dashboards, forms, tables, the seating builder, the assistant panel, and the print run sheet —
+is Tier 1.
 
 **Palette** (full replacement of the Modern romantic chrome set; does **not** touch `--ws-*`):
 
@@ -113,36 +119,59 @@ small washes only — never a full-page or full-panel color field.
 **Seating canvas** follows this depth scale: tables are raised `--surface` on `--canvas`; outlines
 read `--ring`.
 
+**Print run sheet (`RunSheetDocument.tsx`) — Tier 1 with a serif carve-out.**
+It reads the Tier 1 palette, radius, depth, and body type (`--font-sans`) like any other chrome
+surface. **The one exception:** its print header couple-names `h1` (the only element that uses
+`font-display` today) may use Cormorant (`--font-serif`). Date, venue, owner subtitle, section
+labels, event rows, chrome controls, and footer stay sans. Nothing else on it may use serif.
+**Why the exception survives:** it is a printed artifact carrying the couple's names, handed to
+vendors. It is the one place a serif earns its keep, and TL-02 already shipped and verified it.
+**Why it is not Tier 3:** it is authenticated, internal, and has no `--ws-*` namespace. Palette
+isolation was never something it had — only serif permission.
+
 ### Tier 2 — Emotional surfaces
 
-**Where (exhaustive — a surface not on this list is Tier 1):** the landing page, the onboarding
-hero / welcome moments, and empty-state heroes (centered first-impression moments — not inline
-list empties inside a tab).
+**Where (exhaustive — a surface not on this list is Tier 1):** the landing route and
+`components/marketing/` in full; the onboarding hero / welcome moments; and empty-state heroes
+(centered first-impression moments — not inline list empties inside a tab). Tier 2 is the
+**route**, not the hero — a boundary that runs *through* a page gets re-litigated on every slice
+that touches it, and "exactly one deep field per surface" is meaningless unless "surface" means a
+whole page.
 
 Tier 2 uses **Tier 1's palette and typeface** (Figtree). What it gains:
 
 - Display numerals / headlines may run to **~104px**, weight 800, tracking −.05em.
 - **Exactly one** deep field per surface: `#3D2430`, radius `28px`, shadow
-  `0 18px 44px -14px rgba(61,36,48,.45)`. One per surface, not one per section.
+  `0 18px 44px -14px rgba(61,36,48,.45)`. One per surface (whole route), not one per section.
 - `--card-shadow-emotional` remains available for emotional-surface cards only (Tier 2).
 - **No serif.** Tier 2 does not get Cormorant.
 
 **Still banned on emotional surfaces:** florals, photographic assets, metal/gold gradients,
 heavy glow, stacked depth, more than one deep field per surface.
 
-### Tier 3 — Website templates + print run sheet
+### Tier 3 — Website templates
 
-**Where:** `components/website/` (public sites at `/w/[slug]`) and
-`RunSheetDocument.tsx` (print run sheet).
+**Where:** `components/website/` (public sites at `/w/[slug]`) — **and nothing else.**
+
+Tier 3 is public, couple-branded, and guest-facing. It gets both an isolated palette (`--ws-*`) and
+a display-type carve-out (Cormorant, Great Vibes) because it is a **separate visual product** from
+the app, not because it is decorative. A surface that needs only one of those two things is not
+Tier 3.
 
 **Entirely unchanged by the Soft stack chrome pivot.** Colour continues to come only from
 `--ws-*` tokens, which are **separate from and unaffected by** the Tier 1 tokens above.
-Cormorant Garamond and Great Vibes remain sanctioned **here and nowhere else**.
-`components/website/` continues to import no Supabase/auth/server-only modules.
+Body sans is **`--ws-font-sans`** (Hanken Grotesk 400/500) — parallel to the `--ws-*` colour
+namespace, not the chrome sans variable; it scopes to `components/website/` only. Cormorant
+Garamond and Great Vibes are sanctioned on this surface (Great Vibes here only; Cormorant also has
+the Tier 1 print-header carve-out). `components/website/` continues to import no
+Supabase/auth/server-only modules.
+
+> **Websites read `--ws-*` only — colour AND type. Tier 1 Soft stack tokens, including the chrome
+> sans face, are never consumed on Tier 3.**
 
 **Bounded-decorative carve-out (unchanged from 3.7a/3.7b):**
 - Restrained templates (`Classic`, `Editorial`, `Minimalist`, `Garden`) stay on `--ws-*` theme
-  tokens + Cormorant + sans (`--font-sans`).
+  tokens + Cormorant + sans (`--ws-font-sans`).
 - Decorative templates (`Romance`, and similar) may expand vocabulary **within bounds:**
   - **Great Vibes** (`font-script`) — Romance template only, for a single script accent element.
   - CSS/SVG ornaments (hairline + diamond/dot divider) — no image assets.
@@ -159,12 +188,18 @@ Cormorant Garamond and Great Vibes remain sanctioned **here and nowhere else**.
 > **Cormorant Garamond and Great Vibes may appear only in `components/website/` and
 > `RunSheetDocument.tsx`. Nowhere else, at any size, for any reason.**
 
+`components/website/` gets serif **and script** by Tier 3. The run sheet gets **Cormorant only,
+on its print header only**, by the Tier 1 carve-out above. **Great Vibes never appears on the run
+sheet.** The location rule is still a location rule — two locations, two justifications.
+
 `--font-serif` and `--font-script` remain defined and loaded via `next/font/google` because
-Tier 3 needs both. They must not be consumed outside the locations above.
+Tier 3 needs both (and the run sheet needs Cormorant). They must not be consumed outside the
+locations above.
 
 Fonts (target wiring):
 - Figtree (400/500/600/800) → `--font-sans` (Tier 1 and Tier 2)
-- Cormorant Garamond (500/600) → `--font-serif` (**Tier 3 only**)
+- Hanken Grotesk (400/500) → `--ws-font-sans` (**Tier 3 / `components/website/` only**)
+- Cormorant Garamond (500/600) → `--font-serif` (Tier 3; Tier 1 print-header carve-out only)
 - Great Vibes → `--font-script` (**Tier 3 only**)
 
 Map all Tier 1 tokens into Tailwind (v4 `@theme inline`) in STYLE-01.
@@ -178,14 +213,14 @@ Each killed rule is quoted **verbatim** from the pre-Soft-stack `design.mdc`, th
 | Killed (verbatim) | Replacement |
 |---|---|
 | "**Flat chrome** — no whisper-emotional shadow on chrome surfaces. Cards may use the standard whisper `card-shadow` only." | The two-level depth scale (`--shadow-raised` / `--shadow-recessed`). Depth is the organizing idea of Tier 1. |
-| "**Two sans weights** — Hanken Grotesk 400 and 500 only." | Figtree, four weights: 400 / 500 / 600 / 800. |
-| "Two sans weights (400/500) only in chrome." | Figtree, four weights: 400 / 500 / 600 / 800. |
+| "**Two sans weights** — Hanken Grotesk 400 and 500 only." | Figtree, four weights (400/500/600/800), on Tier 1 and Tier 2. **Hanken Grotesk is retired from Tier 1 and Tier 2 only; it survives as `--ws-font-sans` on Tier 3, where it remains the template body face.** |
+| "Two sans weights (400/500) only in chrome." | Figtree, four weights (400/500/600/800), on Tier 1 and Tier 2. **Hanken Grotesk is retired from Tier 1 and Tier 2 only; it survives as `--ws-font-sans` on Tier 3, where it remains the template body face.** |
 | "**Plum is accent** — never a full-page or full-panel color flood. `plum-tint` washes for inline empty states are OK." | Rescoped: **Tier 1 permits no accent flood at all** (`--accent-wash` for pills/washes only). **Tier 2 permits exactly one** `#3D2430` field per surface. |
 | "No blush or plum color floods (plum-tint washes for small empty states OK)." | Same rescope as above — no Tier 1 accent flood; one Tier 2 deep field. |
 | "**Display (Cormorant Garamond 600)** — Tier 2 emotional surfaces + Tier 1 data moments" | **Deleted.** Tier 1 and Tier 2 are all-sans. |
-| "**UI (Hanken Grotesk, 400/500)** — Tier 1 chrome" | **UI (Figtree, 400/500/600/800) — Tier 1 and Tier 2.** |
+| "**UI (Hanken Grotesk, 400/500)** — Tier 1 chrome" | **UI (Figtree, 400/500/600/800) — Tier 1 and Tier 2.** Hanken survives as `--ws-font-sans` on Tier 3 only. |
 | "Serif for page titles, stat figures, budget figures, couple-identifying text, hero moments, and Tier 2 emotional headlines. Sans for nav, forms, tables, and all other chrome." | **Deleted.** Replaced by the serif/script location rule above. |
-| "Fonts: Cormorant Garamond (500,600) + Hanken Grotesk (400,500) via next/font/google, exposed as --font-serif / --font-sans." | Figtree (400/500/600/800) → `--font-sans`; Cormorant Garamond (500/600) → `--font-serif`, **Tier 3 only**; Great Vibes → `--font-script`, **Tier 3 only**. |
+| "Fonts: Cormorant Garamond (500,600) + Hanken Grotesk (400,500) via next/font/google, exposed as --font-serif / --font-sans." | Figtree (400/500/600/800) → `--font-sans` (Tier 1/2); Hanken Grotesk (400/500) → `--ws-font-sans` (**Tier 3 only**); Cormorant Garamond (500/600) → `--font-serif`, **Tier 3 only**; Great Vibes → `--font-script`, **Tier 3 only**. |
 
 ---
 
@@ -240,13 +275,15 @@ These apply on **every tier** unless a tier carve-out explicitly permits otherwi
 - No ad-hoc radius utilities on Tier 1 — use `--radius-card` / `--radius-inner` / `--radius-pill`.
 
 **App chrome + Tier 2 — additionally:**
-- No Cormorant or Great Vibes (location rule).
+- No Cormorant or Great Vibes (location rule) — except the Tier 1 print-header carve-out for
+  Cormorant on the run sheet.
 - No script fonts.
 
 **Tier 3 website — additionally:**
 - Great Vibes stays Romance-template-only.
 - Decorative expansion = script accent + CSS ornament + warmer `--ws-*` theme tokens only.
-- Do not import or reuse Tier 1 Soft stack tokens as website colour; websites read `--ws-*` only.
+- Do not import or reuse Tier 1 Soft stack tokens (colour or type, including `--font-sans`);
+  websites read `--ws-*` only — colour AND type.
 
 ---
 
@@ -296,6 +333,16 @@ target): `--canvas #FAF5EE`, `--ink #221A1D`, `--plum #7E3E57`, `--stone #E8DCCE
 - ≥9 live radii → the three radius tokens.
 - Apply the Soft stack `:root` above; retire `--plum` / `--stone` / `--stone-soft` from chrome.
 - Swap `--font-sans` to Figtree (400/500/600/800); strip Cormorant from all Tier 1 / Tier 2
-  surfaces (~25+ files).
+  surfaces (~25+ files), keeping the run sheet print-header carve-out.
+- Define `--ws-font-sans` (Hanken Grotesk 400/500) in the Tier 3 token namespace; repoint every
+  Tier 3 template's body face from `--font-sans` to it.
+- Resolve **where** Hanken loads for `--ws-font-sans` on public `/w/` sites. Report the chosen
+  wiring at STYLE-01 Step 0.
+- `components/marketing/` (9 files) converts as **Tier 2**, not Tier 1 — all-sans Figtree with
+  scale latitude and at most one `#3D2430` field across the whole landing route.
+- **The run sheet's colour will change at STYLE-01a, and this is intended, not a regression:**
+  ink `#221A1D` → `#241C20`; `ink-muted` `#8C8083` → `#857A80`; `border/divide-stone` `#E8DCCE` →
+  `#DCD0D6`; `outline-plum` `#7E3E57` → `#C0396B`. `bg-surface` stays `#FFFFFF`. Its body face
+  moves to Figtree at STYLE-01b; the Cormorant header stays. **Do not treat these as leaks.**
 - `design/theme-direction.html` → delete.
 - `design/reference.html` → regenerate against this file.
