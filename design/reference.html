@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>First Look — wedding planning, modern romantic</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Hanken+Grotesk:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --canvas:#FAF5EE; --porcelain:var(--canvas);
+    --surface:#FFFFFF; --surface-2:#FFFDFA;
+    --ink:#221A1D; --ink-soft:#4A3F42; --ink-muted:#8C8083;
+    --plum:#7E3E57; --plum-deep:#531F37; --plum-tint:#F6E9EE;
+    --stone:#E8DCCE; --stone-soft:#F1E8DD;
+    --sage:#5E7A6B; --clay:#B5894E; --rosewood:#9B5C5C;
+    --radius:12px; --radius-lg:16px;
+    --card-shadow:0 1px 2px rgba(70,45,52,.04), 0 8px 22px rgba(70,45,52,.05);
+    --card-shadow-emotional:0 2px 4px rgba(70,45,52,.05), 0 16px 40px rgba(70,45,52,.07);
+    --serif:'Cormorant Garamond', Georgia, serif;
+    --sans:'Hanken Grotesk', system-ui, -apple-system, sans-serif;
+  }
+
+  *{ box-sizing:border-box; margin:0; padding:0; }
+
+  body{
+    background:var(--porcelain); color:var(--ink);
+    font-family:var(--sans); font-weight:400; line-height:1.6;
+    -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
+  }
+
+  .font-display{ font-family:var(--serif); font-weight:600; line-height:1.05; }
+  .tabnum{ font-variant-numeric:tabular-nums; }
+
+  .eyebrow{
+    font-family:var(--sans); font-size:12px; font-weight:500;
+    letter-spacing:0.06em; color:var(--ink-muted);
+  }
+
+  /* ---------- top bar (UI chrome, sans only) ---------- */
+  .topbar{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:18px 32px; border-bottom:1px solid var(--stone);
+    background:var(--porcelain); position:sticky; top:0; z-index:10;
+  }
+  .wordmark{ display:flex; align-items:center; gap:8px; font-weight:500; font-size:16px; letter-spacing:0.01em; }
+  .wordmark .dot{ width:7px; height:7px; border-radius:999px; background:var(--plum); }
+
+  .nav{ display:flex; gap:4px; }
+  .nav a{
+    font-size:14px; color:var(--ink-muted); text-decoration:none;
+    padding:6px 12px; border-radius:999px; transition:color .15s, background .15s;
+  }
+  .nav a:hover{ color:var(--ink); }
+  .nav a.active{ color:var(--plum-deep); background:var(--plum-tint); }
+
+  /* segmented view toggle */
+  .segmented{ display:flex; border:1px solid var(--stone); border-radius:999px; padding:3px; background:var(--surface); }
+  .segmented button{
+    font-family:var(--sans); font-size:13px; font-weight:500; cursor:pointer;
+    border:none; background:transparent; color:var(--ink-muted);
+    padding:6px 14px; border-radius:999px; transition:color .15s, background .15s;
+  }
+  .segmented button.on{ background:var(--plum); color:#fff; }
+
+  /* ---------- shared bits ---------- */
+  .pill{
+    display:inline-flex; align-items:center; gap:6px;
+    font-size:12px; font-weight:500; padding:3px 10px; border-radius:999px;
+    background:var(--surface); border:1px solid var(--stone); color:var(--ink-muted);
+    white-space:nowrap;
+  }
+  .pill .dot{ width:6px; height:6px; border-radius:999px; background:var(--ink-muted); }
+  .pill.sage{ color:var(--sage); } .pill.sage .dot{ background:var(--sage); }
+  .pill.clay{ color:var(--clay); } .pill.clay .dot{ background:var(--clay); }
+  .pill.rosewood{ color:var(--rosewood); } .pill.rosewood .dot{ background:var(--rosewood); }
+  .pill.plum{ color:var(--plum); border-color:transparent; background:var(--plum-tint); } .pill.plum .dot{ background:var(--plum); }
+
+  .btn{
+    font-family:var(--sans); font-size:14px; font-weight:500; cursor:pointer;
+    padding:9px 18px; border-radius:var(--radius); border:1px solid var(--stone);
+    background:var(--surface); color:var(--ink); transition:background .15s, border-color .15s;
+  }
+  .btn:hover{ border-color:var(--ink-muted); }
+  .btn.primary{ background:var(--plum); color:#fff; border-color:var(--plum); }
+  .btn.primary:hover{ background:var(--plum-deep); border-color:var(--plum-deep); }
+
+  .card{ background:var(--surface); border:1px solid var(--stone); border-radius:var(--radius-lg); box-shadow:var(--card-shadow); }
+
+  /* ---------- emotional surface primitives (Tier 2 — canonical) ---------- */
+  .eyebrow-emotional{
+    display:inline-flex; align-items:center; gap:10px;
+    font-family:var(--sans); font-size:11.5px; font-weight:500;
+    letter-spacing:0.15em; text-transform:uppercase; color:var(--plum);
+  }
+  .eyebrow-emotional__diamond{
+    width:5px; height:5px; flex-shrink:0;
+    background:var(--plum); transform:rotate(45deg);
+  }
+  .display-heading{
+    font-family:var(--serif); font-weight:600;
+    font-size:clamp(44px,7vw,64px); line-height:1.02;
+    letter-spacing:-0.01em; color:var(--ink);
+  }
+  .display-heading em{ font-style:italic; color:var(--plum); }
+  .card-emotional{
+    background:var(--surface); border:1px solid var(--stone);
+    border-radius:var(--radius-lg); box-shadow:var(--card-shadow-emotional);
+  }
+  .emotional{ max-width:760px; margin:0 auto; padding:56px 24px 96px; text-align:center; }
+  .emotional__block{ margin-top:56px; text-align:left; }
+  .emotional__block:first-of-type{ margin-top:0; }
+  .emotional__label{
+    font-family:var(--sans); font-size:11px; font-weight:500;
+    letter-spacing:0.12em; text-transform:uppercase; color:var(--ink-muted);
+    margin-bottom:16px;
+  }
+  .emotional__hero-copy{ margin-top:20px; font-size:16px; color:var(--ink-muted); max-width:520px; margin-left:auto; margin-right:auto; }
+
+  .view{ display:none; }
+  .view.active{ display:block; }
+
+  /* ============================================================
+     COUPLE SURFACES — two density/width classes (both app chrome)
+     Reading: 760px single column (billing / body-copy-first)
+     Working: 1152px; may be one or two columns (main + sticky rail)
+     ============================================================ */
+  .couple-view{ padding:40px 24px 96px; }
+  .couple-reading{
+    max-width:760px; margin:0 auto; padding:56px 24px 64px;
+  }
+  .couple-working{
+    max-width:1152px; margin:0 auto; padding:40px 24px 64px;
+  }
+  @media (min-width:768px){
+    .couple-working{ padding-left:32px; padding-right:32px; }
+  }
+
+  .surface-label{
+    font-family:var(--sans); font-size:11.5px; font-weight:500;
+    letter-spacing:0.15em; text-transform:uppercase; color:var(--plum);
+    margin-bottom:8px;
+  }
+  .surface-meta{
+    font-size:13px; color:var(--ink-muted); margin-bottom:28px;
+  }
+  .surface-meta b{ color:var(--ink); font-weight:500; }
+  .surface-divider{
+    height:1px; background:var(--stone); max-width:1152px;
+    margin:8px auto 40px;
+  }
+
+  /* signature: the wedding-identity hero (reading surface) */
+  .hero{ text-align:center; padding:8px 0 40px; }
+  .hero .names{ font-size:clamp(40px, 6vw, 54px); letter-spacing:0.005em; }
+  .hero .date{ margin-top:14px; font-size:16px; color:var(--ink-muted); }
+  .hero .countdown{ margin-top:34px; }
+  .hero .count-num{ font-family:var(--serif); font-weight:600; font-size:64px; line-height:1; color:var(--plum); }
+  .hero .count-label{ margin-top:6px; font-size:13px; color:var(--ink-muted); letter-spacing:0.04em; }
+  .hero-rule{ height:1px; background:var(--stone); margin:8px 0 0; }
+
+  .block{ margin-top:48px; }
+  .block-head{ display:flex; align-items:baseline; justify-content:space-between; margin-bottom:18px; }
+  .block-head .link{ font-size:13px; color:var(--plum); text-decoration:none; }
+  .block-head .link:hover{ color:var(--plum-deep); }
+
+  /* working surface — sanctioned two-column body (CHK/TL/BUD) */
+  .work-grid{
+    display:grid; grid-template-columns:1fr; gap:24px; align-items:start;
+  }
+  @media (min-width:1024px){
+    .work-grid{
+      grid-template-columns:minmax(0,1.55fr) minmax(0,1fr); gap:32px;
+    }
+  }
+  .work-main{ min-width:0; }
+  .work-rail{
+    min-width:0;
+  }
+  @media (min-width:1024px){
+    .work-rail{ position:sticky; top:24px; align-self:start; }
+  }
+  .work-rail .rail-card{
+    background:var(--surface); border:1px solid var(--stone);
+    border-radius:var(--radius-lg); padding:18px 20px;
+  }
+  .work-rail .rail-card + .rail-card{ margin-top:16px; }
+  .work-rail dl{ margin-top:12px; }
+  .work-rail .r-row{
+    display:flex; justify-content:space-between; gap:12px;
+    font-size:14px; padding:6px 0;
+  }
+  .work-rail .r-row dt{ color:var(--ink-muted); }
+  .work-rail .r-row dd{ color:var(--ink); font-variant-numeric:tabular-nums; }
+  .work-phase{
+    border-bottom:1px solid var(--stone); padding:12px 0;
+  }
+  .work-phase:last-child{ border-bottom:none; }
+  .work-phase .wp-head{
+    display:flex; align-items:baseline; gap:8px; font-size:15px; font-weight:500;
+  }
+  .work-phase .wp-count{ font-weight:400; color:var(--ink-muted); font-variant-numeric:tabular-nums; }
+  .work-phase .wp-row{
+    display:flex; align-items:center; justify-content:space-between; gap:12px;
+    font-size:15px; padding:8px 0 8px 20px; color:var(--ink);
+  }
+
+  /* next up — airy task rows */
+  .focus-row{
+    display:flex; align-items:center; justify-content:space-between; gap:16px;
+    padding:16px 4px; border-bottom:1px solid var(--stone);
+  }
+  .focus-row:last-child{ border-bottom:none; }
+  .focus-row .task{ font-size:16px; }
+  .focus-row .meta{ font-size:13px; color:var(--ink-muted); margin-top:2px; }
+
+  /* timeline — a real temporal sequence */
+  .timeline{ position:relative; padding-left:28px; }
+  .timeline::before{
+    content:""; position:absolute; left:5px; top:6px; bottom:6px; width:1px; background:var(--stone);
+  }
+  .phase{ position:relative; padding-bottom:28px; }
+  .phase:last-child{ padding-bottom:0; }
+  .phase .node{
+    position:absolute; left:-28px; top:3px; width:11px; height:11px; border-radius:999px;
+    background:var(--surface); border:1.5px solid var(--stone);
+  }
+  .phase.done .node{ background:var(--sage); border-color:var(--sage); }
+  .phase.current .node{ background:var(--plum); border-color:var(--plum); box-shadow:0 0 0 4px var(--plum-tint); }
+  .phase .when{ font-size:13px; font-weight:500; color:var(--ink); }
+  .phase.current .when{ color:var(--plum-deep); }
+  .phase .tasks{ margin-top:10px; display:flex; flex-direction:column; gap:9px; }
+  .phase .titem{ display:flex; align-items:center; justify-content:space-between; gap:12px; font-size:15px; color:var(--ink); }
+  .phase .titem.muted{ color:var(--ink-muted); }
+
+  /* vendor pipeline — stepper + rows */
+  .stepper{ display:flex; align-items:center; gap:0; margin-bottom:20px; }
+  .step{ display:flex; align-items:center; gap:10px; flex:1; }
+  .step .s-dot{ width:9px; height:9px; border-radius:999px; background:var(--stone); flex:none; }
+  .step.lit .s-dot{ background:var(--plum); }
+  .step .s-label{ font-size:12px; color:var(--ink-muted); }
+  .step.lit .s-label{ color:var(--plum-deep); font-weight:500; }
+  .step .s-line{ flex:1; height:1px; background:var(--stone); }
+  .step:last-child{ flex:none; }
+
+  .vrow{
+    display:flex; align-items:center; justify-content:space-between; gap:16px;
+    padding:14px 4px; border-bottom:1px solid var(--stone);
+  }
+  .vrow:last-child{ border-bottom:none; }
+  .vrow .vname{ font-size:15px; }
+  .vrow .vcat{ font-size:13px; color:var(--ink-muted); margin-top:1px; }
+
+  /* budget */
+  .budget-top{ display:flex; align-items:baseline; justify-content:space-between; margin-bottom:14px; }
+  .budget-top .spent{ font-size:22px; font-weight:500; }
+  .budget-top .total{ font-size:14px; color:var(--ink-muted); }
+  .bar{ height:8px; border-radius:999px; background:var(--stone); overflow:hidden; }
+  .bar > span{ display:block; height:100%; background:var(--plum); border-radius:999px; }
+  .blines{ margin-top:20px; display:flex; flex-direction:column; gap:0; }
+  .bline{ display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 4px; border-bottom:1px solid var(--stone); font-size:15px; }
+  .bline:last-child{ border-bottom:none; }
+  .bline .amt{ font-weight:500; }
+
+  /* ============================================================
+     PLANNER SURFACE — wider, multi-column, compact, dense
+     ============================================================ */
+  .planner{ max-width:1180px; margin:0 auto; padding:28px 32px 80px; }
+
+  /* slim per-wedding header (hero, shrunk) */
+  .slim-hero{
+    display:flex; align-items:center; justify-content:space-between; gap:24px;
+    padding:14px 20px; border:1px solid var(--stone); border-radius:var(--radius-lg);
+    background:var(--surface); margin-bottom:24px;
+  }
+  .slim-hero .sh-left{ display:flex; align-items:baseline; gap:16px; }
+  .slim-hero .sh-names{ font-family:var(--serif); font-weight:600; font-size:26px; line-height:1; }
+  .slim-hero .sh-date{ font-size:14px; color:var(--ink-muted); }
+  .slim-hero .sh-count{ font-size:14px; }
+  .slim-hero .sh-count b{ color:var(--plum); font-weight:500; }
+
+  .planner-grid{ display:grid; grid-template-columns:260px 1fr; gap:24px; align-items:start; }
+
+  /* left rail: couples list */
+  .rail{ padding:6px; }
+  .rail-head{ padding:8px 10px 12px; }
+  .proj{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:11px 12px; border-radius:var(--radius); cursor:pointer; text-decoration:none; color:inherit;
+    transition:background .15s;
+  }
+  .proj:hover{ background:var(--porcelain); }
+  .proj.active{ background:var(--plum-tint); }
+  .proj .p-name{ font-size:14px; }
+  .proj .p-date{ font-size:12px; color:var(--ink-muted); margin-top:1px; }
+  .proj.active .p-name{ color:var(--plum-deep); font-weight:500; }
+  .proj .p-count{ font-size:12px; color:var(--ink-muted); font-weight:500; flex:none; }
+
+  /* right: dense outreach table */
+  .panel-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; }
+  .panel-head h2{ font-family:var(--sans); font-size:20px; font-weight:500; }
+
+  table{ width:100%; border-collapse:collapse; }
+  thead th{
+    text-align:left; font-size:12px; font-weight:500; color:var(--ink-muted);
+    letter-spacing:0.04em; padding:0 12px 10px; border-bottom:1px solid var(--stone);
+  }
+  thead th.num, tbody td.num{ text-align:right; }
+  tbody td{ font-size:14px; padding:12px; border-bottom:1px solid var(--stone); vertical-align:middle; }
+  tbody tr:hover{ background:var(--porcelain); }
+  tbody tr:last-child td{ border-bottom:none; }
+  td .v-name{ font-weight:400; }
+  td .v-sub{ font-size:12px; color:var(--ink-muted); margin-top:1px; }
+  .stat-cards{ display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-bottom:24px; }
+  .stat{ padding:16px 18px; }
+  .stat .s-num{ font-size:26px; font-weight:500; }
+  .stat .s-lab{ font-size:13px; color:var(--ink-muted); margin-top:2px; }
+
+  /* page intro tag */
+  .density-note{ font-size:13px; color:var(--ink-muted); margin-bottom:20px; }
+  .density-note b{ color:var(--ink); font-weight:500; }
+
+  /* ---------- load animation ---------- */
+  .fade{ opacity:0; transform:translateY(8px); animation:rise .7s ease forwards; }
+  @keyframes rise{ to{ opacity:1; transform:none; } }
+  @media (prefers-reduced-motion:reduce){ .fade{ animation:none; opacity:1; transform:none; } }
+
+  :focus-visible{ outline:2px solid var(--plum); outline-offset:2px; border-radius:4px; }
+
+  @media (max-width:720px){
+    .nav{ display:none; }
+    .planner-grid{ grid-template-columns:1fr; }
+    .stat-cards{ grid-template-columns:1fr; }
+    .topbar{ padding:14px 18px; }
+  }
+</style>
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="wordmark"><span class="dot"></span>First Look</div>
+    <nav class="nav" id="coupleNav">
+      <a href="#" class="active">Overview</a>
+      <a href="#">Checklist</a>
+      <a href="#">Vendors</a>
+      <a href="#">Budget</a>
+      <a href="#">Guests</a>
+    </nav>
+    <div class="segmented" role="tablist" aria-label="Switch surface">
+      <button id="btnCouple" class="on" onclick="show('couple')">Couple</button>
+      <button id="btnPlanner" onclick="show('planner')">Planner</button>
+      <button id="btnEmotional" onclick="show('emotional')">Emotional</button>
+    </div>
+  </header>
+
+  <!-- ===================== COUPLE VIEW ===================== -->
+  <main class="view active couple-view" id="view-couple">
+
+    <!-- —— Couple reading surface (760px) —— -->
+    <section class="couple-reading" aria-labelledby="label-reading">
+      <div class="surface-label" id="label-reading">Couple reading surface</div>
+      <p class="surface-meta">
+        Container <b>760px</b>, single column — billing and body-copy-first surfaces.
+        Deliberately the old couple width; forms and prose, not working tabs.
+      </p>
+
+      <!-- SIGNATURE HERO -->
+      <div class="hero fade">
+        <div class="names font-display">Maya &amp; Theo</div>
+        <div class="date tabnum">Saturday, November 14, 2026 · Sedona, Arizona</div>
+        <div class="countdown">
+          <div class="count-num tabnum" id="countNum">144</div>
+          <div class="count-label">days to go</div>
+        </div>
+      </div>
+      <div class="hero-rule"></div>
+
+      <!-- NEXT UP -->
+      <div class="block">
+        <div class="block-head">
+          <span class="eyebrow">Next up</span>
+          <a href="#" class="link">See full checklist</a>
+        </div>
+        <div class="focus-row">
+          <div>
+            <div class="task">Book your photographer</div>
+            <div class="meta">Two have replied — review quotes and decide</div>
+          </div>
+          <span class="pill clay"><span class="dot"></span>Due in 9 days</span>
+        </div>
+        <div class="focus-row">
+          <div>
+            <div class="task">Confirm the catering menu</div>
+            <div class="meta">Tasting booked for next Thursday</div>
+          </div>
+          <span class="pill"><span class="dot"></span>In progress</span>
+        </div>
+        <div class="focus-row">
+          <div>
+            <div class="task">Send save-the-dates</div>
+            <div class="meta">Guest list is final at 86</div>
+          </div>
+          <span class="pill rosewood"><span class="dot"></span>Overdue</span>
+        </div>
+      </div>
+
+      <!-- TIMELINE (reading — single column) -->
+      <div class="block">
+        <div class="block-head"><span class="eyebrow">Your timeline</span></div>
+        <div class="timeline">
+          <div class="phase done">
+            <span class="node"></span>
+            <div class="when">12 months out</div>
+            <div class="tasks">
+              <div class="titem muted"><span>Set the budget</span><span class="pill sage"><span class="dot"></span>Done</span></div>
+              <div class="titem muted"><span>Draft the guest list</span><span class="pill sage"><span class="dot"></span>Done</span></div>
+            </div>
+          </div>
+          <div class="phase done">
+            <span class="node"></span>
+            <div class="when">9 months out</div>
+            <div class="tasks">
+              <div class="titem muted"><span>Book the venue</span><span class="pill sage"><span class="dot"></span>Done</span></div>
+            </div>
+          </div>
+          <div class="phase current">
+            <span class="node"></span>
+            <div class="when">6 months out · you're here</div>
+            <div class="tasks">
+              <div class="titem"><span>Book the photographer</span><span class="pill clay"><span class="dot"></span>Due soon</span></div>
+              <div class="titem"><span>Choose attire</span><span class="pill"><span class="dot"></span>Not started</span></div>
+            </div>
+          </div>
+          <div class="phase">
+            <span class="node"></span>
+            <div class="when">3 months out</div>
+            <div class="tasks">
+              <div class="titem muted"><span>Send invitations</span></div>
+              <div class="titem muted"><span>Order the cake</span></div>
+            </div>
+          </div>
+          <div class="phase">
+            <span class="node"></span>
+            <div class="when">Week of</div>
+            <div class="tasks">
+              <div class="titem muted"><span>Confirm the timeline with every vendor</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- VENDORS -->
+      <div class="block">
+        <div class="block-head">
+          <span class="eyebrow">Vendors</span>
+          <a href="#" class="link">Manage outreach</a>
+        </div>
+        <div class="stepper">
+          <div class="step lit"><span class="s-dot"></span><span class="s-label">To contact</span><span class="s-line"></span></div>
+          <div class="step lit"><span class="s-dot"></span><span class="s-label">Contacted</span><span class="s-line"></span></div>
+          <div class="step lit"><span class="s-dot"></span><span class="s-label">Replied</span><span class="s-line"></span></div>
+          <div class="step"><span class="s-dot"></span><span class="s-label">Booked</span></div>
+        </div>
+        <div class="vrow">
+          <div><div class="vname">Honeylight Studio</div><div class="vcat">Photography</div></div>
+          <span class="pill clay"><span class="dot"></span>Replied</span>
+        </div>
+        <div class="vrow">
+          <div><div class="vname">Wildfield Floral</div><div class="vcat">Florals</div></div>
+          <span class="pill"><span class="dot"></span>Contacted</span>
+        </div>
+        <div class="vrow">
+          <div><div class="vname">The Long Table</div><div class="vcat">Catering</div></div>
+          <span class="pill sage"><span class="dot"></span>Booked</span>
+        </div>
+        <div class="vrow">
+          <div><div class="vname">Red Rock Estate</div><div class="vcat">Venue</div></div>
+          <span class="pill sage"><span class="dot"></span>Booked</span>
+        </div>
+        <div class="vrow">
+          <div><div class="vname">North Star Band</div><div class="vcat">Music</div></div>
+          <span class="pill"><span class="dot"></span>To contact</span>
+        </div>
+      </div>
+
+      <!-- BUDGET -->
+      <div class="block">
+        <div class="block-head">
+          <span class="eyebrow">Budget</span>
+          <a href="#" class="link">See breakdown</a>
+        </div>
+        <div class="card" style="padding:24px;">
+          <div class="budget-top">
+            <div class="spent tabnum">$23,400 <span class="total">committed of $40,000</span></div>
+            <div class="total tabnum">$16,600 left</div>
+          </div>
+          <div class="bar"><span style="width:58.5%"></span></div>
+          <div class="blines">
+            <div class="bline"><span>Venue — Red Rock Estate</span><span class="amt tabnum">$12,000</span></div>
+            <div class="bline"><span>Catering — The Long Table</span><span class="amt tabnum">$8,400</span></div>
+            <div class="bline"><span>Photography — pending quote</span><span class="amt tabnum">~$3,000</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="surface-divider" role="separator"></div>
+
+    <!-- —— Couple working surface (1152px) —— -->
+    <section class="couple-working" aria-labelledby="label-working">
+      <div class="surface-label" id="label-working">Couple working surface</div>
+      <p class="surface-meta">
+        Container <b>max-w-6xl (1152px)</b>, gutters <b>px-6</b> / <b>md:px-8</b> —
+        the 9 project workspace tabs. Two-column body below is the CHK-01 / TL-01 / BUD-01
+        split: <code>1.55fr / 1fr</code> with a sticky context rail from <code>lg</code> up.
+      </p>
+
+      <div class="work-grid">
+        <div class="work-main">
+          <div class="block-head" style="margin-top:0;">
+            <span class="eyebrow">Tasks</span>
+          </div>
+          <div class="card" style="padding:8px 20px;">
+            <div class="work-phase">
+              <div class="wp-head">6 months out <span class="wp-count">· 2</span></div>
+              <div class="wp-row">
+                <span>Book the photographer</span>
+                <span class="pill clay"><span class="dot"></span>Due soon</span>
+              </div>
+              <div class="wp-row">
+                <span>Choose attire</span>
+                <span class="pill"><span class="dot"></span>Not started</span>
+              </div>
+            </div>
+            <div class="work-phase">
+              <div class="wp-head">3 months out <span class="wp-count">· 2</span></div>
+              <div class="wp-row">
+                <span>Send invitations</span>
+                <span class="pill"><span class="dot"></span>Not started</span>
+              </div>
+              <div class="wp-row">
+                <span>Order the cake</span>
+                <span class="pill"><span class="dot"></span>Not started</span>
+              </div>
+            </div>
+            <div class="work-phase">
+              <div class="wp-head">Week of <span class="wp-count">· 1</span></div>
+              <div class="wp-row">
+                <span>Confirm timeline with every vendor</span>
+                <span class="pill"><span class="dot"></span>Not started</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <aside class="work-rail">
+          <div class="rail-card">
+            <span class="eyebrow">At a glance</span>
+            <dl>
+              <div class="r-row"><dt>Done</dt><dd class="tabnum">4</dd></div>
+              <div class="r-row"><dt>Open</dt><dd class="tabnum">5</dd></div>
+              <div class="r-row"><dt>Due this week</dt><dd class="tabnum">1</dd></div>
+            </dl>
+          </div>
+          <div class="rail-card">
+            <span class="eyebrow">Up next</span>
+            <div style="margin-top:12px; font-size:14px; color:var(--ink);">
+              Book the photographer
+            </div>
+            <div style="margin-top:4px; font-size:13px; color:var(--ink-muted);">
+              Due in 9 days
+            </div>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ===================== PLANNER VIEW ===================== -->
+  <main class="view planner" id="view-planner">
+
+    <div class="density-note">Same tokens, tighter density — <b>more data per screen</b>, the wedding hero shrinks to a slim header.</div>
+
+    <!-- slim hero -->
+    <div class="slim-hero">
+      <div class="sh-left">
+        <span class="sh-names">Maya &amp; Theo</span>
+        <span class="sh-date tabnum">Nov 14, 2026 · Sedona</span>
+      </div>
+      <div class="sh-count tabnum"><b>144 days</b> to go</div>
+    </div>
+
+    <!-- quick stats -->
+    <div class="stat-cards">
+      <div class="card stat"><div class="s-num tabnum">7</div><div class="s-lab">Tasks due this week</div></div>
+      <div class="card stat"><div class="s-num tabnum">3 / 8</div><div class="s-lab">Vendors booked</div></div>
+      <div class="card stat"><div class="s-num tabnum">58%</div><div class="s-lab">Budget committed</div></div>
+    </div>
+
+    <div class="planner-grid">
+
+      <!-- couples rail -->
+      <aside class="card rail">
+        <div class="rail-head"><span class="eyebrow">Active weddings</span></div>
+        <a class="proj active" href="#">
+          <div><div class="p-name">Maya &amp; Theo</div><div class="p-date tabnum">Nov 14, 2026</div></div>
+          <span class="p-count tabnum">144d</span>
+        </a>
+        <a class="proj" href="#">
+          <div><div class="p-name">Priya &amp; Sam</div><div class="p-date tabnum">Feb 28, 2027</div></div>
+          <span class="p-count tabnum">250d</span>
+        </a>
+        <a class="proj" href="#">
+          <div><div class="p-name">Elena &amp; Marcus</div><div class="p-date tabnum">Oct 03, 2026</div></div>
+          <span class="p-count tabnum">102d</span>
+        </a>
+        <a class="proj" href="#">
+          <div><div class="p-name">Aisha &amp; Jordan</div><div class="p-date tabnum">May 22, 2027</div></div>
+          <span class="p-count tabnum">333d</span>
+        </a>
+      </aside>
+
+      <!-- outreach table -->
+      <section class="card" style="padding:18px 20px;">
+        <div class="panel-head">
+          <h2>Vendor outreach</h2>
+          <button class="btn primary">Draft outreach</button>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Vendor</th>
+              <th>Stage</th>
+              <th>Last contact</th>
+              <th class="num">Quote</th>
+              <th>Next step</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><div class="v-name">Honeylight Studio</div><div class="v-sub">Photography</div></td>
+              <td><span class="pill clay"><span class="dot"></span>Replied</span></td>
+              <td class="tabnum">2 days ago</td>
+              <td class="num tabnum">$3,200</td>
+              <td>Review quote</td>
+            </tr>
+            <tr>
+              <td><div class="v-name">Wildfield Floral</div><div class="v-sub">Florals</div></td>
+              <td><span class="pill"><span class="dot"></span>Contacted</span></td>
+              <td class="tabnum">5 days ago</td>
+              <td class="num tabnum">—</td>
+              <td>Follow up</td>
+            </tr>
+            <tr>
+              <td><div class="v-name">The Long Table</div><div class="v-sub">Catering</div></td>
+              <td><span class="pill sage"><span class="dot"></span>Booked</span></td>
+              <td class="tabnum">Mar 2</td>
+              <td class="num tabnum">$8,400</td>
+              <td>Confirm menu</td>
+            </tr>
+            <tr>
+              <td><div class="v-name">Red Rock Estate</div><div class="v-sub">Venue</div></td>
+              <td><span class="pill sage"><span class="dot"></span>Booked</span></td>
+              <td class="tabnum">Jan 18</td>
+              <td class="num tabnum">$12,000</td>
+              <td>—</td>
+            </tr>
+            <tr>
+              <td><div class="v-name">North Star Band</div><div class="v-sub">Music</div></td>
+              <td><span class="pill"><span class="dot"></span>To contact</span></td>
+              <td class="tabnum">—</td>
+              <td class="num tabnum">—</td>
+              <td>Send intro</td>
+            </tr>
+            <tr>
+              <td><div class="v-name">Paper &amp; Press</div><div class="v-sub">Stationery</div></td>
+              <td><span class="pill rosewood"><span class="dot"></span>Declined</span></td>
+              <td class="tabnum">Feb 9</td>
+              <td class="num tabnum">—</td>
+              <td>Find alternate</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+    </div>
+  </main>
+
+  <!-- ===================== EMOTIONAL PRIMITIVES ===================== -->
+  <main class="view emotional" id="view-emotional">
+
+    <p class="density-note" style="text-align:center;margin-bottom:40px;">
+      Tier 2 canonical primitives — reference these in later slices; do not re-derive.
+    </p>
+
+    <section class="emotional__block">
+      <div class="emotional__label">EyebrowEmotional</div>
+      <div style="text-align:center;">
+        <span class="eyebrow-emotional">
+          <span class="eyebrow-emotional__diamond" aria-hidden="true"></span>
+          Planning, without the noise
+        </span>
+      </div>
+    </section>
+
+    <section class="emotional__block">
+      <div class="emotional__label">DisplayHeading (one italic-plum accent)</div>
+      <div style="text-align:center;">
+        <h1 class="display-heading">
+          Everything for your wedding, in one <em>calm</em> place.
+        </h1>
+        <p class="emotional__hero-copy">
+          Cormorant display scale; exactly one <code>&lt;em&gt;</code> in plum italic per headline.
+        </p>
+      </div>
+    </section>
+
+    <section class="emotional__block">
+      <div class="emotional__label">CardEmotional (whisper-emotional shadow)</div>
+      <div class="card-emotional" style="padding:28px 32px; max-width:480px; margin:0 auto; text-align:center;">
+        <p style="font-size:15px; color:var(--ink);">Surface card with stone border, 16px radius,</p>
+        <p style="font-size:13px; color:var(--ink-muted); margin-top:6px;">
+          <code>box-shadow: var(--card-shadow-emotional)</code>
+        </p>
+      </div>
+    </section>
+
+    <section class="emotional__block" style="margin-top:64px;">
+      <div class="emotional__label">Composed hero (all three)</div>
+      <div style="text-align:center; padding:24px 0 8px;">
+        <span class="eyebrow-emotional" style="margin-bottom:16px;">
+          <span class="eyebrow-emotional__diamond" aria-hidden="true"></span>
+          Welcome
+        </span>
+        <h2 class="display-heading" style="font-size:clamp(40px,6vw,54px); margin-top:12px;">
+          Maya <em>&amp;</em> Theo
+        </h2>
+        <p class="emotional__hero-copy" style="margin-top:16px;">
+          Tell us a little about your day — we&apos;ll shape your plan around it.
+        </p>
+        <div class="card-emotional" style="padding:32px 28px; max-width:520px; margin:32px auto 0; text-align:left;">
+          <p style="font-size:14px; color:var(--ink-muted);">Onboarding form card sits on whisper-emotional shadow.</p>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+<script>
+  // live countdown to the wedding date
+  (function(){
+    var target = new Date('2026-11-14T00:00:00');
+    var days = Math.max(0, Math.ceil((target - new Date()) / 86400000));
+    var n = document.getElementById('countNum');
+    if(n) n.textContent = days;
+  })();
+
+  function show(which){
+    document.getElementById('view-couple').classList.toggle('active', which==='couple');
+    document.getElementById('view-planner').classList.toggle('active', which==='planner');
+    document.getElementById('view-emotional').classList.toggle('active', which==='emotional');
+    document.getElementById('btnCouple').classList.toggle('on', which==='couple');
+    document.getElementById('btnPlanner').classList.toggle('on', which==='planner');
+    document.getElementById('btnEmotional').classList.toggle('on', which==='emotional');
+    document.getElementById('coupleNav').style.visibility = which==='couple' ? 'visible' : 'hidden';
+    window.scrollTo({top:0});
+  }
+</script>
+</body>
+</html>

@@ -1,12 +1,301 @@
 ---
-description: Visual design system — canonical rule lives at ../.cursor/rules/design.mdc (always-on).
-alwaysApply: false
+description: Visual design system (Soft stack C1) — tokens, three-tier surface taxonomy, type scale, and rules for the wedding app.
+alwaysApply: true
 ---
-# Design system
+# Wedding planning app — design system (Soft stack C1)
 
-The always-on source of truth is **`../.cursor/rules/design.mdc`** (workspace root).
+## Canonical sources (in order)
 
-That file defines the v3 token set, three-tier surface taxonomy (app chrome / emotional
-surfaces / website templates), type scale, component inventory, and emotional-surface
-primitives. Match `design/theme-direction.html` for app chrome and `design/reference.html`
-for component + primitive detail.
+1. **`app/globals.css`** — canonical for **token VALUES**. If a hex disagrees with any document,
+   `globals.css` wins.
+2. **`.cursor/rules/design.mdc`** (this file) — canonical for **RULES**. If a rule disagrees with
+   any document, this file wins.
+3. **`design/reference.html`** — a **rendered example** of these rules. Non-normative. It is
+   regenerated to match; it never defines.
+4. **`design/theme-direction.html`** — **superseded; scheduled for deletion in STYLE-01.**
+5. The Project Bible §10 — a **pointer** to this file. It must not restate token values or rules.
+   Any §10 content that contradicts this file is stale by definition.
+
+---
+
+## Direction: "Soft stack" (C1)
+
+A calm, fast tool organized by **depth**. The canvas is a tinted mauve wash; raised white cards
+lift off it; recessed wells hold rows and tracks. Hierarchy is encoded by raised-contains-recessed
+— never by decoration, never by stacking raised inside raised. Type is all-sans Figtree on Tier 1
+and Tier 2; romance lives in the data and in Tier 3 website templates, not in chrome serifs.
+
+Tokens below are the **target** Soft stack set. Live values in `app/globals.css` still reflect
+Modern romantic v3 until STYLE-01 applies them. Until then, `globals.css` remains canonical for
+what the app actually renders; this file is canonical for what rules require.
+
+---
+
+## Surface taxonomy (three tiers)
+
+Every UI decision belongs to exactly one tier. Tier rules **permit** what lower tiers forbid;
+global hard don'ts (below) still apply everywhere unless a tier explicitly carves out.
+
+### Tier 1 — App chrome (Soft stack)
+
+**Where:** everything under `app/(app)/` and `components/` **except** `components/website/`, plus
+all other in-app working surfaces (dashboards, project tabs, forms, tables, seating builder,
+assistant panel, settings). If a surface is not explicitly Tier 2 or Tier 3, it is Tier 1.
+
+**Palette** (full replacement of the Modern romantic chrome set; does **not** touch `--ws-*`):
+
+| Token | Value | Job |
+|---|---|---|
+| `--canvas` | `#F3EEF0` | page background (tinted, never white) |
+| `--surface` | `#FFFFFF` | raised card |
+| `--well` | `#F7F3F5` | recessed row / track / inner well |
+| `--ink` | `#241C20` | primary text |
+| `--muted` | `#857A80` | secondary text, labels, meta |
+| `--hairline` | `#EFE7EB` | in-card dividers only |
+| `--ring` | `#DCD0D6` | control outlines (inputs, checkboxes, seating stroke) |
+| `--accent` | `#C0396B` | selection, active chip, committed bar, links |
+| `--accent-wash` | `#FBEEF3` | accent tint background |
+| `--sage` | `#2F6B54` | done / booked / signed / accepted / rsvp-yes |
+| `--clay` | `#B0762E` | in progress / sent / contacted / proposal |
+| `--clay-wash` | `#FBF1E2` | clay pill background |
+| `--rosewood` | `#C4453F` | overdue / over-plan / lost / declined / rsvp-no |
+| `--rosewood-wash` | `#FDECEB` | rosewood pill background |
+
+**Renames / retirements (deliberate):**
+- `--plum` → **`--accent`** (value is berry; old name would lie).
+- `--stone` and `--stone-soft` are **retired** and split into `--hairline` / `--ring` / `--well`.
+  One name may not carry four jobs (hairline, outline, track/well, soft wash).
+- `--porcelain`, `--ink-soft`, `--ink-muted`, `--plum-deep`, `--plum-tint`, `--rose`,
+  `--surface-2` are retired from the chrome vocabulary; use `--canvas`, `--muted`,
+  `--accent` / `--accent-wash`, `--surface` / `--well` as appropriate.
+- Status-colour **meaning** is unchanged: sage = settled, clay = in flight, rosewood = wrong,
+  `--well` / `--muted` = neutral. Kind is never encoded in a status colour.
+
+**Depth scale — exactly two levels. There is no third.**
+
+| Level | Token | Value | On |
+|---|---|---|---|
+| Raised | `--shadow-raised` | `0 1px 2px rgba(60,30,45,.05), 0 10px 30px -8px rgba(60,30,45,.11)` | `--surface` (cards, phase groups, rail cards, progress band) |
+| Recessed | `--shadow-recessed` | `inset 0 1px 2px rgba(60,30,45,.06)` | `--well` (task rows, tracks, inner wells) |
+
+Depth encodes hierarchy: a raised thing contains recessed things. Depth is never decorative and
+never stacks — **no raised card inside a raised card.** Replaces `--card-shadow`.
+
+**Radius — three values, no others.** Ad-hoc Tailwind radius utilities are banned on Tier 1.
+
+| Token | Value | Use |
+|---|---|---|
+| `--radius-card` | `22px` | cards / raised surfaces |
+| `--radius-inner` | `14px` | inner wells / recessed rows |
+| `--radius-pill` | `999px` | pills and bars |
+
+Replaces `--radius: 12px` / `--radius-lg: 16px`.
+
+**Type — all sans.** `--font-sans` is Figtree, weights **400 / 500 / 600 / 800**.
+
+| Role | Size | Weight | Tracking |
+|---|---|---|---|
+| h1 | 42px (32px below 900w) | 800 | −.03em |
+| Big number (%, stat figures, counts) | 52px | 800 | −.035em |
+| Card / phase / section title | 19px | 800 | −.02em |
+| Body / row title | 15px | 500 | — |
+| Label | 14px | 500 | — |
+| Meta / tiny | 13px | 400 | — |
+| Eyebrow | 12px | 600 | .09em, uppercase |
+
+Money and count numerals: `font-variant-numeric: tabular-nums`.
+
+**Eyebrow (chrome):** 12px / 600, uppercase, letter-spacing 0.09em, color `--accent`. No diamond.
+
+**Accent floods:** Tier 1 permits **no accent flood at all**. `--accent-wash` is for pills and
+small washes only — never a full-page or full-panel color field.
+
+**Seating canvas** follows this depth scale: tables are raised `--surface` on `--canvas`; outlines
+read `--ring`.
+
+### Tier 2 — Emotional surfaces
+
+**Where (exhaustive — a surface not on this list is Tier 1):** the landing page, the onboarding
+hero / welcome moments, and empty-state heroes (centered first-impression moments — not inline
+list empties inside a tab).
+
+Tier 2 uses **Tier 1's palette and typeface** (Figtree). What it gains:
+
+- Display numerals / headlines may run to **~104px**, weight 800, tracking −.05em.
+- **Exactly one** deep field per surface: `#3D2430`, radius `28px`, shadow
+  `0 18px 44px -14px rgba(61,36,48,.45)`. One per surface, not one per section.
+- `--card-shadow-emotional` remains available for emotional-surface cards only (Tier 2).
+- **No serif.** Tier 2 does not get Cormorant.
+
+**Still banned on emotional surfaces:** florals, photographic assets, metal/gold gradients,
+heavy glow, stacked depth, more than one deep field per surface.
+
+### Tier 3 — Website templates + print run sheet
+
+**Where:** `components/website/` (public sites at `/w/[slug]`) and
+`RunSheetDocument.tsx` (print run sheet).
+
+**Entirely unchanged by the Soft stack chrome pivot.** Colour continues to come only from
+`--ws-*` tokens, which are **separate from and unaffected by** the Tier 1 tokens above.
+Cormorant Garamond and Great Vibes remain sanctioned **here and nowhere else**.
+`components/website/` continues to import no Supabase/auth/server-only modules.
+
+**Bounded-decorative carve-out (unchanged from 3.7a/3.7b):**
+- Restrained templates (`Classic`, `Editorial`, `Minimalist`, `Garden`) stay on `--ws-*` theme
+  tokens + Cormorant + sans (`--font-sans`).
+- Decorative templates (`Romance`, and similar) may expand vocabulary **within bounds:**
+  - **Great Vibes** (`font-script`) — Romance template only, for a single script accent element.
+  - CSS/SVG ornaments (hairline + diamond/dot divider) — no image assets.
+  - Warmer palette via theme tokens (`blush`, etc.) — low-saturation, never a blush flood.
+  - At most one non-app display face (Great Vibes on Romance). Cormorant italic ampersand is
+    the fallback when script is not used.
+- Still hard-banned even in decorative templates: floral/photographic ornament image assets,
+  gold/metal gradients, drop-shadow bling, blush color floods.
+
+---
+
+## Serif / script location rule
+
+> **Cormorant Garamond and Great Vibes may appear only in `components/website/` and
+> `RunSheetDocument.tsx`. Nowhere else, at any size, for any reason.**
+
+`--font-serif` and `--font-script` remain defined and loaded via `next/font/google` because
+Tier 3 needs both. They must not be consumed outside the locations above.
+
+Fonts (target wiring):
+- Figtree (400/500/600/800) → `--font-sans` (Tier 1 and Tier 2)
+- Cormorant Garamond (500/600) → `--font-serif` (**Tier 3 only**)
+- Great Vibes → `--font-script` (**Tier 3 only**)
+
+Map all Tier 1 tokens into Tailwind (v4 `@theme inline`) in STYLE-01.
+
+---
+
+## RULES KILLED
+
+Each killed rule is quoted **verbatim** from the pre-Soft-stack `design.mdc`, then replaced.
+
+| Killed (verbatim) | Replacement |
+|---|---|
+| "**Flat chrome** — no whisper-emotional shadow on chrome surfaces. Cards may use the standard whisper `card-shadow` only." | The two-level depth scale (`--shadow-raised` / `--shadow-recessed`). Depth is the organizing idea of Tier 1. |
+| "**Two sans weights** — Hanken Grotesk 400 and 500 only." | Figtree, four weights: 400 / 500 / 600 / 800. |
+| "Two sans weights (400/500) only in chrome." | Figtree, four weights: 400 / 500 / 600 / 800. |
+| "**Plum is accent** — never a full-page or full-panel color flood. `plum-tint` washes for inline empty states are OK." | Rescoped: **Tier 1 permits no accent flood at all** (`--accent-wash` for pills/washes only). **Tier 2 permits exactly one** `#3D2430` field per surface. |
+| "No blush or plum color floods (plum-tint washes for small empty states OK)." | Same rescope as above — no Tier 1 accent flood; one Tier 2 deep field. |
+| "**Display (Cormorant Garamond 600)** — Tier 2 emotional surfaces + Tier 1 data moments" | **Deleted.** Tier 1 and Tier 2 are all-sans. |
+| "**UI (Hanken Grotesk, 400/500)** — Tier 1 chrome" | **UI (Figtree, 400/500/600/800) — Tier 1 and Tier 2.** |
+| "Serif for page titles, stat figures, budget figures, couple-identifying text, hero moments, and Tier 2 emotional headlines. Sans for nav, forms, tables, and all other chrome." | **Deleted.** Replaced by the serif/script location rule above. |
+| "Fonts: Cormorant Garamond (500,600) + Hanken Grotesk (400,500) via next/font/google, exposed as --font-serif / --font-sans." | Figtree (400/500/600/800) → `--font-sans`; Cormorant Garamond (500/600) → `--font-serif`, **Tier 3 only**; Great Vibes → `--font-script`, **Tier 3 only**. |
+
+---
+
+## Migrated from Project Bible §10
+
+These decisions lived only in the Bible; they belong here so rules have a single home:
+
+- **No pie charts, no donuts, no circular progress on the budget page.** Category share is
+  decorative; a filled circle is a colour flood.
+- **Budget bars reuse the checklist progress-band vocabulary** — two pages, one product.
+- **Seating: table kind is distinguished by form and text only, never by a status colour.**
+- **Seating: full occupancy = `--sage`; selection = `--accent`.**
+- **Seating canvas follows the Tier 1 depth scale** — tables are raised `--surface` on
+  `--canvas`; outlines read `--ring`.
+- **No florals, no gold/metal gradients, no photographic image assets on Tier 1 or Tier 2.**
+
+---
+
+## Layout & density
+
+Both couple surface classes sit inside **Tier 1 — App chrome** and share its vocabulary;
+the distinction below is density and container width only — not typography or decorative
+permission.
+
+- **Couple working surface** — the 9 project workspace tabs (Overview, Checklist,
+  Day-of timeline, Budget, Vendors, Guests, Seating, Website, Notes & files).
+  Container `max-w-6xl` (1152px), centered, gutters `px-6` base / `md:px-8`.
+  May be single-column or two-column (main + sticky context rail). The sanctioned
+  two-column split is `lg:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)]` with a
+  `lg:sticky lg:top-6 lg:self-start` rail — the vocabulary shipped by CHK-01,
+  TL-01, and BUD-01; treat it as canonical rather than inventing a new one.
+- **Couple reading surface** — billing, and any body-copy-first surface. Container
+  stays `max-width 760px`, single column, gutters as today (`px-6` / generous
+  vertical rhythm). Forms and prose; width is not a virtue here.
+- Planner: max-width 1180px, compact rows, 260px rail + table grid.
+- Emotional heroes: centered, max-width 760px, generous vertical rhythm.
+- Separators use `--hairline`; hierarchy uses the two-level depth scale, not heavy gray fills.
+- `:focus-visible` = 2px `--accent` outline. Honor `prefers-reduced-motion`.
+
+---
+
+## Hard don'ts (global drift watchlist)
+
+These apply on **every tier** unless a tier carve-out explicitly permits otherwise.
+
+- No floral graphics.
+- No photographic ornament assets.
+- No gold/metal gradients.
+- No Tier 1 accent floods (see Tier 1 / Tier 2 flood rules above).
+- No heavy glow or decorative (non-hierarchical) shadows.
+- No raised-inside-raised stacking on Tier 1.
+- No ad-hoc radius utilities on Tier 1 — use `--radius-card` / `--radius-inner` / `--radius-pill`.
+
+**App chrome + Tier 2 — additionally:**
+- No Cormorant or Great Vibes (location rule).
+- No script fonts.
+
+**Tier 3 website — additionally:**
+- Great Vibes stays Romance-template-only.
+- Decorative expansion = script accent + CSS ornament + warmer `--ws-*` theme tokens only.
+- Do not import or reuse Tier 1 Soft stack tokens as website colour; websites read `--ws-*` only.
+
+---
+
+## Tokens (target Soft stack — apply in STYLE-01)
+
+```css
+:root {
+  --canvas: #F3EEF0;
+  --surface: #FFFFFF;
+  --well: #F7F3F5;
+  --ink: #241C20;
+  --muted: #857A80;
+  --hairline: #EFE7EB;
+  --ring: #DCD0D6;
+  --accent: #C0396B;
+  --accent-wash: #FBEEF3;
+  --sage: #2F6B54;
+  --clay: #B0762E;
+  --clay-wash: #FBF1E2;
+  --rosewood: #C4453F;
+  --rosewood-wash: #FDECEB;
+  --radius-card: 22px;
+  --radius-inner: 14px;
+  --radius-pill: 999px;
+  --shadow-raised: 0 1px 2px rgba(60, 30, 45, 0.05),
+    0 10px 30px -8px rgba(60, 30, 45, 0.11);
+  --shadow-recessed: inset 0 1px 2px rgba(60, 30, 45, 0.06);
+  /* Tier 2 emotional cards only */
+  --card-shadow-emotional: 0 2px 4px rgba(70, 45, 52, 0.05),
+    0 16px 40px rgba(70, 45, 52, 0.07);
+}
+```
+
+**Live chrome values still in `app/globals.css` until STYLE-01** (for audit continuity; not the
+target): `--canvas #FAF5EE`, `--ink #221A1D`, `--plum #7E3E57`, `--stone #E8DCCE`,
+`--stone-soft #F1E8DD`, plus `--porcelain`, `--surface-2`, `--ink-soft`, `--ink-muted`,
+`--plum-deep`, `--plum-tint`, `--rose`, `--radius` / `--radius-lg`, `--card-shadow`.
+
+---
+
+## Known remediation (STYLE-01)
+
+- `components/ui/input.tsx` — `placeholder:text-[#B6ABAD]` → token.
+- `components/vendors/GoogleMapsAttribution.tsx` — `text-[#5E5E5E]` → token. (Check Google's
+  attribution requirements before changing; the colour may be mandated.)
+- `bg-stone/40` and `bg-stone-soft` track patterns → `--well` + `--shadow-recessed`.
+- ≥9 live radii → the three radius tokens.
+- Apply the Soft stack `:root` above; retire `--plum` / `--stone` / `--stone-soft` from chrome.
+- Swap `--font-sans` to Figtree (400/500/600/800); strip Cormorant from all Tier 1 / Tier 2
+  surfaces (~25+ files).
+- `design/theme-direction.html` → delete.
+- `design/reference.html` → regenerate against this file.

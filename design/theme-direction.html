@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>First Look — theme direction</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Hanken+Grotesk:wght@400;500;600&display=swap');
+
+:root{
+  /* evolved tokens — same names as your design.mdc, richer values */
+  --canvas:#FAF5EE; --surface:#FFFFFF; --surface-2:#FFFDFA;
+  --ink:#221A1D; --ink-soft:#4A3F42; --ink-muted:#8C8083;
+  --plum:#7E3E57; --plum-deep:#531F37; --plum-tint:#F6E9EE;
+  --rose:#C98BA0;
+  --stone:#E8DCCE; --stone-soft:#F1E8DD;
+  --sage:#5E7A6B; --clay:#B5894E; --rosewood:#9B5C5C;
+  --radius:12px; --radius-lg:16px;
+  --serif:'Cormorant Garamond',Georgia,serif;
+  --sans:'Hanken Grotesk',-apple-system,BlinkMacSystemFont,sans-serif;
+  --card-shadow:0 1px 2px rgba(70,45,52,.04), 0 8px 22px rgba(70,45,52,.05);
+}
+
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--canvas);font-family:var(--sans);color:var(--ink);-webkit-font-smoothing:antialiased;line-height:1.5;padding:40px 20px 80px}
+.page{max-width:1240px;margin:0 auto}
+
+/* ---- direction header / swatches ---- */
+.dir{margin:0 auto 40px;max-width:1180px}
+.dir__eyebrow{font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--plum);font-weight:500;margin-bottom:10px}
+.dir__title{font-family:var(--serif);font-weight:600;font-size:46px;line-height:1.05;letter-spacing:-.01em;margin-bottom:10px}
+.dir__sub{font-size:16px;color:var(--ink-muted);max-width:620px}
+.swatches{display:flex;flex-wrap:wrap;gap:14px;margin-top:26px}
+.sw{display:flex;align-items:center;gap:9px;font-size:12.5px;color:var(--ink-soft)}
+.sw__dot{width:24px;height:24px;border-radius:7px;border:1px solid rgba(0,0,0,.06)}
+.sw code{font-size:11px;color:var(--ink-muted);font-family:ui-monospace,monospace}
+
+/* ---- browser frame ---- */
+.frame{max-width:1180px;margin:0 auto 46px;background:var(--surface);border:1px solid var(--stone);border-radius:18px;overflow:hidden;box-shadow:var(--card-shadow)}
+.frame__bar{display:flex;align-items:center;gap:8px;padding:13px 18px;border-bottom:1px solid var(--stone-soft);background:var(--surface-2)}
+.frame__dots{display:flex;gap:6px}
+.frame__dots span{width:11px;height:11px;border-radius:50%;background:var(--stone)}
+.frame__url{margin-left:14px;font-size:12.5px;color:var(--ink-muted);font-family:ui-monospace,monospace}
+.frame__label{margin-left:auto;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--plum);font-weight:500}
+.app{background:var(--canvas);min-height:560px}
+
+/* ---- topbar ---- */
+.topbar{display:flex;align-items:center;padding:18px 30px;border-bottom:1px solid var(--stone);background:var(--canvas)}
+.wordmark{display:flex;align-items:center;gap:10px;font-family:var(--serif);font-weight:600;font-size:25px;letter-spacing:.01em}
+.wordmark__dot{width:9px;height:9px;border-radius:50%;background:var(--plum)}
+
+/* ---- shells ---- */
+.shell{display:flex;gap:34px;padding:34px 30px 56px;align-items:flex-start}
+.sidebar{width:264px;flex-shrink:0}
+.main{flex:1;min-width:0}
+
+/* ---- sidebar ---- */
+.snav{display:flex;flex-direction:column;gap:2px;margin-bottom:26px}
+.snav a{display:block;padding:10px 14px;border-radius:var(--radius);font-size:15px;color:var(--ink-soft);text-decoration:none;transition:background .15s}
+.snav a:hover{background:var(--stone-soft)}
+.snav a.is-active{background:var(--plum-tint);color:var(--plum-deep);font-weight:500;box-shadow:inset 2px 0 0 var(--plum)}
+.srule{height:1px;background:var(--stone);margin:0 4px 18px}
+.eyebrow{font-size:11.5px;letter-spacing:.15em;text-transform:uppercase;color:var(--plum);font-weight:500;margin-bottom:14px}
+.wedcard{border:1px solid var(--stone);border-radius:var(--radius);padding:14px 16px;background:var(--surface);display:flex;justify-content:space-between;align-items:flex-start;box-shadow:var(--card-shadow)}
+.wedcard.is-active{background:var(--plum-tint);border-color:transparent}
+.wedcard__name{font-family:var(--serif);font-weight:600;font-size:21px;line-height:1.1}
+.wedcard__date{font-size:13px;color:var(--ink-muted);margin-top:3px}
+.wedcard__x{color:var(--ink-muted);font-size:16px}
+
+/* ---- main header ---- */
+.head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:30px;gap:20px}
+.head__title{font-family:var(--serif);font-weight:600;font-size:46px;line-height:1.02;letter-spacing:-.01em;margin:6px 0 8px}
+.head__sub{font-size:16px;color:var(--ink-muted)}
+.btn{font-family:var(--sans);font-size:15px;font-weight:500;padding:11px 22px;border-radius:var(--radius);border:none;cursor:pointer;white-space:nowrap}
+.btn--primary{background:var(--plum);color:#fff}
+.btn--primary:hover{background:var(--plum-deep)}
+.btn--ghost{background:var(--surface);color:var(--ink);border:1px solid var(--stone)}
+
+/* ---- stat cards ---- */
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-bottom:42px}
+.stat{background:var(--surface);border:1px solid var(--stone);border-radius:var(--radius-lg);padding:24px 26px;box-shadow:var(--card-shadow)}
+.stat__num{font-family:var(--serif);font-weight:600;font-size:54px;line-height:1;color:var(--plum);letter-spacing:-.01em}
+.stat__label{font-size:14px;color:var(--ink-muted);margin-top:12px}
+
+/* ---- sections ---- */
+.section{margin-bottom:34px}
+.section__head{display:flex;align-items:center;gap:14px;margin-bottom:16px}
+.section__head .eyebrow{margin:0}
+.section__head .line{flex:1;height:1px;background:var(--stone)}
+.panel{background:var(--surface);border:1px solid var(--stone);border-radius:var(--radius-lg);box-shadow:var(--card-shadow)}
+.empty{padding:46px 30px;text-align:center;background:var(--plum-tint);border-radius:var(--radius-lg);border:1px solid transparent}
+.empty p{font-family:var(--serif);font-size:21px;color:var(--plum-deep)}
+.row{display:flex;justify-content:space-between;align-items:center;padding:22px 26px}
+.row__name{font-family:var(--serif);font-weight:600;font-size:23px;line-height:1.05}
+.row__date{font-size:13.5px;color:var(--ink-muted);margin-top:2px}
+.pill{font-size:12.5px;font-weight:500;padding:5px 13px;border-radius:999px;display:inline-flex;align-items:center;gap:7px}
+.pill__dot{width:7px;height:7px;border-radius:50%}
+.pill--sage{background:rgba(94,122,107,.12);color:var(--sage)}
+.pill--sage .pill__dot{background:var(--sage)}
+
+/* ---- tabs ---- */
+.tabs{display:flex;gap:6px;flex-wrap:wrap;border-bottom:1px solid var(--stone);margin-bottom:32px;padding-bottom:0}
+.tabs a{font-size:15px;color:var(--ink-soft);text-decoration:none;padding:10px 14px 16px;position:relative}
+.tabs a:hover{color:var(--ink)}
+.tabs a.is-active{color:var(--plum-deep);font-weight:500}
+.tabs a.is-active::after{content:"";position:absolute;left:14px;right:14px;bottom:-1px;height:2px;background:var(--plum);border-radius:2px}
+
+/* ---- budget ---- */
+.budhead{font-family:var(--serif);font-weight:600;font-size:46px;letter-spacing:-.01em;margin-bottom:26px}
+.budtop{background:var(--surface);border:1px solid var(--stone);border-radius:var(--radius-lg);padding:30px 34px;box-shadow:var(--card-shadow);margin-bottom:34px}
+.budfigs{display:grid;grid-template-columns:repeat(3,1fr);gap:24px}
+.budfig .eyebrow{margin-bottom:10px}
+.budfig__val{font-family:var(--serif);font-weight:600;font-size:42px;line-height:1;letter-spacing:-.01em}
+.budfig__val.is-accent{color:var(--plum)}
+.budfig__val.is-muted{color:var(--ink-muted)}
+.bar{margin-top:26px;height:8px;border-radius:999px;background:var(--stone-soft);overflow:hidden}
+.bar__fill{height:100%;width:0%;background:var(--plum);border-radius:999px}
+.subhead{font-size:15px;font-weight:500;margin-bottom:6px}
+.muted{font-size:14.5px;color:var(--ink-muted);line-height:1.6}
+.block{margin-bottom:30px}
+.formcard{background:var(--surface);border:1px solid var(--stone);border-radius:var(--radius-lg);padding:26px 30px;box-shadow:var(--card-shadow);margin-top:18px}
+.formgrid{display:grid;grid-template-columns:1.4fr 1.4fr 1fr 1fr;gap:18px;margin-bottom:20px}
+.field label{display:block;font-size:13px;font-weight:500;color:var(--ink-soft);margin-bottom:8px}
+.field input{width:100%;font-family:var(--sans);font-size:15px;padding:11px 14px;border:1px solid var(--stone);border-radius:var(--radius);background:var(--surface-2);color:var(--ink)}
+.field input::placeholder{color:#B6ABAD}
+.field input:focus{outline:2px solid var(--plum);outline-offset:1px;border-color:transparent}
+.faint{font-weight:400;color:var(--ink-muted)}
+
+.note{max-width:1180px;margin:0 auto;font-size:13px;color:var(--ink-muted);text-align:center;padding-top:8px}
+
+@media (prefers-reduced-motion:no-preference){
+  .frame{animation:rise .6s cubic-bezier(.2,.7,.2,1) both}
+  .frame:nth-of-type(2){animation-delay:.08s}
+}
+@keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+
+@media(max-width:820px){
+  .shell{flex-direction:column}.sidebar{width:100%}
+  .stats,.budfigs{grid-template-columns:1fr}
+  .formgrid{grid-template-columns:1fr 1fr}
+  .head{flex-direction:column}
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header class="dir">
+    <div class="dir__eyebrow">Theme direction</div>
+    <h1 class="dir__title">Warmer, bolder modern romantic</h1>
+    <p class="dir__sub">Same layouts, same structure — re-skinned. The canvas warms, the plum stops apologizing and becomes a real wine accent, and the type scale opens up so couple names and key figures carry the romance.</p>
+    <div class="swatches">
+      <div class="sw"><span class="sw__dot" style="background:#FAF5EE"></span>Canvas <code>#FAF5EE</code></div>
+      <div class="sw"><span class="sw__dot" style="background:#7E3E57"></span>Plum <code>#7E3E57</code></div>
+      <div class="sw"><span class="sw__dot" style="background:#531F37"></span>Plum deep <code>#531F37</code></div>
+      <div class="sw"><span class="sw__dot" style="background:#F6E9EE"></span>Plum tint <code>#F6E9EE</code></div>
+      <div class="sw"><span class="sw__dot" style="background:#C98BA0"></span>Rose <code>#C98BA0</code></div>
+      <div class="sw"><span class="sw__dot" style="background:#E8DCCE"></span>Stone <code>#E8DCCE</code></div>
+      <div class="sw"><span class="sw__dot" style="background:#5E7A6B"></span>Sage <code>#5E7A6B</code></div>
+    </div>
+  </header>
+
+  <!-- ============ SCREEN 1 — DASHBOARD ============ -->
+  <div class="frame">
+    <div class="frame__bar">
+      <div class="frame__dots"><span></span><span></span><span></span></div>
+      <div class="frame__url">localhost:3000/dashboard</div>
+      <div class="frame__label">Planner · dashboard</div>
+    </div>
+    <div class="app">
+      <div class="topbar">
+        <div class="wordmark"><span class="wordmark__dot"></span>First Look</div>
+      </div>
+      <div class="shell">
+        <aside class="sidebar">
+          <nav class="snav">
+            <a href="#" class="is-active">Dashboard</a>
+            <a href="#">Leads</a>
+            <a href="#">Billing</a>
+          </nav>
+          <div class="srule"></div>
+          <div class="eyebrow">Active weddings</div>
+          <div class="wedcard">
+            <div>
+              <div class="wedcard__name">Mila &amp; Griffin</div>
+              <div class="wedcard__date">No date set</div>
+            </div>
+            <div class="wedcard__x">—</div>
+          </div>
+        </aside>
+
+        <main class="main">
+          <div class="head">
+            <div>
+              <div class="eyebrow">Planning</div>
+              <h1 class="head__title">Dashboard</h1>
+              <p class="head__sub">Your weddings at a glance.</p>
+            </div>
+            <button class="btn btn--primary">New wedding</button>
+          </div>
+
+          <div class="stats">
+            <div class="stat"><div class="stat__num">1</div><div class="stat__label">Active weddings</div></div>
+            <div class="stat"><div class="stat__num">0</div><div class="stat__label">Tasks due this week</div></div>
+            <div class="stat"><div class="stat__num">0</div><div class="stat__label">Vendors needing action</div></div>
+          </div>
+
+          <div class="section">
+            <div class="section__head"><div class="eyebrow">Urgent across all weddings</div><div class="line"></div></div>
+            <div class="empty"><p>Nothing urgent right now — you're in good shape.</p></div>
+          </div>
+
+          <div class="section">
+            <div class="section__head"><div class="eyebrow">All weddings</div><div class="line"></div></div>
+            <div class="panel">
+              <div class="row">
+                <div>
+                  <div class="row__name">Mila &amp; Griffin</div>
+                  <div class="row__date">No date set</div>
+                </div>
+                <span class="pill pill--sage"><span class="pill__dot"></span>Active</span>
+              </div>
+            </div>
+          </div>
+        </main>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ SCREEN 2 — BUDGET ============ -->
+  <div class="frame">
+    <div class="frame__bar">
+      <div class="frame__dots"><span></span><span></span><span></span></div>
+      <div class="frame__url">localhost:3000/projects/…/budget</div>
+      <div class="frame__label">Couple · budget tab</div>
+    </div>
+    <div class="app">
+      <div class="topbar">
+        <div class="wordmark"><span class="wordmark__dot"></span>First Look</div>
+      </div>
+      <div class="shell">
+        <aside class="sidebar">
+          <nav class="snav">
+            <a href="#">Dashboard</a>
+            <a href="#">Leads</a>
+            <a href="#">Billing</a>
+          </nav>
+          <div class="srule"></div>
+          <div class="eyebrow">Active weddings</div>
+          <div class="wedcard is-active">
+            <div>
+              <div class="wedcard__name">Mila &amp; Griffin</div>
+              <div class="wedcard__date">No date set</div>
+            </div>
+            <div class="wedcard__x">—</div>
+          </div>
+        </aside>
+
+        <main class="main">
+          <nav class="tabs">
+            <a href="#">Overview</a>
+            <a href="#">Checklist</a>
+            <a href="#">Day-of timeline</a>
+            <a href="#" class="is-active">Budget</a>
+            <a href="#">Vendors</a>
+            <a href="#">Guests</a>
+            <a href="#">Seating</a>
+            <a href="#">Website</a>
+            <a href="#">Contracts</a>
+            <a href="#">Notes &amp; files</a>
+          </nav>
+
+          <h1 class="budhead">Wedding budget</h1>
+
+          <div class="budtop">
+            <div class="budfigs">
+              <div class="budfig"><div class="eyebrow">Target</div><div class="budfig__val">$0</div></div>
+              <div class="budfig"><div class="eyebrow">Allocated</div><div class="budfig__val is-accent">$0</div></div>
+              <div class="budfig"><div class="eyebrow">Remaining</div><div class="budfig__val is-muted">—</div></div>
+            </div>
+            <div class="bar"><div class="bar__fill"></div></div>
+          </div>
+
+          <div class="block">
+            <div class="subhead">Vendor costs</div>
+            <p class="muted">Booked vendors with quotes from the Vendors tab. These roll into Allocated automatically.</p>
+            <p class="muted" style="margin-top:10px">No booked vendors with quotes yet. Mark a vendor as booked on the Vendors tab to see their cost here.</p>
+          </div>
+
+          <div class="block">
+            <div class="subhead">Other budget items</div>
+            <p class="muted">Manual line items for non-vendor expenses like attire, favors, and misc.</p>
+            <div class="formcard">
+              <div class="eyebrow" style="margin-bottom:6px">Add item</div>
+              <div class="subhead" style="font-family:var(--serif);font-size:24px;font-weight:600;margin-bottom:20px">Other expense</div>
+              <div class="formgrid">
+                <div class="field"><label>Category</label><input placeholder="attire"></div>
+                <div class="field"><label>Label</label><input placeholder="Line item name"></div>
+                <div class="field"><label>Planned</label><input placeholder="0"></div>
+                <div class="field"><label>Actual <span class="faint">(optional)</span></label><input></div>
+              </div>
+              <button class="btn btn--primary">Add item</button>
+            </div>
+          </div>
+        </main>
+      </div>
+    </div>
+  </div>
+
+  <p class="note">Mockup of your existing layouts with the proposed theme applied — nothing structural changed.</p>
+
+</div>
+</body>
+</html>
