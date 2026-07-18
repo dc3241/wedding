@@ -9,9 +9,11 @@ import {
 } from "@/lib/checklist-aggregates";
 import {
   isCanonicalPhase,
+  isPhaseBeyondRunway,
   PHASE_ORDER,
   phaseTargetDate,
 } from "@/lib/checklist-phases";
+import { wholeMonthsBetween } from "@/lib/date-months";
 import { sectionStackClass } from "@/lib/density";
 import { createClient } from "@/utils/supabase/server";
 
@@ -44,8 +46,20 @@ function formatPhaseMetaDate(isoDate: string) {
   });
 }
 
+function todayIsoDate(): string {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 function buildSections(tasks: TaskRow[], weddingDate: string | null) {
   const byPhase = groupByPhase(tasks);
+  const runwayMonths =
+    weddingDate != null
+      ? Math.max(0, wholeMonthsBetween(todayIsoDate(), weddingDate))
+      : null;
 
   const knownPhases = PHASE_ORDER.map((phase) => ({
     phase: phase as string | null,
@@ -85,11 +99,15 @@ function buildSections(tasks: TaskRow[], weddingDate: string | null) {
           : null,
       };
     })
-    .filter((section) => section.total > 0 || section.phase !== null)
     .filter((section) => {
-      // Keep empty canonical phases so add-task stays available for each bucket.
+      // Other: only when it has tasks.
       if (section.phase === null) return section.total > 0;
-      return true;
+      // Always keep phases that already have tasks (e.g. date moved earlier).
+      if (section.total > 0) return true;
+      // Empty canonical buckets: keep for add-task only when within runway
+      // (or when no wedding date — all buckets stay available).
+      if (runwayMonths === null) return true;
+      return !isPhaseBeyondRunway(section.phase, runwayMonths);
     });
 }
 

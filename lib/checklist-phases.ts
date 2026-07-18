@@ -32,6 +32,20 @@ export function phaseMonthsBefore(phase: string): number | null {
 }
 
 /**
+ * True when a canonical phase's offset is beyond the couple's runway
+ * (e.g. "12+ months" when only 6 months remain). Non-canonical phases
+ * are never beyond runway.
+ */
+export function isPhaseBeyondRunway(
+  phase: string,
+  runwayMonths: number,
+): boolean {
+  const months = phaseMonthsBefore(phase);
+  if (months === null) return false;
+  return months > runwayMonths;
+}
+
+/**
  * Inverse of PHASE_MONTHS_BEFORE: highest bucket whose offset is <= months.
  * 0 → "week of"; months >= 12 → "12+ months".
  */
