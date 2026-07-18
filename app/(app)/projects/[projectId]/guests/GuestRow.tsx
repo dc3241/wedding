@@ -25,22 +25,22 @@ export function GuestRow({
 
   return (
     <tr className={cn(isPending && "opacity-60", rowClass)}>
-      <td className="py-2.5 pr-4">
-        <div className="text-[15px] text-ink">{guest.full_name}</div>
+      <td className="py-3 pr-4">
+        <div className="text-[15px] font-medium text-ink">{guest.full_name}</div>
         {guest.email ? (
-          <div className="text-[13px] text-ink-muted">{guest.email}</div>
+          <div className="mt-0.5 text-[13px] text-muted">{guest.email}</div>
         ) : null}
       </td>
-      <td className="py-2.5 pr-4 text-[14px] text-ink-muted">
+      <td className="py-3 pr-4 text-[14px] text-muted">
         {guest.household ?? "—"}
       </td>
-      <td className="py-2.5 pr-4 text-right text-[14px] tabular-nums text-ink">
+      <td className="py-3 pr-4 text-right text-[14px] tabular-nums text-ink">
         {guest.party_size}
       </td>
-      <td className="py-2.5 pr-4">
+      <td className="py-3 pr-4">
         <RsvpPill guestId={guest.id} status={guest.rsvp_status} />
       </td>
-      <td className="py-2.5">
+      <td className="py-3">
         <Select
           value={guest.meal_choice ?? ""}
           onChange={handleMealChange}

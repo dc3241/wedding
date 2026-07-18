@@ -21,7 +21,7 @@ export default async function LoginPage({
 
   return (
     <div className="flex min-h-full flex-col bg-canvas text-ink">
-      <header className="border-b border-stone px-6 py-[18px] md:px-8">
+      <header className="border-b border-hairline px-6 py-[18px] md:px-8">
         <Link href="/" className="inline-block no-underline">
           <Wordmark />
         </Link>
@@ -34,26 +34,26 @@ export default async function LoginPage({
             <h1 className="font-display text-[36px] leading-none tracking-[-0.01em] text-ink">
               Log in
             </h1>
-            <p className="mt-3 text-sm text-ink-muted">
+            <p className="mt-3 text-sm text-muted">
               Sign in to your wedding planning account
             </p>
           </div>
 
           {error ? (
-            <p className="mb-4 rounded-[var(--radius)] border border-rosewood/30 bg-plum-tint px-3 py-2 text-sm text-rosewood">
+            <p className="mb-4 rounded-[var(--radius-inner)] border border-rosewood/30 bg-accent-wash px-3 py-2 text-sm text-rosewood">
               {error}
             </p>
           ) : null}
 
           {message ? (
-            <p className="mb-4 rounded-[var(--radius)] border border-sage/30 bg-plum-tint px-3 py-2 text-sm text-sage">
+            <p className="mb-4 rounded-[var(--radius-inner)] border border-sage/30 bg-accent-wash px-3 py-2 text-sm text-sage">
               {message}
             </p>
           ) : null}
 
           <form className="space-y-4">
             <div className="space-y-1.5">
-              <label htmlFor="email" className="text-sm font-medium text-ink-soft">
+              <label htmlFor="email" className="text-sm font-medium text-ink">
                 Email
               </label>
               <Input
@@ -68,7 +68,7 @@ export default async function LoginPage({
             <div className="space-y-1.5">
               <label
                 htmlFor="password"
-                className="text-sm font-medium text-ink-soft"
+                className="text-sm font-medium text-ink"
               >
                 Password
               </label>
@@ -101,9 +101,9 @@ export default async function LoginPage({
             </div>
           </form>
 
-          <p className="mt-6 text-center text-[13px] text-ink-muted">
+          <p className="mt-6 text-center text-[13px] text-muted">
             New here?{" "}
-            <Link href="/" className="text-plum no-underline hover:text-plum-deep">
+            <Link href="/" className="text-accent no-underline hover:opacity-90">
               Learn about First Look
             </Link>
           </p>

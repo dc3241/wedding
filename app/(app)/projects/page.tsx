@@ -35,7 +35,7 @@ export default async function ProjectsPage({
     return (
       <div className="mx-auto flex w-full max-w-[760px] flex-1 flex-col px-4 py-12">
         {error ? (
-          <p className="mb-4 rounded border border-stone bg-surface px-3 py-2 text-sm text-rosewood">
+          <p className="mb-4 rounded-[var(--radius-inner)] border border-hairline bg-surface px-3 py-2 text-sm text-rosewood">
             {error}
           </p>
         ) : null}
@@ -44,7 +44,7 @@ export default async function ProjectsPage({
             <h1 className="text-2xl font-semibold tracking-tight text-ink">
               Create your wedding
             </h1>
-            <p className="text-sm text-ink-muted">
+            <p className="text-sm text-muted">
               Your account is ready. Add a wedding to continue.
             </p>
           </div>
@@ -59,12 +59,12 @@ export default async function ProjectsPage({
                 type="text"
                 required
                 placeholder="Sarah & James — Oct 2026"
-                className="w-full rounded-md border border-stone bg-surface px-3 py-2 text-sm text-ink outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-plum"
+                className="w-full rounded-[var(--radius-inner)] border border-ring bg-surface px-3 py-2 text-sm text-ink outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
               />
             </div>
             <button
               type="submit"
-              className="w-full rounded-[var(--radius)] bg-plum px-[11px] py-[11px] text-sm font-medium text-white hover:bg-plum-deep"
+              className="w-full rounded-[var(--radius-inner)] bg-accent px-[11px] py-[11px] text-sm font-medium text-white hover:opacity-90"
             >
               Create wedding
             </button>

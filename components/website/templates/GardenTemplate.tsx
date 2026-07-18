@@ -105,7 +105,7 @@ function CornerFlourish({ className }: { className?: string }) {
 function SectionHeading({ children }: { children: React.ReactNode }) {
   return (
     <h2
-      className="font-display text-[28px] tracking-[0.01em]"
+      className="font-serif-display text-[28px] tracking-[0.01em]"
       style={{ color: "var(--ws-ink)" }}
     >
       {children}
@@ -169,7 +169,7 @@ export function GardenTemplate({ content, theme }: GardenTemplateProps) {
 
   return (
     <div
-      className="relative min-h-full overflow-hidden font-sans text-[15px] leading-relaxed"
+      className="relative min-h-full overflow-hidden font-ws-sans text-[15px] leading-relaxed"
       style={{
         ...palette.cssVars,
         background: "var(--ws-bg)",
@@ -183,7 +183,7 @@ export function GardenTemplate({ content, theme }: GardenTemplateProps) {
         <header className="animate-rise text-center">
           <BotanicalMotif className="mx-auto mb-6" />
           <h1
-            className="font-display text-[clamp(40px,6vw,54px)] tracking-[0.005em]"
+            className="font-serif-display text-[clamp(40px,6vw,54px)] tracking-[0.005em]"
             style={{ color: "var(--ws-ink)" }}
           >
             {hero.names || "Your names"}

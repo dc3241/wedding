@@ -7,6 +7,14 @@ import { getAccountContext } from "@/lib/account-context";
 import { sectionStackClass } from "@/lib/density";
 import { createClient } from "@/utils/supabase/server";
 
+function formatEyebrowDate(iso: string) {
+  return new Date(iso + "T00:00:00").toLocaleDateString(undefined, {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+}
+
 export default async function ContractsPage({
   params,
 }: {
@@ -22,12 +30,19 @@ export default async function ContractsPage({
 
   const stackClass = sectionStackClass("business");
 
-  const { data: fileRows } = await supabase
-    .from("files")
-    .select("id, name, mime_type, size_bytes, created_at, status")
-    .eq("project_id", projectId)
-    .eq("kind", "contract")
-    .order("created_at", { ascending: false });
+  const [{ data: fileRows }, { data: project }] = await Promise.all([
+    supabase
+      .from("files")
+      .select("id, name, mime_type, size_bytes, created_at, status")
+      .eq("project_id", projectId)
+      .eq("kind", "contract")
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("projects")
+      .select("name, wedding_date")
+      .eq("id", projectId)
+      .maybeSingle(),
+  ]);
 
   const fileList: ProjectFile[] = (fileRows ?? []).map((row) => ({
     id: row.id,
@@ -52,11 +67,18 @@ export default async function ContractsPage({
     ]),
   );
 
+  const projectName = project?.name ?? "Wedding";
+  const weddingDate = project?.wedding_date ?? null;
+  const eyebrow =
+    weddingDate != null
+      ? `${projectName} · ${formatEyebrowDate(weddingDate)}`
+      : projectName;
+
   return (
     <div className={stackClass}>
       <PageHeader
-        eyebrow="Contracts"
-        title="Wedding contracts"
+        eyebrow={eyebrow}
+        title="Contracts"
         description="Signed contracts, proposals, and agreements for this wedding."
       />
 

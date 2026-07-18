@@ -116,7 +116,7 @@ export function AssistantPanel({
       <aside
         id="assistant-panel"
         className={cn(
-          "fixed right-0 top-0 z-40 flex h-full w-full max-w-[400px] flex-col border-l border-stone bg-porcelain shadow-lg transition-transform duration-200",
+          "fixed right-0 top-0 z-40 flex h-full w-full max-w-[400px] flex-col border-l border-hairline bg-canvas shadow-lg transition-transform duration-200",
           open ? "translate-x-0" : "translate-x-full pointer-events-none",
           isPlanner && "max-w-[380px]",
         )}
@@ -124,7 +124,7 @@ export function AssistantPanel({
       >
         <header
           className={cn(
-            "flex shrink-0 items-start justify-between gap-3 border-b border-stone bg-surface px-5 py-4",
+            "flex shrink-0 items-start justify-between gap-3 border-b border-hairline bg-surface px-5 py-4",
             isPlanner && "px-4 py-3",
           )}
         >
@@ -133,7 +133,7 @@ export function AssistantPanel({
             <h2 className="mt-1 text-[20px] font-medium text-ink">
               {isPlanner ? "Planning assistant" : "Your wedding assistant"}
             </h2>
-            <p className="mt-1 text-[13px] text-ink-muted">
+            <p className="mt-1 text-[13px] text-muted">
               {isPlanner
                 ? "Ask about checklist, budget, guests, vendors, and notes for this wedding."
                 : "Ask me about your checklist, budget, guests, vendors, or notes."}
@@ -142,7 +142,7 @@ export function AssistantPanel({
           <button
             type="button"
             onClick={closeAssistant}
-            className="shrink-0 rounded border border-transparent px-2 py-1 text-[13px] text-ink-muted hover:border-stone hover:bg-plum-tint hover:text-ink"
+            className="shrink-0 rounded-[var(--radius-inner)] border border-transparent px-2 py-1 text-[13px] text-muted hover:border-hairline hover:bg-accent-wash hover:text-ink"
             aria-label="Close assistant"
           >
             Close
@@ -159,7 +159,7 @@ export function AssistantPanel({
           {messages.length === 0 && !isPending ? (
             <div
               className={cn(
-                "rounded-lg border border-dashed border-stone bg-surface px-4 py-6 text-center",
+                "rounded-[var(--radius-inner)] border border-dashed border-ring bg-surface px-4 py-6 text-center",
                 isPlanner ? "py-5" : "py-8",
               )}
             >
@@ -168,7 +168,7 @@ export function AssistantPanel({
                   ? "What would you like to know about this wedding?"
                   : "Hi! I'm here to help with your wedding planning."}
               </p>
-              <p className="mt-2 text-[13px] text-ink-muted">
+              <p className="mt-2 text-[13px] text-muted">
                 Try &ldquo;What&apos;s overdue?&rdquo;, &ldquo;How much budget is
                 left?&rdquo;, or &ldquo;Who hasn&apos;t RSVP&apos;d?&rdquo;
               </p>
@@ -185,17 +185,17 @@ export function AssistantPanel({
                 >
                   <div
                     className={cn(
-                      "max-w-[92%] rounded-lg border px-3.5 py-2.5 text-[15px] leading-relaxed",
+                      "max-w-[92%] rounded-[var(--radius-inner)] border px-3.5 py-2.5 text-[15px] leading-relaxed",
                       message.role === "user"
-                        ? "border-plum bg-plum text-surface"
-                        : "border-stone bg-surface text-ink",
+                        ? "border-accent bg-accent text-surface"
+                        : "border-hairline bg-surface text-ink",
                       isPlanner && "text-[14px] px-3 py-2",
                     )}
                   >
                     <p className="whitespace-pre-wrap">{message.content}</p>
                   </div>
                   <time
-                    className="mt-1 text-[11px] text-ink-muted"
+                    className="mt-1 text-[11px] text-muted"
                     dateTime={message.created_at}
                   >
                     {formatMessageTime(message.created_at)}
@@ -204,9 +204,9 @@ export function AssistantPanel({
               ))}
               {isPending ? (
                 <li className="flex items-start">
-                  <div className="rounded-lg border border-stone bg-surface px-3.5 py-2.5 text-[14px] text-ink-muted">
+                  <div className="rounded-[var(--radius-inner)] border border-hairline bg-surface px-3.5 py-2.5 text-[14px] text-muted">
                     <span className="inline-flex items-center gap-2">
-                      <span className="inline-block size-1.5 animate-pulse rounded-full bg-plum" />
+                      <span className="inline-block size-1.5 animate-pulse rounded-full bg-accent" />
                       Thinking…
                     </span>
                   </div>
@@ -218,7 +218,7 @@ export function AssistantPanel({
 
         <footer
           className={cn(
-            "shrink-0 border-t border-stone bg-surface px-5 py-4",
+            "shrink-0 border-t border-hairline bg-surface px-5 py-4",
             isPlanner && "px-4 py-3",
           )}
         >

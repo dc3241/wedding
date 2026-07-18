@@ -331,7 +331,7 @@ export function SeatingWorkspace({
 
       <div className="min-w-0 flex-1">
         {hint ? (
-          <p className="mb-2 text-[13px] text-ink-muted">{hint}</p>
+          <p className="mb-2 text-[13px] font-medium text-muted">{hint}</p>
         ) : null}
 
         {errorMessage ? (

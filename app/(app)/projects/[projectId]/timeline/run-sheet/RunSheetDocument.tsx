@@ -166,7 +166,7 @@ export function RunSheetDocument({
 
       <article className="run-sheet-print-root mx-auto max-w-[720px] rounded-lg border border-stone bg-surface px-8 py-10 sm:px-10 sm:py-12">
         <header className="border-b border-stone pb-8 text-center">
-          <h1 className="font-display text-[clamp(28px,4vw,36px)] leading-tight text-ink">
+          <h1 className="font-serif-display text-[clamp(28px,4vw,36px)] leading-tight text-ink">
             {meta.coupleNames}
           </h1>
           <div className="mt-3 space-y-1 text-[14px] text-ink-muted">

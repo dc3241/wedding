@@ -48,8 +48,8 @@ export function AddEventForm({ projectId }: { projectId: string }) {
         type="button"
         onClick={() => setOpen(true)}
         className={cn(
-          "w-full rounded-[var(--radius)] border border-dashed border-stone bg-transparent px-3 py-2.5 text-left text-[14px] text-ink-muted transition-colors",
-          "hover:border-plum hover:text-plum focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-plum",
+          "w-full rounded-[var(--radius-inner)] border border-dashed border-ring bg-transparent px-4 py-3.5 text-left text-[15px] font-medium text-muted transition-colors",
+          "hover:border-accent hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
         )}
       >
         + Add event
@@ -58,30 +58,30 @@ export function AddEventForm({ projectId }: { projectId: string }) {
   }
 
   return (
-    <Card className={cn("p-5", isPending && "opacity-60")}>
+    <Card className={cn("px-6 py-5", isPending && "opacity-60")}>
       <div className="flex items-center justify-between gap-3">
-        <h2 className="text-[15px] font-medium text-ink">Add event</h2>
+        <h2 className="font-display text-[19px] font-extrabold tracking-[-0.02em] text-ink">
+          Add event
+        </h2>
         <button
           type="button"
           onClick={() => setOpen(false)}
           disabled={isPending}
-          className="text-[13px] text-ink-muted hover:text-ink disabled:opacity-50"
+          className="text-[14px] font-semibold text-muted hover:text-ink disabled:opacity-50"
         >
           Cancel
         </button>
       </div>
-      <form
-        ref={formRef}
-        onSubmit={handleSubmit}
-        className="mt-4 space-y-3"
-      >
+      <form ref={formRef} onSubmit={handleSubmit} className="mt-4 space-y-3">
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="block">
-            <span className="mb-1 block text-[13px] text-ink-muted">Start time</span>
+            <span className="mb-1.5 block text-[12px] font-semibold uppercase tracking-[0.09em] text-muted">
+              Start time
+            </span>
             <Input name="start_time" type="time" disabled={isPending} />
           </label>
           <label className="block">
-            <span className="mb-1 block text-[13px] text-ink-muted">
+            <span className="mb-1.5 block text-[12px] font-semibold uppercase tracking-[0.09em] text-muted">
               End time (optional)
             </span>
             <Input name="end_time" type="time" disabled={isPending} />
@@ -89,7 +89,9 @@ export function AddEventForm({ projectId }: { projectId: string }) {
         </div>
 
         <label className="block">
-          <span className="mb-1 block text-[13px] text-ink-muted">Title</span>
+          <span className="mb-1.5 block text-[12px] font-semibold uppercase tracking-[0.09em] text-muted">
+            Title
+          </span>
           <Input
             name="title"
             type="text"
@@ -100,7 +102,7 @@ export function AddEventForm({ projectId }: { projectId: string }) {
         </label>
 
         <label className="block">
-          <span className="mb-1 block text-[13px] text-ink-muted">
+          <span className="mb-1.5 block text-[12px] font-semibold uppercase tracking-[0.09em] text-muted">
             Description (optional)
           </span>
           <Textarea
@@ -108,13 +110,12 @@ export function AddEventForm({ projectId }: { projectId: string }) {
             rows={2}
             placeholder="Details for the run sheet"
             disabled={isPending}
-            className="text-[15px]"
           />
         </label>
 
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="block">
-            <span className="mb-1 block text-[13px] text-ink-muted">
+            <span className="mb-1.5 block text-[12px] font-semibold uppercase tracking-[0.09em] text-muted">
               Section (optional)
             </span>
             <Input
@@ -125,7 +126,7 @@ export function AddEventForm({ projectId }: { projectId: string }) {
             />
           </label>
           <label className="block">
-            <span className="mb-1 block text-[13px] text-ink-muted">
+            <span className="mb-1.5 block text-[12px] font-semibold uppercase tracking-[0.09em] text-muted">
               Owner (optional)
             </span>
             <Input

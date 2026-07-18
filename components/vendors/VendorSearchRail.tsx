@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Eyebrow } from "@/components/ui/eyebrow";
+import { Card } from "@/components/ui/card";
 import {
   getVendorCategoryById,
   vendorCategoryLabel,
@@ -27,9 +27,11 @@ function StillNeededCard({
   if (targets.length === 0) return null;
 
   return (
-    <div className="rounded-lg border-[0.5px] border-stone bg-surface px-3.5 py-3.5 sm:px-4 sm:py-4">
-      <Eyebrow>Still needed</Eyebrow>
-      <ul className="mt-3 space-y-2.5">
+    <Card className="px-6 py-[22px]">
+      <p className="mb-[15px] text-[12px] font-semibold uppercase tracking-[0.09em] text-muted">
+        Still needed
+      </p>
+      <ul className="space-y-2.5">
         {targets.map((target) => {
           const canonical = getVendorCategoryById(target.category);
           const label = vendorCategoryLabel(target.category);
@@ -38,11 +40,9 @@ function StillNeededCard({
           if (!canonical) {
             return (
               <li key={target.id} className="min-w-0">
-                <span className="text-[13px] text-ink-muted">{label}</span>
+                <span className="text-[13px] text-muted">{label}</span>
                 {note ? (
-                  <p className="mt-0.5 truncate text-[12px] text-ink-muted">
-                    {note}
-                  </p>
+                  <p className="mt-0.5 truncate text-[12px] text-muted">{note}</p>
                 ) : null}
               </li>
             );
@@ -59,22 +59,20 @@ function StillNeededCard({
                 onClick={() => onSelectCategory(canonical.id)}
                 className={
                   selected
-                    ? "rounded border-[0.5px] border-stone bg-stone-soft px-2.5 py-1 text-[13px] font-medium text-ink"
-                    : "rounded border-[0.5px] border-stone bg-transparent px-2.5 py-1 text-[13px] font-medium text-ink hover:bg-stone-soft/60"
+                    ? "rounded-[var(--radius-pill)] bg-accent px-3 py-1.5 text-[13px] font-semibold text-surface"
+                    : "rounded-[var(--radius-pill)] bg-well px-3 py-1.5 text-[13px] font-semibold text-muted hover:text-ink"
                 }
               >
                 {label}
               </button>
               {note ? (
-                <p className="mt-0.5 truncate text-[12px] text-ink-muted">
-                  {note}
-                </p>
+                <p className="mt-0.5 truncate text-[12px] text-muted">{note}</p>
               ) : null}
             </li>
           );
         })}
       </ul>
-    </div>
+    </Card>
   );
 }
 
@@ -93,10 +91,10 @@ function OnYourListLink({
   const noun = count === 1 ? label : `${label}s`;
 
   return (
-    <p className="text-[13px] text-ink-muted">
+    <p className="text-[13px] text-muted">
       <Link
         href={`/projects/${projectId}/vendors`}
-        className="text-ink-muted hover:text-ink"
+        className="text-muted hover:text-ink"
       >
         <span className="tabnum">{count}</span> {noun} on your list
       </Link>

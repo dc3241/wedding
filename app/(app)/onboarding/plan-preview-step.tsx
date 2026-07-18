@@ -171,18 +171,18 @@ export function PlanPreviewStep({ projectId, onBack }: PlanPreviewStepProps) {
         <h2 className="font-display text-[28px] leading-tight text-ink">
           Your plan
         </h2>
-        <p className="mt-1.5 text-[15px] text-ink-muted">
+        <p className="mt-1.5 text-[15px] text-muted">
           Review and tweak before we build your checklist, budget, and vendor
           list.
         </p>
       </div>
 
       {genLoading || (isPending && !plan) ? (
-        <div className="rounded-lg border border-stone bg-surface px-6 py-12 text-center">
-          <p className="font-display text-[22px] text-plum">
+        <div className="rounded-[var(--radius-card)] border border-hairline bg-surface px-6 py-12 text-center">
+          <p className="font-display text-[22px] text-accent">
             Building your plan…
           </p>
-          <p className="mt-2 text-[13px] text-ink-muted">
+          <p className="mt-2 text-[13px] text-muted">
             This usually takes a few seconds.
           </p>
         </div>
@@ -210,7 +210,7 @@ export function PlanPreviewStep({ projectId, onBack }: PlanPreviewStepProps) {
         <>
           <section className="space-y-4">
             <Eyebrow>Checklist</Eyebrow>
-            <div className="divide-y divide-stone rounded-lg border border-stone bg-surface">
+            <div className="divide-y divide-hairline rounded-[var(--radius-card)] border border-hairline bg-surface">
               {plan.checklist.map((item, index) => (
                 <div
                   key={`checklist-${index}`}
@@ -230,7 +230,7 @@ export function PlanPreviewStep({ projectId, onBack }: PlanPreviewStepProps) {
                         onChange={(event) =>
                           updateChecklistItem(index, "phase", event.target.value)
                         }
-                        className="rounded border border-stone bg-surface px-2 py-1.5 text-sm text-ink outline-none focus:border-plum"
+                        className="rounded-[var(--radius-inner)] border border-ring bg-surface px-2 py-1.5 text-sm text-ink outline-none focus:border-accent"
                         aria-label="Task phase"
                       >
                         {PHASE_OPTIONS.map((phase) => (
@@ -252,7 +252,7 @@ export function PlanPreviewStep({ projectId, onBack }: PlanPreviewStepProps) {
                         className="w-auto"
                         aria-label="Due date"
                       />
-                      <span className="self-center text-[13px] text-ink-muted">
+                      <span className="self-center text-[13px] text-muted">
                         {formatDueDate(item.dueDate)}
                       </span>
                     </div>
@@ -273,7 +273,7 @@ export function PlanPreviewStep({ projectId, onBack }: PlanPreviewStepProps) {
           <section className="space-y-4">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <Eyebrow>Budget</Eyebrow>
-              <p className="text-[13px] text-ink-muted tabular-nums">
+              <p className="text-[13px] text-muted tabular-nums">
                 Total: {formatCurrency(budgetTotal)}
                 {budgetTarget !== null ? (
                   <>
@@ -283,7 +283,7 @@ export function PlanPreviewStep({ projectId, onBack }: PlanPreviewStepProps) {
                 ) : null}
               </p>
             </div>
-            <div className="divide-y divide-stone rounded-lg border border-stone bg-surface">
+            <div className="divide-y divide-hairline rounded-[var(--radius-card)] border border-hairline bg-surface">
               {plan.budget.map((item, index) => (
                 <div
                   key={`budget-${index}`}
@@ -298,7 +298,7 @@ export function PlanPreviewStep({ projectId, onBack }: PlanPreviewStepProps) {
                     aria-label="Budget category"
                   />
                   <div className="relative w-full sm:w-36">
-                    <span className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-[15px] text-ink-muted">
+                    <span className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-[15px] text-muted">
                       $
                     </span>
                     <Input
@@ -331,7 +331,7 @@ export function PlanPreviewStep({ projectId, onBack }: PlanPreviewStepProps) {
 
           <section className="space-y-4">
             <Eyebrow>Vendor categories</Eyebrow>
-            <div className="divide-y divide-stone rounded-lg border border-stone bg-surface">
+            <div className="divide-y divide-hairline rounded-[var(--radius-card)] border border-hairline bg-surface">
               {plan.vendorCategories.map((item, index) => (
                 <div
                   key={`vendor-${index}`}
@@ -378,7 +378,7 @@ export function PlanPreviewStep({ projectId, onBack }: PlanPreviewStepProps) {
             </div>
           </section>
 
-          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-stone pt-6">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-hairline pt-6">
             <Button
               type="button"
               variant="default"
@@ -434,21 +434,21 @@ export function StepProgress({ currentStep }: { currentStep: number }) {
               <span
                 className={cn(
                   "size-[9px] shrink-0 rounded-full",
-                  isLit ? "bg-plum" : "bg-stone",
+                  isLit ? "bg-accent" : "bg-ring",
                 )}
                 aria-hidden
               />
               <span
                 className={cn(
                   "text-xs whitespace-nowrap",
-                  isLit ? "font-medium text-plum-deep" : "text-ink-muted",
+                  isLit ? "font-medium text-accent" : "text-muted",
                 )}
               >
                 {step.label}
               </span>
             </div>
             {!isLast ? (
-              <span className="mx-2 h-px min-w-4 flex-1 bg-stone" aria-hidden />
+              <span className="mx-2 h-px min-w-4 flex-1 bg-hairline" aria-hidden />
             ) : null}
           </div>
         );

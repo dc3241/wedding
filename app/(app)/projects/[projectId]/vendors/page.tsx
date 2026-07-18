@@ -15,7 +15,8 @@ import {
   type OutreachVendor,
 } from "@/components/vendors/outreach-vendor";
 import { ButtonLink } from "@/components/ui/button";
-import { Eyebrow } from "@/components/ui/eyebrow";
+import { Card } from "@/components/ui/card";
+import { PageHeader } from "@/components/ui/page-header";
 import { getAccountContext } from "@/lib/account-context";
 import { sectionStackClass } from "@/lib/density";
 import { createClient } from "@/utils/supabase/server";
@@ -26,6 +27,14 @@ function formatDefaultDate(date: string | null) {
   return new Date(date + "T00:00:00").toLocaleDateString(undefined, {
     month: "long",
     day: "numeric",
+    year: "numeric",
+  });
+}
+
+function formatEyebrowDate(iso: string) {
+  return new Date(iso + "T00:00:00").toLocaleDateString(undefined, {
+    day: "numeric",
+    month: "long",
     year: "numeric",
   });
 }
@@ -48,26 +57,32 @@ export default async function VendorsPage({
 
   const [{ data: project }, { data: rows }, { data: targetRows }] =
     await Promise.all([
-    supabase
-      .from("projects")
-      .select("wedding_date")
-      .eq("id", projectId)
-      .single(),
-    supabase
-      .from("project_vendors")
-      .select(
-        "id, status, quoted_price, vendors(id, name, category, contact_email, website, ai_overview, last_enriched_at)",
-      )
-      .eq("project_id", projectId)
-      .order("created_at", { ascending: true }),
-    supabase
-      .from("vendor_targets")
-      .select("id, category, note, status")
-      .eq("project_id", projectId)
-      .order("created_at", { ascending: true }),
-  ]);
+      supabase
+        .from("projects")
+        .select("name, wedding_date")
+        .eq("id", projectId)
+        .single(),
+      supabase
+        .from("project_vendors")
+        .select(
+          "id, status, quoted_price, vendors(id, name, category, contact_email, website, ai_overview, last_enriched_at)",
+        )
+        .eq("project_id", projectId)
+        .order("created_at", { ascending: true }),
+      supabase
+        .from("vendor_targets")
+        .select("id, category, note, status")
+        .eq("project_id", projectId)
+        .order("created_at", { ascending: true }),
+    ]);
 
   const defaultDate = formatDefaultDate(project?.wedding_date ?? null);
+  const projectName = project?.name ?? "Your wedding";
+  const weddingDate = project?.wedding_date ?? null;
+  const eyebrow =
+    weddingDate != null
+      ? `${projectName} · ${formatEyebrowDate(weddingDate)}`
+      : projectName;
 
   const outreachList: OutreachVendor[] = (rows ?? []).flatMap((row) => {
     const vendor = Array.isArray(row.vendors) ? row.vendors[0] : row.vendors;
@@ -103,22 +118,27 @@ export default async function VendorsPage({
 
   return (
     <div className={stackClass}>
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <p className="text-[13px] text-ink-muted">
-          Find local vendors with live Google Places results.
-        </p>
-        <div className="flex shrink-0 gap-2">
-          <ButtonLink
-            href={`/projects/${projectId}/vendors/outreach`}
-            variant="default"
-          >
-            Review drafts
-          </ButtonLink>
-          <ButtonLink href={`/projects/${projectId}/vendors/search`} variant="primary">
-            Search vendors
-          </ButtonLink>
-        </div>
-      </div>
+      <PageHeader
+        title="Vendors"
+        eyebrow={eyebrow}
+        description="Find local vendors, track outreach, and book your team."
+        actions={
+          <div className="flex shrink-0 flex-wrap gap-2">
+            <ButtonLink
+              href={`/projects/${projectId}/vendors/outreach`}
+              variant="default"
+            >
+              Review drafts
+            </ButtonLink>
+            <ButtonLink
+              href={`/projects/${projectId}/vendors/search`}
+              variant="primary"
+            >
+              Search vendors
+            </ButtonLink>
+          </div>
+        }
+      />
 
       <GmailConnection
         connectedEmail={connectedEmail}
@@ -131,13 +151,15 @@ export default async function VendorsPage({
 
       <VendorsToBookSection targets={vendorTargets} />
 
-      <section className="mt-12">
-        <div className="mb-[18px] flex items-baseline justify-between">
-          <Eyebrow>Outreach</Eyebrow>
+      <section className="space-y-4">
+        <div className="flex items-baseline justify-between gap-3">
+          <p className="text-[12px] font-semibold uppercase tracking-[0.09em] text-muted">
+            Outreach
+          </p>
           {outreachList.length > 0 ? (
             <Link
               href={`/projects/${projectId}/vendors/outreach`}
-              className="text-[13px] text-plum hover:text-plum-deep"
+              className="text-[14px] font-semibold text-accent hover:opacity-80"
             >
               Manage outreach
             </Link>
@@ -145,16 +167,21 @@ export default async function VendorsPage({
         </div>
 
         {outreachList.length === 0 ? (
-          <p className="px-1 text-[13px] text-ink-muted">
-            No vendors on your outreach list yet. Search for vendors or add one
-            manually.{" "}
-            <AskAssistantLink prefill={ASSISTANT_PREFILLS.vendors}>
-              Ask assistant to find vendors
-            </AskAssistantLink>
-          </p>
+          <Card className="px-8 py-10 text-center">
+            <p className="text-[15px] font-medium text-muted">
+              No vendors on your outreach list yet. Search or add one manually.
+            </p>
+            <div className="mt-3">
+              <AskAssistantLink prefill={ASSISTANT_PREFILLS.vendors}>
+                Ask assistant to find vendors
+              </AskAssistantLink>
+            </div>
+          </Card>
         ) : (
-          <div className="space-y-5">
-            <VendorAggregateStepper vendors={outreachList} className="mb-5" />
+          <div className="space-y-4">
+            <Card className="px-6 py-5">
+              <VendorAggregateStepper vendors={outreachList} />
+            </Card>
 
             {toContactItems.length > 0 ? (
               <OutreachToContactSection
@@ -165,15 +192,19 @@ export default async function VendorsPage({
             ) : null}
 
             {otherItems.length > 0 ? (
-              <div className="divide-y divide-stone">
-                {otherItems.map((item) => (
-                  <OutreachShortlistRow
-                    key={item.id}
-                    projectId={projectId}
-                    item={item}
-                  />
-                ))}
-              </div>
+              <Card className="overflow-hidden px-3.5 py-3.5">
+                <ul>
+                  {otherItems.map((item) => (
+                    <li key={item.id} className="mb-2 last:mb-0">
+                      <OutreachShortlistRow
+                        projectId={projectId}
+                        item={item}
+                        className="rounded-[var(--radius-inner)] bg-well px-4 py-3.5 shadow-recessed"
+                      />
+                    </li>
+                  ))}
+                </ul>
+              </Card>
             ) : null}
           </div>
         )}

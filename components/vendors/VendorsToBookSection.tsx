@@ -1,5 +1,5 @@
 import { Pill, type PillVariant } from "@/components/ui/pill";
-import { Eyebrow } from "@/components/ui/eyebrow";
+import { Card } from "@/components/ui/card";
 import { vendorCategoryLabel } from "@/lib/vendor-categories";
 
 export type VendorTargetRow = {
@@ -16,7 +16,7 @@ const STATUS_LABELS: Record<VendorTargetRow["status"], string> = {
 };
 
 const STATUS_VARIANTS: Record<VendorTargetRow["status"], PillVariant> = {
-  needed: "plum",
+  needed: "accent",
   booked: "sage",
   skipped: "default",
 };
@@ -31,32 +31,32 @@ export function VendorsToBookSection({
   }
 
   return (
-    <section className="mt-12">
-      <div className="mb-[18px]">
-        <Eyebrow>Vendors to book</Eyebrow>
-      </div>
-      <div className="divide-y divide-stone rounded-lg border border-stone bg-surface">
-        {targets.map((target) => (
-          <div
-            key={target.id}
-            className="flex flex-wrap items-center justify-between gap-3 px-4 py-3.5"
-          >
-            <div className="min-w-0">
-              <p className="text-[15px] text-ink">
-                {vendorCategoryLabel(target.category)}
-              </p>
-              {target.note ? (
-                <p className="mt-0.5 text-[13px] text-ink-muted">
-                  {target.note}
+    <section className="space-y-4">
+      <p className="text-[12px] font-semibold uppercase tracking-[0.09em] text-muted">
+        Vendors to book
+      </p>
+      <Card className="overflow-hidden px-3.5 py-3.5">
+        <ul>
+          {targets.map((target) => (
+            <li
+              key={target.id}
+              className="mb-2 flex flex-wrap items-center justify-between gap-3 rounded-[var(--radius-inner)] bg-well px-4 py-3.5 shadow-recessed last:mb-0"
+            >
+              <div className="min-w-0">
+                <p className="text-[15px] font-medium text-ink">
+                  {vendorCategoryLabel(target.category)}
                 </p>
-              ) : null}
-            </div>
-            <Pill variant={STATUS_VARIANTS[target.status]}>
-              {STATUS_LABELS[target.status]}
-            </Pill>
-          </div>
-        ))}
-      </div>
+                {target.note ? (
+                  <p className="mt-1 text-[13px] text-muted">{target.note}</p>
+                ) : null}
+              </div>
+              <Pill variant={STATUS_VARIANTS[target.status]}>
+                {STATUS_LABELS[target.status]}
+              </Pill>
+            </li>
+          ))}
+        </ul>
+      </Card>
     </section>
   );
 }

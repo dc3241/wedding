@@ -10,11 +10,11 @@ type StatCardProps = {
 
 export function StatCard({ value, label, className }: StatCardProps) {
   return (
-    <Card className={cn("px-[26px] py-6", className)}>
-      <div className="font-display tabnum text-[54px] leading-none tracking-[-0.01em] text-plum">
+    <Card className={cn("px-6 py-5", className)}>
+      <div className="font-display text-[40px] font-extrabold leading-none tracking-[-0.035em] tabular-nums text-ink md:text-[52px]">
         {value}
       </div>
-      <div className="mt-3 text-sm text-ink-muted">{label}</div>
+      <div className="mt-2 text-[14px] font-medium text-muted">{label}</div>
     </Card>
   );
 }

@@ -18,7 +18,7 @@ export function ProjectWorkspaceNav({
   const tabs = tabsForAccountKind(accountKind);
 
   return (
-    <nav className="mb-6 flex flex-wrap items-center gap-1 border-b border-stone pb-3 md:flex-nowrap">
+    <nav className="mb-6 flex flex-wrap items-center gap-1 border-b border-hairline pb-3 md:flex-nowrap">
       {tabs.map(({ label, segment }) => {
         const href = projectTabHref(projectId, segment);
         const active =
@@ -31,8 +31,8 @@ export function ProjectWorkspaceNav({
             key={segment || "overview"}
             href={href}
             className={cn(
-              "rounded-full px-3 py-1.5 text-sm text-ink-muted no-underline transition-[color,background] duration-150 hover:text-ink",
-              active && "bg-plum-tint text-plum-deep",
+              "rounded-full px-3 py-1.5 text-sm text-muted no-underline transition-[color,background] duration-150 hover:text-ink",
+              active && "bg-accent-wash text-accent",
             )}
           >
             {label}

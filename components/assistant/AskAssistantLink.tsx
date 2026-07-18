@@ -19,7 +19,7 @@ export function AskAssistantLink({
       type="button"
       onClick={() => openAssistant(prefill)}
       className={cn(
-        "text-[13px] font-medium text-plum underline-offset-2 hover:text-plum-deep hover:underline",
+        "text-[13px] font-medium text-accent underline-offset-2 hover:opacity-90 hover:underline",
         className,
       )}
     >

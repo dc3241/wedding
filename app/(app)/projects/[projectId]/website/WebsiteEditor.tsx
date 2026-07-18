@@ -34,12 +34,12 @@ function VisibilityToggle({
   label: string;
 }) {
   return (
-    <label className="flex cursor-pointer items-center gap-2 text-[13px] text-ink-muted">
+    <label className="flex cursor-pointer items-center gap-2 text-[13px] text-muted">
       <input
         type="checkbox"
         checked={checked}
         onChange={(e) => onChange(e.target.checked)}
-        className="size-4 rounded border-stone accent-plum"
+        className="size-4 rounded border-hairline accent-accent"
       />
       {label}
     </label>
@@ -58,9 +58,9 @@ function EditorSection({
   children: React.ReactNode;
 }) {
   return (
-    <Card className="space-y-4 p-5">
+    <Card className="space-y-4 px-6 py-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-[16px] font-medium text-ink">{title}</h2>
+        <h2 className="font-display text-[19px] font-extrabold tracking-[-0.02em] text-ink">{title}</h2>
         {onVisibleChange !== undefined && visible !== undefined ? (
           <VisibilityToggle
             checked={visible}
@@ -254,10 +254,10 @@ export function WebsiteEditor({ projectId, website, accountKind }: WebsiteEditor
         }
       />
 
-      <Card className="space-y-5 p-5">
+      <Card className="space-y-5 px-6 py-5">
         <div className="grid gap-5 sm:grid-cols-2">
           <div>
-            <label className="mb-1.5 block text-[13px] text-ink-muted">Template</label>
+            <label className="mb-1.5 block text-[13px] text-muted">Template</label>
             <div className="flex flex-wrap gap-2">
               {templates.map((option) => (
                 <button
@@ -265,10 +265,10 @@ export function WebsiteEditor({ projectId, website, accountKind }: WebsiteEditor
                   type="button"
                   onClick={() => persistTemplate(option.key)}
                   className={cn(
-                    "rounded border px-3 py-1.5 text-[13px] transition-colors",
+                    "rounded-[var(--radius-pill)] px-3.5 py-2 text-[13px] font-semibold transition-colors",
                     template === option.key
-                      ? "border-plum bg-plum-tint text-plum-deep"
-                      : "border-stone bg-surface text-ink hover:border-ink-muted",
+                      ? "bg-accent text-surface"
+                      : "bg-well text-muted hover:text-ink",
                   )}
                 >
                   {option.label}
@@ -277,7 +277,7 @@ export function WebsiteEditor({ projectId, website, accountKind }: WebsiteEditor
             </div>
           </div>
           <div>
-            <label className="mb-1.5 block text-[13px] text-ink-muted">Theme</label>
+            <label className="mb-1.5 block text-[13px] text-muted">Theme</label>
             <div className="flex flex-wrap gap-2">
               {themes.map((option) => (
                 <button
@@ -285,10 +285,10 @@ export function WebsiteEditor({ projectId, website, accountKind }: WebsiteEditor
                   type="button"
                   onClick={() => persistTheme(option.key)}
                   className={cn(
-                    "rounded border px-3 py-1.5 text-[13px] transition-colors",
+                    "rounded-[var(--radius-pill)] px-3.5 py-2 text-[13px] font-semibold transition-colors",
                     theme === option.key
-                      ? "border-plum bg-plum-tint text-plum-deep"
-                      : "border-stone bg-surface text-ink hover:border-ink-muted",
+                      ? "bg-accent text-surface"
+                      : "bg-well text-muted hover:text-ink",
                   )}
                 >
                   {option.label}
@@ -300,11 +300,11 @@ export function WebsiteEditor({ projectId, website, accountKind }: WebsiteEditor
 
         <div className="grid gap-4 sm:grid-cols-[1fr_auto] sm:items-end">
           <div>
-            <label htmlFor="website-slug" className="mb-1.5 block text-[13px] text-ink-muted">
+            <label htmlFor="website-slug" className="mb-1.5 block text-[13px] text-muted">
               Public link
             </label>
             <div className="flex items-center gap-2">
-              <span className="shrink-0 text-[13px] text-ink-muted">/w/</span>
+              <span className="shrink-0 text-[13px] text-muted">/w/</span>
               <Input
                 id="website-slug"
                 value={slugInput}
@@ -324,12 +324,12 @@ export function WebsiteEditor({ projectId, website, accountKind }: WebsiteEditor
           </Button>
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-stone pt-4">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-hairline pt-4">
           <div>
             <p className="text-[14px] font-medium text-ink">
               {published ? "Published" : "Draft"}
             </p>
-            <p className="text-[13px] text-ink-muted">
+            <p className="text-[13px] text-muted">
               {published
                 ? "Your site will be live at the public link once sharing is enabled."
                 : "Only you can see the preview while unpublished."}
@@ -345,7 +345,7 @@ export function WebsiteEditor({ projectId, website, accountKind }: WebsiteEditor
           </Button>
         </div>
         {!savedSlug ? (
-          <p className="text-[13px] text-ink-muted">Save a public link before publishing.</p>
+          <p className="text-[13px] text-muted">Save a public link before publishing.</p>
         ) : null}
         {saveError ? (
           <p className="text-[13px] text-rosewood" role="alert">
@@ -364,14 +364,14 @@ export function WebsiteEditor({ projectId, website, accountKind }: WebsiteEditor
           <EditorSection title="Hero">
             <div className="space-y-3">
               <div>
-                <label className="mb-1.5 block text-[13px] text-ink-muted">Names</label>
+                <label className="mb-1.5 block text-[13px] text-muted">Names</label>
                 <Input
                   value={content.hero.names}
                   onChange={(e) => updateHero("names", e.target.value)}
                 />
               </div>
               <div>
-                <label className="mb-1.5 block text-[13px] text-ink-muted">Date (YYYY-MM-DD)</label>
+                <label className="mb-1.5 block text-[13px] text-muted">Date (YYYY-MM-DD)</label>
                 <Input
                   type="date"
                   value={content.hero.date}
@@ -379,7 +379,7 @@ export function WebsiteEditor({ projectId, website, accountKind }: WebsiteEditor
                 />
               </div>
               <div>
-                <label className="mb-1.5 block text-[13px] text-ink-muted">Tagline</label>
+                <label className="mb-1.5 block text-[13px] text-muted">Tagline</label>
                 <Input
                   value={content.hero.tagline}
                   onChange={(e) => updateHero("tagline", e.target.value)}
@@ -401,14 +401,14 @@ export function WebsiteEditor({ projectId, website, accountKind }: WebsiteEditor
           >
             <div className="space-y-3">
               <div>
-                <label className="mb-1.5 block text-[13px] text-ink-muted">Heading</label>
+                <label className="mb-1.5 block text-[13px] text-muted">Heading</label>
                 <Input
                   value={content.story.heading}
                   onChange={(e) => updateStory("heading", e.target.value)}
                 />
               </div>
               <div>
-                <label className="mb-1.5 block text-[13px] text-ink-muted">Body</label>
+                <label className="mb-1.5 block text-[13px] text-muted">Body</label>
                 <Textarea
                   rows={5}
                   value={content.story.body}
@@ -444,7 +444,7 @@ export function WebsiteEditor({ projectId, website, accountKind }: WebsiteEditor
                   placeholder="Time, e.g. 4:00 PM"
                 />
               </div>
-              <div className="space-y-3 border-t border-stone pt-4">
+              <div className="space-y-3 border-t border-hairline pt-4">
                 <p className="text-[13px] font-medium text-ink">Reception</p>
                 <Input
                   value={content.details.receptionVenue}
@@ -475,13 +475,13 @@ export function WebsiteEditor({ projectId, website, accountKind }: WebsiteEditor
           >
             <ul className="space-y-4">
               {content.schedule.items.map((item, index) => (
-                <li key={index} className="space-y-2 rounded border border-stone p-3">
+                <li key={index} className="space-y-2 rounded-[var(--radius-inner)] bg-well p-3 shadow-recessed">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="text-[13px] text-ink-muted">Item {index + 1}</span>
+                    <span className="text-[13px] text-muted">Item {index + 1}</span>
                     <button
                       type="button"
                       onClick={() => removeScheduleItem(index)}
-                      className="text-[13px] text-ink-muted hover:text-rosewood"
+                      className="text-[13px] text-muted hover:text-rosewood"
                     >
                       Remove
                     </button>
@@ -529,13 +529,13 @@ export function WebsiteEditor({ projectId, website, accountKind }: WebsiteEditor
           >
             <ul className="space-y-4">
               {content.registry.links.map((link, index) => (
-                <li key={index} className="space-y-2 rounded border border-stone p-3">
+                <li key={index} className="space-y-2 rounded-[var(--radius-inner)] bg-well p-3 shadow-recessed">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="text-[13px] text-ink-muted">Link {index + 1}</span>
+                    <span className="text-[13px] text-muted">Link {index + 1}</span>
                     <button
                       type="button"
                       onClick={() => removeRegistryLink(index)}
-                      className="text-[13px] text-ink-muted hover:text-rosewood"
+                      className="text-[13px] text-muted hover:text-rosewood"
                     >
                       Remove
                     </button>
@@ -563,7 +563,7 @@ export function WebsiteEditor({ projectId, website, accountKind }: WebsiteEditor
             visible={content.rsvp.visible}
             onVisibleChange={setRsvpVisible}
           >
-            <p className="text-[13px] text-ink-muted">
+            <p className="text-[13px] text-muted">
               Guests can respond from your published wedding site. Responses appear in the Guests
               tab for you to review.
             </p>
@@ -572,7 +572,7 @@ export function WebsiteEditor({ projectId, website, accountKind }: WebsiteEditor
 
         <div className="min-w-0">
           <p className="mb-2 text-[13px] font-medium text-ink">Live preview</p>
-          <Card className="overflow-hidden border-stone p-0">
+          <Card className="overflow-hidden p-0">
             <div className="max-h-[min(80vh,900px)] overflow-y-auto">
               <WeddingSiteView
                 content={content}

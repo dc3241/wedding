@@ -147,7 +147,7 @@ export default async function OutreachDraftsPage({
     <div className={stackClass}>
       <Link
         href={`/projects/${projectId}/vendors`}
-        className="text-[13px] text-ink-muted hover:text-ink"
+        className="text-[13px] text-muted hover:text-ink"
       >
         ← Back to vendors
       </Link>
@@ -176,7 +176,7 @@ export default async function OutreachDraftsPage({
       ) : null}
 
       {vendorNames.length === 0 ? (
-        <p className="text-[13px] text-ink-muted">
+        <p className="text-[13px] text-muted">
           No drafts ready to send. Select vendors on your outreach list and
           click Draft outreach.
         </p>
@@ -201,9 +201,9 @@ export default async function OutreachDraftsPage({
       )}
 
       {sent.length > 0 ? (
-        <section className="mt-12 border-t border-stone pt-8">
+        <section className="mt-12 border-t border-hairline pt-8">
           <Eyebrow className="mb-4 block">Sent</Eyebrow>
-          <div className="divide-y divide-stone">
+          <div className="divide-y divide-hairline">
             {sent.map((item) => (
               <VendorListRow
                 key={item.id}

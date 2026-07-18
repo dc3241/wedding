@@ -42,8 +42,8 @@ function SlimCountdown({ weddingDate }: { weddingDate: string }) {
   }, [weddingDate]);
 
   return (
-    <div className="tabnum shrink-0 text-sm text-ink">
-      <span className="font-medium text-plum">{days} days</span> to go
+    <div className="shrink-0 text-[14px] font-medium tabular-nums text-muted">
+      <span className="font-semibold text-accent">{days} days</span> to go
     </div>
   );
 }
@@ -62,20 +62,20 @@ export function SlimHero({
   return (
     <div
       className={cn(
-        "mb-6 flex items-center justify-between gap-6 rounded-lg border border-stone bg-surface px-5 py-3.5 shadow-card",
+        "mb-6 flex items-center justify-between gap-6 rounded-[var(--radius-card)] bg-surface px-6 py-4 shadow-raised",
         className,
       )}
     >
       <div className="flex min-w-0 flex-wrap items-baseline gap-x-4 gap-y-2">
-        <span className="font-display text-[26px] leading-none text-ink">
+        <span className="font-display text-[22px] font-extrabold leading-none tracking-[-0.02em] text-ink">
           {coupleNames}
         </span>
         {displayDate ? (
-          <span className="tabnum truncate text-sm text-ink-muted">
+          <span className="truncate text-[14px] font-medium tabular-nums text-muted">
             {displayDate}
           </span>
         ) : (
-          <span className="text-sm text-ink-muted">No date set</span>
+          <span className="text-[14px] font-medium text-muted">No date set</span>
         )}
         {canEdit && projectId ? (
           <WeddingDateEditor

@@ -206,14 +206,14 @@ export function ProposalBuilder({
         </div>
 
         {isLocked ? (
-          <ul className="divide-y divide-stone rounded border border-stone">
+          <ul className="divide-y divide-hairline rounded-[var(--radius-inner)] border border-hairline">
             {proposal.line_items.map((item) => (
               <li
                 key={item.id}
                 className="flex items-center justify-between gap-3 px-3 py-2.5 text-[14px]"
               >
                 <span className="text-ink">{item.description}</span>
-                <span className="shrink-0 tabular-nums text-ink-muted">
+                <span className="shrink-0 tabular-nums text-muted">
                   {item.quantity} × {formatProposalCurrency(item.unit_price)}
                 </span>
               </li>
@@ -224,7 +224,7 @@ export function ProposalBuilder({
             {lineItems.map((item) => (
               <li
                 key={item.id}
-                className="grid gap-2 rounded border border-stone bg-porcelain p-3 sm:grid-cols-[1fr_88px_120px_auto]"
+                className="grid gap-2 rounded-[var(--radius-inner)] border border-ring bg-canvas p-3 sm:grid-cols-[1fr_88px_120px_auto]"
               >
                 <Input
                   aria-label="Description"
@@ -266,7 +266,7 @@ export function ProposalBuilder({
                   variant="ghost"
                   disabled={isPending}
                   onClick={() => removeLineItem(item.id)}
-                  className="text-ink-muted hover:text-rosewood"
+                  className="text-muted hover:text-rosewood"
                 >
                   Remove
                 </Button>
@@ -275,8 +275,8 @@ export function ProposalBuilder({
           </ul>
         )}
 
-        <div className="flex items-center justify-between border-t border-stone pt-3">
-          <span className="text-sm text-ink-muted">Total</span>
+        <div className="flex items-center justify-between border-t border-hairline pt-3">
+          <span className="text-sm text-muted">Total</span>
           <span className="text-lg font-medium tabular-nums text-ink">
             {formatProposalCurrency(liveTotal)}
           </span>
@@ -291,11 +291,11 @@ export function ProposalBuilder({
           </label>
           {isLocked ? (
             terms ? (
-              <p className="whitespace-pre-wrap rounded border border-stone bg-porcelain px-3 py-2 text-[14px] text-ink-muted">
+              <p className="whitespace-pre-wrap rounded-[var(--radius-inner)] border border-hairline bg-canvas px-3 py-2 text-[14px] text-muted">
                 {terms}
               </p>
             ) : (
-              <p className="text-[13px] text-ink-muted">No terms specified.</p>
+              <p className="text-[13px] text-muted">No terms specified.</p>
             )
           ) : (
             <Textarea
@@ -344,13 +344,13 @@ export function ProposalBuilder({
             variant="ghost"
             disabled={isPending}
             onClick={handleDelete}
-            className="text-ink-muted hover:text-rosewood"
+            className="text-muted hover:text-rosewood"
           >
             Delete proposal
           </Button>
         </div>
       ) : (
-        <p className="mt-4 text-[13px] text-ink-muted">
+        <p className="mt-4 text-[13px] text-muted">
           This proposal is locked. Change status to Draft to edit again.
         </p>
       )}

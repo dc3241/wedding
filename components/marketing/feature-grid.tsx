@@ -1,64 +1,57 @@
-import { Card } from "@/components/ui/card";
-import { Eyebrow } from "@/components/ui/eyebrow";
-import { RevealOnScroll } from "@/components/ui/reveal-on-scroll";
-import { SectionHeader } from "@/components/ui/section-header";
-
-const FEATURES = [
+const features = [
   {
-    eyebrow: "Checklist",
-    title: "Know what to do next",
-    description:
-      "Phase-based tasks from 12 months out through the week of — generated from your wedding profile.",
+    title: "Checklist that actually moves",
+    body: "Phases, due dates, and a progress band you can read from across the room.",
   },
   {
-    eyebrow: "Budget",
-    title: "See where every dollar goes",
-    description:
-      "Target, allocated, and remaining at a glance. Vendor quotes roll in automatically when booked.",
+    title: "Budget without pie charts",
+    body: "Committed vs planned as filled bars — same vocabulary as the checklist.",
   },
   {
-    eyebrow: "Vendors",
-    title: "Search, contact, and book",
-    description:
-      "Discover vendors, track outreach stages, and keep quotes beside each category.",
+    title: "Vendors with a paper trail",
+    body: "Outreach status, quotes, and follow-ups in one place instead of buried threads.",
   },
   {
-    eyebrow: "Guests",
-    title: "RSVP without the inbox mess",
-    description:
-      "Guest list, meal choices, and RSVP submissions in one view — filter by status instantly.",
+    title: "Guests & seating together",
+    body: "RSVPs feed the floor plan. Full tables light sage; selection stays berry.",
   },
   {
-    eyebrow: "Website",
-    title: "A site guests actually want to visit",
-    description:
-      "Pick a template, publish your details, and share a link — no separate website builder needed.",
+    title: "Day-of timeline",
+    body: "A run sheet that prints clean and stays linked to the tasks that got you there.",
   },
   {
-    eyebrow: "Timeline",
-    title: "Day-of, minute by minute",
-    description:
-      "A run sheet distinct from long-range planning — ceremony through last dance, who owns what.",
+    title: "Website that matches the day",
+    body: "Public templates stay romantic. The editor stays Soft stack chrome.",
   },
-];
+] as const;
 
 export function FeatureGrid() {
   return (
-    <section id="features" className="mx-auto max-w-[1180px] px-6 pb-20">
-      <RevealOnScroll>
-        <SectionHeader>Everything in one place</SectionHeader>
-      </RevealOnScroll>
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 lg:gap-5">
-        {FEATURES.map((feature, index) => (
-          <RevealOnScroll key={feature.eyebrow} delay={index * 80}>
-            <Card className="marketing-card-hover h-full p-6">
-              <Eyebrow className="mb-2.5 block">{feature.eyebrow}</Eyebrow>
-              <h3 className="text-[15px] font-medium text-ink">{feature.title}</h3>
-              <p className="mt-2 text-sm leading-relaxed text-ink-muted">
-                {feature.description}
-              </p>
-            </Card>
-          </RevealOnScroll>
+    <section
+      id="features"
+      className="mx-auto max-w-6xl px-6 py-16 md:px-10 md:py-20"
+    >
+      <div className="mb-10 max-w-xl">
+        <p className="mb-3 text-[12px] font-semibold uppercase tracking-[0.09em] text-accent">
+          The workspace
+        </p>
+        <h2 className="text-[32px] font-extrabold tracking-[-0.03em] text-ink md:text-[36px]">
+          Everything you need. Nothing decorative in the way.
+        </h2>
+      </div>
+      <div className="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
+        {features.map((f) => (
+          <div
+            key={f.title}
+            className="rounded-[var(--radius-card)] bg-surface p-6 shadow-[var(--shadow-raised)]"
+          >
+            <h3 className="text-[17px] font-extrabold tracking-[-0.02em] text-ink">
+              {f.title}
+            </h3>
+            <p className="mt-2 text-[14px] leading-relaxed text-muted">
+              {f.body}
+            </p>
+          </div>
         ))}
       </div>
     </section>

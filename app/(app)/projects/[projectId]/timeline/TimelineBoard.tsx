@@ -6,7 +6,8 @@ import { AddEventForm } from "./AddEventForm";
 import { TimelineEventRow } from "./TimelineEventRow";
 import { ButtonLink } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Eyebrow } from "@/components/ui/eyebrow";
+import { EmptyState } from "@/components/ui/empty-state";
+import { PageHeader } from "@/components/ui/page-header";
 import { Pill } from "@/components/ui/pill";
 import {
   formatDurationMinutes,
@@ -18,8 +19,18 @@ import { cn } from "@/lib/cn";
 
 type TimelineBoardProps = {
   projectId: string;
+  projectName: string;
+  weddingDate: string | null;
   aggregates: TimelineAggregates;
 };
+
+function formatEyebrowDate(iso: string) {
+  return new Date(iso + "T00:00:00").toLocaleDateString(undefined, {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+}
 
 function runSheetHref(projectId: string, owner: string | null) {
   const base = `/projects/${projectId}/timeline/run-sheet`;
@@ -37,44 +48,46 @@ function DaySummaryStrip({ aggregates }: { aggregates: TimelineAggregates }) {
   } = aggregates;
 
   return (
-    <Card className="overflow-hidden px-5 py-4 sm:px-6 sm:py-5">
-      <div className="border-l-2 border-plum pl-4">
-        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 text-[15px]">
-          <span className="tabular-nums text-ink">
-            {daySpanLabel ?? "No start times"}
-          </span>
-          <span className="text-ink-muted">·</span>
-          <span className="tabular-nums text-ink-muted">
-            {total} {total === 1 ? "event" : "events"}
-          </span>
-          <span className="text-ink-muted">·</span>
-          <span className="tabular-nums text-ink-muted">
-            {scheduledDurationLabel === "—"
-              ? "No scheduled duration"
-              : `${scheduledDurationLabel} scheduled`}
-          </span>
+    <Card className="p-[30px]">
+      <div className="mb-6 flex flex-wrap items-end justify-between gap-6">
+        <div>
+          <p className="font-display text-[40px] font-extrabold leading-none tracking-[-0.035em] tabular-nums text-ink md:text-[52px]">
+            {total}
+          </p>
+          <p className="mt-2 text-[14px] font-medium text-muted">
+            {total === 1 ? "event" : "events"}
+            {scheduledDurationLabel !== "—"
+              ? ` · ${scheduledDurationLabel} scheduled`
+              : ""}
+          </p>
         </div>
-
-        {(conflictCount > 0 || gapCount > 0) && (
-          <ul className="mt-3 flex flex-wrap gap-1.5">
-            {conflictCount > 0 ? (
-              <li>
-                <Pill variant="rosewood">
-                  {conflictCount}{" "}
-                  {conflictCount === 1 ? "overlap" : "overlaps"}
-                </Pill>
-              </li>
-            ) : null}
-            {gapCount > 0 ? (
-              <li>
-                <Pill variant="clay">
-                  {gapCount} {gapCount === 1 ? "gap" : "gaps"}
-                </Pill>
-              </li>
-            ) : null}
-          </ul>
-        )}
+        <div className="text-left md:text-right">
+          <p className="font-display text-[22px] font-extrabold leading-none tracking-[-0.05em] tabular-nums text-muted">
+            {daySpanLabel ?? "—"}
+          </p>
+          <p className="mt-1 text-[14px] font-medium text-muted">day span</p>
+        </div>
       </div>
+
+      {(conflictCount > 0 || gapCount > 0) && (
+        <ul className="flex flex-wrap gap-2.5">
+          {conflictCount > 0 ? (
+            <li>
+              <Pill variant="rosewood">
+                {conflictCount}{" "}
+                {conflictCount === 1 ? "overlap" : "overlaps"}
+              </Pill>
+            </li>
+          ) : null}
+          {gapCount > 0 ? (
+            <li>
+              <Pill variant="clay">
+                {gapCount} {gapCount === 1 ? "gap" : "gaps"}
+              </Pill>
+            </li>
+          ) : null}
+        </ul>
+      )}
     </Card>
   );
 }
@@ -99,82 +112,75 @@ function ContextRail({
 
   return (
     <div className="space-y-4">
-      <Card className="p-4 sm:p-5">
-        <Eyebrow>Day at a glance</Eyebrow>
-        <dl className="mt-3 space-y-2.5 text-[14px]">
-          <div className="flex items-baseline justify-between gap-3">
-            <dt className="text-ink-muted">Span</dt>
-            <dd className="tabular-nums text-ink">{daySpanLabel ?? "—"}</dd>
-          </div>
-          <div className="flex items-baseline justify-between gap-3">
-            <dt className="text-ink-muted">Events</dt>
-            <dd className="tabular-nums text-ink">{total}</dd>
-          </div>
-          <div className="flex items-baseline justify-between gap-3">
-            <dt className="text-ink-muted">Scheduled</dt>
-            <dd className="tabular-nums text-ink">{scheduledDurationLabel}</dd>
-          </div>
-          <div className="flex items-baseline justify-between gap-3">
-            <dt className="text-ink-muted">Sections</dt>
-            <dd className="tabular-nums text-ink">
-              {sections.filter((s) => !s.unscheduled).length}
-            </dd>
-          </div>
+      <Card className="px-6 py-[22px]">
+        <p className="mb-[15px] text-[12px] font-semibold uppercase tracking-[0.09em] text-muted">
+          Day at a glance
+        </p>
+        <dl className="space-y-0">
+          {(
+            [
+              ["Span", daySpanLabel ?? "—"],
+              ["Events", String(total)],
+              ["Scheduled", scheduledDurationLabel],
+              [
+                "Sections",
+                String(sections.filter((s) => !s.unscheduled).length),
+              ],
+            ] as const
+          ).map(([label, value], i) => (
+            <div
+              key={label}
+              className={cn(
+                "flex items-baseline justify-between gap-3 py-[11px] text-[15px] font-medium",
+                i > 0 && "border-t border-hairline",
+              )}
+            >
+              <dt className="text-muted">{label}</dt>
+              <dd className="tabular-nums text-ink">{value}</dd>
+            </div>
+          ))}
         </dl>
       </Card>
 
-      <Card className="p-4 sm:p-5">
-        <Eyebrow>Flags</Eyebrow>
+      <Card className="px-6 py-[22px]">
+        <p className="mb-[15px] text-[12px] font-semibold uppercase tracking-[0.09em] text-muted">
+          Flags
+        </p>
         {conflictCount === 0 && gapCount === 0 ? (
-          <p className="mt-3 text-[13px] text-ink-muted">
+          <p className="text-[15px] font-medium leading-snug text-muted">
             No gaps or overlaps detected. Start-only events never create gaps.
           </p>
         ) : (
-          <ul className="mt-3 space-y-2 text-[14px]">
+          <ul>
             {conflictCount > 0 ? (
-              <li className="flex items-start gap-2">
-                <span
-                  className="mt-1.5 size-1.5 shrink-0 rounded-full bg-rosewood"
-                  aria-hidden
-                />
-                <span className="text-ink">
-                  <span className="font-medium tabular-nums text-rosewood">
-                    {conflictCount}
-                  </span>{" "}
-                  {conflictCount === 1 ? "overlap" : "overlaps"}
-                  {sameOwnerConflictCount > 0 ? (
-                    <span className="text-ink-muted">
-                      {" "}
-                      · {sameOwnerConflictCount} same-owner
-                    </span>
-                  ) : null}
-                </span>
+              <li className="border-t border-hairline py-[11px] text-[15px] font-medium leading-snug text-ink first:border-t-0 first:pt-0">
+                <span className="tabular-nums text-rosewood">{conflictCount}</span>{" "}
+                {conflictCount === 1 ? "overlap" : "overlaps"}
+                {sameOwnerConflictCount > 0 ? (
+                  <span className="block text-[13px] font-normal text-muted">
+                    {sameOwnerConflictCount} same-owner
+                  </span>
+                ) : null}
               </li>
             ) : null}
             {gapCount > 0 ? (
-              <li className="flex items-start gap-2">
-                <span
-                  className="mt-1.5 size-1.5 shrink-0 rounded-full bg-clay"
-                  aria-hidden
-                />
-                <span className="text-ink">
-                  <span className="font-medium tabular-nums text-clay">
-                    {gapCount}
-                  </span>{" "}
-                  open {gapCount === 1 ? "gap" : "gaps"} between timed events
-                </span>
+              <li className="border-t border-hairline py-[11px] text-[15px] font-medium leading-snug text-ink first:border-t-0 first:pt-0">
+                <span className="tabular-nums text-clay">{gapCount}</span> open{" "}
+                {gapCount === 1 ? "gap" : "gaps"} between timed events
               </li>
             ) : null}
           </ul>
         )}
       </Card>
 
-      <Card className="p-4 sm:p-5">
-        <Eyebrow>Run sheet</Eyebrow>
-        <p className="mt-2 text-[13px] leading-snug text-ink-muted">
+      <Card className="px-6 py-[22px]">
+        <p className="mb-[15px] text-[12px] font-semibold uppercase tracking-[0.09em] text-muted">
+          Run sheet
+        </p>
+        <p className="text-[13px] leading-relaxed text-muted">
           Print or save a PDF for a vendor — or the full master sheet.
         </p>
-        <div className="mt-3">
+        <div className="mt-4">
           <ButtonLink
             href={runSheetHref(projectId, null)}
             variant="secondary"
@@ -184,11 +190,11 @@ function ContextRail({
           </ButtonLink>
         </div>
         {owners.length > 0 ? (
-          <ul className="mt-3 flex flex-wrap gap-1.5">
+          <ul className="mt-4 flex flex-wrap gap-2">
             <li>
               <Link
                 href={runSheetHref(projectId, null)}
-                className="inline-block rounded-full border border-stone px-2.5 py-1 text-[12px] text-ink-muted no-underline transition-colors hover:border-ink-muted"
+                className="inline-block rounded-[var(--radius-pill)] bg-well px-3.5 py-2 text-[13px] font-semibold text-muted no-underline transition-colors hover:text-ink"
               >
                 All owners
               </Link>
@@ -197,7 +203,7 @@ function ContextRail({
               <li key={owner}>
                 <Link
                   href={runSheetHref(projectId, owner)}
-                  className="inline-block rounded-full border border-stone px-2.5 py-1 text-[12px] text-ink-muted no-underline transition-colors hover:border-ink-muted"
+                  className="inline-block rounded-[var(--radius-pill)] bg-well px-3.5 py-2 text-[13px] font-semibold text-muted no-underline transition-colors hover:text-ink"
                 >
                   {owner}
                 </Link>
@@ -212,58 +218,53 @@ function ContextRail({
 
 function SectionGroup({
   section,
-  collapsed,
+  open,
   onToggle,
   editingId,
   onEdit,
 }: {
   section: TimelineSectionGroup;
-  collapsed: boolean;
+  open: boolean;
   onToggle: () => void;
   editingId: string | null;
   onEdit: (id: string | null) => void;
 }) {
   return (
-    <li className="border-b border-stone last:border-b-0">
-      <button
-        type="button"
-        onClick={onToggle}
-        aria-expanded={!collapsed}
-        className="flex w-full items-center gap-2 py-2.5 text-left"
+    <details
+      className="mb-4 overflow-hidden rounded-[var(--radius-card)] bg-surface shadow-raised last:mb-0"
+      open={open}
+    >
+      <summary
+        className="flex cursor-pointer list-none items-baseline justify-between gap-3.5 px-6 py-[22px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-accent [&::-webkit-details-marker]:hidden"
+        onClick={(e) => {
+          e.preventDefault();
+          onToggle();
+        }}
       >
-        <span
-          className={cn(
-            "text-ink-muted transition-transform",
-            collapsed ? "-rotate-90" : "rotate-0",
-          )}
-          aria-hidden
-        >
-          <svg viewBox="0 0 12 12" className="size-3" fill="currentColor">
-            <path d="M2.5 4.25L6 7.75l3.5-3.5" />
-          </svg>
-        </span>
-        <span className="text-[15px] font-medium text-ink">
+        <span className="font-display text-[19px] font-extrabold tracking-[-0.02em] text-ink">
           {section.label}
-          <span className="ml-1.5 font-normal tabular-nums text-ink-muted">
-            · {section.total}
-          </span>
         </span>
-      </button>
+        <span className="shrink-0 whitespace-nowrap text-[13px] font-medium tabular-nums text-muted">
+          {section.total} {section.total === 1 ? "event" : "events"}
+        </span>
+      </summary>
 
-      {!collapsed ? (
-        <ul className="pb-3 pl-5">
-          {section.events.map((event) => (
-            <EventWithSignals
-              key={event.id}
-              event={event}
-              isEditing={editingId === event.id}
-              onEdit={() => onEdit(event.id)}
-              onCloseEdit={() => onEdit(null)}
-            />
-          ))}
-        </ul>
+      {open ? (
+        <div className="px-3.5 pb-3.5">
+          <ul>
+            {section.events.map((event) => (
+              <EventWithSignals
+                key={event.id}
+                event={event}
+                isEditing={editingId === event.id}
+                onEdit={() => onEdit(event.id)}
+                onCloseEdit={() => onEdit(null)}
+              />
+            ))}
+          </ul>
+        </div>
       ) : null}
-    </li>
+    </details>
   );
 }
 
@@ -279,7 +280,7 @@ function EventWithSignals({
   onCloseEdit: () => void;
 }) {
   return (
-    <li>
+    <li className="mb-2 last:mb-0">
       <TimelineEventRow
         event={event}
         durationMinutes={event.durationMinutes}
@@ -289,56 +290,78 @@ function EventWithSignals({
         onCloseEdit={onCloseEdit}
       />
       {event.gapAfterMinutes != null ? (
-        <div className="flex items-center gap-2 py-1.5 pl-1">
-          <span className="h-px flex-1 bg-stone" aria-hidden />
+        <div className="flex items-center gap-2 px-1 py-2">
+          <span className="h-px flex-1 bg-hairline" aria-hidden />
           <Pill variant="clay">
             {formatDurationMinutes(event.gapAfterMinutes)} open
           </Pill>
-          <span className="h-px flex-1 bg-stone" aria-hidden />
+          <span className="h-px flex-1 bg-hairline" aria-hidden />
         </div>
       ) : null}
     </li>
   );
 }
 
-export function TimelineBoard({ projectId, aggregates }: TimelineBoardProps) {
-  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+export function TimelineBoard({
+  projectId,
+  projectName,
+  weddingDate,
+  aggregates,
+}: TimelineBoardProps) {
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>(
+    () => {
+      const initial: Record<string, boolean> = {};
+      for (const section of aggregates.sections) {
+        initial[section.key] = true;
+      }
+      return initial;
+    },
+  );
   const [editingId, setEditingId] = useState<string | null>(null);
 
   function toggleSection(key: string) {
-    setCollapsed((prev) => ({ ...prev, [key]: !prev[key] }));
+    setOpenSections((prev) => ({ ...prev, [key]: !prev[key] }));
   }
 
+  const eyebrow =
+    weddingDate != null
+      ? `${projectName} · ${formatEyebrowDate(weddingDate)}`
+      : projectName;
+
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
+      <PageHeader
+        title="Day-of timeline"
+        eyebrow={eyebrow}
+        description="The hour-by-hour schedule for the wedding day — distinct from your long-range planning checklist."
+      />
+
       <DaySummaryStrip aggregates={aggregates} />
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)] lg:gap-8">
-        <div className="min-w-0 space-y-4">
-          <Eyebrow>Events</Eyebrow>
-
-          <AddEventForm projectId={projectId} />
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_300px] lg:items-start">
+        <div className="min-w-0">
+          <div className="mb-4">
+            <AddEventForm projectId={projectId} />
+          </div>
 
           {aggregates.sections.length === 0 ? (
-            <p className="px-1 text-[13px] text-ink-muted">
-              No events yet. Add the first moment — ceremony, cocktail hour, first
-              dance, and so on.
-            </p>
+            <EmptyState>
+              No events yet. Add the first moment — ceremony, cocktail hour,
+              first dance, and so on.
+            </EmptyState>
           ) : (
-            <Card className="px-4 py-1 sm:px-5">
-              <ul>
-                {aggregates.sections.map((section) => (
-                  <SectionGroup
-                    key={section.key}
-                    section={section}
-                    collapsed={Boolean(collapsed[section.key])}
-                    onToggle={() => toggleSection(section.key)}
-                    editingId={editingId}
-                    onEdit={setEditingId}
-                  />
-                ))}
-              </ul>
-            </Card>
+            <div>
+              {aggregates.sections.map((section) => (
+                <SectionGroup
+                  key={section.key}
+                  section={section}
+                  open={openSections[section.key] ?? true}
+                  onToggle={() => toggleSection(section.key)}
+                  editingId={editingId}
+                  onEdit={setEditingId}
+                />
+              ))}
+            </div>
           )}
         </div>
 

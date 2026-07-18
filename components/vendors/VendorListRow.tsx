@@ -24,11 +24,11 @@ export function VendorListRow({
   className,
 }: VendorListRowProps) {
   const nameClass = href
-    ? "text-[15px] text-ink hover:text-plum-deep"
-    : "text-[15px] text-ink";
+    ? "text-[15px] font-medium text-ink hover:text-accent"
+    : "text-[15px] font-medium text-ink";
 
   return (
-    <div className={cn("px-1 py-3.5", className)}>
+    <div className={cn(className)}>
       <div className="flex items-center justify-between gap-4">
         {leading ? <div className="shrink-0">{leading}</div> : null}
         <div className="min-w-0 flex-1">
@@ -40,15 +40,13 @@ export function VendorListRow({
             <div className={nameClass}>{name}</div>
           )}
           {category ? (
-            <div className="mt-px text-[13px] text-ink-muted">{category}</div>
+            <div className="mt-1 text-[13px] text-muted">{category}</div>
           ) : null}
-          {meta ? (
-            <div className="mt-px text-[13px] text-ink-muted">{meta}</div>
-          ) : null}
+          {meta ? <div className="mt-1 text-[13px] text-muted">{meta}</div> : null}
         </div>
         {trailing ? <div className="shrink-0">{trailing}</div> : null}
       </div>
-      {footer ? <div className="mt-3 pl-0">{footer}</div> : null}
+      {footer ? <div className="mt-3">{footer}</div> : null}
     </div>
   );
 }

@@ -10,7 +10,7 @@ export function GooglePlaceRating({
   className?: string;
 }) {
   return (
-    <p className={cn("text-sm text-ink-muted", className)}>
+    <p className={cn("text-sm text-muted", className)}>
       <span className="tabnum font-medium text-ink">{rating.toFixed(1)}</span>
       {userRatingCount != null ? (
         <>

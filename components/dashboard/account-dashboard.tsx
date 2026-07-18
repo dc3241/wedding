@@ -1,12 +1,14 @@
 import Link from "next/link";
 import { NewWeddingForm } from "@/components/projects/new-wedding-form";
-import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
 import { Pill } from "@/components/ui/pill";
 import { SectionHeader } from "@/components/ui/section-header";
 import { StatCard } from "@/components/ui/stat-card";
-import type { PlannerProjectSummary, UrgentItem } from "@/lib/dashboard-aggregates";
+import type {
+  PlannerProjectSummary,
+  UrgentItem,
+} from "@/lib/dashboard-aggregates";
 
 type AccountDashboardProps = {
   projects: PlannerProjectSummary[];
@@ -30,7 +32,10 @@ function daysUntil(date: string | null) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const wedding = new Date(date + "T00:00:00");
-  return Math.max(0, Math.ceil((wedding.getTime() - today.getTime()) / 86_400_000));
+  return Math.max(
+    0,
+    Math.ceil((wedding.getTime() - today.getTime()) / 86_400_000),
+  );
 }
 
 function urgentLabel(item: UrgentItem) {
@@ -77,7 +82,7 @@ export function AccountDashboard({
         <NewWeddingForm />
       </div>
 
-      <div className="mb-10 grid grid-cols-1 gap-[18px] md:grid-cols-3">
+      <div className="mb-8 grid grid-cols-1 gap-3.5 md:grid-cols-3">
         <StatCard value={activeWeddings} label="Active weddings" />
         <StatCard value={tasksDueThisWeek} label="Tasks due this week" />
         <StatCard value={vendorsNeedingAction} label="Vendors needing action" />
@@ -90,28 +95,30 @@ export function AccountDashboard({
             Nothing urgent right now — you&apos;re in good shape.
           </EmptyState>
         ) : (
-          <Card className="divide-y divide-stone">
-            {urgentItems.map((item) => (
-              <Link
-                key={`${item.kind}-${item.id}`}
-                href={urgentHref(item)}
-                className="flex items-center justify-between gap-4 px-[26px] py-[22px] hover:bg-stone-soft"
-              >
-                <div className="min-w-0">
-                  <div className="truncate text-sm font-medium text-ink">
-                    {urgentTitle(item)}
+          <div className="overflow-hidden rounded-[var(--radius-card)] bg-surface shadow-[var(--shadow-raised)]">
+            <div className="divide-y divide-hairline">
+              {urgentItems.map((item) => (
+                <Link
+                  key={`${item.kind}-${item.id}`}
+                  href={urgentHref(item)}
+                  className="flex items-center justify-between gap-4 px-5 py-4 transition-colors hover:bg-well"
+                >
+                  <div className="min-w-0">
+                    <div className="truncate text-[15px] font-medium text-ink">
+                      {urgentTitle(item)}
+                    </div>
+                    <div className="mt-0.5 truncate text-[13px] text-muted">
+                      {item.projectName}
+                      {item.kind === "task"
+                        ? ` · due ${formatWeddingDate(item.dueDate)}`
+                        : null}
+                    </div>
                   </div>
-                  <div className="mt-0.5 truncate text-xs text-ink-muted">
-                    {item.projectName}
-                    {item.kind === "task"
-                      ? ` · due ${formatWeddingDate(item.dueDate)}`
-                      : null}
-                  </div>
-                </div>
-                <Pill variant={urgentVariant(item)}>{urgentLabel(item)}</Pill>
-              </Link>
-            ))}
-          </Card>
+                  <Pill variant={urgentVariant(item)}>{urgentLabel(item)}</Pill>
+                </Link>
+              ))}
+            </div>
+          </div>
         )}
       </section>
 
@@ -122,37 +129,41 @@ export function AccountDashboard({
             No weddings yet. Create your first client wedding to get started.
           </EmptyState>
         ) : (
-          <Card className="divide-y divide-stone">
-            {projects.map((project) => {
-              const days = daysUntil(project.wedding_date);
-              const active = project.status === "active";
+          <div className="overflow-hidden rounded-[var(--radius-card)] bg-surface shadow-[var(--shadow-raised)]">
+            <div className="divide-y divide-hairline">
+              {projects.map((project) => {
+                const days = daysUntil(project.wedding_date);
+                const active = project.status === "active";
 
-              return (
-                <Link
-                  key={project.id}
-                  href={`/projects/${project.id}`}
-                  className="flex items-center justify-between gap-4 px-[26px] py-[22px] hover:bg-stone-soft"
-                >
-                  <div className="min-w-0">
-                    <div className="couple-name truncate text-[23px] text-ink">
-                      {project.name}
+                return (
+                  <Link
+                    key={project.id}
+                    href={`/projects/${project.id}`}
+                    className="flex items-center justify-between gap-4 px-5 py-4 transition-colors hover:bg-well"
+                  >
+                    <div className="min-w-0">
+                      <div className="truncate text-[19px] font-extrabold tracking-[-0.02em] text-ink">
+                        {project.name}
+                      </div>
+                      <div className="mt-0.5 text-[13px] tabular-nums text-muted">
+                        {formatWeddingDate(project.wedding_date)}
+                      </div>
                     </div>
-                    <div className="mt-0.5 text-[13.5px] text-ink-muted tabnum">
-                      {formatWeddingDate(project.wedding_date)}
+                    <div className="flex shrink-0 items-center gap-3">
+                      {days !== null ? (
+                        <span className="text-[13px] tabular-nums text-muted">
+                          {days}d
+                        </span>
+                      ) : null}
+                      <Pill variant={active ? "sage" : undefined}>
+                        {active ? "Active" : project.status}
+                      </Pill>
                     </div>
-                  </div>
-                  <div className="flex shrink-0 items-center gap-3">
-                    {days !== null ? (
-                      <span className="text-sm text-ink-muted tabnum">{days}d</span>
-                    ) : null}
-                    <Pill variant={active ? "sage" : undefined}>
-                      {active ? "Active" : project.status}
-                    </Pill>
-                  </div>
-                </Link>
-              );
-            })}
-          </Card>
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
         )}
       </section>
     </div>

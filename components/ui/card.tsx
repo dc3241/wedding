@@ -5,7 +5,7 @@ type CardVariant = "default" | "emotional";
 
 type CardProps = HTMLAttributes<HTMLDivElement> & {
   variant?: CardVariant;
-  /** Plum-tint icon chip — emotional variant only */
+  /** Accent-wash icon chip — emotional variant only */
   icon?: ReactNode;
 };
 
@@ -21,8 +21,8 @@ export function Card({
   return (
     <div
       className={cn(
-        "rounded-lg border border-stone bg-surface",
-        emotional ? "shadow-card-emotional" : "shadow-card",
+        "rounded-[var(--radius-card)] bg-surface",
+        emotional ? "shadow-card-emotional" : "shadow-raised",
         icon ? "flex items-start gap-4 p-6" : null,
         className,
       )}
@@ -30,7 +30,7 @@ export function Card({
     >
       {icon ? (
         <span
-          className="flex size-10 shrink-0 items-center justify-center rounded-[10px] bg-plum-tint/40 text-plum"
+          className="flex size-10 shrink-0 items-center justify-center rounded-[var(--radius-inner)] bg-accent-wash text-accent"
           aria-hidden
         >
           {icon}

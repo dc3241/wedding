@@ -17,10 +17,12 @@ export function GmailConnection({
   const connectHref = `/auth/google?returnTo=${encodeURIComponent(returnTo)}`;
 
   return (
-    <Card className="p-6">
+    <Card className="px-6 py-5">
       <Eyebrow>Gmail</Eyebrow>
-      <h3 className="font-display mt-1.5 text-2xl text-ink">Outreach mailbox</h3>
-      <p className="mt-1 text-[13px] text-ink-muted">
+      <h3 className="mt-1.5 font-display text-[19px] font-extrabold tracking-[-0.02em] text-ink">
+        Outreach mailbox
+      </h3>
+      <p className="mt-1 text-[13px] text-muted">
         Connect your mailbox so outreach sends from your own address. Replies
         land in your Gmail inbox.
       </p>
@@ -48,7 +50,7 @@ export function GmailConnection({
         {connectedEmail ? (
           <Link
             href={connectHref}
-            className="text-[13px] text-plum hover:text-plum-deep"
+            className="text-[13px] font-semibold text-accent hover:opacity-80"
           >
             Reconnect
           </Link>

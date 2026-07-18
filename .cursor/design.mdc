@@ -333,16 +333,22 @@ target): `--canvas #FAF5EE`, `--ink #221A1D`, `--plum #7E3E57`, `--stone #E8DCCE
 - ≥9 live radii → the three radius tokens.
 - Apply the Soft stack `:root` above; retire `--plum` / `--stone` / `--stone-soft` from chrome.
 - Swap `--font-sans` to Figtree (400/500/600/800); strip Cormorant from all Tier 1 / Tier 2
-  surfaces (~25+ files), keeping the run sheet print-header carve-out.
+  surfaces (~25+ files), keeping the run sheet print-header carve-out. **Done in STYLE-01b.**
 - Define `--ws-font-sans` (Hanken Grotesk 400/500) in the Tier 3 token namespace; repoint every
-  Tier 3 template's body face from `--font-sans` to it.
+  Tier 3 template's body face from `--font-sans` to it. **Done in STYLE-01b** (`.font-ws-sans`;
+  Hanken loaded from root layout because `/w/` inherits and loads nothing).
 - Resolve **where** Hanken loads for `--ws-font-sans` on public `/w/` sites. Report the chosen
-  wiring at STYLE-01 Step 0.
+  wiring at STYLE-01 Step 0. **Resolved: root `app/layout.tsx` (four families).**
 - `components/marketing/` (9 files) converts as **Tier 2**, not Tier 1 — all-sans Figtree with
   scale latitude and at most one `#3D2430` field across the whole landing route.
 - **The run sheet's colour will change at STYLE-01a, and this is intended, not a regression:**
   ink `#221A1D` → `#241C20`; `ink-muted` `#8C8083` → `#857A80`; `border/divide-stone` `#E8DCCE` →
   `#DCD0D6`; `outline-plum` `#7E3E57` → `#C0396B`. `bg-surface` stays `#FFFFFF`. Its body face
   moves to Figtree at STYLE-01b; the Cormorant header stays. **Do not treat these as leaks.**
+- Root layout now loads **four** families; `/w/[slug]` downloads Figtree it never uses and the app
+  downloads Great Vibes it never uses. Scope the loading (Great Vibes → `/w/` layout only) as a
+  later optimisation.
+- `.font-display` and `.couple-name` are byte-identical — collapse to one when a slice is already
+  touching their consumers.
 - `design/theme-direction.html` → delete.
 - `design/reference.html` → regenerate against this file.

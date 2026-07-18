@@ -76,7 +76,7 @@ export function PlaceResultCard({
   }
 
   return (
-    <div className="rounded-lg border-[0.5px] border-stone bg-surface px-3.5 py-3">
+    <div className="rounded-[var(--radius-inner)] bg-well px-4 py-3.5 shadow-recessed">
       <div className="flex items-center gap-3">
         <div className="min-w-0 flex-1">
           <div className="flex min-w-0 items-center gap-2">
@@ -84,7 +84,7 @@ export function PlaceResultCard({
               {place.displayName}
             </span>
             {typeLabel ? (
-              <span className="shrink-0 rounded bg-stone-soft px-1.5 py-0.5 text-[11px] text-ink-muted">
+              <span className="shrink-0 rounded-[var(--radius-pill)] bg-surface px-2 py-0.5 text-[11px] font-bold uppercase tracking-[0.03em] text-muted">
                 {typeLabel}
               </span>
             ) : null}
@@ -96,7 +96,7 @@ export function PlaceResultCard({
                 {place.rating!.toFixed(1)}
               </span>
               {place.userRatingCount != null ? (
-                <span className="text-ink-muted">
+                <span className="text-muted">
                   {" "}
                   ·{" "}
                   <span className="tabnum">
@@ -108,7 +108,7 @@ export function PlaceResultCard({
             </p>
           ) : null}
 
-          <p className="mt-0.5 truncate text-[13px] text-ink-muted">
+          <p className="mt-0.5 truncate text-[13px] text-muted">
             {address ? address : "Travels to your venue"}
             {host ? (
               <>
@@ -118,7 +118,7 @@ export function PlaceResultCard({
                   href={place.websiteUri}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-ink-muted hover:text-ink"
+                  className="text-muted hover:text-ink"
                 >
                   {host}
                 </a>

@@ -38,8 +38,8 @@ function AmountField({
   muted?: boolean;
 }) {
   return (
-    <div className="flex h-8 items-center gap-1 rounded border-[0.5px] border-stone bg-surface px-2">
-      <span className="shrink-0 text-[13px] text-ink-muted" aria-hidden>
+    <div className="flex h-9 items-center gap-1 rounded-[var(--radius-inner)] border border-ring bg-surface px-2.5">
+      <span className="shrink-0 text-[13px] text-muted" aria-hidden>
         $
       </span>
       <input
@@ -52,8 +52,8 @@ function AmountField({
         placeholder={placeholder}
         aria-label={ariaLabel}
         className={cn(
-          "min-w-0 flex-1 border-0 bg-transparent text-right text-[14px] tabular-nums outline-none placeholder:text-ink-muted",
-          muted ? "text-ink-muted" : "font-medium text-ink",
+          "min-w-0 flex-1 border-0 bg-transparent text-right text-[14px] font-medium tabular-nums outline-none placeholder:text-muted",
+          muted ? "text-muted" : "text-ink",
         )}
       />
     </div>
@@ -65,9 +65,7 @@ function VendorVariance({ item }: { item: BudgetItemForAggregate }) {
   if (!linked) return null;
 
   if (linked.quotedPrice == null || item.quoteVariance == null) {
-    return (
-      <span className="text-[13px] text-ink-muted">{linked.name}</span>
-    );
+    return <span className="text-[13px] text-muted">{linked.name}</span>;
   }
 
   const over = item.quoteVariance > 0;
@@ -79,16 +77,13 @@ function VendorVariance({ item }: { item: BudgetItemForAggregate }) {
       : `${formatCurrency(Math.abs(item.quoteVariance))} under plan`;
 
   return (
-    <span className="text-[13px] text-ink-muted">
+    <span className="text-[13px] text-muted">
       <span className="tabular-nums">
         {formatCurrency(linked.quotedPrice)} quoted
       </span>
       {" · "}
       <span
-        className={cn(
-          "tabular-nums",
-          over ? "text-rosewood" : "text-ink-muted",
-        )}
+        className={cn("tabular-nums", over ? "text-rosewood" : "text-muted")}
       >
         {varianceLabel}
       </span>
@@ -185,7 +180,12 @@ export function BudgetItemRow({
   }
 
   return (
-    <li className={cn("space-y-2.5 py-2.5", isPending && "opacity-60")}>
+    <li
+      className={cn(
+        "mb-2 space-y-2.5 rounded-[var(--radius-inner)] bg-well px-4 py-3.5 shadow-recessed last:mb-0",
+        isPending && "opacity-60",
+      )}
+    >
       <div className="grid grid-cols-[minmax(0,1fr)_96px_96px_52px] items-center gap-x-2">
         <input
           type="text"
@@ -196,7 +196,7 @@ export function BudgetItemRow({
             if (e.key === "Enter") e.currentTarget.blur();
           }}
           aria-label="Line item label"
-          className="min-w-0 truncate bg-transparent text-[14px] text-ink outline-none"
+          className="min-w-0 truncate bg-transparent text-[15px] font-medium text-ink outline-none"
         />
         <AmountField
           value={planned}
@@ -216,7 +216,7 @@ export function BudgetItemRow({
           type="button"
           onClick={handleDelete}
           disabled={isPending}
-          className="justify-self-end text-[13px] text-ink-muted transition-colors hover:text-rosewood disabled:opacity-50"
+          className="justify-self-end text-[13px] font-medium text-muted transition-colors hover:text-rosewood disabled:opacity-50"
         >
           Delete
         </button>
@@ -226,7 +226,7 @@ export function BudgetItemRow({
         <div className="space-y-1.5">
           <label
             htmlFor={`budget-vendor-${item.id}`}
-            className="text-[11px] font-medium uppercase tracking-[0.08em] text-ink-muted"
+            className="text-[12px] font-semibold uppercase tracking-[0.09em] text-muted"
           >
             Vendor
           </label>
@@ -236,7 +236,7 @@ export function BudgetItemRow({
               value={item.project_vendor_id ?? ""}
               onChange={(e) => handleVendorChange(e.target.value)}
               disabled={isPending}
-              className="h-8 max-w-full rounded border-[0.5px] border-stone bg-surface px-2.5 text-[13px] text-ink outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-plum disabled:opacity-50"
+              className="h-9 max-w-full rounded-[var(--radius-inner)] border border-ring bg-surface px-2.5 text-[13px] font-medium text-ink outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-50"
             >
               <option value="">Not linked</option>
               {projectVendors.map((vendor) => (

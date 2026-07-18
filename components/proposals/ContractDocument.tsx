@@ -72,25 +72,25 @@ export function ContractDocument({
       <div className="contract-no-print mb-6 flex flex-wrap items-center justify-between gap-3">
         <Link
           href={`/leads/${leadId}`}
-          className="text-[13px] text-ink-muted no-underline hover:text-ink"
+          className="text-[13px] text-muted no-underline hover:text-ink"
         >
           ← Back to lead
         </Link>
         <PrintContractButton />
       </div>
 
-      <article className="contract-print-root mx-auto max-w-[720px] rounded-lg border border-stone bg-surface px-10 py-12 print:border-none print:px-0 print:py-0">
-        <header className="border-b border-stone pb-8">
-          <p className="text-[13px] font-medium uppercase tracking-[0.08em] text-ink-muted">
+      <article className="contract-print-root mx-auto max-w-[720px] rounded-[var(--radius-card)] border border-hairline bg-surface px-10 py-12 print:border-none print:px-0 print:py-0">
+        <header className="border-b border-hairline pb-8">
+          <p className="text-[13px] font-medium uppercase tracking-[0.08em] text-muted">
             {businessName}
           </p>
           <h1 className="font-display mt-3 text-[32px] text-ink">
             {proposalTitle}
           </h1>
-          <p className="mt-2 text-[15px] text-ink-muted">
+          <p className="mt-2 text-[15px] text-muted">
             Agreement between {businessName} and {coupleName}
           </p>
-          <p className="mt-1 text-[13px] text-ink-muted">
+          <p className="mt-1 text-[13px] text-muted">
             Date: {formatContractDate(acceptedAt)}
           </p>
           {acceptedAt ? (
@@ -105,7 +105,7 @@ export function ContractDocument({
           <div className="mt-4 overflow-x-auto">
             <table className="w-full border-collapse text-[14px]">
               <thead>
-                <tr className="border-b border-stone text-left text-[13px] text-ink-muted">
+                <tr className="border-b border-hairline text-left text-[13px] text-muted">
                   <th className="pb-2 pr-4 font-medium">Description</th>
                   <th className="pb-2 pr-4 font-medium tabular-nums">Qty</th>
                   <th className="pb-2 pr-4 font-medium tabular-nums">Unit price</th>
@@ -116,12 +116,12 @@ export function ContractDocument({
               </thead>
               <tbody>
                 {lineItems.map((item) => (
-                  <tr key={item.id} className="border-b border-stone/60">
+                  <tr key={item.id} className="border-b border-hairline/60">
                     <td className="py-2.5 pr-4 text-ink">{item.description}</td>
-                    <td className="py-2.5 pr-4 tabular-nums text-ink-muted">
+                    <td className="py-2.5 pr-4 tabular-nums text-muted">
                       {item.quantity}
                     </td>
-                    <td className="py-2.5 pr-4 tabular-nums text-ink-muted">
+                    <td className="py-2.5 pr-4 tabular-nums text-muted">
                       {formatProposalCurrency(item.unit_price)}
                     </td>
                     <td className="py-2.5 text-right tabular-nums text-ink">
@@ -148,30 +148,30 @@ export function ContractDocument({
         </section>
 
         {terms ? (
-          <section className="border-t border-stone py-8">
+          <section className="border-t border-hairline py-8">
             <h2 className="text-sm font-medium text-ink">Terms & conditions</h2>
-            <div className="mt-3 whitespace-pre-wrap text-[14px] leading-relaxed text-ink-muted">
+            <div className="mt-3 whitespace-pre-wrap text-[14px] leading-relaxed text-muted">
               {terms}
             </div>
           </section>
         ) : null}
 
-        <section className="border-t border-stone pt-10">
+        <section className="border-t border-hairline pt-10">
           <h2 className="text-sm font-medium text-ink">Signatures</h2>
           <div className="mt-8 grid gap-12 sm:grid-cols-2">
             <div>
               <div className="border-b border-ink pb-1" />
-              <p className="mt-2 text-[13px] text-ink-muted">
+              <p className="mt-2 text-[13px] text-muted">
                 {businessName} (Planner)
               </p>
-              <p className="mt-1 text-[12px] text-ink-muted">Date: __________</p>
+              <p className="mt-1 text-[12px] text-muted">Date: __________</p>
             </div>
             <div>
               <div className="border-b border-ink pb-1" />
-              <p className="mt-2 text-[13px] text-ink-muted">
+              <p className="mt-2 text-[13px] text-muted">
                 {coupleName} (Client)
               </p>
-              <p className="mt-1 text-[12px] text-ink-muted">Date: __________</p>
+              <p className="mt-1 text-[12px] text-muted">Date: __________</p>
             </div>
           </div>
         </section>

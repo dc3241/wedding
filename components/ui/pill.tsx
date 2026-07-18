@@ -1,26 +1,19 @@
 import { cn } from "@/lib/cn";
 import type { HTMLAttributes } from "react";
 
-export type PillVariant = "default" | "sage" | "clay" | "rosewood" | "plum";
+export type PillVariant = "default" | "sage" | "clay" | "rosewood" | "plum" | "accent";
 
 type PillProps = HTMLAttributes<HTMLSpanElement> & {
   variant?: PillVariant;
 };
 
 const variantClasses: Record<PillVariant, string> = {
-  default: "border-stone bg-surface text-ink-muted",
-  sage: "border-stone bg-surface text-sage",
-  clay: "border-stone bg-surface text-clay",
-  rosewood: "border-stone bg-surface text-rosewood",
-  plum: "border-transparent bg-plum-tint text-plum",
-};
-
-const dotClasses: Record<PillVariant, string> = {
-  default: "bg-ink-muted",
-  sage: "bg-sage",
-  clay: "bg-clay",
-  rosewood: "bg-rosewood",
-  plum: "bg-plum",
+  default: "bg-well text-muted",
+  sage: "bg-well text-sage",
+  clay: "bg-clay-wash text-clay",
+  rosewood: "bg-rosewood-wash text-rosewood",
+  plum: "bg-accent-wash text-accent",
+  accent: "bg-accent-wash text-accent",
 };
 
 export function Pill({
@@ -32,16 +25,12 @@ export function Pill({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 py-[3px] text-xs font-medium",
+        "inline-flex items-center whitespace-nowrap rounded-[var(--radius-pill)] px-2.5 py-1 text-[11px] font-bold tracking-[0.03em] uppercase",
         variantClasses[variant],
         className,
       )}
       {...props}
     >
-      <span
-        className={cn("size-1.5 shrink-0 rounded-full", dotClasses[variant])}
-        aria-hidden
-      />
       {children}
     </span>
   );

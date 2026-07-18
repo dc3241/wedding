@@ -48,7 +48,7 @@ export default async function VendorDetailPage({
     <div className="space-y-6">
       <Link
         href={`/projects/${projectId}/vendors`}
-        className="text-[13px] text-ink-muted hover:text-ink"
+        className="text-[13px] text-muted hover:text-ink"
       >
         ← Back to vendors
       </Link>
@@ -58,7 +58,7 @@ export default async function VendorDetailPage({
           <header className="flex flex-wrap items-start justify-between gap-4">
             <div className="min-w-0">
               <h1 className="text-[20px] font-medium text-ink">{vendor.name}</h1>
-              <p className="mt-px text-[13px] text-ink-muted">
+              <p className="mt-px text-[13px] text-muted">
                 {vendor.category ?? "Uncategorized"}
               </p>
             </div>
@@ -78,7 +78,7 @@ export default async function VendorDetailPage({
               {vendor.contact_email ? (
                 <a
                   href={`mailto:${vendor.contact_email}`}
-                  className="text-plum hover:text-plum-deep"
+                  className="text-accent hover:text-accent"
                 >
                   {vendor.contact_email}
                 </a>
@@ -88,7 +88,7 @@ export default async function VendorDetailPage({
                   href={vendor.website}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-plum hover:text-plum-deep"
+                  className="text-accent hover:text-accent"
                 >
                   Website
                 </a>
@@ -103,7 +103,7 @@ export default async function VendorDetailPage({
                 {vendor.ai_overview}
               </p>
             ) : (
-              <p className="mt-2 text-[13px] text-ink-muted">
+              <p className="mt-2 text-[13px] text-muted">
                 No overview yet. Enrichment runs automatically when a vendor is
                 added from search, or use Refresh overview on the outreach list.
               </p>
@@ -112,12 +112,12 @@ export default async function VendorDetailPage({
         </div>
 
         {vendor.external_place_id ? (
-          <div className="border-t border-stone p-6">
+          <div className="border-t border-hairline p-6">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <Eyebrow>
                 Live from <span translate="no">Google Maps</span>
               </Eyebrow>
-              <p className="text-[13px] text-ink-muted">
+              <p className="text-[13px] text-muted">
                 Fetched on this page load — not saved
               </p>
             </div>
@@ -130,7 +130,7 @@ export default async function VendorDetailPage({
                     userRatingCount={live.userRatingCount}
                   />
                 ) : (
-                  <p className="text-[13px] text-ink-muted">
+                  <p className="text-[13px] text-muted">
                     No rating available from Google right now.
                   </p>
                 )}
@@ -143,25 +143,25 @@ export default async function VendorDetailPage({
                     <GoogleReviewList reviews={live.reviews} />
                   </div>
                 ) : hasLiveRating ? (
-                  <p className="text-[13px] text-ink-muted">
+                  <p className="text-[13px] text-muted">
                     No review text available to display.
                   </p>
                 ) : null}
               </div>
             ) : (
-              <p className="mt-5 text-[13px] text-ink-muted">
+              <p className="mt-5 text-[13px] text-muted">
                 Could not load live Google Maps data right now. Refresh the page
                 to try again.
               </p>
             )}
 
-            <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-stone pt-5">
+            <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-hairline pt-5">
               {live?.googleMapsUri ? (
                 <a
                   href={live.googleMapsUri}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-[13px] font-medium text-plum hover:text-plum-deep"
+                  className="text-[13px] font-medium text-accent hover:text-accent"
                 >
                   View on <span translate="no">Google Maps</span>
                 </a>
@@ -172,8 +172,8 @@ export default async function VendorDetailPage({
             </div>
           </div>
         ) : (
-          <div className="border-t border-stone p-6">
-            <p className="text-[13px] text-ink-muted">
+          <div className="border-t border-hairline p-6">
+            <p className="text-[13px] text-muted">
               This vendor was added manually and is not linked to a Google
               place, so live ratings and reviews are not available.
             </p>

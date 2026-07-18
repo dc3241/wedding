@@ -77,7 +77,7 @@ function SortableLeadCard({
           {...attributes}
           {...listeners}
           aria-label={`Drag ${lead.couple_name}`}
-          className="absolute left-2 top-3 z-10 flex h-6 w-4 cursor-grab touch-none flex-col items-center justify-center gap-0.5 rounded text-ink-muted hover:text-ink active:cursor-grabbing"
+          className="absolute left-2 top-3 z-10 flex h-6 w-4 cursor-grab touch-none flex-col items-center justify-center gap-0.5 rounded text-muted hover:text-ink active:cursor-grabbing"
         >
           <span className="block h-0.5 w-2.5 rounded-full bg-current" />
           <span className="block h-0.5 w-2.5 rounded-full bg-current" />
@@ -106,11 +106,11 @@ function LeadColumn({
     <section
       ref={setNodeRef}
       className={cn(
-        "flex w-[240px] shrink-0 flex-col rounded-lg border border-stone bg-surface",
-        isOver && "border-plum",
+        "flex w-[240px] shrink-0 flex-col rounded-[var(--radius-card)] border border-hairline bg-surface",
+        isOver && "border-accent",
       )}
     >
-      <div className="flex items-center gap-2 border-b border-stone px-3 py-2.5">
+      <div className="flex items-center gap-2 border-b border-hairline px-3 py-2.5">
         <Eyebrow>{LEAD_STAGE_LABEL[stage]}</Eyebrow>
         <Pill variant={LEAD_STAGE_VARIANT[stage]}>{leads.length}</Pill>
       </div>
@@ -317,7 +317,7 @@ export function LeadsBoard({ initialLeads }: { initialLeads: Lead[] }) {
 
   if (initialLeads.length === 0) {
     return (
-      <p className="px-1 text-[13px] text-ink-muted">
+      <p className="px-1 text-[13px] text-muted">
         No leads yet. Add a prospective couple to start tracking your pipeline.
       </p>
     );

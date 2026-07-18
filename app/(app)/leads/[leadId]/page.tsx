@@ -103,13 +103,13 @@ export default async function LeadDetailPage({
       <div className="mb-6">
         <Link
           href="/leads"
-          className="mb-3 inline-block text-[13px] text-ink-muted no-underline hover:text-ink"
+          className="mb-3 inline-block text-[13px] text-muted no-underline hover:text-ink"
         >
           ← Back to leads
         </Link>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h1 className="couple-name text-[46px] tracking-[-0.01em] text-ink">
+            <h1 className="text-[42px] font-extrabold tracking-[-0.03em] text-ink max-md:text-[32px]">
               {lead.couple_name}
             </h1>
             <div className="mt-2 flex flex-wrap items-center gap-2.5">
@@ -117,22 +117,22 @@ export default async function LeadDetailPage({
                 {LEAD_STAGE_LABEL[lead.stage]}
               </Pill>
               {weddingDate ? (
-                <span className="text-[13px] text-ink-muted">{weddingDate}</span>
+                <span className="text-[13px] text-muted">{weddingDate}</span>
               ) : null}
               {budget ? (
-                <span className="text-[13px] tabular-nums text-ink-muted">
+                <span className="text-[13px] tabular-nums text-muted">
                   {budget}
                 </span>
               ) : null}
             </div>
             {contact ? (
-              <p className="mt-1 text-[13px] text-ink-muted">{contact}</p>
+              <p className="mt-1 text-[13px] text-muted">{contact}</p>
             ) : null}
             {lead.venue ? (
-              <p className="mt-1 text-[13px] text-ink-muted">{lead.venue}</p>
+              <p className="mt-1 text-[13px] text-muted">{lead.venue}</p>
             ) : null}
             {lead.source ? (
-              <p className="mt-1 text-[13px] text-ink-muted">via {lead.source}</p>
+              <p className="mt-1 text-[13px] text-muted">via {lead.source}</p>
             ) : null}
           </div>
         </div>

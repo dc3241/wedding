@@ -1,9 +1,20 @@
 import type { Metadata } from "next";
-import { Cormorant_Garamond, Great_Vibes, Hanken_Grotesk } from "next/font/google";
+import {
+  Cormorant_Garamond,
+  Figtree,
+  Great_Vibes,
+  Hanken_Grotesk,
+} from "next/font/google";
 import "./globals.css";
 
-const hankenGrotesk = Hanken_Grotesk({
+const figtree = Figtree({
   variable: "--font-sans",
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "800"],
+});
+
+const hankenGrotesk = Hanken_Grotesk({
+  variable: "--ws-font-sans",
   subsets: ["latin"],
   weight: ["400", "500"],
 });
@@ -36,7 +47,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${hankenGrotesk.variable} ${cormorantGaramond.variable} ${greatVibes.variable} h-full antialiased`}
+      className={`${figtree.variable} ${hankenGrotesk.variable} ${cormorantGaramond.variable} ${greatVibes.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col font-sans">{children}</body>
     </html>

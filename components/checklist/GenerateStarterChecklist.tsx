@@ -31,11 +31,14 @@ export function GenerateStarterChecklist({
   }
 
   return (
-    <Card className="px-4 py-6 text-center">
-      <p className="text-sm text-ink-muted">
-        No tasks yet. Generate a starter timeline or add tasks below.
+    <Card className="px-8 py-12 text-center">
+      <p className="font-display text-[19px] font-extrabold tracking-[-0.02em] text-ink">
+        No tasks yet
       </p>
-      <div className="mt-3 flex flex-col items-center gap-2">
+      <p className="mt-2 text-[15px] font-medium text-muted">
+        Generate a starter timeline or ask the assistant to build one.
+      </p>
+      <div className="mt-5 flex flex-col items-center gap-3">
         <div className="flex justify-center">{button}</div>
         <AskAssistantLink prefill={ASSISTANT_PREFILLS.checklist}>
           Ask assistant to build your checklist

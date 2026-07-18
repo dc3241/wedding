@@ -10,7 +10,7 @@ export function Topbar({ className, children, ...props }: TopbarProps) {
   return (
     <header
       className={cn(
-        "sticky top-0 z-10 flex items-center justify-between border-b border-stone bg-porcelain px-[18px] py-3.5 md:px-8 md:py-[18px]",
+        "sticky top-0 z-10 flex items-center justify-between border-b border-hairline bg-canvas px-[18px] py-3.5 md:px-8 md:py-[18px]",
         className,
       )}
       {...props}
@@ -34,7 +34,7 @@ export function Wordmark({ className, children = "First Look", ...props }: Wordm
       {...props}
     >
       <span
-        className="size-[9px] shrink-0 rounded-full bg-plum"
+        className="size-[9px] shrink-0 rounded-full bg-accent"
         aria-hidden
       />
       {children}
@@ -63,8 +63,8 @@ export function NavLink({ active, className, ...props }: NavLinkProps) {
   return (
     <Link
       className={cn(
-        "rounded-full px-3 py-1.5 text-sm text-ink-muted no-underline transition-[color,background] duration-150 hover:text-ink",
-        active && "bg-plum-tint text-plum-deep",
+        "rounded-full px-3 py-1.5 text-sm text-muted no-underline transition-[color,background] duration-150 hover:text-ink",
+        active && "bg-accent-wash text-accent",
         className,
       )}
       {...props}
@@ -83,7 +83,7 @@ export function SegmentedToggle({
     <div
       role="tablist"
       className={cn(
-        "flex rounded-full border border-stone bg-surface p-[3px]",
+        "flex rounded-full border border-ring bg-surface p-[3px]",
         className,
       )}
       {...props}
@@ -109,8 +109,8 @@ export function SegmentedToggleItem({
       role="tab"
       aria-selected={active}
       className={cn(
-        "cursor-pointer rounded-full border-none bg-transparent px-3.5 py-1.5 text-[13px] font-medium text-ink-muted transition-[color,background] duration-150",
-        active && "bg-plum text-surface",
+        "cursor-pointer rounded-full border-none bg-transparent px-3.5 py-1.5 text-[13px] font-medium text-muted transition-[color,background] duration-150",
+        active && "bg-accent text-surface",
         className,
       )}
       {...props}

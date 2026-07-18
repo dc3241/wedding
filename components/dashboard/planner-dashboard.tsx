@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ButtonLink } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Pill } from "@/components/ui/pill";
 import { StatCard } from "@/components/ui/stat-card";
 import type { OutreachVendor } from "@/components/vendors/outreach-vendor";
@@ -71,39 +72,46 @@ function PlannerOutreachTable({
   vendors: OutreachRow[];
 }) {
   return (
-    <Card className="px-5 py-[18px]">
+    <Card className="px-6 py-5">
       <div className="mb-4 flex items-center justify-between gap-4">
-        <h2 className="font-display text-[28px] text-ink">Vendor outreach</h2>
+        <h2 className="font-display text-[19px] font-extrabold tracking-[-0.02em] text-ink">
+          Vendor outreach
+        </h2>
         <ButtonLink href={`/projects/${projectId}/vendors`} variant="primary">
           Draft outreach
         </ButtonLink>
       </div>
 
       {vendors.length === 0 ? (
-        <p className="text-[13px] text-ink-muted">
+        <EmptyState>
           No vendors on this wedding yet. Search or add vendors to start
           outreach.
-        </p>
+        </EmptyState>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full min-w-[36rem] border-collapse">
             <thead>
               <tr>
-                <th className="border-b border-stone px-3 pb-2.5 text-left text-xs font-medium tracking-[0.04em] text-ink-muted">
-                  Vendor
-                </th>
-                <th className="border-b border-stone px-3 pb-2.5 text-left text-xs font-medium tracking-[0.04em] text-ink-muted">
-                  Stage
-                </th>
-                <th className="border-b border-stone px-3 pb-2.5 text-left text-xs font-medium tracking-[0.04em] text-ink-muted">
-                  Last contact
-                </th>
-                <th className="border-b border-stone px-3 pb-2.5 text-right text-xs font-medium tracking-[0.04em] text-ink-muted">
-                  Quote
-                </th>
-                <th className="border-b border-stone px-3 pb-2.5 text-left text-xs font-medium tracking-[0.04em] text-ink-muted">
-                  Next step
-                </th>
+                {(
+                  [
+                    ["Vendor", "left"],
+                    ["Stage", "left"],
+                    ["Last contact", "left"],
+                    ["Quote", "right"],
+                    ["Next step", "left"],
+                  ] as const
+                ).map(([label, align]) => (
+                  <th
+                    key={label}
+                    className={
+                      align === "right"
+                        ? "border-b border-hairline px-3 pb-2.5 text-right text-[12px] font-semibold uppercase tracking-[0.09em] text-muted"
+                        : "border-b border-hairline px-3 pb-2.5 text-left text-[12px] font-semibold uppercase tracking-[0.09em] text-muted"
+                    }
+                  >
+                    {label}
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody>
@@ -116,17 +124,17 @@ function PlannerOutreachTable({
                 return (
                   <tr
                     key={vendor.id}
-                    className="border-b border-stone last:border-b-0 hover:bg-stone-soft"
+                    className="border-b border-hairline last:border-b-0 hover:bg-well"
                   >
-                    <td className="px-3 py-3 align-middle text-sm">
+                    <td className="px-3 py-3 align-middle text-[14px]">
                       <Link
                         href={`/projects/${projectId}/vendors/${vendor.vendor.id}`}
-                        className="font-normal text-ink hover:text-plum-deep"
+                        className="font-medium text-ink hover:text-accent"
                       >
                         {vendor.vendor.name}
                       </Link>
                       {vendor.vendor.category ? (
-                        <div className="mt-px text-xs text-ink-muted">
+                        <div className="mt-0.5 text-[12px] text-muted">
                           {vendor.vendor.category}
                         </div>
                       ) : null}
@@ -134,13 +142,13 @@ function PlannerOutreachTable({
                     <td className="px-3 py-3 align-middle">
                       <Pill variant={pill.variant}>{pill.label}</Pill>
                     </td>
-                    <td className="tabnum px-3 py-3 align-middle text-sm text-ink">
+                    <td className="px-3 py-3 align-middle text-[14px] tabular-nums text-ink">
                       {formatLastContact(vendor.lastContact)}
                     </td>
-                    <td className="tabnum px-3 py-3 text-right align-middle text-sm text-ink">
+                    <td className="px-3 py-3 text-right align-middle text-[14px] tabular-nums text-ink">
                       {formatQuote(vendor.quoted_price)}
                     </td>
-                    <td className="px-3 py-3 align-middle text-sm text-ink">
+                    <td className="px-3 py-3 align-middle text-[14px] text-ink">
                       {vendorNextStep(vendor.status, vendor.quoted_price)}
                     </td>
                   </tr>
@@ -163,8 +171,8 @@ export function PlannerDashboard({
   vendors,
 }: PlannerDashboardProps) {
   return (
-    <>
-      <div className="mb-6 grid grid-cols-1 gap-[18px] md:grid-cols-3">
+    <div className="space-y-5">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <StatCard value={tasksDueThisWeek} label="Tasks due this week" />
         <StatCard
           value={`${vendorsBooked} / ${vendorsTotal}`}
@@ -174,7 +182,7 @@ export function PlannerDashboard({
       </div>
 
       <PlannerOutreachTable projectId={projectId} vendors={vendors} />
-    </>
+    </div>
   );
 }
 

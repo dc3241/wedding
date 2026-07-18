@@ -98,7 +98,7 @@ export function AddBudgetItemForm({
             className="text-sm font-medium text-ink"
           >
             Actual{" "}
-            <span className="font-normal text-ink-muted">(optional)</span>
+            <span className="font-normal text-muted">(optional)</span>
           </label>
           <Input
             id="budget-actual"

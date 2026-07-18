@@ -11,8 +11,8 @@ export function PlannerShell({
   projects: SidebarProject[];
 }) {
   return (
-    <div className="flex min-h-full flex-col bg-porcelain">
-      <header className="sticky top-0 z-10 flex items-center border-b border-stone bg-porcelain px-8 py-[18px]">
+    <div className="flex min-h-full flex-col bg-canvas">
+      <header className="sticky top-0 z-10 flex items-center border-b border-hairline bg-canvas px-8 py-[18px]">
         <Wordmark />
       </header>
       <div className="flex flex-1 gap-6 px-8 py-7">

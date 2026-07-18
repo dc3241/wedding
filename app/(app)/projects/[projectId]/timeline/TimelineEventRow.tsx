@@ -107,14 +107,14 @@ export function TimelineEventRow({
     return (
       <div
         className={cn(
-          "border-b border-stone py-3 last:border-b-0",
-          hasConflict && "border-l-2 border-l-rosewood pl-3",
+          "rounded-[var(--radius-inner)] bg-well px-4 py-3.5 shadow-recessed",
+          hasConflict && "ring-2 ring-rosewood/40",
           isPending && "opacity-60",
         )}
       >
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="block">
-            <span className="mb-1 block text-[12px] text-ink-muted">
+            <span className="mb-1.5 block text-[12px] font-semibold uppercase tracking-[0.09em] text-muted">
               Start time
             </span>
             <Input
@@ -122,11 +122,11 @@ export function TimelineEventRow({
               value={startTime}
               onChange={(e) => setStartTime(e.target.value)}
               disabled={isPending}
-              className="px-2 py-1.5 text-[13px] tabular-nums"
+              className="tabular-nums"
             />
           </label>
           <label className="block">
-            <span className="mb-1 block text-[12px] text-ink-muted">
+            <span className="mb-1.5 block text-[12px] font-semibold uppercase tracking-[0.09em] text-muted">
               End time (optional)
             </span>
             <Input
@@ -134,24 +134,25 @@ export function TimelineEventRow({
               value={endTime}
               onChange={(e) => setEndTime(e.target.value)}
               disabled={isPending}
-              className="px-2 py-1.5 text-[13px] tabular-nums"
+              className="tabular-nums"
             />
           </label>
         </div>
 
         <label className="mt-3 block">
-          <span className="mb-1 block text-[12px] text-ink-muted">Title</span>
+          <span className="mb-1.5 block text-[12px] font-semibold uppercase tracking-[0.09em] text-muted">
+            Title
+          </span>
           <Input
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             disabled={isPending}
-            className="text-[15px]"
           />
         </label>
 
         <label className="mt-3 block">
-          <span className="mb-1 block text-[12px] text-ink-muted">
+          <span className="mb-1.5 block text-[12px] font-semibold uppercase tracking-[0.09em] text-muted">
             Description
           </span>
           <Textarea
@@ -159,34 +160,36 @@ export function TimelineEventRow({
             onChange={(e) => setDescription(e.target.value)}
             rows={2}
             disabled={isPending}
-            className="resize-y text-[14px]"
+            className="resize-y"
           />
         </label>
 
         <div className="mt-3 grid gap-3 sm:grid-cols-2">
           <label className="block">
-            <span className="mb-1 block text-[12px] text-ink-muted">Section</span>
+            <span className="mb-1.5 block text-[12px] font-semibold uppercase tracking-[0.09em] text-muted">
+              Section
+            </span>
             <Input
               type="text"
               value={section}
               onChange={(e) => setSection(e.target.value)}
               disabled={isPending}
-              className="py-1.5 text-[13px]"
             />
           </label>
           <label className="block">
-            <span className="mb-1 block text-[12px] text-ink-muted">Owner</span>
+            <span className="mb-1.5 block text-[12px] font-semibold uppercase tracking-[0.09em] text-muted">
+              Owner
+            </span>
             <Input
               type="text"
               value={owner}
               onChange={(e) => setOwner(e.target.value)}
               disabled={isPending}
-              className="py-1.5 text-[13px]"
             />
           </label>
         </div>
 
-        <div className="mt-3 flex flex-wrap items-center gap-2">
+        <div className="mt-4 flex flex-wrap items-center gap-2">
           <Button
             type="button"
             disabled={isPending}
@@ -208,7 +211,7 @@ export function TimelineEventRow({
             type="button"
             onClick={handleDelete}
             disabled={isPending}
-            className="ml-auto text-[13px] text-ink-muted transition-colors hover:text-rosewood disabled:opacity-50"
+            className="ml-auto text-[13px] font-medium text-muted transition-colors hover:text-rosewood disabled:opacity-50"
           >
             Delete
           </button>
@@ -220,14 +223,14 @@ export function TimelineEventRow({
   return (
     <div
       className={cn(
-        "border-b border-stone py-3 last:border-b-0",
-        hasConflict && "border-l-2 border-l-rosewood pl-3",
+        "rounded-[var(--radius-inner)] bg-well px-4 py-3.5 shadow-recessed",
+        hasConflict && "ring-2 ring-rosewood/40",
       )}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-[13px] font-medium tabular-nums text-ink">
+            <span className="text-[13px] font-semibold tabular-nums text-ink">
               {event.start_time
                 ? formatTimeRange(event.start_time, event.end_time)
                 : "Unscheduled"}
@@ -237,13 +240,13 @@ export function TimelineEventRow({
                 {formatDurationMinutes(durationMinutes)}
               </Pill>
             ) : null}
-            {ownerLabel ? <Pill variant="plum">{ownerLabel}</Pill> : null}
+            {ownerLabel ? <Pill variant="accent">{ownerLabel}</Pill> : null}
           </div>
 
-          <p className="mt-1 text-[15px] font-medium text-ink">{event.title}</p>
+          <p className="mt-1.5 text-[15px] font-medium text-ink">{event.title}</p>
 
           {descriptionPreview ? (
-            <p className="mt-1 line-clamp-2 text-[13px] leading-snug text-ink-muted">
+            <p className="mt-1 line-clamp-2 text-[13px] leading-snug text-muted">
               {descriptionPreview}
             </p>
           ) : null}
@@ -253,7 +256,7 @@ export function TimelineEventRow({
               {overlaps.map((overlap) => (
                 <li
                   key={overlap.otherId}
-                  className="text-[12px] leading-snug text-rosewood"
+                  className="text-[13px] leading-snug text-rosewood"
                 >
                   Overlaps {overlap.otherTitle}
                   {overlap.sameOwner ? " · same owner" : ""}
@@ -266,7 +269,7 @@ export function TimelineEventRow({
         <button
           type="button"
           onClick={onEdit}
-          className="shrink-0 text-[13px] font-medium text-plum hover:text-plum-deep"
+          className="shrink-0 text-[14px] font-semibold text-accent hover:opacity-80"
         >
           Edit
         </button>

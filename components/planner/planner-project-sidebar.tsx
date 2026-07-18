@@ -4,7 +4,6 @@ import { LogoutButton } from "@/components/auth/logout-button";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Card } from "@/components/ui/card";
-import { Eyebrow } from "@/components/ui/eyebrow";
 import { cn } from "@/lib/cn";
 
 export type SidebarProject = {
@@ -18,7 +17,10 @@ function daysUntil(date: string | null) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const wedding = new Date(date + "T00:00:00");
-  return Math.max(0, Math.ceil((wedding.getTime() - today.getTime()) / 86_400_000));
+  return Math.max(
+    0,
+    Math.ceil((wedding.getTime() - today.getTime()) / 86_400_000),
+  );
 }
 
 function formatSidebarDate(date: string | null) {
@@ -37,10 +39,10 @@ function extractProjectId(pathname: string): string | null {
 
 const navLinkClass = (active: boolean) =>
   cn(
-    "block rounded-[var(--radius)] px-3.5 py-2.5 text-[15px] transition-colors",
+    "block rounded-[var(--radius-inner)] px-3.5 py-2.5 text-[14px] font-medium transition-colors",
     active
-      ? "bg-plum-tint font-medium text-plum-deep shadow-[inset_2px_0_0_var(--plum)]"
-      : "text-ink-soft hover:bg-stone-soft hover:text-ink",
+      ? "bg-accent-wash font-semibold text-accent shadow-[inset_2px_0_0_var(--accent)]"
+      : "text-muted hover:bg-well hover:text-ink",
   );
 
 export function PlannerProjectSidebar({
@@ -50,7 +52,8 @@ export function PlannerProjectSidebar({
 }) {
   const pathname = usePathname();
   const activeProjectId = extractProjectId(pathname);
-  const onDashboard = pathname === "/dashboard" || pathname.startsWith("/dashboard?");
+  const onDashboard =
+    pathname === "/dashboard" || pathname.startsWith("/dashboard?");
   const onLeads = pathname === "/leads" || pathname.startsWith("/leads?");
   const onBilling =
     pathname === "/account/billing" ||
@@ -58,8 +61,8 @@ export function PlannerProjectSidebar({
 
   return (
     <aside className="w-[260px] shrink-0">
-      <Card className="p-1.5">
-        <div className="mb-6 flex flex-col gap-0.5 px-2.5 pb-3 pt-2">
+      <Card className="p-2">
+        <div className="mb-4 flex flex-col gap-0.5 px-1.5 pb-2 pt-1.5">
           <Link href="/dashboard" className={navLinkClass(onDashboard)}>
             Dashboard
           </Link>
@@ -73,11 +76,13 @@ export function PlannerProjectSidebar({
             <LogoutButton />
           </div>
         </div>
-        <div className="mb-3.5 h-px bg-stone" />
-        <div className="px-2.5 pb-3.5">
-          <Eyebrow>Active weddings</Eyebrow>
+        <div className="mb-3 h-px bg-hairline" />
+        <div className="px-3.5 pb-3">
+          <p className="text-[12px] font-semibold uppercase tracking-[0.09em] text-muted">
+            Active weddings
+          </p>
         </div>
-        <nav className="flex flex-col gap-0.5 px-1.5 pb-1.5">
+        <nav className="flex flex-col gap-1.5 px-1.5 pb-1.5">
           {projects.map((project) => {
             const active = project.id === activeProjectId;
             const days = daysUntil(project.wedding_date);
@@ -87,26 +92,26 @@ export function PlannerProjectSidebar({
                 key={project.id}
                 href={`/projects/${project.id}`}
                 className={cn(
-                  "flex items-center justify-between gap-2.5 rounded-[var(--radius)] border px-4 py-3.5 no-underline transition-colors",
+                  "flex items-center justify-between gap-2.5 rounded-[var(--radius-inner)] px-3.5 py-3 no-underline transition-colors",
                   active
-                    ? "border-transparent bg-plum-tint"
-                    : "border-stone bg-surface hover:bg-stone-soft",
+                    ? "bg-accent-wash"
+                    : "bg-well shadow-recessed hover:opacity-90",
                 )}
               >
                 <div className="min-w-0">
                   <div
                     className={cn(
-                      "couple-name truncate text-[21px] leading-[1.1]",
-                      active ? "text-plum-deep" : "text-ink",
+                      "truncate text-[15px] font-semibold leading-snug",
+                      active ? "text-accent" : "text-ink",
                     )}
                   >
                     {project.name}
                   </div>
-                  <div className="mt-0.5 text-[13px] text-ink-muted tabnum">
+                  <div className="mt-0.5 text-[12px] tabular-nums text-muted">
                     {formatSidebarDate(project.wedding_date)}
                   </div>
                 </div>
-                <span className="shrink-0 text-base text-ink-muted tabnum">
+                <span className="shrink-0 text-[13px] font-medium tabular-nums text-muted">
                   {days === null ? "—" : `${days}d`}
                 </span>
               </Link>

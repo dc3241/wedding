@@ -13,7 +13,7 @@ function ReviewAuthor({
         href={uri}
         target="_blank"
         rel="noopener noreferrer"
-        className="font-medium text-ink underline hover:text-plum-deep"
+        className="font-medium text-ink underline hover:text-accent"
       >
         {displayName}
       </a>
@@ -27,11 +27,11 @@ export function GoogleReviewList({ reviews }: { reviews: LivePlaceReview[] }) {
   if (reviews.length === 0) return null;
 
   return (
-    <ul className="divide-y divide-stone">
+    <ul className="divide-y divide-hairline">
       {reviews.map((review, index) => (
         <li key={index} className="py-4 first:pt-0 last:pb-0">
           <p className="text-[15px] leading-relaxed text-ink">{review.text}</p>
-          <p className="mt-2 text-[13px] text-ink-muted">
+          <p className="mt-2 text-[13px] text-muted">
             —{" "}
             <ReviewAuthor
               displayName={review.authorDisplayName}

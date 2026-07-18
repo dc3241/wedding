@@ -76,7 +76,7 @@ export function TotalBudgetEditor({
         <button
           type="button"
           onClick={openEditor}
-          className="shrink-0 text-[13px] font-medium text-plum hover:text-plum-deep"
+          className="shrink-0 rounded-[var(--radius-pill)] bg-accent-wash px-4 py-2.5 text-[14px] font-semibold text-accent"
         >
           Set total budget
         </button>
@@ -85,13 +85,13 @@ export function TotalBudgetEditor({
 
     return (
       <div className="flex flex-wrap items-baseline justify-end gap-x-2 gap-y-1">
-        <span className="text-[15px] tabular-nums text-ink">
-          Total budget {formatCurrency(totalBudget)}
+        <span className="text-[14px] font-medium tabular-nums text-muted">
+          Total {formatCurrency(totalBudget)}
         </span>
         <button
           type="button"
           onClick={openEditor}
-          className="shrink-0 text-[13px] font-medium text-plum hover:text-plum-deep"
+          className="shrink-0 text-[14px] font-semibold text-accent hover:opacity-80"
         >
           Edit
         </button>
@@ -118,7 +118,7 @@ export function TotalBudgetEditor({
         disabled={isPending}
         aria-label="Budget target"
         placeholder="0"
-        className="w-[7.5rem] rounded border border-stone bg-surface px-2.5 py-1.5 text-right text-sm tabular-nums text-ink outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-plum disabled:opacity-50"
+        className="w-[7.5rem] rounded-[var(--radius-inner)] border border-ring bg-surface px-2.5 py-2 text-right text-[14px] font-medium tabular-nums text-ink outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-50"
       />
       <Button
         type="button"
@@ -143,7 +143,7 @@ export function TotalBudgetEditor({
           type="button"
           disabled={isPending}
           onClick={() => persist(null)}
-          className="text-[13px] font-medium text-ink-muted hover:text-rosewood disabled:opacity-50"
+          className="text-[13px] font-medium text-muted hover:text-rosewood disabled:opacity-50"
         >
           Clear
         </button>

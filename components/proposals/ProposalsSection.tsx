@@ -62,7 +62,7 @@ export function ProposalsSection({
       {error ? <p className="text-[13px] text-rosewood">{error}</p> : null}
 
       {proposals.length === 0 && !activeId ? (
-        <p className="px-1 text-[13px] text-ink-muted">
+        <p className="px-1 text-[13px] text-muted">
           No proposals yet. Create one to quote services for this lead.
         </p>
       ) : (
@@ -73,8 +73,8 @@ export function ProposalsSection({
                 type="button"
                 onClick={() => setActiveId(proposal.id)}
                 className={cn(
-                  "w-full rounded-lg border border-stone bg-surface px-4 py-3 text-left transition-colors hover:border-plum",
-                  activeId === proposal.id && "border-plum bg-plum-tint/30",
+                  "w-full rounded-[var(--radius-inner)] border border-hairline bg-surface px-4 py-3 text-left transition-colors hover:border-accent",
+                  activeId === proposal.id && "border-accent bg-accent-wash/30",
                 )}
               >
                 <div className="flex flex-wrap items-center justify-between gap-2">
@@ -82,7 +82,7 @@ export function ProposalsSection({
                     <div className="text-[15px] font-medium text-ink">
                       {proposal.title}
                     </div>
-                    <div className="mt-0.5 text-[13px] tabular-nums text-ink-muted">
+                    <div className="mt-0.5 text-[13px] tabular-nums text-muted">
                       {formatProposalCurrency(proposal.total)}
                     </div>
                   </div>
@@ -97,7 +97,7 @@ export function ProposalsSection({
       )}
 
       {activeId && !activeProposal ? (
-        <Card className="p-4 text-[13px] text-ink-muted">Loading proposal…</Card>
+        <Card className="p-4 text-[13px] text-muted">Loading proposal…</Card>
       ) : null}
 
       {activeProposal ? (

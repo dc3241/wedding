@@ -25,7 +25,7 @@ export default function StyleguidePage() {
   const [surface, setSurface] = useState<"couple" | "planner">("couple");
 
   return (
-    <div className="min-h-full bg-porcelain text-ink">
+    <div className="min-h-full bg-canvas text-ink">
       <Topbar>
         <Wordmark />
         <NavLinks style={{ visibility: surface === "couple" ? "visible" : "hidden" }}>
@@ -87,7 +87,7 @@ export default function StyleguidePage() {
             <Eyebrow className="mb-4 block">Card</Eyebrow>
             <Card className="p-6">
               <p className="text-[15px] text-ink">
-                Surface card with stone border, 16px radius, and whisper shadow.
+                Surface card with hairline border, card radius, and raised shadow.
               </p>
             </Card>
           </section>
@@ -99,7 +99,7 @@ export default function StyleguidePage() {
         </main>
       ) : (
         <main className="mx-auto max-w-[1180px] px-8 pb-20 pt-7">
-          <p className="mb-5 text-[13px] text-ink-muted">
+          <p className="mb-5 text-[13px] text-muted">
             Same tokens, tighter density —{" "}
             <span className="font-medium text-ink">more data per screen</span>,
             the wedding hero shrinks to a slim header.
@@ -136,8 +136,8 @@ export default function StyleguidePage() {
           <section className="mb-8">
             <SectionHeader>All weddings</SectionHeader>
             <Card className="px-[26px] py-[22px]">
-              <div className="couple-name text-[23px] text-ink">Maya & Theo</div>
-              <div className="mt-0.5 text-[13.5px] text-ink-muted">Nov 14, 2026</div>
+              <div className="text-[19px] font-extrabold tracking-[-0.02em] text-ink">Maya & Theo</div>
+              <div className="mt-0.5 text-[13.5px] text-muted">Nov 14, 2026</div>
             </Card>
           </section>
 

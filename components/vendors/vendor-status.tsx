@@ -34,7 +34,8 @@ export function vendorStatusVariant(
   status: string,
 ): "sage" | "clay" | "rosewood" {
   const { variant } = vendorStatusPill(status);
-  if (variant === "default" || variant === "plum") return "clay";
+  if (variant === "default" || variant === "plum" || variant === "accent")
+    return "clay";
   return variant;
 }
 

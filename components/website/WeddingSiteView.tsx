@@ -24,7 +24,7 @@ export function WeddingSiteView({
       <Component content={content} theme={theme} />
       {content.rsvp.visible && rsvpSlot ? (
         <div
-          className="font-sans text-[15px] leading-relaxed"
+          className="font-ws-sans text-[15px] leading-relaxed"
           style={{
             ...palette.cssVars,
             background: "var(--ws-bg)",
@@ -33,7 +33,7 @@ export function WeddingSiteView({
         >
           <section className="mx-auto max-w-[640px] border-t px-6 py-12" style={{ borderColor: "var(--ws-border)" }}>
             <h2
-              className="font-display text-[28px] tracking-[0.005em]"
+              className="font-serif-display text-[28px] tracking-[0.005em]"
               style={{ color: "var(--ws-ink)" }}
             >
               RSVP

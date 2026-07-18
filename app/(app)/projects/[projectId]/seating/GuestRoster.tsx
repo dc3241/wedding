@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import type { RosterGuest, SeatingAssignment } from "./types";
-import { Eyebrow } from "@/components/ui/eyebrow";
 import { formatGuestName } from "@/app/(app)/projects/[projectId]/guests/types";
+import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/cn";
 
 type GuestRosterProps = {
@@ -33,15 +33,17 @@ export function GuestRoster({
   const assigned = guests.filter((guest) => assignmentByGuestId.has(guest.id));
 
   return (
-    <aside className="w-full shrink-0 rounded-lg border border-stone bg-surface p-4 lg:w-64">
-      <Eyebrow className="mb-3 block">Guests</Eyebrow>
+    <Card className="w-full shrink-0 px-5 py-5 lg:w-64">
+      <p className="mb-3 text-[12px] font-semibold uppercase tracking-[0.09em] text-muted">
+        Guests
+      </p>
 
       {guests.length === 0 ? (
-        <p className="text-[13px] text-ink-muted">
+        <p className="text-[13px] leading-relaxed text-muted">
           No guests yet. Add them in the{" "}
           <Link
             href={`/projects/${projectId}/guests`}
-            className="text-plum underline underline-offset-2 hover:text-plum-deep"
+            className="font-semibold text-accent underline underline-offset-2 hover:opacity-80"
           >
             Guests tab
           </Link>
@@ -50,20 +52,21 @@ export function GuestRoster({
       ) : (
         <div className="space-y-5">
           <section>
-            <p className="mb-2 text-[12px] font-medium text-ink-muted">
+            <p className="mb-2 text-[12px] font-medium text-muted">
               Unassigned · {unassigned.length}
             </p>
 
             {!hasTables ? (
-              <p className="mb-2 text-[12px] text-ink-muted">
-                Place a table on the floor plan first, then select a guest to seat them.
+              <p className="mb-2 text-[12px] text-muted">
+                Place a table on the floor plan first, then select a guest to
+                seat them.
               </p>
             ) : null}
 
             {unassigned.length === 0 ? (
-              <p className="text-[13px] text-ink-muted">Everyone has a seat.</p>
+              <p className="text-[13px] text-muted">Everyone has a seat.</p>
             ) : (
-              <ul className="space-y-1">
+              <ul className="space-y-1.5">
                 {unassigned.map((guest) => {
                   const selected = selectedGuestId === guest.id;
                   return (
@@ -74,10 +77,10 @@ export function GuestRoster({
                         disabled={isPending || !hasTables}
                         aria-pressed={selected}
                         className={cn(
-                          "w-full rounded border px-3 py-2 text-left text-[14px] transition-colors",
+                          "w-full rounded-[var(--radius-inner)] px-3 py-2.5 text-left text-[14px] font-medium transition-colors",
                           selected
-                            ? "border-plum bg-plum-tint text-plum-deep"
-                            : "border-stone bg-surface text-ink hover:border-ink-muted",
+                            ? "bg-accent text-surface"
+                            : "bg-well text-ink shadow-recessed hover:opacity-90",
                           (isPending || !hasTables) && "opacity-60",
                         )}
                       >
@@ -92,21 +95,22 @@ export function GuestRoster({
 
           {assigned.length > 0 ? (
             <section>
-              <p className="mb-2 text-[12px] font-medium text-ink-muted">
+              <p className="mb-2 text-[12px] font-medium text-muted">
                 Seated · {assigned.length}
               </p>
-              <ul className="space-y-1">
+              <ul className="space-y-1.5">
                 {assigned.map((guest) => {
                   const assignment = assignmentByGuestId.get(guest.id)!;
-                  const tableLabel = tableLabelById.get(assignment.table_id) ?? "—";
+                  const tableLabel =
+                    tableLabelById.get(assignment.table_id) ?? "—";
                   return (
                     <li
                       key={guest.id}
-                      className="flex items-center justify-between gap-2 rounded border border-stone bg-surface px-3 py-2"
+                      className="flex items-center justify-between gap-2 rounded-[var(--radius-inner)] bg-well px-3 py-2.5 shadow-recessed"
                     >
-                      <span className="min-w-0 flex-1 truncate text-[14px] text-ink">
+                      <span className="min-w-0 flex-1 truncate text-[14px] font-medium text-ink">
                         {formatGuestName(guest)}
-                        <span className="ml-1.5 text-[12px] text-ink-muted">
+                        <span className="ml-1.5 text-[12px] font-normal text-muted">
                           {tableLabel}
                         </span>
                       </span>
@@ -115,7 +119,7 @@ export function GuestRoster({
                         onClick={() => onUnassign(assignment.id)}
                         disabled={isPending}
                         className={cn(
-                          "shrink-0 rounded border border-transparent px-2 py-1 text-[12px] text-ink-muted transition-colors hover:border-stone hover:bg-stone-soft hover:text-ink",
+                          "shrink-0 rounded-[var(--radius-pill)] px-2 py-1 text-[12px] font-semibold text-muted transition-colors hover:bg-surface hover:text-ink",
                           isPending && "opacity-60",
                         )}
                       >
@@ -129,6 +133,6 @@ export function GuestRoster({
           ) : null}
         </div>
       )}
-    </aside>
+    </Card>
   );
 }

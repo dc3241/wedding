@@ -73,12 +73,12 @@ export function OutreachToContactSection({
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <label className="flex items-center gap-2 text-[13px] text-ink-muted">
+        <label className="flex items-center gap-2 text-[13px] font-medium text-muted">
           <input
             type="checkbox"
             checked={selected.size === items.length && items.length > 0}
             onChange={toggleAll}
-            className="size-4 rounded border-stone accent-plum"
+            className="size-4 rounded border-ring accent-accent"
           />
           Select all
         </label>
@@ -98,11 +98,11 @@ export function OutreachToContactSection({
       </div>
 
       {showForm ? (
-        <Card className="p-6">
+        <Card className="px-6 py-5">
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <Eyebrow>Outreach brief</Eyebrow>
-              <p className="mt-1 text-[13px] text-ink-muted">
+              <p className="mt-1 text-[13px] text-muted">
                 We&apos;ll draft a tailored email for each selected vendor using
                 these details.
               </p>
@@ -184,18 +184,22 @@ export function OutreachToContactSection({
         </Card>
       ) : null}
 
-      <div className="divide-y divide-stone">
-        {items.map((item) => (
-          <OutreachShortlistRow
-            key={item.id}
-            projectId={projectId}
-            item={item}
-            selectable
-            selected={selected.has(item.id)}
-            onToggleSelect={() => toggle(item.id)}
-          />
-        ))}
-      </div>
+      <Card className="overflow-hidden px-3.5 py-3.5">
+        <ul>
+          {items.map((item) => (
+            <li key={item.id} className="mb-2 last:mb-0">
+              <OutreachShortlistRow
+                projectId={projectId}
+                item={item}
+                selectable
+                selected={selected.has(item.id)}
+                onToggleSelect={() => toggle(item.id)}
+                className="rounded-[var(--radius-inner)] bg-well px-4 py-3.5 shadow-recessed"
+              />
+            </li>
+          ))}
+        </ul>
+      </Card>
     </div>
   );
 }

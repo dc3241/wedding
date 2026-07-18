@@ -22,7 +22,7 @@ export function WeddingCountdown({ weddingDate, align = "center" }: WeddingCount
   return (
     <div className={align === "left" ? "mt-8" : "mt-8 text-center"}>
       <div
-        className="font-display tabnum text-[64px] leading-none"
+        className="font-serif-display tabnum text-[64px] leading-none"
         style={{ color: "var(--ws-accent)" }}
       >
         {days}

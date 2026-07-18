@@ -43,13 +43,13 @@ export function PlannerProjectsTable({
         <table className="w-full min-w-[32rem] border-collapse">
           <thead>
             <tr>
-              <th className="border-b border-stone px-3 pb-2.5 text-left text-xs font-medium tracking-[0.04em] text-ink-muted">
+              <th className="border-b border-hairline px-3 pb-2.5 text-left text-xs font-medium tracking-[0.04em] text-muted">
                 Wedding
               </th>
-              <th className="border-b border-stone px-3 pb-2.5 text-left text-xs font-medium tracking-[0.04em] text-ink-muted">
+              <th className="border-b border-hairline px-3 pb-2.5 text-left text-xs font-medium tracking-[0.04em] text-muted">
                 Date
               </th>
-              <th className="border-b border-stone px-3 pb-2.5 text-right text-xs font-medium tracking-[0.04em] text-ink-muted">
+              <th className="border-b border-hairline px-3 pb-2.5 text-right text-xs font-medium tracking-[0.04em] text-muted">
                 Countdown
               </th>
             </tr>
@@ -62,26 +62,26 @@ export function PlannerProjectsTable({
               return (
                 <tr
                   key={project.id}
-                  className="border-b border-stone last:border-b-0 hover:bg-stone-soft"
+                  className="border-b border-hairline last:border-b-0 hover:bg-well"
                 >
                   <td className="px-3 py-3 text-sm">
                     <Link
                       href={`/projects/${project.id}`}
-                      className="couple-name text-[21px] text-ink hover:text-plum-deep"
+                      className="text-[19px] font-extrabold tracking-[-0.02em] text-ink hover:text-accent"
                     >
                       {project.name}
                     </Link>
                   </td>
-                  <td className="tabnum whitespace-nowrap px-3 py-3 text-sm text-ink-muted">
+                  <td className="tabnum whitespace-nowrap px-3 py-3 text-sm tabular-nums text-muted">
                     {weddingDate ?? "No date set"}
                   </td>
                   <td className="whitespace-nowrap px-3 py-3 text-right text-sm">
                     {days !== null && days >= 0 ? (
-                      <span className="tabnum font-medium text-plum">
+                      <span className="tabnum font-medium tabular-nums text-accent">
                         {countdownLabel(days)}
                       </span>
                     ) : (
-                      <span className="tabnum text-ink-muted">
+                      <span className="tabnum tabular-nums text-muted">
                         {countdownLabel(days)}
                       </span>
                     )}

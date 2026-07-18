@@ -42,16 +42,21 @@ export function AddGuestForms({ projectId }: { projectId: string }) {
   }
 
   return (
-    <div className="grid gap-5 lg:grid-cols-2">
-      <Card className="p-6">
+    <div className="grid gap-4 lg:grid-cols-2">
+      <Card className="px-6 py-5">
         <form onSubmit={handleAddSubmit} className="space-y-4">
           <div>
             <Eyebrow>Add guest</Eyebrow>
-            <h2 className="font-display mt-1.5 text-2xl text-ink">One at a time</h2>
+            <h2 className="mt-1.5 font-display text-[19px] font-extrabold tracking-[-0.02em] text-ink">
+              One at a time
+            </h2>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1.5 sm:col-span-2">
-              <label htmlFor="guest-name" className="text-sm font-medium text-ink">
+              <label
+                htmlFor="guest-name"
+                className="text-[14px] font-medium text-ink"
+              >
                 Name
               </label>
               <Input
@@ -66,7 +71,7 @@ export function AddGuestForms({ projectId }: { projectId: string }) {
             <div className="space-y-1.5">
               <label
                 htmlFor="guest-household"
-                className="text-sm font-medium text-ink"
+                className="text-[14px] font-medium text-ink"
               >
                 Household
               </label>
@@ -79,7 +84,10 @@ export function AddGuestForms({ projectId }: { projectId: string }) {
               />
             </div>
             <div className="space-y-1.5">
-              <label htmlFor="guest-email" className="text-sm font-medium text-ink">
+              <label
+                htmlFor="guest-email"
+                className="text-[14px] font-medium text-ink"
+              >
                 Email
               </label>
               <Input
@@ -93,7 +101,7 @@ export function AddGuestForms({ projectId }: { projectId: string }) {
             <div className="space-y-1.5">
               <label
                 htmlFor="guest-party-size"
-                className="text-sm font-medium text-ink"
+                className="text-[14px] font-medium text-ink"
               >
                 Party size
               </label>
@@ -113,17 +121,22 @@ export function AddGuestForms({ projectId }: { projectId: string }) {
         </form>
       </Card>
 
-      <Card className="p-6">
+      <Card className="px-6 py-5">
         <form onSubmit={handleBulkSubmit} className="space-y-4">
           <div>
             <Eyebrow>Bulk add</Eyebrow>
-            <h2 className="font-display mt-1.5 text-2xl text-ink">Paste a list</h2>
-            <p className="mt-1 text-[13px] text-ink-muted">
+            <h2 className="mt-1.5 font-display text-[19px] font-extrabold tracking-[-0.02em] text-ink">
+              Paste a list
+            </h2>
+            <p className="mt-1 text-[13px] text-muted">
               One name per line. Each becomes a guest with party size 1.
             </p>
           </div>
           <div className="space-y-1.5">
-            <label htmlFor="guest-bulk" className="text-sm font-medium text-ink">
+            <label
+              htmlFor="guest-bulk"
+              className="text-[14px] font-medium text-ink"
+            >
               Names
             </label>
             <Textarea

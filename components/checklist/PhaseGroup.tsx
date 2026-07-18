@@ -25,7 +25,7 @@ export function PhaseGroup({
   return (
     <li className={phaseSectionClass(accountKind, isLast)}>
       <span
-        className="absolute top-1.5 -left-px size-2.5 -translate-x-1/2 rounded-full border border-stone bg-porcelain"
+        className="absolute top-1.5 -left-px size-2.5 -translate-x-1/2 rounded-full border border-ring bg-canvas"
         aria-hidden
       />
 
@@ -39,7 +39,7 @@ export function PhaseGroup({
       </h2>
 
       {tasks.length > 0 ? (
-        <ul className={cn("divide-y divide-stone", isPlanner ? "mt-2" : "mt-3")}>
+        <ul className={cn("divide-y divide-hairline", isPlanner ? "mt-2" : "mt-3")}>
           {tasks.map((task) => (
             <TaskRow key={task.id} task={task} />
           ))}

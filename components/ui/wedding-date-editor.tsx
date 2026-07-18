@@ -59,11 +59,11 @@ export function WeddingDateEditor({
         type="button"
         onClick={openEditor}
         className={cn(
-          "shrink-0 text-[13px] font-medium text-plum hover:text-plum-deep",
+          "shrink-0 text-[14px] font-semibold text-accent hover:opacity-80",
           className,
         )}
       >
-        {weddingDate ? "Edit" : "Set date"}
+        {weddingDate ? "Edit date" : "Set date"}
       </button>
     );
   }
@@ -88,7 +88,7 @@ export function WeddingDateEditor({
           onChange={(e) => setValue(e.target.value)}
           disabled={isPending}
           aria-label="Wedding date"
-          className="rounded border border-stone bg-surface px-2.5 py-1.5 text-sm text-ink outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-plum disabled:opacity-50"
+          className="rounded-[var(--radius-inner)] border border-ring bg-surface px-3 py-2 text-[14px] font-medium text-ink outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-50"
         />
         <Button
           type="button"
@@ -119,7 +119,7 @@ export function WeddingDateEditor({
             type="button"
             disabled={isPending}
             onClick={() => save(null)}
-            className="text-[13px] font-medium text-ink-muted hover:text-rosewood disabled:opacity-50"
+            className="text-[13px] font-medium text-muted hover:text-rosewood disabled:opacity-50"
           >
             Clear
           </button>

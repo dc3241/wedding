@@ -48,8 +48,8 @@ export function NoteCard({ note }: { note: Note }) {
   }
 
   return (
-    <Card className={cn("p-5", isPending && "opacity-60")}>
-      <div className="mb-3 flex items-start justify-between gap-4">
+    <Card className={cn("px-6 py-5", isPending && "opacity-60")}>
+      <div className="mb-4 flex items-start justify-between gap-4">
         <input
           type="text"
           value={title}
@@ -59,29 +59,31 @@ export function NoteCard({ note }: { note: Note }) {
             if (e.key === "Enter") e.currentTarget.blur();
           }}
           aria-label="Note title"
-          className="min-w-0 flex-1 bg-transparent text-[20px] font-medium text-ink outline-none placeholder:text-ink-muted"
+          className="min-w-0 flex-1 bg-transparent font-display text-[19px] font-extrabold tracking-[-0.02em] text-ink outline-none placeholder:text-muted"
         />
         <button
           type="button"
           onClick={handleDelete}
           disabled={isPending}
-          className="shrink-0 text-[13px] text-ink-muted transition-colors hover:text-rosewood disabled:opacity-50"
+          className="shrink-0 text-[13px] font-medium text-muted transition-colors hover:text-rosewood disabled:opacity-50"
         >
           Delete
         </button>
       </div>
 
-      <Textarea
-        value={body}
-        onChange={(e) => setBody(e.target.value)}
-        onBlur={saveBody}
-        aria-label="Note body"
-        rows={5}
-        placeholder="Meeting notes, ideas, reminders…"
-        className="mb-3 resize-y text-[15px]"
-      />
+      <div className="rounded-[var(--radius-inner)] bg-well p-4 shadow-recessed">
+        <Textarea
+          value={body}
+          onChange={(e) => setBody(e.target.value)}
+          onBlur={saveBody}
+          aria-label="Note body"
+          rows={5}
+          placeholder="Meeting notes, ideas, reminders…"
+          className="mb-0 resize-y border-0 bg-transparent px-0 py-0 shadow-none focus:border-transparent focus:outline-none"
+        />
+      </div>
 
-      <p className="text-[13px] text-ink-muted">
+      <p className="mt-3 text-[13px] text-muted">
         Updated {formatNoteUpdatedAt(note.updated_at)}
       </p>
     </Card>

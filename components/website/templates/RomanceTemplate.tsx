@@ -32,7 +32,7 @@ function OrnamentDivider() {
 function SectionHeading({ children }: { children: React.ReactNode }) {
   return (
     <h2
-      className="font-display text-[26px] tracking-[0.01em]"
+      className="font-serif-display text-[26px] tracking-[0.01em]"
       style={{ color: "var(--ws-ink)" }}
     >
       {children}
@@ -87,20 +87,20 @@ function CoupleHero({ names }: { names: string }) {
     return (
       <div className="space-y-1">
         <p
-          className="font-display text-[clamp(36px,6vw,52px)] leading-none tracking-[0.005em]"
+          className="font-serif-display text-[clamp(36px,6vw,52px)] leading-none tracking-[0.005em]"
           style={{ color: "var(--ws-ink)" }}
         >
           {parsed.first}
         </p>
         <p
-          className="font-display text-[clamp(52px,9vw,80px)] italic leading-none"
+          className="font-serif-display text-[clamp(52px,9vw,80px)] italic leading-none"
           style={{ color: "var(--ws-accent)" }}
           aria-hidden
         >
           &amp;
         </p>
         <p
-          className="font-display text-[clamp(36px,6vw,52px)] leading-none tracking-[0.005em]"
+          className="font-serif-display text-[clamp(36px,6vw,52px)] leading-none tracking-[0.005em]"
           style={{ color: "var(--ws-ink)" }}
         >
           {parsed.second}
@@ -111,7 +111,7 @@ function CoupleHero({ names }: { names: string }) {
 
   return (
     <div
-      className="font-display text-[clamp(40px,6vw,54px)] tracking-[0.005em]"
+      className="font-serif-display text-[clamp(40px,6vw,54px)] tracking-[0.005em]"
       style={{ color: "var(--ws-ink)" }}
     >
       {parsed.text}
@@ -132,7 +132,7 @@ export function RomanceTemplate({ content, theme }: RomanceTemplateProps) {
 
   return (
     <div
-      className="min-h-full font-sans text-[15px] leading-relaxed"
+      className="min-h-full font-ws-sans text-[15px] leading-relaxed"
       style={{
         ...palette.cssVars,
         background: "var(--ws-bg)",

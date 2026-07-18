@@ -107,21 +107,21 @@ export function VendorSearchForm({
 
   const main = (
     <div className="min-w-0 space-y-8">
-      <Card className="p-6">
+      <Card className="px-6 py-5">
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
             <Eyebrow>Discover</Eyebrow>
-            <h2 className="font-display mt-1.5 text-2xl text-ink">
+            <h2 className="mt-1.5 font-display text-[19px] font-extrabold tracking-[-0.02em] text-ink">
               Search vendors
             </h2>
-            <p className="mt-1 text-[13px] text-ink-muted">
+            <p className="mt-1 text-[13px] text-muted">
               Live results from Google Places — ratings and reviews load on the
               vendor detail page after you add them.
             </p>
           </div>
 
           <fieldset className="space-y-2">
-            <legend className="text-sm font-medium text-ink">Category</legend>
+            <legend className="text-[14px] font-medium text-ink">Category</legend>
             <div className="flex flex-wrap gap-2">
               {VENDOR_CATEGORIES.map((cat) => (
                 <button
@@ -132,8 +132,8 @@ export function VendorSearchForm({
                   onClick={() => setCategoryId(cat.id)}
                   className={
                     categoryId === cat.id
-                      ? "rounded border border-plum bg-plum-tint px-3 py-1.5 text-[13px] text-plum-deep"
-                      : "rounded border border-stone bg-surface px-3 py-1.5 text-[13px] text-ink"
+                      ? "rounded-[var(--radius-pill)] bg-accent px-3.5 py-2 text-[13px] font-semibold text-surface"
+                      : "rounded-[var(--radius-pill)] bg-well px-3.5 py-2 text-[13px] font-semibold text-muted hover:text-ink"
                   }
                 >
                   {cat.label}
@@ -192,7 +192,7 @@ export function VendorSearchForm({
       </Card>
 
       {error ? (
-        <p className="rounded-lg border border-stone bg-surface px-4 py-3 text-sm text-rosewood">
+        <p className="rounded-[var(--radius-inner)] bg-rosewood-wash px-4 py-3 text-[14px] font-medium text-rosewood">
           {error}
         </p>
       ) : null}
@@ -206,13 +206,13 @@ export function VendorSearchForm({
                   <span className="tabnum font-medium text-ink">
                     {results.length}
                   </span>{" "}
-                  <span className="text-ink-muted">
+                  <span className="text-muted">
                     {results.length === 1 ? "result" : "results"} for
                   </span>{" "}
                   <span className="font-medium text-ink">{composedQuery}</span>
                 </p>
                 {filteredCount > 0 ? (
-                  <p className="shrink-0 text-[13px] text-ink-muted">
+                  <p className="shrink-0 text-[13px] text-muted">
                     <span className="tabnum">{filteredCount}</span> filtered out
                   </p>
                 ) : null}
@@ -231,7 +231,7 @@ export function VendorSearchForm({
                 ))}
               </div>
 
-              <p className="pt-1 text-[11px] text-ink-muted">
+              <p className="pt-1 text-[11px] text-muted">
                 Ratings and listings from{" "}
                 <span translate="no">Google Maps</span>
               </p>
@@ -241,7 +241,7 @@ export function VendorSearchForm({
               <p className="text-[15px] font-medium text-ink">
                 Nothing in this search yet
               </p>
-              <p className="text-[13px] text-ink-muted">
+              <p className="text-[13px] text-muted">
                 Try another category or a nearby location — matches will show up
                 here.
                 {filteredCount > 0 ? (

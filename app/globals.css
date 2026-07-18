@@ -102,7 +102,7 @@
 body {
   background: var(--canvas);
   color: var(--ink);
-  font-family: var(--font-sans, "Hanken Grotesk", system-ui, -apple-system, sans-serif);
+  font-family: var(--font-sans, "Figtree", system-ui, -apple-system, sans-serif);
   font-weight: 400;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
@@ -110,14 +110,14 @@ body {
 }
 
 .font-display {
-  font-family: var(--font-serif, "Cormorant Garamond", Georgia, serif);
-  font-weight: 600;
+  font-family: var(--font-sans, "Figtree", system-ui, sans-serif);
+  font-weight: 800;
   line-height: 1.05;
 }
 
 .couple-name {
-  font-family: var(--font-serif, "Cormorant Garamond", Georgia, serif);
-  font-weight: 600;
+  font-family: var(--font-sans, "Figtree", system-ui, sans-serif);
+  font-weight: 800;
   line-height: 1.05;
 }
 
@@ -125,6 +125,18 @@ body {
   font-family: var(--font-script, "Great Vibes", cursive);
   font-weight: 400;
   line-height: 1.2;
+}
+
+/* Tier 3 (components/website/) + the run sheet's print header. See .cursor/design.mdc. */
+.font-serif-display {
+  font-family: var(--font-serif, "Cormorant Garamond", Georgia, serif);
+  font-weight: 600;
+  line-height: 1.05;
+}
+
+/* Tier 3 body face — explicit; templates must not inherit Figtree via font-sans. */
+.font-ws-sans {
+  font-family: var(--ws-font-sans, "Hanken Grotesk", system-ui, sans-serif);
 }
 
 .tabnum {
@@ -139,43 +151,43 @@ body {
   box-shadow: var(--card-shadow-emotional);
 }
 
-/* Emotional-surface display scale (Cormorant 500 — Tier 2 only) */
+/* Emotional-surface display scale (Figtree 800 — Tier 2) */
 .text-display-sm {
-  font-family: var(--font-serif, "Cormorant Garamond", Georgia, serif);
-  font-weight: 500;
+  font-family: var(--font-sans, "Figtree", system-ui, sans-serif);
+  font-weight: 800;
   font-size: clamp(32px, 5vw, 40px);
   line-height: 1.02;
   letter-spacing: -0.01em;
 }
 
 .text-display-md {
-  font-family: var(--font-serif, "Cormorant Garamond", Georgia, serif);
-  font-weight: 500;
+  font-family: var(--font-sans, "Figtree", system-ui, sans-serif);
+  font-weight: 800;
   font-size: clamp(40px, 6vw, 56px);
   line-height: 1.02;
   letter-spacing: -0.01em;
 }
 
 .text-display-lg {
-  font-family: var(--font-serif, "Cormorant Garamond", Georgia, serif);
-  font-weight: 500;
+  font-family: var(--font-sans, "Figtree", system-ui, sans-serif);
+  font-weight: 800;
   font-size: clamp(48px, 8vw, 72px);
   line-height: 1.02;
   letter-spacing: -0.01em;
 }
 
 .text-eyebrow-emotional {
-  font-family: var(--font-sans, "Hanken Grotesk", system-ui, sans-serif);
-  font-size: 11px;
-  font-weight: 500;
-  letter-spacing: 0.2em;
+  font-family: var(--font-sans, "Figtree", system-ui, sans-serif);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.09em;
   text-transform: uppercase;
-  color: var(--plum);
+  color: var(--accent);
 }
 
 .display-accent {
   font-style: italic;
-  color: var(--plum);
+  color: var(--accent);
 }
 
 .animate-rise {
@@ -209,7 +221,7 @@ body {
 }
 
 :focus-visible {
-  outline: 2px solid var(--plum);
+  outline: 2px solid var(--accent);
   outline-offset: 2px;
   border-radius: 4px;
 }

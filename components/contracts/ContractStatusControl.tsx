@@ -19,9 +19,9 @@ function normalizeStatus(status: string | null): ContractStatus {
 }
 
 const ACTIVE_CLASS: Record<ContractStatus, string> = {
-  draft: "bg-porcelain text-ink-muted",
-  sent: "bg-surface text-clay",
-  signed: "bg-surface text-sage",
+  draft: "bg-well text-muted",
+  sent: "bg-clay-wash text-clay",
+  signed: "bg-well text-sage",
 };
 
 export function ContractStatusControl({
@@ -59,7 +59,7 @@ export function ContractStatusControl({
         role="tablist"
         aria-label="Contract status"
         className={cn(
-          "flex rounded-full border border-stone bg-surface p-[3px]",
+          "flex rounded-[var(--radius-pill)] bg-well p-[3px] shadow-recessed",
           isPending && "opacity-60",
         )}
       >
@@ -74,7 +74,7 @@ export function ContractStatusControl({
               disabled={isPending}
               onClick={() => handleSelect(value)}
               className={cn(
-                "cursor-pointer rounded-full border-none bg-transparent px-2.5 py-1 text-[12px] font-medium text-ink-muted transition-[color,background] duration-150 disabled:cursor-not-allowed",
+                "cursor-pointer rounded-[var(--radius-pill)] border-none bg-transparent px-2.5 py-1 text-[12px] font-semibold text-muted transition-[color,background] duration-150 disabled:cursor-not-allowed",
                 active && ACTIVE_CLASS[value],
               )}
             >

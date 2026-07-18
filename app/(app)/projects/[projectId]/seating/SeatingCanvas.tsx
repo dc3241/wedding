@@ -48,11 +48,11 @@ function SeatingTableGraphic({
 }) {
   const body = tableBodyForShape(table.shape);
   const seats = seatPositionsForTable(table.shape, table.seat_count, table.kind);
-  const stroke = selected ? "var(--plum)" : "var(--stone)";
+  const stroke = selected ? "var(--accent)" : "var(--ring)";
   const strokeWidth = selected ? 2 : 1.5;
   const distinguished = table.kind !== "standard";
   const full = occupied >= table.seat_count;
-  const countColor = full ? "var(--sage)" : "var(--ink-muted)";
+  const countColor = full ? "var(--sage)" : "var(--muted)";
 
   return (
     <g
@@ -95,7 +95,7 @@ function SeatingTableGraphic({
               cy={0}
               r={body.halfWidth - INSET_RING_OFFSET}
               fill="none"
-              stroke="var(--stone)"
+              stroke="var(--ring)"
               strokeWidth={1}
               style={{ pointerEvents: "none" }}
             />
@@ -107,7 +107,7 @@ function SeatingTableGraphic({
               height={body.halfHeight * 2 - INSET_RING_OFFSET * 2}
               rx={table.shape === "square" ? 2 : 4}
               fill="none"
-              stroke="var(--stone)"
+              stroke="var(--ring)"
               strokeWidth={1}
               style={{ pointerEvents: "none" }}
             />
@@ -120,8 +120,8 @@ function SeatingTableGraphic({
             cx={seat.x}
             cy={seat.y}
             r={SEAT_RADIUS}
-            fill={index < occupied ? "var(--sage)" : "var(--surface-2)"}
-            stroke={index < occupied ? "var(--sage)" : "var(--stone)"}
+            fill={index < occupied ? "var(--sage)" : "var(--well)"}
+            stroke={index < occupied ? "var(--sage)" : "var(--ring)"}
             strokeWidth={1}
             style={{ pointerEvents: "none" }}
           />
@@ -134,7 +134,7 @@ function SeatingTableGraphic({
           y={-18}
           textAnchor="middle"
           dominantBaseline="middle"
-          fill="var(--ink-muted)"
+          fill="var(--muted)"
           fontSize={10}
           fontFamily="var(--font-sans)"
           fontWeight={400}
@@ -353,7 +353,7 @@ export function SeatingCanvas({
     <div
       ref={viewportRef}
       className={cn(
-        "relative overflow-hidden rounded-lg border border-stone bg-surface-2",
+        "relative overflow-hidden rounded-[var(--radius-card)] bg-canvas shadow-raised",
         placing || assignMode || selectedId ? "cursor-crosshair" : "cursor-default",
         viewportGesturesEnabled && "touch-pan-x touch-pan-y",
       )}
@@ -385,7 +385,7 @@ export function SeatingCanvas({
           y={0}
           width={CANVAS_WIDTH}
           height={CANVAS_HEIGHT}
-          fill="var(--surface-2)"
+          fill="var(--canvas)"
         />
         <rect
           x={0.75}
@@ -393,7 +393,7 @@ export function SeatingCanvas({
           width={CANVAS_WIDTH - 1.5}
           height={CANVAS_HEIGHT - 1.5}
           fill="none"
-          stroke="var(--stone)"
+          stroke="var(--ring)"
           strokeWidth={1.5}
         />
 
@@ -403,7 +403,7 @@ export function SeatingCanvas({
             y={CANVAS_HEIGHT / 2}
             textAnchor="middle"
             dominantBaseline="middle"
-            fill="var(--ink-muted)"
+            fill="var(--muted)"
             fontSize={15}
             fontFamily="var(--font-sans)"
           >

@@ -59,7 +59,7 @@ export function OutreachShortlistRow({
             type="checkbox"
             checked={selected}
             onChange={onToggleSelect}
-            className="size-4 rounded border-stone accent-plum"
+            className="size-4 rounded border-ring accent-accent"
             aria-label={`Select ${item.vendor.name}`}
           />
         ) : undefined

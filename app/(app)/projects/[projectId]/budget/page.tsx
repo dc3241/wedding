@@ -21,7 +21,7 @@ export default async function BudgetPage({
     await Promise.all([
       supabase
         .from("projects")
-        .select("total_budget")
+        .select("name, wedding_date, total_budget")
         .eq("id", projectId)
         .single(),
       supabase
@@ -86,6 +86,8 @@ export default async function BudgetPage({
     <div className={stackClass}>
       <BudgetBoard
         projectId={projectId}
+        projectName={project?.name ?? "Your wedding"}
+        weddingDate={project?.wedding_date ?? null}
         aggregates={aggregates}
         projectVendors={projectVendors}
       />

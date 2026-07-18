@@ -21,15 +21,20 @@ export function CreateWebsiteButton({ projectId }: { projectId: string }) {
   }
 
   return (
-    <Card className="px-6 py-12 text-center">
+    <Card className="px-8 py-12 text-center">
       <Eyebrow className="mb-2 block">Website</Eyebrow>
-      <p className="mb-6 text-[15px] text-ink-muted">
-        Create a shareable wedding website seeded from your project details. You can
-        customize every section, pick a layout and palette, and publish when you are ready.
+      <h1 className="font-display text-[32px] font-extrabold tracking-[-0.03em] text-ink md:text-[42px]">
+        Your wedding website
+      </h1>
+      <p className="mx-auto mt-3 max-w-lg text-[15px] font-medium text-muted">
+        Create a shareable site seeded from your project details. Customize every
+        section, pick a layout and palette, and publish when you are ready.
       </p>
-      <Button type="button" onClick={handleCreate} disabled={isPending}>
-        {isPending ? "Creating…" : "Create your wedding website"}
-      </Button>
+      <div className="mt-6">
+        <Button type="button" onClick={handleCreate} disabled={isPending}>
+          {isPending ? "Creating…" : "Create your wedding website"}
+        </Button>
+      </div>
       {error ? (
         <p className="mt-4 text-[13px] text-rosewood" role="alert">
           {error}

@@ -43,13 +43,11 @@ function CountdownNumber({ weddingDate }: { weddingDate: string }) {
   }, [weddingDate]);
 
   return (
-    <div className="mt-[34px]">
-      <div className="font-display tabnum text-[64px] leading-none text-plum">
+    <div className="mt-8">
+      <div className="font-display text-[52px] font-extrabold leading-none tracking-[-0.035em] tabular-nums text-ink md:text-[64px]">
         {days}
       </div>
-      <div className="mt-1.5 text-[13px] tracking-[0.04em] text-ink-muted">
-        days to go
-      </div>
+      <div className="mt-2 text-[14px] font-medium text-muted">days to go</div>
     </div>
   );
 }
@@ -66,19 +64,25 @@ export function WeddingHero({
   const canEdit = Boolean(projectId);
 
   return (
-    <div className="mx-auto w-full max-w-[760px]">
+    <div className="w-full">
       <section
-        className={cn("animate-rise px-0 py-2 pb-10 text-center", className)}
+        className={cn(
+          "animate-rise rounded-[var(--radius-card)] bg-surface px-8 py-10 text-center shadow-raised sm:px-10 sm:py-12",
+          className,
+        )}
       >
-        <div className="font-display text-[clamp(40px,6vw,54px)] tracking-[0.005em] text-ink">
+        <p className="text-[12px] font-semibold uppercase tracking-[0.09em] text-accent">
+          Overview
+        </p>
+        <h1 className="mt-2 font-display text-[32px] font-extrabold leading-[1.02] tracking-[-0.03em] text-ink md:text-[42px]">
           {coupleNames}
-        </div>
+        </h1>
         {displayDate ? (
-          <div className="tabnum mt-3.5 text-base text-ink-muted">
+          <p className="mt-3 text-[15px] font-medium tabular-nums text-muted">
             {displayDate}
-          </div>
+          </p>
         ) : (
-          <div className="mt-3.5 text-base text-ink-muted">No date set</div>
+          <p className="mt-3 text-[15px] font-medium text-muted">No date set</p>
         )}
         {canEdit && projectId ? (
           <div className="mt-3 flex justify-center">
@@ -91,7 +95,6 @@ export function WeddingHero({
         ) : null}
         {weddingDate ? <CountdownNumber weddingDate={weddingDate} /> : null}
       </section>
-      <div className="mt-2 h-px bg-stone" aria-hidden />
     </div>
   );
 }

@@ -20,12 +20,15 @@ export type PhaseProgress = {
   done: number;
   total: number;
   targetLabel: string | null;
+  targetIso: string | null;
 };
 
 export type UpNextTask = {
   id: string;
   title: string;
   phase: string | null;
+  status: "todo" | "in_progress";
+  due_date: string | null;
 };
 
 export type ChecklistAggregates = {
@@ -35,6 +38,9 @@ export type ChecklistAggregates = {
   percent: number;
   phases: PhaseProgress[];
   activePhase: string | null;
+  activePhaseOpenCount: number;
+  activePhaseDaysUntil: number | null;
+  daysUntilWedding: number | null;
   upNext: UpNextTask[];
 };
 
@@ -46,6 +52,17 @@ function phaseSortKey(phase: string | null): number {
 
 function isDone(status: AggregateTask["status"]) {
   return status === "done";
+}
+
+function daysUntilIso(isoDate: string): number {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const target = new Date(isoDate + "T00:00:00");
+  target.setHours(0, 0, 0, 0);
+  return Math.max(
+    0,
+    Math.ceil((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)),
+  );
 }
 
 export function computeChecklistAggregates(
@@ -95,17 +112,37 @@ export function computeChecklistAggregates(
       done: phaseDone,
       total: bucket.length,
       targetLabel: targetIso ? formatPhaseTargetLabel(targetIso) : null,
+      targetIso,
     });
   }
 
   let activePhase: string | null = null;
+  let activePhaseKey: string | null | undefined;
   for (const phase of phaseKeys) {
     const bucket = byPhase.get(phase) ?? [];
     if (bucket.some((t) => !isDone(t.status))) {
       activePhase = phase ?? "Other";
+      activePhaseKey = phase;
       break;
     }
   }
+
+  const activeBucket =
+    activePhaseKey !== undefined
+      ? (byPhase.get(activePhaseKey) ?? [])
+      : [];
+  const activePhaseOpenCount = activeBucket.filter((t) => !isDone(t.status))
+    .length;
+
+  const activePhaseTargetIso =
+    weddingDate && activePhaseKey != null
+      ? phaseTargetDate(weddingDate, activePhaseKey)
+      : null;
+  const activePhaseDaysUntil = activePhaseTargetIso
+    ? daysUntilIso(activePhaseTargetIso)
+    : null;
+
+  const daysUntilWedding = weddingDate ? daysUntilIso(weddingDate) : null;
 
   const incomplete = tasks
     .filter((t) => !isDone(t.status))
@@ -119,6 +156,8 @@ export function computeChecklistAggregates(
     id: t.id,
     title: t.title,
     phase: t.phase,
+    status: t.status as "todo" | "in_progress",
+    due_date: t.due_date,
   }));
 
   return {
@@ -128,6 +167,9 @@ export function computeChecklistAggregates(
     percent,
     phases,
     activePhase,
+    activePhaseOpenCount,
+    activePhaseDaysUntil,
+    daysUntilWedding,
     upNext,
   };
 }

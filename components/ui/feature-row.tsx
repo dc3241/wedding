@@ -24,14 +24,14 @@ export function FeatureRow({ items, className }: FeatureRowProps) {
         <span key={item.label} className="inline-flex items-center gap-3">
           {index > 0 ? (
             <span
-              className="size-1 shrink-0 rounded-full bg-stone"
+              className="size-1 shrink-0 rounded-full bg-ring"
               aria-hidden
             />
           ) : null}
           {item.href ? (
             <Link
               href={item.href}
-              className="text-eyebrow-emotional transition-colors hover:text-plum-deep"
+              className="text-eyebrow-emotional transition-colors hover:text-accent"
             >
               {item.label}
             </Link>

@@ -104,7 +104,7 @@ export function AssistantNavEntry({ projectId }: { projectId: string }) {
           onClick={() => openWithSuggestion(suggestion.prefill)}
           aria-live="polite"
           className={cn(
-            "absolute right-0 top-full z-50 mt-2 max-w-[220px] rounded-lg border border-stone bg-surface px-3 py-2.5 text-left text-[13px] leading-snug text-ink shadow-sm transition-[opacity,transform] duration-300 motion-reduce:transition-none",
+            "absolute right-0 top-full z-50 mt-2 max-w-[220px] rounded-[var(--radius-inner)] border border-hairline bg-surface px-3 py-2.5 text-left text-[13px] leading-snug text-ink shadow-raised transition-[opacity,transform] duration-300 motion-reduce:transition-none",
             visible
               ? "pointer-events-auto scale-100 opacity-100"
               : "pointer-events-none scale-[0.97] opacity-0",
@@ -119,7 +119,7 @@ export function AssistantNavEntry({ projectId }: { projectId: string }) {
         onClick={handleChipClick}
         aria-expanded={visible}
         aria-controls="assistant-panel"
-        className="flex items-center gap-2 rounded-full border border-plum bg-plum px-3.5 py-2 text-sm font-medium text-surface transition-colors hover:border-plum-deep hover:bg-plum-deep focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-plum"
+        className="flex items-center gap-2 rounded-full border border-accent bg-accent px-3.5 py-2 text-sm font-medium text-surface transition-colors hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
       >
         <AssistantSparkleIcon className="size-[18px] text-surface" />
         Assistant

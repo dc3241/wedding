@@ -85,7 +85,7 @@ export function EditorialTemplate({ content, theme }: EditorialTemplateProps) {
 
   return (
     <div
-      className="min-h-full font-sans text-[15px] leading-relaxed"
+      className="min-h-full font-ws-sans text-[15px] leading-relaxed"
       style={{
         ...palette.cssVars,
         background: "var(--ws-bg)",
@@ -103,7 +103,7 @@ export function EditorialTemplate({ content, theme }: EditorialTemplateProps) {
             </p>
           ) : null}
           <h1
-            className="font-display mt-3 max-w-[18ch] text-[clamp(44px,7vw,64px)] leading-[0.95] tracking-[-0.01em]"
+            className="font-serif-display mt-3 max-w-[18ch] text-[clamp(44px,7vw,64px)] leading-[0.95] tracking-[-0.01em]"
             style={{ color: "var(--ws-ink)" }}
           >
             {hero.names || "Your names"}

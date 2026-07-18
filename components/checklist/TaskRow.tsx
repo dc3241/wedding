@@ -5,8 +5,7 @@ import {
   toggleTask,
   updateTaskTitle,
 } from "@/app/(app)/projects/[projectId]/checklist/actions";
-import { useAccountKind } from "@/components/account-density-provider";
-import { dataRowClass } from "@/lib/density";
+import { Pill } from "@/components/ui/pill";
 import { cn } from "@/lib/cn";
 
 export type ChecklistTask = {
@@ -36,26 +35,11 @@ function formatDueDate(date: string | null) {
   return new Date(date + "T00:00:00").toLocaleDateString(undefined, {
     month: "short",
     day: "numeric",
+    year: "numeric",
   });
 }
 
-function isOverdue(dueDate: string | null, status: ChecklistTask["status"]) {
-  if (!dueDate || status === "done") return false;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const due = new Date(dueDate + "T00:00:00");
-  return due < today;
-}
-
-function dueDateClass(task: ChecklistTask) {
-  if (task.status === "done") return "border-sage/40 text-sage";
-  if (isOverdue(task.due_date, task.status))
-    return "border-rosewood/40 text-rosewood";
-  return "border-stone text-ink-muted";
-}
-
 export function TaskRow({ task }: { task: ChecklistTask }) {
-  const accountKind = useAccountKind();
   const [title, setTitle] = useState(task.title);
   const [isPending, startTransition] = useTransition();
   const dueDate = formatDueDate(task.due_date);
@@ -87,9 +71,7 @@ export function TaskRow({ task }: { task: ChecklistTask }) {
   return (
     <li
       className={cn(
-        "flex items-center gap-3",
-        dataRowClass(accountKind),
-        accountKind === "personal" && "py-2",
+        "mb-2 flex items-start gap-3 rounded-[var(--radius-inner)] bg-well px-4 py-3.5 shadow-recessed last:mb-0",
         isPending && "opacity-60",
       )}
     >
@@ -98,57 +80,52 @@ export function TaskRow({ task }: { task: ChecklistTask }) {
         onClick={handleStatusClick}
         aria-label={`Status: ${STATUS_LABEL[task.status]}. Click to change.`}
         className={cn(
-          "flex size-5 shrink-0 items-center justify-center rounded border transition-colors",
+          "mt-0.5 flex size-[19px] shrink-0 items-center justify-center rounded-full border-2 transition-colors",
           done
             ? "border-sage bg-sage text-surface"
             : inProgress
-              ? "border-clay bg-surface"
-              : "border-stone bg-surface hover:border-ink-muted",
+              ? "border-clay bg-clay-wash"
+              : "border-ring bg-transparent hover:border-muted",
         )}
       >
         {done ? (
           <svg
             viewBox="0 0 12 12"
-            className="size-3"
+            className="size-2.5"
             fill="none"
             stroke="currentColor"
-            strokeWidth="2"
+            strokeWidth="2.5"
             aria-hidden
           >
-            <path d="M2 6l3 3 5-5" />
+            <path d="M2.5 6l2.5 2.5 4.5-5" />
           </svg>
-        ) : inProgress ? (
-          <span className="size-2 rounded-full bg-clay" aria-hidden />
         ) : null}
       </button>
 
-      <input
-        type="text"
-        value={title}
-        onChange={(e) => setTitle(e.target.value)}
-        onBlur={saveTitle}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") {
-            e.currentTarget.blur();
-          }
-        }}
-        className={cn(
-          "min-w-0 flex-1 bg-transparent outline-none",
-          accountKind === "business" ? "text-[13px]" : "text-sm",
-          done ? "text-ink-muted line-through" : "text-ink",
-        )}
-      />
-
-      {dueDate ? (
-        <span
+      <div className="min-w-0 flex-1">
+        <input
+          type="text"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          onBlur={saveTitle}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.currentTarget.blur();
+            }
+          }}
           className={cn(
-            "shrink-0 rounded-full border border-stone px-2 py-0.5 text-[11px] tabular-nums",
-            dueDateClass(task),
+            "w-full bg-transparent text-[15px] font-medium leading-snug outline-none",
+            done ? "text-muted" : "text-ink",
           )}
-        >
-          {dueDate}
-        </span>
-      ) : null}
+        />
+        {dueDate ? (
+          <p className="mt-1 text-[13px] font-normal text-muted">
+            Due {dueDate}
+          </p>
+        ) : null}
+      </div>
+
+      {inProgress ? <Pill variant="clay">In progress</Pill> : null}
     </li>
   );
 }

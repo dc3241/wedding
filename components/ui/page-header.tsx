@@ -28,14 +28,14 @@ export function PageHeader({
         {eyebrow ? <Eyebrow>{eyebrow}</Eyebrow> : null}
         <h1
           className={cn(
-            "font-display text-[46px] leading-[1.02] tracking-[-0.01em] text-ink",
+            "font-display text-[32px] leading-[1.02] tracking-[-0.03em] text-ink md:text-[42px]",
             eyebrow && "mt-1.5",
           )}
         >
           {title}
         </h1>
         {description ? (
-          <p className="mt-2 text-base text-ink-muted">{description}</p>
+          <p className="mt-2 text-[15px] font-medium text-muted">{description}</p>
         ) : null}
       </div>
       {actions ? <div className="shrink-0">{actions}</div> : null}

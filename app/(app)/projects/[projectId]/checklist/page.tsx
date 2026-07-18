@@ -1,6 +1,7 @@
 import { ChecklistBoard } from "@/components/checklist/ChecklistBoard";
 import { GenerateStarterChecklist } from "@/components/checklist/GenerateStarterChecklist";
 import type { ChecklistTask } from "@/components/checklist/TaskRow";
+import { PageHeader } from "@/components/ui/page-header";
 import { getAccountContext } from "@/lib/account-context";
 import {
   computeChecklistAggregates,
@@ -9,6 +10,7 @@ import {
 import {
   isCanonicalPhase,
   PHASE_ORDER,
+  phaseTargetDate,
 } from "@/lib/checklist-phases";
 import { sectionStackClass } from "@/lib/density";
 import { createClient } from "@/utils/supabase/server";
@@ -34,7 +36,15 @@ function groupByPhase(tasks: TaskRow[]) {
   return groups;
 }
 
-function buildSections(tasks: TaskRow[]) {
+function formatPhaseMetaDate(isoDate: string) {
+  return new Date(isoDate + "T00:00:00").toLocaleDateString(undefined, {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function buildSections(tasks: TaskRow[], weddingDate: string | null) {
   const byPhase = groupByPhase(tasks);
 
   const knownPhases = PHASE_ORDER.map((phase) => ({
@@ -60,12 +70,19 @@ function buildSections(tasks: TaskRow[]) {
     .map(({ phase, label }) => {
       const phaseTasks = byPhase.get(phase) ?? [];
       const done = phaseTasks.filter((t) => t.status === "done").length;
+      const targetIso =
+        weddingDate && phase !== null
+          ? phaseTargetDate(weddingDate, phase)
+          : null;
       return {
         phase,
         label,
         tasks: phaseTasks,
         done,
         total: phaseTasks.length,
+        targetLabel: targetIso
+          ? formatPhaseMetaDate(targetIso)
+          : null,
       };
     })
     .filter((section) => section.total > 0 || section.phase !== null)
@@ -74,6 +91,14 @@ function buildSections(tasks: TaskRow[]) {
       if (section.phase === null) return section.total > 0;
       return true;
     });
+}
+
+function formatEyebrowDate(iso: string) {
+  return new Date(iso + "T00:00:00").toLocaleDateString(undefined, {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
 }
 
 export default async function ChecklistPage({
@@ -95,23 +120,33 @@ export default async function ChecklistPage({
       .order("position", { ascending: true }),
     supabase
       .from("projects")
-      .select("wedding_date")
+      .select("name, wedding_date")
       .eq("id", projectId)
       .maybeSingle(),
   ]);
 
   const taskList = (tasks ?? []) as TaskRow[];
   const weddingDate = project?.wedding_date ?? null;
+  const projectName = project?.name ?? "Your wedding";
   const aggregates = computeChecklistAggregates(taskList, weddingDate);
-  const sections = buildSections(taskList);
+  const sections = buildSections(taskList, weddingDate);
+
+  const eyebrow =
+    weddingDate != null
+      ? `${projectName} · ${formatEyebrowDate(weddingDate)}`
+      : projectName;
 
   return (
     <div className={stackClass}>
       {taskList.length === 0 ? (
-        <GenerateStarterChecklist projectId={projectId} />
+        <div className="space-y-6">
+          <PageHeader title="Checklist" eyebrow={eyebrow} />
+          <GenerateStarterChecklist projectId={projectId} />
+        </div>
       ) : (
         <ChecklistBoard
           projectId={projectId}
+          projectName={projectName}
           weddingDate={weddingDate}
           aggregates={aggregates}
           sections={sections}

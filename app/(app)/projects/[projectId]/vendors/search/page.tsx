@@ -74,7 +74,7 @@ export default async function VendorSearchPage({
     <div className="space-y-6">
       <Link
         href={`/projects/${projectId}/vendors`}
-        className="text-[13px] text-ink-muted hover:text-ink"
+        className="text-[13px] text-muted hover:text-ink"
       >
         ← Back to vendors
       </Link>

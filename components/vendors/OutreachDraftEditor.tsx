@@ -98,7 +98,7 @@ export function OutreachDraftEditor({
     >
       <header className="mb-5">
         <h3 className="text-[15px] font-medium text-ink">{draft.vendorName}</h3>
-        <p className="mt-px text-[13px] text-ink-muted">
+        <p className="mt-px text-[13px] text-muted">
           {draft.vendorCategory ?? "Vendor"}
           {draft.status === "failed" ? (
             <span className="text-rosewood"> · Send failed</span>
@@ -147,7 +147,7 @@ export function OutreachDraftEditor({
         </div>
       </div>
 
-      <div className="mt-5 flex flex-wrap items-center gap-3 border-t border-stone pt-5">
+      <div className="mt-5 flex flex-wrap items-center gap-3 border-t border-hairline pt-5">
         <Button
           type="button"
           variant="default"

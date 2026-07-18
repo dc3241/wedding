@@ -67,8 +67,8 @@ export default async function BillingPage({
       />
 
       {status === "success" && !subscription.isActive ? (
-        <Card className="mt-6 border-stone bg-surface px-4 py-3">
-          <p className="text-[14px] text-ink-muted">
+        <Card className="mt-6 border-hairline bg-surface px-4 py-3">
+          <p className="text-[14px] text-muted">
             Thanks — we&apos;re finalizing your subscription. This usually takes
             a few seconds. Refresh if your plan status hasn&apos;t updated yet.
           </p>
@@ -76,8 +76,8 @@ export default async function BillingPage({
       ) : null}
 
       {status === "cancelled" ? (
-        <Card className="mt-6 border-stone bg-surface px-4 py-3">
-          <p className="text-[14px] text-ink-muted">Checkout was cancelled.</p>
+        <Card className="mt-6 border-hairline bg-surface px-4 py-3">
+          <p className="text-[14px] text-muted">Checkout was cancelled.</p>
         </Card>
       ) : null}
 
@@ -91,7 +91,7 @@ export default async function BillingPage({
               <div className="mt-2 space-y-1">
                 <Pill variant="sage">Active</Pill>
                 {renewalDate ? (
-                  <p className="text-[13px] text-ink-muted">
+                  <p className="text-[13px] text-muted">
                     Renews {renewalDate}
                   </p>
                 ) : null}
@@ -102,7 +102,7 @@ export default async function BillingPage({
                 ) : null}
               </div>
             ) : (
-              <p className="mt-2 text-[13px] text-ink-muted">
+              <p className="mt-2 text-[13px] text-muted">
                 {FREE_COPY[account.kind]}
               </p>
             )}

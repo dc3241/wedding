@@ -10,11 +10,13 @@ export function EmptyState({ children, className }: EmptyStateProps) {
   return (
     <div
       className={cn(
-        "rounded-lg border border-transparent bg-plum-tint px-8 py-12 text-center",
+        "rounded-[var(--radius-card)] bg-surface px-8 py-12 text-center shadow-raised",
         className,
       )}
     >
-      <p className="font-display text-[21px] text-plum-deep">{children}</p>
+      <p className="font-display text-[19px] tracking-[-0.02em] text-ink">
+        {children}
+      </p>
     </div>
   );
 }

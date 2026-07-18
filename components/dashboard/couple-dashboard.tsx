@@ -2,7 +2,6 @@ import Link from "next/link";
 import { GenerateStarterChecklist } from "@/components/checklist/GenerateStarterChecklist";
 import {
   Card,
-  Eyebrow,
   Pill,
   type PillVariant,
   WeddingHero,
@@ -94,7 +93,7 @@ function focusPill(task: TaskSummary): { variant: PillVariant; label: string } {
     };
   }
   if (task.status === "in_progress") {
-    return { variant: "default", label: "In progress" };
+    return { variant: "clay", label: "In progress" };
   }
   return { variant: "default", label: "Not started" };
 }
@@ -120,12 +119,14 @@ function BlockHead({
   linkLabel?: string;
 }) {
   return (
-    <div className="mb-[18px] flex items-baseline justify-between">
-      <Eyebrow>{title}</Eyebrow>
+    <div className="mb-4 flex items-baseline justify-between gap-3">
+      <p className="text-[12px] font-semibold uppercase tracking-[0.09em] text-muted">
+        {title}
+      </p>
       {href && linkLabel ? (
         <Link
           href={href}
-          className="text-[13px] text-plum no-underline hover:text-plum-deep"
+          className="text-[14px] font-semibold text-accent no-underline hover:opacity-80"
         >
           {linkLabel}
         </Link>
@@ -152,50 +153,54 @@ function NextUpSection({
     .slice(0, 5);
 
   return (
-    <section>
-      <BlockHead
-        title="Next up"
-        href={`/projects/${projectId}/checklist`}
-        linkLabel="See full checklist"
-      />
+    <Card className="overflow-hidden">
+      <div className="px-6 pt-[22px]">
+        <BlockHead
+          title="Next up"
+          href={`/projects/${projectId}/checklist`}
+          linkLabel="See full checklist"
+        />
+      </div>
 
       {focusTasks.length === 0 ? (
-        <div className="px-1 py-4">
+        <div className="px-6 pb-[22px]">
           {tasks.length === 0 ? (
             <div className="space-y-3">
-              <p className="text-[13px] text-ink-muted">
+              <p className="text-[15px] font-medium text-muted">
                 Your checklist will show what to tackle next.
               </p>
               <GenerateStarterChecklist projectId={projectId} compact />
             </div>
           ) : (
-            <p className="text-[13px] text-ink-muted">
+            <p className="text-[15px] font-medium text-muted">
               You&apos;re all caught up — nice work.
             </p>
           )}
         </div>
       ) : (
-        focusTasks.map((task) => {
-          const pill = focusPill(task);
-          return (
-            <div
-              key={task.id}
-              className="flex items-center justify-between gap-4 border-b border-stone px-1 py-4 last:border-b-0"
-            >
-              <div className="min-w-0">
-                <div className="text-base text-ink">{task.title}</div>
-                <div className="mt-0.5 text-[13px] text-ink-muted">
-                  {focusMeta(task)}
+        <ul className="space-y-2 px-3.5 pb-3.5">
+          {focusTasks.map((task) => {
+            const pill = focusPill(task);
+            return (
+              <li
+                key={task.id}
+                className="flex items-start justify-between gap-3 rounded-[var(--radius-inner)] bg-well px-4 py-3.5 shadow-recessed"
+              >
+                <div className="min-w-0">
+                  <p className="text-[15px] font-medium leading-snug text-ink">
+                    {task.title}
+                  </p>
+                  <p className="mt-1 text-[13px] text-muted">{focusMeta(task)}</p>
                 </div>
-              </div>
-              <Pill variant={pill.variant} className="shrink-0">
-                {pill.label}
-              </Pill>
-            </div>
-          );
-        })
+                <Pill variant={pill.variant} className="shrink-0">
+                  {pill.label}
+                </Pill>
+              </li>
+            );
+          })}
+        </ul>
       )}
-    </section>
+    </Card>
   );
 }
 
@@ -209,10 +214,10 @@ function YourPhasesSection({
   weddingDate: string | null;
 }) {
   const aggregates = computeChecklistAggregates(tasks, weddingDate);
-  const { phases, activePhase, total } = aggregates;
+  const { phases, activePhase, total, percent, done } = aggregates;
 
   return (
-    <section>
+    <Card className="p-[30px]">
       <BlockHead
         title="Your phases"
         href={`/projects/${projectId}/checklist`}
@@ -220,46 +225,64 @@ function YourPhasesSection({
       />
 
       {total === 0 ? (
-        <div className="px-1">
-          <p className="text-[13px] text-ink-muted">
+        <div>
+          <p className="text-[15px] font-medium text-muted">
             Generate a starter checklist to see your phases here.
           </p>
-          <div className="mt-3">
+          <div className="mt-4">
             <GenerateStarterChecklist projectId={projectId} compact />
           </div>
         </div>
       ) : (
-        <ul className="flex flex-wrap gap-2">
-          {phases.map((phase) => {
-            const here = phase.phase === activePhase;
-            return (
-              <li
-                key={phase.phase}
-                className={cn(
-                  "rounded-full border px-3 py-1.5 text-[13px] tabular-nums",
-                  here
-                    ? "border-plum text-plum"
-                    : "border-stone text-ink-muted",
-                )}
-              >
-                <span className={here ? "font-medium text-plum-deep" : undefined}>
-                  {phase.phase}
-                </span>
-                <span className="text-ink-muted">
-                  {" "}
-                  · {phase.done}/{phase.total}
-                </span>
-                {here ? (
-                  <span className="ml-1.5 text-[11px] font-medium uppercase tracking-[0.08em] text-plum">
-                    you&apos;re here
+        <>
+          <div className="mb-6">
+            <p className="font-display text-[40px] font-extrabold leading-none tracking-[-0.035em] tabular-nums text-ink md:text-[52px]">
+              {percent}%
+            </p>
+            <p className="mt-2 text-[14px] font-medium text-muted">
+              {done} of {total} done
+            </p>
+          </div>
+          <div
+            className="mb-6 h-4 overflow-hidden rounded-[var(--radius-pill)] bg-[#EDE4E8] p-[3px]"
+            role="progressbar"
+            aria-valuenow={percent}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-label={`${percent}% of checklist complete`}
+          >
+            <div
+              className="h-full rounded-[var(--radius-pill)] bg-sage transition-[width] duration-300"
+              style={{ width: `${percent}%` }}
+            />
+          </div>
+          <ul className="flex flex-wrap gap-2.5">
+            {phases.map((phase) => {
+              const here = phase.phase === activePhase;
+              return (
+                <li
+                  key={phase.phase}
+                  className={cn(
+                    "flex items-center gap-2 rounded-[var(--radius-pill)] px-[15px] py-[9px] text-[13px] font-semibold tabular-nums",
+                    here ? "bg-accent text-surface" : "bg-well text-muted",
+                  )}
+                >
+                  <span>{phase.phase}</span>
+                  <span
+                    className={cn(
+                      "font-medium",
+                      here ? "opacity-90" : "opacity-75",
+                    )}
+                  >
+                    {phase.done} of {phase.total}
                   </span>
-                ) : null}
-              </li>
-            );
-          })}
-        </ul>
+                </li>
+              );
+            })}
+          </ul>
+        </>
       )}
-    </section>
+    </Card>
   );
 }
 
@@ -289,8 +312,6 @@ function BudgetRailCard({
   const { allocated, spent, unallocated } = aggregates;
   const overAllocated = unallocated !== null && unallocated < 0;
 
-  // Bar tracks SPEND against ALLOCATED (BUD-01 CategoryBar vocabulary) —
-  // allocation-vs-target is the separate text line below, never a fill.
   const spentPct =
     allocated > 0 ? Math.min(100, (spent / allocated) * 100) : 0;
 
@@ -299,40 +320,30 @@ function BudgetRailCard({
       href={`/projects/${projectId}/budget`}
       className="block no-underline transition-opacity hover:opacity-90"
     >
-      <Card className="p-4 sm:p-5">
-        <Eyebrow>Budget</Eyebrow>
+      <Card className="px-6 py-[22px]">
+        <p className="mb-[15px] text-[12px] font-semibold uppercase tracking-[0.09em] text-muted">
+          Budget
+        </p>
         {budgetItems.length === 0 ? (
-          <p className="mt-3 text-[13px] text-ink-muted">
+          <p className="text-[15px] font-medium text-muted">
             No budget items yet.
           </p>
         ) : (
           <>
-            <dl className="mt-3 grid grid-cols-2 gap-3">
-              <div>
-                <dt className="text-[11px] font-medium uppercase tracking-[0.08em] text-ink-muted">
-                  Allocated
-                </dt>
-                <dd className="mt-1 text-[18px] tabular-nums text-ink">
-                  {formatCurrency(allocated)}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-[11px] font-medium uppercase tracking-[0.08em] text-ink-muted">
-                  Spent
-                </dt>
-                <dd className="mt-1 text-[18px] tabular-nums text-ink">
-                  {formatCurrency(spent)}
-                </dd>
-              </div>
-            </dl>
+            <p className="font-display text-[30px] font-extrabold leading-none tracking-[-0.03em] tabular-nums text-ink">
+              {formatCurrency(spent)}
+            </p>
+            <p className="mt-[7px] text-[13px] leading-relaxed text-muted">
+              spent of {formatCurrency(allocated)} allocated
+            </p>
             <div
-              className="mt-3 h-[3px] overflow-hidden rounded-[2px] bg-stone/40"
+              className="mt-4 h-2.5 overflow-hidden rounded-[var(--radius-pill)] bg-[#EDE4E8] p-0.5"
               role="img"
               aria-label={`Spent ${formatCurrency(spent)} of ${formatCurrency(allocated)} allocated`}
             >
               {spentPct > 0 ? (
                 <div
-                  className="h-full bg-sage transition-[width] duration-300"
+                  className="h-full rounded-[var(--radius-pill)] bg-sage transition-[width] duration-300"
                   style={{ width: `${spentPct}%` }}
                 />
               ) : null}
@@ -340,8 +351,8 @@ function BudgetRailCard({
             {unallocated !== null ? (
               <p
                 className={cn(
-                  "mt-2 text-[13px] tabular-nums",
-                  overAllocated ? "text-rosewood" : "text-ink-muted",
+                  "mt-3 text-[13px] font-medium tabular-nums",
+                  overAllocated ? "text-rosewood" : "text-muted",
                 )}
               >
                 {overAllocated
@@ -375,36 +386,40 @@ function VendorsRailCard({
       href={`/projects/${projectId}/vendors`}
       className="block no-underline transition-opacity hover:opacity-90"
     >
-      <Card className="p-4 sm:p-5">
-        <Eyebrow>Vendors</Eyebrow>
+      <Card className="px-6 py-[22px]">
+        <p className="mb-[15px] text-[12px] font-semibold uppercase tracking-[0.09em] text-muted">
+          Vendors
+        </p>
         {vendors.length === 0 ? (
-          <p className="mt-3 text-[13px] text-ink-muted">
+          <p className="text-[15px] font-medium text-muted">
             No vendors on your list yet.
           </p>
         ) : (
-          <dl className="mt-3 space-y-2 text-[14px]">
-            {OUTREACH_STATUS_ORDER.map((status) => {
-              const n = counts[status];
-              if (n === 0) return null;
-              return (
-                <div
-                  key={status}
-                  className="flex items-baseline justify-between gap-3"
-                >
-                  <dt className="text-ink-muted">
-                    {OUTREACH_STATUS_HEADING[status]}
-                  </dt>
-                  <dd className="tabular-nums text-ink">{n}</dd>
-                </div>
-              );
-            })}
-            <div className="flex items-baseline justify-between gap-3 border-t border-stone pt-2">
-              <dt className="text-ink-muted">Total</dt>
-              <dd className="tabular-nums font-medium text-ink">
-                {vendors.length}
-              </dd>
-            </div>
-          </dl>
+          <>
+            <p className="font-display text-[30px] font-extrabold leading-none tracking-[-0.03em] tabular-nums text-ink">
+              {vendors.length}
+            </p>
+            <p className="mt-[7px] text-[13px] leading-relaxed text-muted">
+              on your list
+            </p>
+            <ul className="mt-3">
+              {OUTREACH_STATUS_ORDER.map((status) => {
+                const n = counts[status];
+                if (n === 0) return null;
+                return (
+                  <li
+                    key={status}
+                    className="flex items-baseline justify-between gap-3 border-t border-hairline py-[11px] text-[15px] font-medium first:border-t-0 first:pt-0"
+                  >
+                    <span className="text-muted">
+                      {OUTREACH_STATUS_HEADING[status]}
+                    </span>
+                    <span className="tabular-nums text-ink">{n}</span>
+                  </li>
+                );
+              })}
+            </ul>
+          </>
         )}
       </Card>
     </Link>
@@ -423,29 +438,41 @@ function GuestsRailCard({
       href={`/projects/${projectId}/guests`}
       className="block no-underline transition-opacity hover:opacity-90"
     >
-      <Card className="p-4 sm:p-5">
-        <Eyebrow>Guests</Eyebrow>
+      <Card className="px-6 py-[22px]">
+        <p className="mb-[15px] text-[12px] font-semibold uppercase tracking-[0.09em] text-muted">
+          Guests
+        </p>
         {guestStats.householdCount === 0 ? (
-          <p className="mt-3 text-[13px] text-ink-muted">No guests yet.</p>
+          <p className="text-[15px] font-medium text-muted">No guests yet.</p>
         ) : (
-          <dl className="mt-3 space-y-2 text-[14px]">
-            <div className="flex items-baseline justify-between gap-3">
-              <dt className="text-ink-muted">Invited</dt>
-              <dd className="tabular-nums text-ink">{guestStats.invited}</dd>
-            </div>
-            <div className="flex items-baseline justify-between gap-3">
-              <dt className="text-ink-muted">Attending</dt>
-              <dd className="tabular-nums text-ink">{guestStats.attending}</dd>
-            </div>
-            <div className="flex items-baseline justify-between gap-3">
-              <dt className="text-ink-muted">Pending</dt>
-              <dd className="tabular-nums text-ink">{guestStats.pending}</dd>
-            </div>
-            <div className="flex items-baseline justify-between gap-3">
-              <dt className="text-ink-muted">Declined</dt>
-              <dd className="tabular-nums text-ink">{guestStats.declined}</dd>
-            </div>
-          </dl>
+          <>
+            <p className="font-display text-[30px] font-extrabold leading-none tracking-[-0.03em] tabular-nums text-ink">
+              {guestStats.invited}
+            </p>
+            <p className="mt-[7px] text-[13px] leading-relaxed text-muted">
+              invited
+            </p>
+            <ul className="mt-3">
+              {(
+                [
+                  ["Attending", guestStats.attending],
+                  ["Pending", guestStats.pending],
+                  ["Declined", guestStats.declined],
+                ] as const
+              ).map(([label, value], i) => (
+                <li
+                  key={label}
+                  className={cn(
+                    "flex items-baseline justify-between gap-3 py-[11px] text-[15px] font-medium",
+                    i > 0 && "border-t border-hairline",
+                  )}
+                >
+                  <span className="text-muted">{label}</span>
+                  <span className="tabular-nums text-ink">{value}</span>
+                </li>
+              ))}
+            </ul>
+          </>
         )}
       </Card>
     </Link>
@@ -464,20 +491,32 @@ function WebsiteRailCard({
       href={`/projects/${projectId}/website`}
       className="block no-underline transition-opacity hover:opacity-90"
     >
-      <Card className="p-4 sm:p-5">
-        <Eyebrow>Website</Eyebrow>
+      <Card className="px-6 py-[22px]">
+        <p className="mb-[15px] text-[12px] font-semibold uppercase tracking-[0.09em] text-muted">
+          Website
+        </p>
         {website === null ? (
-          <p className="mt-3 text-[13px] text-ink-muted">
+          <p className="text-[15px] font-medium text-muted">
             No website yet — create one.
           </p>
+        ) : website.published ? (
+          <>
+            <p className="font-display text-[30px] font-extrabold leading-none tracking-[-0.03em] text-sage">
+              Live
+            </p>
+            <p className="mt-[7px] text-[13px] leading-relaxed text-muted">
+              Your site is published
+            </p>
+          </>
         ) : (
-          <p className="mt-3 text-[14px] text-ink">
-            {website.published ? (
-              <span className="text-sage">Published</span>
-            ) : (
-              <span className="text-ink-muted">Draft</span>
-            )}
-          </p>
+          <>
+            <p className="font-display text-[30px] font-extrabold leading-none tracking-[-0.03em] text-ink">
+              Draft
+            </p>
+            <p className="mt-[7px] text-[13px] leading-relaxed text-muted">
+              Ready when you are
+            </p>
+          </>
         )}
       </Card>
     </Link>
@@ -496,15 +535,15 @@ export function CoupleDashboard({
   website,
 }: CoupleDashboardProps) {
   return (
-    <>
+    <div className="space-y-6">
       <WeddingHero
         coupleNames={coupleNames}
         weddingDate={weddingDate}
         projectId={projectId}
       />
 
-      <div className="mt-10 grid grid-cols-1 gap-6 text-left lg:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)] lg:gap-8">
-        <div className="min-w-0 space-y-10">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_300px] lg:items-start">
+        <div className="min-w-0 space-y-4">
           <NextUpSection projectId={projectId} tasks={tasks} />
           <YourPhasesSection
             projectId={projectId}
@@ -525,6 +564,6 @@ export function CoupleDashboard({
           <WebsiteRailCard projectId={projectId} website={website} />
         </aside>
       </div>
-    </>
+    </div>
   );
 }

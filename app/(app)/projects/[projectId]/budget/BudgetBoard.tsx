@@ -12,14 +12,24 @@ import type {
 import { formatCurrency } from "@/lib/format-currency";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
-import { Eyebrow } from "@/components/ui/eyebrow";
+import { PageHeader } from "@/components/ui/page-header";
 import { cn } from "@/lib/cn";
 
 type BudgetBoardProps = {
   projectId: string;
+  projectName: string;
+  weddingDate: string | null;
   aggregates: BudgetAggregates;
   projectVendors: ProjectVendorOption[];
 };
+
+function formatEyebrowDate(iso: string) {
+  return new Date(iso + "T00:00:00").toLocaleDateString(undefined, {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+}
 
 function AllocationBand({
   projectId,
@@ -28,13 +38,7 @@ function AllocationBand({
   projectId: string;
   aggregates: BudgetAggregates;
 }) {
-  const {
-    totalBudget,
-    allocated,
-    spent,
-    committed,
-    unallocated,
-  } = aggregates;
+  const { totalBudget, allocated, spent, committed, unallocated } = aggregates;
 
   const overAllocated = unallocated !== null && unallocated < 0;
   const showBar = totalBudget !== null;
@@ -58,16 +62,43 @@ function AllocationBand({
     committedPct = Math.min(100 - spentPct, 100);
   }
 
+  const headlinePct =
+    totalBudget !== null && totalBudget > 0
+      ? Math.round((spent / totalBudget) * 100)
+      : null;
+
   return (
-    <Card className="px-5 py-4 sm:px-6 sm:py-5">
-      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-2">
-        <h1 className="text-[15px] font-medium text-ink">Budget</h1>
-        <TotalBudgetEditor projectId={projectId} totalBudget={totalBudget} />
+    <Card className="p-[30px]">
+      <div className="mb-6 flex flex-wrap items-end justify-between gap-6">
+        <div>
+          {headlinePct != null ? (
+            <>
+              <p className="font-display text-[40px] font-extrabold leading-none tracking-[-0.035em] tabular-nums text-ink md:text-[52px]">
+                {headlinePct}%
+              </p>
+              <p className="mt-2 text-[14px] font-medium text-muted">
+                spent of {formatCurrency(totalBudget!)}
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="font-display text-[40px] font-extrabold leading-none tracking-[-0.035em] tabular-nums text-ink md:text-[52px]">
+                {formatCurrency(allocated)}
+              </p>
+              <p className="mt-2 text-[14px] font-medium text-muted">
+                allocated · set a total to track %
+              </p>
+            </>
+          )}
+        </div>
+        <div className="text-left md:text-right">
+          <TotalBudgetEditor projectId={projectId} totalBudget={totalBudget} />
+        </div>
       </div>
 
       {showBar ? (
         <div
-          className="mt-3 flex h-2 overflow-hidden rounded bg-stone/40"
+          className="flex h-4 overflow-hidden rounded-[var(--radius-pill)] bg-[#EDE4E8] p-[3px]"
           role="img"
           aria-label={
             overAllocated
@@ -77,15 +108,15 @@ function AllocationBand({
         >
           {spentPct > 0 ? (
             <div
-              className="h-full bg-sage transition-[width] duration-300"
+              className="h-full rounded-[var(--radius-pill)] bg-sage transition-[width] duration-300"
               style={{ width: `${spentPct}%` }}
             />
           ) : null}
           {committedPct > 0 ? (
             <div
               className={cn(
-                "h-full transition-[width] duration-300",
-                overAllocated ? "bg-rosewood" : "bg-plum",
+                "h-full rounded-[var(--radius-pill)] transition-[width] duration-300",
+                overAllocated ? "bg-rosewood" : "bg-accent",
               )}
               style={{ width: `${committedPct}%` }}
             />
@@ -95,7 +126,7 @@ function AllocationBand({
 
       <dl
         className={cn(
-          "mt-4 grid gap-4",
+          "mt-6 grid gap-5",
           totalBudget === null
             ? "grid-cols-3"
             : "grid-cols-2 sm:grid-cols-4",
@@ -131,12 +162,12 @@ function StatCell({
 }) {
   return (
     <div>
-      <dt className="text-[11px] font-medium uppercase tracking-[0.08em] text-ink-muted">
+      <dt className="text-[12px] font-semibold uppercase tracking-[0.09em] text-muted">
         {label}
       </dt>
       <dd
         className={cn(
-          "mt-1 text-[18px] tabular-nums",
+          "mt-1.5 font-display text-[22px] font-extrabold tracking-[-0.03em] tabular-nums",
           tone === "rosewood" ? "text-rosewood" : "text-ink",
         )}
       >
@@ -152,7 +183,7 @@ function CategoryFigure({ group }: { group: BudgetCategoryGroup }) {
 
   if (untracked) {
     return (
-      <span className="text-[13px] tabular-nums text-ink-muted">
+      <span className="text-[13px] font-medium tabular-nums text-muted">
         Nothing tracked of {formatCurrency(group.plannedTotal)}
       </span>
     );
@@ -161,8 +192,8 @@ function CategoryFigure({ group }: { group: BudgetCategoryGroup }) {
   return (
     <span
       className={cn(
-        "text-[13px] tabular-nums",
-        over ? "text-rosewood" : "text-ink-muted",
+        "text-[13px] font-medium tabular-nums",
+        over ? "text-rosewood" : "text-muted",
       )}
     >
       {formatCurrency(group.actualTotal)} of{" "}
@@ -183,11 +214,11 @@ function CategoryBar({ group }: { group: BudgetCategoryGroup }) {
         : 0;
 
   return (
-    <div className="mt-2 h-[3px] overflow-hidden rounded-[2px] bg-stone/40">
+    <div className="mt-3 h-2.5 overflow-hidden rounded-[var(--radius-pill)] bg-[#EDE4E8] p-0.5">
       {!untracked && pct > 0 ? (
         <div
           className={cn(
-            "h-full transition-[width] duration-300",
+            "h-full rounded-[var(--radius-pill)] transition-[width] duration-300",
             over ? "bg-rosewood" : "bg-sage",
           )}
           style={{ width: `${pct}%` }}
@@ -199,50 +230,39 @@ function CategoryBar({ group }: { group: BudgetCategoryGroup }) {
 
 function CategorySection({
   group,
-  collapsed,
+  open,
   onToggle,
   projectVendors,
 }: {
   group: BudgetCategoryGroup;
-  collapsed: boolean;
+  open: boolean;
   onToggle: () => void;
   projectVendors: ProjectVendorOption[];
 }) {
   return (
-    <li className="rounded border-[0.5px] border-stone bg-surface">
-      <button
-        type="button"
-        onClick={onToggle}
-        aria-expanded={!collapsed}
-        className="w-full px-3.5 py-3 text-left sm:px-4"
+    <details
+      className="mb-4 overflow-hidden rounded-[var(--radius-card)] bg-surface shadow-raised last:mb-0"
+      open={open}
+    >
+      <summary
+        className="cursor-pointer list-none px-6 py-[22px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-accent [&::-webkit-details-marker]:hidden"
+        onClick={(e) => {
+          e.preventDefault();
+          onToggle();
+        }}
       >
-        <div className="flex items-start gap-2">
-          <span
-            className={cn(
-              "mt-1 text-ink-muted transition-transform",
-              collapsed ? "-rotate-90" : "rotate-0",
-            )}
-            aria-hidden
-          >
-            <svg viewBox="0 0 12 12" className="size-3" fill="currentColor">
-              <path d="M2.5 4.25L6 7.75l3.5-3.5" />
-            </svg>
+        <div className="flex items-baseline justify-between gap-x-3">
+          <span className="truncate font-display text-[19px] font-extrabold tracking-[-0.02em] text-ink">
+            {group.category}
           </span>
-          <div className="min-w-0 flex-1">
-            <div className="flex items-baseline justify-between gap-x-3">
-              <span className="truncate text-[15px] font-medium text-ink">
-                {group.category}
-              </span>
-              <CategoryFigure group={group} />
-            </div>
-            <CategoryBar group={group} />
-          </div>
+          <CategoryFigure group={group} />
         </div>
-      </button>
+        <CategoryBar group={group} />
+      </summary>
 
-      {!collapsed ? (
-        <div className="border-t-[0.5px] border-stone px-3.5 pb-3 pt-2 sm:px-4">
-          <div className="mb-1 grid grid-cols-[minmax(0,1fr)_96px_96px_52px] gap-x-2 text-[11px] font-medium uppercase tracking-[0.08em] text-ink-muted">
+      {open ? (
+        <div className="px-3.5 pb-3.5">
+          <div className="mb-2 grid grid-cols-[minmax(0,1fr)_96px_96px_52px] gap-x-2 px-4 text-[12px] font-semibold uppercase tracking-[0.09em] text-muted">
             <span>Item</span>
             <span className="text-right">Planned</span>
             <span className="text-right">Spent</span>
@@ -259,7 +279,7 @@ function CategorySection({
           </ul>
         </div>
       ) : null}
-    </li>
+    </details>
   );
 }
 
@@ -272,33 +292,28 @@ function NeedsAttentionCard({ aggregates }: { aggregates: BudgetAggregates }) {
     (categoryCount > 0 && untrackedCategoryCount > 0);
 
   return (
-    <Card className="p-4 sm:p-5">
-      <Eyebrow>Needs attention</Eyebrow>
+    <Card className="px-6 py-[22px]">
+      <p className="mb-[15px] text-[12px] font-semibold uppercase tracking-[0.09em] text-muted">
+        Needs attention
+      </p>
       {!hasSignal ? (
-        <p className="mt-3 text-[13px] text-ink-muted">All categories look good.</p>
+        <p className="text-[15px] font-medium text-muted">
+          All categories look good.
+        </p>
       ) : (
-        <ul className="mt-3 space-y-2.5">
+        <ul>
           {overCategories.map((category) => (
-            <li key={category} className="flex items-start gap-2.5">
-              <span
-                className="mt-1.5 size-1.5 shrink-0 rounded-full bg-rosewood"
-                aria-hidden
-              />
-              <span className="min-w-0 text-[14px] leading-snug text-rosewood">
-                {category} is over plan
-              </span>
+            <li
+              key={category}
+              className="border-t border-hairline py-[11px] text-[15px] font-medium leading-snug text-rosewood first:border-t-0 first:pt-0"
+            >
+              {category} is over plan
             </li>
           ))}
           {categoryCount > 0 && untrackedCategoryCount > 0 ? (
-            <li className="flex items-start gap-2.5">
-              <span
-                className="mt-1.5 size-1.5 shrink-0 rounded-full bg-plum"
-                aria-hidden
-              />
-              <span className="min-w-0 text-[14px] leading-snug text-ink">
-                {untrackedCategoryCount} of {categoryCount} categories have
-                nothing tracked yet
-              </span>
+            <li className="border-t border-hairline py-[11px] text-[15px] font-medium leading-snug text-ink first:border-t-0 first:pt-0">
+              {untrackedCategoryCount} of {categoryCount} categories have
+              nothing tracked yet
             </li>
           ) : null}
         </ul>
@@ -319,9 +334,11 @@ function BookedVendorsCard({ aggregates }: { aggregates: BudgetAggregates }) {
 
   if (bookedUnlinkedCount === 0) {
     return (
-      <Card className="p-4 sm:p-5">
-        <Eyebrow>Booked vendors</Eyebrow>
-        <p className="mt-3 text-[14px] text-sage">
+      <Card className="px-6 py-[22px]">
+        <p className="mb-[15px] text-[12px] font-semibold uppercase tracking-[0.09em] text-muted">
+          Booked vendors
+        </p>
+        <p className="text-[15px] font-medium text-sage">
           All {bookedCount} booked vendors are linked to budget items.
         </p>
       </Card>
@@ -329,15 +346,23 @@ function BookedVendorsCard({ aggregates }: { aggregates: BudgetAggregates }) {
   }
 
   return (
-    <Card className="p-4 sm:p-5">
-      <Eyebrow>Booked vendors</Eyebrow>
-      <p className="mt-3 text-[14px] tabular-nums text-ink-muted">
-        {bookedUnlinkedCount} booked vendors not linked ·{" "}
-        {formatCurrency(bookedUnlinkedQuotedTotal)} quoted
+    <Card className="px-6 py-[22px]">
+      <p className="mb-[15px] text-[12px] font-semibold uppercase tracking-[0.09em] text-muted">
+        Booked vendors
       </p>
-      <ul className="mt-2.5 space-y-1.5">
+      <p className="font-display text-[30px] font-extrabold leading-none tracking-[-0.03em] tabular-nums text-ink">
+        {bookedUnlinkedCount}
+      </p>
+      <p className="mt-[7px] text-[13px] leading-relaxed text-muted">
+        booked vendors not linked · {formatCurrency(bookedUnlinkedQuotedTotal)}{" "}
+        quoted
+      </p>
+      <ul className="mt-3">
         {unlinkedVendors.map((vendor) => (
-          <li key={vendor.id} className="text-[13px] text-ink-muted">
+          <li
+            key={vendor.id}
+            className="border-t border-hairline py-[11px] text-[15px] font-medium text-ink first:border-t-0 first:pt-0"
+          >
             {vendor.name}
           </li>
         ))}
@@ -348,44 +373,63 @@ function BookedVendorsCard({ aggregates }: { aggregates: BudgetAggregates }) {
 
 export function BudgetBoard({
   projectId,
+  projectName,
+  weddingDate,
   aggregates,
   projectVendors,
 }: BudgetBoardProps) {
   const [showAdd, setShowAdd] = useState(false);
-  const [collapsed, setCollapsed] = useState<Record<string, boolean>>(() => {
-    const initial: Record<string, boolean> = {};
-    for (const group of aggregates.perCategory) {
-      initial[group.category] = true;
-    }
-    return initial;
-  });
+  const [openCategories, setOpenCategories] = useState<Record<string, boolean>>(
+    () => {
+      const initial: Record<string, boolean> = {};
+      for (const group of aggregates.perCategory) {
+        initial[group.category] = group.isOver;
+      }
+      return initial;
+    },
+  );
 
   function toggleCategory(key: string) {
-    setCollapsed((prev) => ({ ...prev, [key]: !prev[key] }));
+    setOpenCategories((prev) => ({ ...prev, [key]: !prev[key] }));
   }
 
   const empty = aggregates.perCategory.length === 0;
+  const eyebrow =
+    weddingDate != null
+      ? `${projectName} · ${formatEyebrowDate(weddingDate)}`
+      : projectName;
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
+      <PageHeader title="Budget" eyebrow={eyebrow} />
+
       <AllocationBand projectId={projectId} aggregates={aggregates} />
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)] lg:gap-8">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_300px] lg:items-start">
         <div className="min-w-0">
-          <div className="mb-2 flex items-center justify-between gap-3">
-            <Eyebrow>By category</Eyebrow>
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
+            <p className="text-[14px] font-medium text-muted">
+              {aggregates.perCategory.length}{" "}
+              {aggregates.perCategory.length === 1 ? "category" : "categories"}
+            </p>
             <button
               type="button"
               onClick={() => setShowAdd((v) => !v)}
               aria-expanded={showAdd}
-              className="text-[13px] font-medium text-plum hover:text-plum-deep"
+              aria-pressed={showAdd}
+              className={cn(
+                "rounded-[var(--radius-pill)] px-4 py-2.5 text-[14px] font-semibold transition-colors",
+                showAdd
+                  ? "bg-accent text-surface"
+                  : "bg-accent-wash text-accent",
+              )}
             >
               {showAdd ? "Cancel" : "Add item"}
             </button>
           </div>
 
           {showAdd ? (
-            <Card className="mb-4 p-4 sm:p-5">
+            <Card className="mb-4 px-6 py-5">
               <AddBudgetItemForm
                 projectId={projectId}
                 onAdded={() => setShowAdd(false)}
@@ -398,17 +442,17 @@ export function BudgetBoard({
               Add your first budget item to start tracking categories.
             </EmptyState>
           ) : (
-            <ul className="flex flex-col gap-2">
+            <div>
               {aggregates.perCategory.map((group) => (
                 <CategorySection
                   key={group.category}
                   group={group}
-                  collapsed={collapsed[group.category] !== false}
+                  open={Boolean(openCategories[group.category])}
                   onToggle={() => toggleCategory(group.category)}
                   projectVendors={projectVendors}
                 />
               ))}
-            </ul>
+            </div>
           )}
         </div>
 

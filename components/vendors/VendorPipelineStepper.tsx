@@ -34,19 +34,21 @@ export function VendorPipelineStepper({
             <span
               className={cn(
                 "size-[9px] shrink-0 rounded-full",
-                lit ? "bg-plum" : "bg-stone",
+                lit ? "bg-accent" : "bg-ring",
               )}
               aria-hidden
             />
             <span
               className={cn(
-                "text-xs",
-                lit ? "font-medium text-plum-deep" : "text-ink-muted",
+                "text-[13px]",
+                lit ? "font-semibold text-accent" : "font-medium text-muted",
               )}
             >
               {step.label}
             </span>
-            {!isLast ? <span className="h-px flex-1 bg-stone" aria-hidden /> : null}
+            {!isLast ? (
+              <span className="h-px flex-1 bg-hairline" aria-hidden />
+            ) : null}
           </li>
         );
       })}

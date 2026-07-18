@@ -11,7 +11,7 @@ import {
   type RsvpStatus,
 } from "./types";
 import { Card } from "@/components/ui/card";
-import { Eyebrow } from "@/components/ui/eyebrow";
+import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
 import { getAccountContext } from "@/lib/account-context";
 import { cn } from "@/lib/cn";
@@ -31,6 +31,14 @@ function guestsFilterHref(projectId: string, status?: RsvpStatus) {
   return status ? `${base}?status=${status}` : base;
 }
 
+function formatEyebrowDate(iso: string) {
+  return new Date(iso + "T00:00:00").toLocaleDateString(undefined, {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+}
+
 export default async function GuestsPage({
   params,
   searchParams,
@@ -47,20 +55,29 @@ export default async function GuestsPage({
   const stackClass = sectionStackClass(accountKind);
   const rowClass = dataRowClass(accountKind);
 
-  const { data: guests } = await supabase
-    .from("guests")
-    .select(
-      "id, full_name, email, phone, household, party_size, rsvp_status, meal_choice, notes",
-    )
-    .eq("project_id", projectId)
-    .order("household", { ascending: true, nullsFirst: false })
-    .order("full_name", { ascending: true });
-
-  const { data: submissionRows } = await supabase
-    .from("rsvp_submissions")
-    .select("id, project_id, name, response, party_size, email, message, status, created_at")
-    .eq("project_id", projectId)
-    .order("created_at", { ascending: false });
+  const [{ data: guests }, { data: submissionRows }, { data: project }] =
+    await Promise.all([
+      supabase
+        .from("guests")
+        .select(
+          "id, full_name, email, phone, household, party_size, rsvp_status, meal_choice, notes",
+        )
+        .eq("project_id", projectId)
+        .order("household", { ascending: true, nullsFirst: false })
+        .order("full_name", { ascending: true }),
+      supabase
+        .from("rsvp_submissions")
+        .select(
+          "id, project_id, name, response, party_size, email, message, status, created_at",
+        )
+        .eq("project_id", projectId)
+        .order("created_at", { ascending: false }),
+      supabase
+        .from("projects")
+        .select("name, wedding_date")
+        .eq("id", projectId)
+        .maybeSingle(),
+    ]);
 
   const rsvpSubmissions = (submissionRows ?? []) as RsvpSubmission[];
 
@@ -77,51 +94,71 @@ export default async function GuestsPage({
   const declined = sumPartySizeByStatus(allGuests, "declined");
   const pending = sumPartySizeByStatus(allGuests, "pending");
 
+  const projectName = project?.name ?? "Your wedding";
+  const weddingDate = project?.wedding_date ?? null;
+  const eyebrow =
+    weddingDate != null
+      ? `${projectName} · ${formatEyebrowDate(weddingDate)}`
+      : projectName;
+
   return (
     <div className={stackClass}>
-      <header className="flex flex-wrap items-end justify-between gap-6">
-        <PageHeader title="RSVP & meals" eyebrow="Guest list" />
-        <dl className="flex flex-wrap gap-x-6 gap-y-3">
+      <PageHeader
+        title="Guests"
+        eyebrow={eyebrow}
+        description="RSVP & meals for your guest list."
+      />
+
+      <Card className="p-[30px]">
+        <dl className="grid grid-cols-2 gap-5 sm:grid-cols-4">
           <div>
-            <Eyebrow className="mb-2 block">Invited</Eyebrow>
-            <dd className="font-display tabnum text-[42px] leading-none tracking-[-0.01em] text-plum">
+            <dt className="text-[12px] font-semibold uppercase tracking-[0.09em] text-muted">
+              Invited
+            </dt>
+            <dd className="mt-1.5 font-display text-[40px] font-extrabold leading-none tracking-[-0.035em] tabular-nums text-ink md:text-[52px]">
               {invited}
             </dd>
           </div>
           <div>
-            <Eyebrow className="mb-2 block">Attending</Eyebrow>
-            <dd className="font-display tabnum text-[42px] leading-none tracking-[-0.01em] text-sage">
+            <dt className="text-[12px] font-semibold uppercase tracking-[0.09em] text-muted">
+              Attending
+            </dt>
+            <dd className="mt-1.5 font-display text-[40px] font-extrabold leading-none tracking-[-0.035em] tabular-nums text-sage md:text-[52px]">
               {attending}
             </dd>
           </div>
           <div>
-            <Eyebrow className="mb-2 block">Declined</Eyebrow>
-            <dd className="font-display tabnum text-[42px] leading-none tracking-[-0.01em] text-rosewood">
+            <dt className="text-[12px] font-semibold uppercase tracking-[0.09em] text-muted">
+              Declined
+            </dt>
+            <dd className="mt-1.5 font-display text-[40px] font-extrabold leading-none tracking-[-0.035em] tabular-nums text-rosewood md:text-[52px]">
               {declined}
             </dd>
           </div>
           <div>
-            <Eyebrow className="mb-2 block">Pending</Eyebrow>
-            <dd className="font-display tabnum text-[42px] leading-none tracking-[-0.01em] text-ink-muted">
+            <dt className="text-[12px] font-semibold uppercase tracking-[0.09em] text-muted">
+              Pending
+            </dt>
+            <dd className="mt-1.5 font-display text-[40px] font-extrabold leading-none tracking-[-0.035em] tabular-nums text-muted md:text-[52px]">
               {pending}
             </dd>
           </div>
         </dl>
-      </header>
+      </Card>
 
       <AddGuestForms projectId={projectId} />
 
       <RsvpSubmissionsPanel submissions={rsvpSubmissions} />
 
-      <section>
-        <div className="mb-[18px] flex flex-wrap items-baseline justify-between gap-4">
-          <Eyebrow>
+      <section className="space-y-4">
+        <div className="flex flex-wrap items-baseline justify-between gap-4">
+          <p className="text-[12px] font-semibold uppercase tracking-[0.09em] text-muted">
             {statusFilter
               ? `${filteredGuests.length} guest${filteredGuests.length === 1 ? "" : "s"}`
               : `${allGuests.length} guest${allGuests.length === 1 ? "" : "s"}`}
-          </Eyebrow>
+          </p>
           <nav
-            className="flex flex-wrap gap-1"
+            className="flex flex-wrap gap-2"
             aria-label="Filter by RSVP status"
           >
             {FILTER_OPTIONS.map((option) => {
@@ -131,10 +168,10 @@ export default async function GuestsPage({
                   key={option.label}
                   href={guestsFilterHref(projectId, option.value)}
                   className={cn(
-                    "rounded-full px-3 py-1 text-[13px] transition-colors",
+                    "rounded-[var(--radius-pill)] px-3.5 py-2 text-[13px] font-semibold transition-colors",
                     active
-                      ? "bg-plum-tint text-plum-deep"
-                      : "text-ink-muted hover:text-ink",
+                      ? "bg-accent text-surface"
+                      : "bg-well text-muted hover:text-ink",
                   )}
                   aria-current={active ? "page" : undefined}
                 >
@@ -146,26 +183,24 @@ export default async function GuestsPage({
         </div>
 
         {allGuests.length === 0 ? (
-          <p className="px-1 text-[13px] text-ink-muted">
+          <EmptyState>
             No guests yet. Add one individually or paste a list above.
-          </p>
+          </EmptyState>
         ) : filteredGuests.length === 0 ? (
-          <p className="px-1 text-[13px] text-ink-muted">
-            No guests match this filter.
-          </p>
+          <EmptyState>No guests match this filter.</EmptyState>
         ) : (
-          <Card className="overflow-x-auto px-5 py-3">
+          <Card className="overflow-x-auto px-6 py-4">
             <table className="w-full min-w-[36rem] border-collapse text-left">
               <thead>
-                <tr className="border-b border-stone text-[12px] font-medium tracking-[0.06em] text-ink-muted">
-                  <th className="pb-2 pr-4 font-medium">Name</th>
-                  <th className="pb-2 pr-4 font-medium">Household</th>
-                  <th className="pb-2 pr-4 text-right font-medium">Party</th>
-                  <th className="pb-2 pr-4 font-medium">RSVP</th>
-                  <th className="pb-2 font-medium">Meal</th>
+                <tr className="border-b border-hairline text-[12px] font-semibold uppercase tracking-[0.09em] text-muted">
+                  <th className="pb-3 pr-4 font-semibold">Name</th>
+                  <th className="pb-3 pr-4 font-semibold">Household</th>
+                  <th className="pb-3 pr-4 text-right font-semibold">Party</th>
+                  <th className="pb-3 pr-4 font-semibold">RSVP</th>
+                  <th className="pb-3 font-semibold">Meal</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-stone">
+              <tbody>
                 {filteredGuests.map((guest) => (
                   <GuestRow key={guest.id} guest={guest} rowClass={rowClass} />
                 ))}

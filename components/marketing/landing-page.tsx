@@ -5,7 +5,6 @@ import { HowItWorks } from "./how-it-works";
 import { LandingHero } from "./landing-hero";
 import { MarketingFooter } from "./marketing-footer";
 import { MarketingTopbar } from "./marketing-topbar";
-import { ProductPreview } from "./product-preview";
 
 export function LandingPage() {
   return (
@@ -13,7 +12,6 @@ export function LandingPage() {
       <MarketingTopbar />
       <main>
         <LandingHero />
-        <ProductPreview />
         <AudienceSplit />
         <FeatureGrid />
         <HowItWorks />

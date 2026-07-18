@@ -7,7 +7,7 @@ import { PROPOSAL_STATUSES, PROPOSAL_STATUS_LABEL, type ProposalStatus } from ".
 import { cn } from "@/lib/cn";
 
 const ACTIVE_CLASS: Record<ProposalStatus, string> = {
-  draft: "bg-porcelain text-ink-muted",
+  draft: "bg-canvas text-muted",
   sent: "bg-surface text-clay",
   accepted: "bg-surface text-sage",
   declined: "bg-surface text-rosewood",
@@ -53,7 +53,7 @@ export function ProposalStatusControl({
         role="tablist"
         aria-label="Proposal status"
         className={cn(
-          "flex flex-wrap rounded-full border border-stone bg-surface p-[3px]",
+          "flex flex-wrap rounded-full border border-ring bg-surface p-[3px]",
           isPending && "opacity-60",
         )}
       >
@@ -68,7 +68,7 @@ export function ProposalStatusControl({
               disabled={isPending}
               onClick={() => handleSelect(value)}
               className={cn(
-                "cursor-pointer rounded-full border-none bg-transparent px-2.5 py-1 text-[12px] font-medium text-ink-muted transition-[color,background] duration-150 disabled:cursor-not-allowed",
+                "cursor-pointer rounded-full border-none bg-transparent px-2.5 py-1 text-[12px] font-medium text-muted transition-[color,background] duration-150 disabled:cursor-not-allowed",
                 active && ACTIVE_CLASS[value],
               )}
             >

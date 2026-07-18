@@ -15,7 +15,7 @@ import {
 } from "./types";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Eyebrow } from "@/components/ui/eyebrow";
+import { EmptyState } from "@/components/ui/empty-state";
 import { createClient } from "@/utils/supabase/client";
 import { cn } from "@/lib/cn";
 
@@ -60,13 +60,15 @@ function FileRow({
   return (
     <li
       className={cn(
-        "flex flex-wrap items-center justify-between gap-3 py-3",
+        "mb-2 flex flex-wrap items-center justify-between gap-3 rounded-[var(--radius-inner)] bg-well px-4 py-3.5 shadow-recessed last:mb-0",
         (disabled || isPending) && "opacity-60",
       )}
     >
       <div className="min-w-0 flex-1">
-        <div className="truncate text-[15px] text-ink">{file.name}</div>
-        <div className="mt-0.5 text-[13px] tabular-nums text-ink-muted">
+        <div className="truncate text-[15px] font-medium text-ink">
+          {file.name}
+        </div>
+        <div className="mt-1 text-[13px] tabular-nums text-muted">
           {formatFileSize(file.size_bytes)}
           <span className="mx-1.5">·</span>
           {formatUploadedDate(file.created_at)}
@@ -82,18 +84,18 @@ function FileRow({
           variant="default"
           onClick={handleDownload}
           disabled={disabled || isPending}
+          className="px-3 py-1.5 text-[13px]"
         >
           Download
         </Button>
-        <Button
+        <button
           type="button"
-          variant="ghost"
           onClick={handleDelete}
           disabled={disabled || isPending}
-          className="text-ink-muted hover:text-rosewood"
+          className="px-2 text-[13px] font-medium text-muted transition-colors hover:text-rosewood disabled:opacity-50"
         >
           Delete
-        </Button>
+        </button>
       </div>
     </li>
   );
@@ -173,11 +175,13 @@ export function FileManager({
   }
 
   return (
-    <section>
-      <div className="mb-[18px] flex flex-wrap items-end justify-between gap-4">
+    <section className="space-y-4">
+      <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <Eyebrow>{label}</Eyebrow>
-          <p className="mt-1 text-[13px] text-ink-muted">
+          <p className="text-[12px] font-semibold uppercase tracking-[0.09em] text-muted">
+            {label}
+          </p>
+          <p className="mt-1 text-[13px] text-muted">
             PDFs, images, and documents up to 25 MB.
           </p>
         </div>
@@ -203,16 +207,14 @@ export function FileManager({
       </div>
 
       {uploadError ? (
-        <p className="mb-4 text-[13px] text-rosewood">{uploadError}</p>
+        <p className="text-[13px] text-rosewood">{uploadError}</p>
       ) : null}
 
       {files.length === 0 ? (
-        <p className="px-1 text-[13px] text-ink-muted">
-          {emptyState}
-        </p>
+        <EmptyState>{emptyState}</EmptyState>
       ) : (
-        <Card className="px-5 py-1">
-          <ul className="divide-y divide-stone">
+        <Card className="overflow-hidden px-3.5 py-3.5">
+          <ul>
             {files.map((file) => (
               <FileRow
                 key={file.id}

@@ -144,7 +144,7 @@ export function MinimalistTemplate({ content, theme }: MinimalistTemplateProps) 
 
   return (
     <div
-      className="min-h-full font-sans text-[15px] leading-relaxed"
+      className="min-h-full font-ws-sans text-[15px] leading-relaxed"
       style={{
         ...palette.cssVars,
         background: "var(--ws-bg)",

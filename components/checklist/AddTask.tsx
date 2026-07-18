@@ -35,8 +35,8 @@ export function AddTask({
         placeholder="Add a task…"
         disabled={isPending}
         className={cn(
-          "w-full rounded border border-dashed border-stone bg-transparent px-3 py-2 text-sm text-ink outline-none transition-colors",
-          "placeholder:text-ink-muted focus:border-plum disabled:opacity-50",
+          "w-full rounded-[var(--radius-inner)] border border-dashed border-ring bg-transparent px-4 py-3 text-[15px] font-medium text-ink outline-none transition-colors",
+          "placeholder:text-muted focus:border-accent disabled:opacity-50",
         )}
       />
     </form>

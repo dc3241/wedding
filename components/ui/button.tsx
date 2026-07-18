@@ -9,17 +9,17 @@ type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
 };
 
 const baseClasses =
-  "inline-flex cursor-pointer items-center justify-center rounded border text-sm font-medium transition-[background,border-color] duration-150 px-[18px] py-[9px]";
+  "inline-flex cursor-pointer items-center justify-center rounded-[var(--radius-pill)] border text-[14px] font-semibold transition-[background,border-color,color] duration-150 px-4 py-2.5";
 
 export const buttonVariantClasses: Record<ButtonVariant, string> = {
   default:
-    "border-stone bg-surface text-ink hover:border-ink-muted disabled:opacity-50 disabled:hover:border-stone",
+    "border-ring bg-surface text-ink hover:border-muted disabled:opacity-50 disabled:hover:border-ring",
   primary:
-    "border-plum bg-plum text-surface hover:border-plum-deep hover:bg-plum-deep disabled:opacity-50 disabled:hover:border-plum disabled:hover:bg-plum",
+    "border-accent bg-accent text-surface hover:opacity-90 disabled:opacity-50 disabled:hover:opacity-50",
   secondary:
-    "border-stone bg-surface text-ink hover:border-ink-muted disabled:opacity-50 disabled:hover:border-stone",
+    "border-ring bg-surface text-ink hover:border-muted disabled:opacity-50 disabled:hover:border-ring",
   ghost:
-    "border-transparent bg-transparent text-ink hover:bg-plum-tint disabled:opacity-50 disabled:hover:bg-transparent",
+    "border-transparent bg-transparent text-ink hover:bg-accent-wash disabled:opacity-50 disabled:hover:bg-transparent",
 };
 
 export function Button({

@@ -42,7 +42,7 @@ function Countdown({ weddingDate }: { weddingDate: string }) {
   return (
     <div className="mt-8 text-center">
       <div
-        className="font-display tabnum text-[64px] leading-none"
+        className="font-serif-display tabnum text-[64px] leading-none"
         style={{ color: "var(--ws-accent)" }}
       >
         {days}
@@ -57,7 +57,7 @@ function Countdown({ weddingDate }: { weddingDate: string }) {
 function SectionHeading({ children }: { children: React.ReactNode }) {
   return (
     <h2
-      className="font-display text-[28px] tracking-[0.005em]"
+      className="font-serif-display text-[28px] tracking-[0.005em]"
       style={{ color: "var(--ws-ink)" }}
     >
       {children}
@@ -112,7 +112,7 @@ export function ClassicTemplate({ content, theme }: ClassicTemplateProps) {
 
   return (
     <div
-      className="min-h-full font-sans text-[15px] leading-relaxed"
+      className="min-h-full font-ws-sans text-[15px] leading-relaxed"
       style={{
         ...palette.cssVars,
         background: "var(--ws-bg)",
@@ -122,7 +122,7 @@ export function ClassicTemplate({ content, theme }: ClassicTemplateProps) {
       <div className="mx-auto max-w-[640px] px-6 py-12">
         <header className="pb-10 text-center">
           <div
-            className="font-display text-[clamp(40px,6vw,54px)] tracking-[0.005em]"
+            className="font-serif-display text-[clamp(40px,6vw,54px)] tracking-[0.005em]"
             style={{ color: "var(--ws-ink)" }}
           >
             {hero.names || "Your names"}

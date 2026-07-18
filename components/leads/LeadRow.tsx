@@ -22,7 +22,7 @@ import {
 } from "./types";
 
 const selectClasses =
-  "rounded border border-stone bg-surface px-2.5 py-1.5 text-[13px] text-ink outline-none transition-colors focus:border-plum disabled:opacity-50";
+  "rounded-[var(--radius-inner)] border border-ring bg-surface px-2.5 py-1.5 text-[13px] text-ink outline-none transition-colors focus:border-accent disabled:opacity-50";
 
 export function LeadRow({
   lead,
@@ -275,21 +275,21 @@ export function LeadRow({
         <div className="min-w-0 flex-1">
           <Link
             href={`/leads/${lead.id}`}
-            className="text-[15px] font-medium text-ink no-underline hover:text-plum-deep"
+            className="text-[15px] font-medium text-ink no-underline hover:text-accent"
           >
             {lead.couple_name}
           </Link>
-          <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-[13px] text-ink-muted">
+          <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-[13px] text-muted">
             {weddingDate ? <span>{weddingDate}</span> : null}
             {budget ? <span className="tabnum">{budget}</span> : null}
             {lead.venue ? <span>{lead.venue}</span> : null}
             {lead.source ? <span>via {lead.source}</span> : null}
           </div>
           {contact ? (
-            <div className="mt-0.5 text-[13px] text-ink-muted">{contact}</div>
+            <div className="mt-0.5 text-[13px] text-muted">{contact}</div>
           ) : null}
           {lead.notes ? (
-            <p className="mt-2 line-clamp-2 text-[13px] text-ink-muted">
+            <p className="mt-2 line-clamp-2 text-[13px] text-muted">
               {lead.notes}
             </p>
           ) : null}
@@ -328,7 +328,7 @@ export function LeadRow({
             variant="ghost"
             disabled={isPending}
             onClick={handleDelete}
-            className="text-ink-muted hover:text-rosewood"
+            className="text-muted hover:text-rosewood"
           >
             Delete
           </Button>

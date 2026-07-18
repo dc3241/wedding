@@ -68,7 +68,7 @@ function FieldGroup({
       <label htmlFor={htmlFor} className="text-sm font-medium text-ink">
         {label}
       </label>
-      {hint ? <p className="text-[13px] text-ink-muted">{hint}</p> : null}
+      {hint ? <p className="text-[13px] text-muted">{hint}</p> : null}
       {children}
     </div>
   );
@@ -115,12 +115,12 @@ export function OnboardingWizard({
         <div className="font-display text-[clamp(40px,6vw,54px)] tracking-[0.005em] text-ink">
           {coupleNames}
         </div>
-        <p className="mt-3.5 text-base text-ink-muted">
+        <p className="mt-3.5 text-base text-muted">
           Tell us a little about your day — we&apos;ll shape your plan around
           it.
         </p>
       </section>
-      <div className="mt-2 h-px bg-stone" aria-hidden />
+      <div className="mt-2 h-px bg-hairline" aria-hidden />
 
       <div className="mt-12">
         <StepProgress currentStep={step} />
@@ -132,7 +132,7 @@ export function OnboardingWizard({
                 <h2 className="font-display text-[28px] leading-tight text-ink">
                   The basics
                 </h2>
-                <p className="mt-1.5 text-[15px] text-ink-muted">
+                <p className="mt-1.5 text-[15px] text-muted">
                   When and where are you celebrating?
                 </p>
               </div>
@@ -189,7 +189,7 @@ export function OnboardingWizard({
                 <h2 className="font-display text-[28px] leading-tight text-ink">
                   Your budget
                 </h2>
-                <p className="mt-1.5 text-[15px] text-ink-muted">
+                <p className="mt-1.5 text-[15px] text-muted">
                   A target helps us prioritize what matters most.
                 </p>
               </div>
@@ -200,7 +200,7 @@ export function OnboardingWizard({
                 hint="Your overall wedding budget in dollars"
               >
                 <div className="relative">
-                  <span className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-[15px] text-ink-muted">
+                  <span className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-[15px] text-muted">
                     $
                   </span>
                   <Input
@@ -225,7 +225,7 @@ export function OnboardingWizard({
                 <h2 className="font-display text-[28px] leading-tight text-ink">
                   Your style
                 </h2>
-                <p className="mt-1.5 text-[15px] text-ink-muted">
+                <p className="mt-1.5 text-[15px] text-muted">
                   Help us understand the feeling you&apos;re going for.
                 </p>
               </div>
@@ -308,7 +308,7 @@ export function OnboardingWizard({
           ) : null}
 
           {step < 4 ? (
-            <div className="mt-8 flex items-center justify-between gap-3 border-t border-stone pt-6">
+            <div className="mt-8 flex items-center justify-between gap-3 border-t border-hairline pt-6">
               {step > 1 ? (
                 <Button
                   type="button"

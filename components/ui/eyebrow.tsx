@@ -2,16 +2,16 @@ import { cn } from "@/lib/cn";
 import type { HTMLAttributes } from "react";
 
 type EyebrowProps = HTMLAttributes<HTMLSpanElement> & {
-  /** Show plum diamond ornament(s) — emotional surfaces only */
+  /** Show accent diamond ornament(s) — emotional surfaces only */
   diamond?: boolean;
-  /** Show hairline stone rules flanking the label — emotional surfaces only */
+  /** Show hairline rules flanking the label — emotional surfaces only */
   rules?: boolean;
 };
 
 function Diamond({ className }: { className?: string }) {
   return (
     <span
-      className={cn("size-[5px] shrink-0 rotate-45 bg-plum", className)}
+      className={cn("size-[5px] shrink-0 rotate-45 bg-accent", className)}
       aria-hidden
     />
   );
@@ -30,7 +30,7 @@ export function Eyebrow({
     return (
       <span
         className={cn(
-          "text-[11.5px] font-medium uppercase tracking-[0.15em] text-plum",
+          "text-[12px] font-semibold uppercase tracking-[0.09em] text-accent",
           className,
         )}
         {...props}
@@ -49,13 +49,13 @@ export function Eyebrow({
       {...props}
     >
       {rules ? (
-        <span className="h-px w-10 shrink-0 bg-stone sm:w-14" aria-hidden />
+        <span className="h-px w-10 shrink-0 bg-hairline sm:w-14" aria-hidden />
       ) : null}
       {diamond ? <Diamond /> : null}
       <span className="shrink-0">{children}</span>
       {diamond ? <Diamond /> : null}
       {rules ? (
-        <span className="h-px w-10 shrink-0 bg-stone sm:w-14" aria-hidden />
+        <span className="h-px w-10 shrink-0 bg-hairline sm:w-14" aria-hidden />
       ) : null}
     </span>
   );

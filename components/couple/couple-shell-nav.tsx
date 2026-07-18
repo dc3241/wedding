@@ -16,10 +16,10 @@ export function CoupleShellNav() {
       <Link
         href="/account/billing"
         className={cn(
-          "rounded-lg px-3 py-2 text-sm font-medium no-underline transition-colors",
+          "rounded-[var(--radius-inner)] px-3 py-2 text-sm font-medium no-underline transition-colors",
           onBilling
-            ? "bg-plum-tint text-plum-deep"
-            : "text-ink-muted hover:bg-stone-soft hover:text-ink",
+            ? "bg-accent-wash text-accent"
+            : "text-muted hover:bg-well hover:text-ink",
         )}
       >
         Billing
