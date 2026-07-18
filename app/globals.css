@@ -1,51 +1,92 @@
 @import "tailwindcss";
 
 :root {
-  --canvas: #faf5ee;
+  /* --- Soft stack (C1) — canonical. See .cursor/design.mdc --- */
+  --canvas: #F3EEF0;
+  --surface: #FFFFFF;
+  --well: #F7F3F5;
+  --ink: #241C20;
+  --muted: #857A80;
+  --hairline: #EFE7EB;
+  --ring: #DCD0D6;
+  --accent: #C0396B;
+  --accent-wash: #FBEEF3;
+  --sage: #2F6B54;
+  --clay: #B0762E;
+  --clay-wash: #FBF1E2;
+  --rosewood: #C4453F;
+  --rosewood-wash: #FDECEB;
+
+  --radius-card: 22px;
+  --radius-inner: 14px;
+  --radius-pill: 999px;
+
+  --shadow-raised: 0 1px 2px rgba(60, 30, 45, 0.05),
+    0 10px 30px -8px rgba(60, 30, 45, 0.11);
+  --shadow-recessed: inset 0 1px 2px rgba(60, 30, 45, 0.06);
+
+  /* Tier 2 emotional cards only */
+  --card-shadow-emotional: 0 2px 4px rgba(70, 45, 52, 0.05),
+    0 16px 40px rgba(70, 45, 52, 0.07);
+
+  /* --- LEGACY ALIASES — temporary. Retired in STYLE-01c as components convert.
+         Do not add new references to these names. --- */
   --porcelain: var(--canvas);
-  --surface: #ffffff;
-  --surface-2: #fffdfa;
-  --ink: #221a1d;
-  --ink-soft: #4a3f42;
-  --ink-muted: #8c8083;
-  --plum: #7e3e57;
-  --plum-deep: #531f37;
-  --plum-tint: #f6e9ee;
-  --rose: #c98ba0;
-  --stone: #e8dcce;
-  --stone-soft: #f1e8dd;
-  --sage: #5e7a6b;
-  --clay: #b5894e;
-  --rosewood: #9b5c5c;
-  --radius: 12px;
-  --radius-lg: 16px;
-  --card-shadow: 0 1px 2px rgba(70, 45, 52, 0.04),
-    0 8px 22px rgba(70, 45, 52, 0.05);
-  --card-shadow-emotional: 0 10px 34px rgba(28, 27, 26, 0.06);
+  --surface-2: var(--well);
+  --ink-soft: var(--ink);
+  --ink-muted: var(--muted);
+  --plum: var(--accent);
+  --plum-deep: var(--accent); /* interim: hover no longer darkens past --plum; STYLE-01c splits */
+  --plum-tint: var(--accent-wash);
+  /* --stone → --ring is deliberate: stone did four jobs; one alias picks mid (--ring).
+     Outlines land correct; hairlines/tracks land slightly dark. STYLE-01c disambiguates. */
+  --stone: var(--ring);
+  --stone-soft: var(--well);
+  --radius: var(--radius-inner);
+  --radius-lg: var(--radius-card);
+  --card-shadow: var(--shadow-raised);
+  /* --rose deleted: zero consumers; not in Soft stack token table */
 }
 
 @theme inline {
   --color-canvas: var(--canvas);
-  --color-porcelain: var(--porcelain);
   --color-surface: var(--surface);
-  --color-surface-2: var(--surface-2);
+  --color-well: var(--well);
   --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-hairline: var(--hairline);
+  --color-ring: var(--ring);
+  --color-accent: var(--accent);
+  --color-accent-wash: var(--accent-wash);
+  --color-sage: var(--sage);
+  --color-clay: var(--clay);
+  --color-clay-wash: var(--clay-wash);
+  --color-rosewood: var(--rosewood);
+  --color-rosewood-wash: var(--rosewood-wash);
+
+  /* Legacy colour utilities — point at aliases so existing classes keep compiling */
+  --color-porcelain: var(--porcelain);
+  --color-surface-2: var(--surface-2);
   --color-ink-soft: var(--ink-soft);
   --color-ink-muted: var(--ink-muted);
   --color-plum: var(--plum);
   --color-plum-deep: var(--plum-deep);
   --color-plum-tint: var(--plum-tint);
-  --color-rose: var(--rose);
   --color-stone: var(--stone);
   --color-stone-soft: var(--stone-soft);
-  --color-sage: var(--sage);
-  --color-clay: var(--clay);
-  --color-rosewood: var(--rosewood);
+
   --font-sans: var(--font-sans);
   --font-serif: var(--font-serif);
   --font-script: var(--font-script);
+
+  --radius-card: var(--radius-card);
+  --radius-inner: var(--radius-inner);
+  --radius-pill: var(--radius-pill);
   --radius-DEFAULT: var(--radius);
   --radius-lg: var(--radius-lg);
+
+  --shadow-raised: var(--shadow-raised);
+  --shadow-recessed: var(--shadow-recessed);
   --shadow-card: var(--card-shadow);
   --shadow-card-emotional: var(--card-shadow-emotional);
   --animate-rise: rise 0.7s ease forwards;
