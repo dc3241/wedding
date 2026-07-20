@@ -33,7 +33,7 @@ export function GuestRoster({
   const assigned = guests.filter((guest) => assignmentByGuestId.has(guest.id));
 
   return (
-    <Card className="w-full shrink-0 px-5 py-5 lg:w-64">
+    <Card className="w-full px-5 py-5">
       <p className="mb-3 text-[12px] font-semibold uppercase tracking-[0.09em] text-muted">
         Guests
       </p>

@@ -12,7 +12,8 @@ import {
 } from "./actions";
 import { GuestRoster } from "./GuestRoster";
 import { SeatingCanvas } from "./SeatingCanvas";
-import { SeatingPalette } from "./SeatingPalette";
+import { SeatingSelectedPanel } from "./SeatingSelectedPanel";
+import { SeatingToolbar } from "./SeatingToolbar";
 import {
   DEFAULT_SEAT_COUNT_BY_SHAPE,
   NUDGE_FINE_STEP,
@@ -298,56 +299,60 @@ export function SeatingWorkspace({
         : null;
 
   return (
-    <div
-      className={cn(
-        "flex flex-col gap-4 lg:flex-row lg:items-start",
-        isPending && "opacity-90",
-      )}
-    >
-      <GuestRoster
-        projectId={projectId}
-        guests={guests}
-        assignmentByGuestId={assignmentByGuestId}
-        tableLabelById={tableLabelById}
-        selectedGuestId={selectedGuestId}
-        hasTables={tables.length > 0}
-        isPending={isPending}
-        onSelectGuest={handleSelectGuest}
-        onUnassign={handleUnassign}
-      />
-
-      <SeatingPalette
+    <div className={cn("flex flex-col gap-4", isPending && "opacity-90")}>
+      <SeatingToolbar
         armedShape={armedShape}
         seatCount={seatCount}
-        selectedId={selectedTableId}
-        selectedKind={selectedTable?.kind ?? null}
         isPending={isPending}
         onToggleShape={toggleShape}
         onSeatCountChange={setSeatCount}
-        onKindChange={handleKindChange}
-        onRotate={handleRotate}
-        onDelete={handleDelete}
-      />
-
-      <div className="min-w-0 flex-1">
-        {hint ? (
-          <p className="mb-2 text-[13px] font-medium text-muted">{hint}</p>
-        ) : null}
-
-        {errorMessage ? (
-          <p className="mb-2 text-[13px] text-rosewood">{errorMessage}</p>
-        ) : null}
-
-        <SeatingCanvas
-          tables={tables}
-          armedShape={armedShape}
+      >
+        <SeatingSelectedPanel
           selectedId={selectedTableId}
-          occupancyByTable={occupancyByTable}
-          assignMode={Boolean(selectedGuestId)}
-          onPlace={handlePlace}
-          onTableClick={handleTableClick}
-          onEmptyCanvasClick={handleEmptyCanvasClick}
+          selectedKind={selectedTable?.kind ?? null}
+          armedShape={armedShape}
+          isPending={isPending}
+          onKindChange={handleKindChange}
+          onRotate={handleRotate}
+          onDelete={handleDelete}
         />
+      </SeatingToolbar>
+
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
+        <div className="w-full lg:w-[300px] lg:shrink-0">
+          <GuestRoster
+            projectId={projectId}
+            guests={guests}
+            assignmentByGuestId={assignmentByGuestId}
+            tableLabelById={tableLabelById}
+            selectedGuestId={selectedGuestId}
+            hasTables={tables.length > 0}
+            isPending={isPending}
+            onSelectGuest={handleSelectGuest}
+            onUnassign={handleUnassign}
+          />
+        </div>
+
+        <div className="min-w-0 flex-1">
+          {hint ? (
+            <p className="mb-2 text-[13px] font-medium text-muted">{hint}</p>
+          ) : null}
+
+          {errorMessage ? (
+            <p className="mb-2 text-[13px] text-rosewood">{errorMessage}</p>
+          ) : null}
+
+          <SeatingCanvas
+            tables={tables}
+            armedShape={armedShape}
+            selectedId={selectedTableId}
+            occupancyByTable={occupancyByTable}
+            assignMode={Boolean(selectedGuestId)}
+            onPlace={handlePlace}
+            onTableClick={handleTableClick}
+            onEmptyCanvasClick={handleEmptyCanvasClick}
+          />
+        </div>
       </div>
     </div>
   );
