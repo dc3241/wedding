@@ -14,7 +14,8 @@ export function AddGuestForms({ projectId }: { projectId: string }) {
 
   function handleAddSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    const form = new FormData(e.currentTarget);
+    const formEl = e.currentTarget;
+    const form = new FormData(formEl);
     const name = (form.get("name") as string) ?? "";
     const household = (form.get("household") as string) ?? "";
     const email = (form.get("email") as string) ?? "";
@@ -24,20 +25,21 @@ export function AddGuestForms({ projectId }: { projectId: string }) {
 
     startAddTransition(async () => {
       await addGuest(projectId, name, household, email, partySize);
-      e.currentTarget.reset();
+      formEl.reset();
     });
   }
 
   function handleBulkSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    const form = new FormData(e.currentTarget);
+    const formEl = e.currentTarget;
+    const form = new FormData(formEl);
     const text = (form.get("names") as string) ?? "";
 
     if (!text.trim()) return;
 
     startBulkTransition(async () => {
       await bulkAddGuests(projectId, text);
-      e.currentTarget.reset();
+      formEl.reset();
     });
   }
 

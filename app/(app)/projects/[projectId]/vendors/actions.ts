@@ -284,3 +284,30 @@ export async function updateProjectVendorStatus(
   revalidatePath(vendorsPath(data.project_id));
   revalidatePath(vendorDetailPath(data.project_id, data.vendor_id));
 }
+
+const VENDOR_TARGET_STATUSES = ["needed", "booked", "skipped"] as const;
+export type VendorTargetStatus = (typeof VENDOR_TARGET_STATUSES)[number];
+
+export async function setVendorTargetStatus(
+  targetId: string,
+  status: string,
+) {
+  if (
+    !VENDOR_TARGET_STATUSES.includes(status as VendorTargetStatus)
+  ) {
+    throw new Error("Invalid vendor target status.");
+  }
+
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("vendor_targets")
+    .update({ status })
+    .eq("id", targetId)
+    .select("project_id")
+    .single();
+
+  if (error) throw error;
+
+  revalidatePath(vendorsPath(data.project_id));
+}

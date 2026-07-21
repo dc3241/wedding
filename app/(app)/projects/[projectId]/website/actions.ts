@@ -4,15 +4,107 @@ import { revalidatePath } from "next/cache";
 import {
   buildSeedContent,
   parseWeddingWebsiteContent,
+  type ScheduleItem,
   type WeddingWebsiteContent,
   type WeddingWebsiteRow,
 } from "@/components/website/types";
 import { isValidWeddingTheme } from "@/components/website/themes";
 import { isValidWeddingTemplate } from "@/components/website/templates/registry";
+import { formatTimeOfDay } from "@/lib/timeline-aggregates";
 import { createClient } from "@/utils/supabase/server";
 
 function websitePath(projectId: string) {
   return `/projects/${projectId}/website`;
+}
+
+const CLOCK_TIME_RE = /^\d{1,2}:\d{2}(:\d{2})?$/;
+const SCHEDULE_ITEMS_MAX = 40;
+
+function normalizeScheduleItemTime(raw: string): string {
+  const trimmed = raw.trim();
+  if (!CLOCK_TIME_RE.test(trimmed)) return trimmed;
+  return formatTimeOfDay(trimmed);
+}
+
+export async function setWeddingWebsiteSchedule(
+  projectId: string,
+  items: Array<{ time: string; title: string; description?: string }>,
+): Promise<
+  | { ok: true; count: number; summary: string }
+  | { ok: false; error: string }
+> {
+  if (!Array.isArray(items) || items.length === 0) {
+    return { ok: false, error: "Provide at least one schedule item." };
+  }
+  if (items.length > SCHEDULE_ITEMS_MAX) {
+    return {
+      ok: false,
+      error: `Schedule is limited to ${SCHEDULE_ITEMS_MAX} items.`,
+    };
+  }
+
+  const supabase = await createClient();
+
+  const { data: current, error: readError } = await supabase
+    .from("wedding_websites")
+    .select("content")
+    .eq("project_id", projectId)
+    .maybeSingle();
+
+  if (readError) {
+    return { ok: false, error: readError.message };
+  }
+
+  if (!current) {
+    return {
+      ok: false,
+      error:
+        "No wedding website yet. Create it on the Website tab, then ask again.",
+    };
+  }
+
+  const content = parseWeddingWebsiteContent(current.content);
+
+  if (content.schedule.items.length > 0) {
+    return {
+      ok: false,
+      error:
+        "The website Schedule already has items. It will not be overwritten — edit it on the Website tab.",
+    };
+  }
+
+  const normalized: ScheduleItem[] = [];
+  for (const item of items) {
+    const title = typeof item.title === "string" ? item.title.trim() : "";
+    if (!title) {
+      return { ok: false, error: "Each schedule item needs a non-empty title." };
+    }
+    const time =
+      typeof item.time === "string" ? normalizeScheduleItemTime(item.time) : "";
+    const description =
+      typeof item.description === "string" ? item.description.trim() : "";
+    normalized.push({ time, title, description });
+  }
+
+  const result = await updateWeddingWebsite(projectId, {
+    content: {
+      schedule: {
+        items: normalized,
+        visible: content.schedule.visible,
+      },
+    },
+  });
+
+  if (!result.ok) {
+    return result;
+  }
+
+  const count = normalized.length;
+  return {
+    ok: true,
+    count,
+    summary: `Filled ${count} schedule item${count === 1 ? "" : "s"} from your timeline.`,
+  };
 }
 
 function rowToWebsite(row: Record<string, unknown>): WeddingWebsiteRow {
@@ -83,7 +175,8 @@ export async function createWeddingWebsite(
 export async function updateWeddingWebsite(
   projectId: string,
   fields: {
-    content?: WeddingWebsiteContent;
+    /** Full or partial content; missing keys fall back to the current blob via parse. */
+    content?: WeddingWebsiteContent | Record<string, unknown>;
     template?: string;
     theme?: string;
   },

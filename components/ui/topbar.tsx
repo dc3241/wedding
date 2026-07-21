@@ -1,5 +1,6 @@
 "use client";
 
+import { Wordmark as LogoWordmark } from "@/components/brand/Wordmark";
 import { cn } from "@/lib/cn";
 import Link from "next/link";
 import type { ButtonHTMLAttributes, ComponentProps, HTMLAttributes, ReactNode } from "react";
@@ -24,22 +25,9 @@ type WordmarkProps = HTMLAttributes<HTMLDivElement> & {
   children?: ReactNode;
 };
 
-export function Wordmark({ className, children = "First Look", ...props }: WordmarkProps) {
-  return (
-    <div
-      className={cn(
-        "font-display flex items-center gap-2.5 text-[25px] tracking-[0.01em] text-ink",
-        className,
-      )}
-      {...props}
-    >
-      <span
-        className="size-[9px] shrink-0 rounded-full bg-accent"
-        aria-hidden
-      />
-      {children}
-    </div>
-  );
+export function Wordmark({ className, children: _children, ...props }: WordmarkProps) {
+  void _children;
+  return <LogoWordmark className={cn("h-7 w-auto text-ink", className)} {...props} />;
 }
 
 type NavLinksProps = HTMLAttributes<HTMLElement>;

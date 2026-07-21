@@ -11,6 +11,7 @@ import {
   addEvent,
   addEvents,
 } from "@/app/(app)/projects/[projectId]/timeline/actions";
+import { setWeddingWebsiteSchedule } from "@/app/(app)/projects/[projectId]/website/actions";
 import { VENDOR_CATEGORIES } from "@/lib/vendor-categories";
 
 const TASK_STATUSES = ["todo", "in_progress", "done"] as const;
@@ -240,6 +241,40 @@ export const WRITE_TOOL_DEFINITIONS = [
         },
       },
       required: ["events"] as string[],
+    },
+  },
+  {
+    name: "set_website_schedule",
+    description:
+      "Fill an EMPTY wedding-website Schedule from guest-facing items (usually curated from get_timeline). Refuses if no website exists or if Schedule already has items — never overwrites. Do not include internal/vendor-only run-sheet events or owner names.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        items: {
+          type: "array",
+          description:
+            "1–40 guest-facing schedule items. time may be HH:MM / HH:MM:SS (normalized for display) or a free-form string.",
+          items: {
+            type: "object",
+            properties: {
+              time: {
+                type: "string",
+                description: "Display time (e.g. 16:00 or 4:00 PM)",
+              },
+              title: {
+                type: "string",
+                description: "Guest-facing event title",
+              },
+              description: {
+                type: "string",
+                description: "Optional short guest-facing description",
+              },
+            },
+            required: ["time", "title"] as string[],
+          },
+        },
+      },
+      required: ["items"] as string[],
     },
   },
 ] as const;
@@ -516,6 +551,46 @@ export async function executeWriteTool(
         action: "add_timeline_events",
         count: result.count,
         latest_start_time: result.latest_start_time,
+      };
+    }
+
+    case "set_website_schedule": {
+      const rawItems = input.items;
+      if (!Array.isArray(rawItems)) {
+        return toolError("items must be an array");
+      }
+
+      const items: Array<{ time: string; title: string; description?: string }> =
+        [];
+      for (const entry of rawItems) {
+        if (!entry || typeof entry !== "object") {
+          return toolError("each item must be an object with time and title");
+        }
+        const row = entry as Record<string, unknown>;
+        const title = asString(row.title)?.trim();
+        if (!title) {
+          return toolError("each schedule item needs a non-empty title");
+        }
+        const time = asString(row.time) ?? "";
+        const description = asString(row.description);
+        items.push({
+          time,
+          title,
+          ...(description !== undefined ? { description } : {}),
+        });
+      }
+
+      const result = await setWeddingWebsiteSchedule(projectId, items);
+      if (!result.ok) {
+        return toolError(result.error);
+      }
+
+      return {
+        success: true,
+        ok: true,
+        action: "set_website_schedule",
+        count: result.count,
+        summary: result.summary,
       };
     }
   }

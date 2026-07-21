@@ -31,7 +31,11 @@ export function WeddingSiteView({
             color: "var(--ws-ink)",
           }}
         >
-          <section className="mx-auto max-w-[640px] border-t px-6 py-12" style={{ borderColor: "var(--ws-border)" }}>
+          <section
+            id="rsvp"
+            className="mx-auto max-w-[640px] border-t px-6 py-12"
+            style={{ borderColor: "var(--ws-border)" }}
+          >
             <h2
               className="font-serif-display text-[28px] tracking-[0.005em]"
               style={{ color: "var(--ws-ink)" }}

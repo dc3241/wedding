@@ -177,28 +177,23 @@ function StatCell({
   );
 }
 
-function CategoryFigure({ group }: { group: BudgetCategoryGroup }) {
+function CategoryStateLine({ group }: { group: BudgetCategoryGroup }) {
   const untracked = group.actualTotal === 0;
-  const over = group.isOver;
 
   if (untracked) {
     return (
-      <span className="text-[13px] font-medium tabular-nums text-muted">
-        Nothing tracked of {formatCurrency(group.plannedTotal)}
-      </span>
+      <span className="text-[13px] font-normal text-muted">Nothing tracked</span>
     );
   }
 
   return (
     <span
       className={cn(
-        "text-[13px] font-medium tabular-nums",
-        over ? "text-rosewood" : "text-muted",
+        "text-[13px] font-normal tabular-nums",
+        group.isOver ? "text-rosewood" : "text-muted",
       )}
     >
-      {formatCurrency(group.actualTotal)} of{" "}
-      {formatCurrency(group.plannedTotal)}
-      {over ? " · over" : null}
+      {formatCurrency(group.actualTotal)} tracked
     </span>
   );
 }
@@ -214,11 +209,21 @@ function CategoryBar({ group }: { group: BudgetCategoryGroup }) {
         : 0;
 
   return (
-    <div className="mt-3 h-2.5 overflow-hidden rounded-[var(--radius-pill)] bg-[#EDE4E8] p-0.5">
+    <div
+      className="mt-3 h-2 overflow-hidden rounded-[var(--radius-inner)] bg-well p-0.5 shadow-recessed"
+      role="img"
+      aria-label={
+        untracked
+          ? "Nothing tracked"
+          : over
+            ? `Over plan · ${formatCurrency(group.actualTotal)} of ${formatCurrency(group.plannedTotal)}`
+            : `${formatCurrency(group.actualTotal)} of ${formatCurrency(group.plannedTotal)} tracked`
+      }
+    >
       {!untracked && pct > 0 ? (
         <div
           className={cn(
-            "h-full rounded-[var(--radius-pill)] transition-[width] duration-300",
+            "h-full rounded-[var(--radius-inner)] transition-[width] duration-300",
             over ? "bg-rosewood" : "bg-sage",
           )}
           style={{ width: `${pct}%` }}
@@ -241,23 +246,31 @@ function CategorySection({
 }) {
   return (
     <details
-      className="mb-4 overflow-hidden rounded-[var(--radius-card)] bg-surface shadow-raised last:mb-0"
+      className={cn(
+        "overflow-hidden rounded-[var(--radius-card)] bg-surface shadow-raised",
+        open && "[grid-column:1/-1]",
+      )}
       open={open}
     >
       <summary
-        className="cursor-pointer list-none px-6 py-[22px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-accent [&::-webkit-details-marker]:hidden"
+        className="cursor-pointer list-none px-5 py-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-accent [&::-webkit-details-marker]:hidden"
         onClick={(e) => {
           e.preventDefault();
           onToggle();
         }}
       >
         <div className="flex items-baseline justify-between gap-x-3">
-          <span className="truncate font-display text-[19px] font-extrabold tracking-[-0.02em] text-ink">
+          <span className="truncate text-[15px] font-medium text-ink">
             {group.category}
           </span>
-          <CategoryFigure group={group} />
+          <span className="shrink-0 text-[15px] font-medium tabular-nums text-ink">
+            {formatCurrency(group.plannedTotal)}
+          </span>
         </div>
         <CategoryBar group={group} />
+        <div className="mt-2">
+          <CategoryStateLine group={group} />
+        </div>
       </summary>
 
       {open ? (
@@ -379,18 +392,14 @@ export function BudgetBoard({
   projectVendors,
 }: BudgetBoardProps) {
   const [showAdd, setShowAdd] = useState(false);
-  const [openCategories, setOpenCategories] = useState<Record<string, boolean>>(
-    () => {
-      const initial: Record<string, boolean> = {};
-      for (const group of aggregates.perCategory) {
-        initial[group.category] = group.isOver;
-      }
-      return initial;
-    },
-  );
+  // One open at a time — seed with the first over-plan category if any.
+  const [openCategory, setOpenCategory] = useState<string | null>(() => {
+    const firstOver = aggregates.perCategory.find((group) => group.isOver);
+    return firstOver?.category ?? null;
+  });
 
   function toggleCategory(key: string) {
-    setOpenCategories((prev) => ({ ...prev, [key]: !prev[key] }));
+    setOpenCategory((prev) => (prev === key ? null : key));
   }
 
   const empty = aggregates.perCategory.length === 0;
@@ -442,12 +451,17 @@ export function BudgetBoard({
               Add your first budget item to start tracking categories.
             </EmptyState>
           ) : (
-            <div>
+            <div
+              className="grid gap-4"
+              style={{
+                gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+              }}
+            >
               {aggregates.perCategory.map((group) => (
                 <CategorySection
                   key={group.category}
                   group={group}
-                  open={Boolean(openCategories[group.category])}
+                  open={openCategory === group.category}
                   onToggle={() => toggleCategory(group.category)}
                   projectVendors={projectVendors}
                 />

@@ -9,6 +9,7 @@ import {
   sumPartySizeByStatus,
   type Guest,
 } from "@/app/(app)/projects/[projectId]/guests/types";
+import { parseWeddingWebsiteContent } from "@/components/website/types";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { vendorCategoryLabel } from "@/lib/vendor-categories";
 
@@ -19,6 +20,7 @@ const VENDORS_ITEMS_CAP = 30;
 const VENDOR_TARGETS_ITEMS_CAP = 30;
 const NOTES_ITEMS_CAP = 20;
 const TIMELINE_ITEMS_CAP = 60;
+const WEBSITE_SCHEDULE_TITLES_CAP = 10;
 const EXCERPT_MAX_CHARS = 200;
 
 export const READ_TOOL_DEFINITIONS = [
@@ -98,6 +100,16 @@ export const READ_TOOL_DEFINITIONS = [
     name: "get_timeline",
     description:
       "Get the day-of wedding run sheet: summary counts plus time-ordered events (not the long-range checklist). Use before continuing or summarizing an existing timeline.",
+    input_schema: {
+      type: "object" as const,
+      properties: {},
+      required: [] as string[],
+    },
+  },
+  {
+    name: "get_website",
+    description:
+      "Get a compact summary of this project's wedding website: whether it exists, schedule item count/titles, and whether Wedding Details are populated. Use before filling the Schedule or answering website-state questions.",
     input_schema: {
       type: "object" as const,
       properties: {},
@@ -555,6 +567,46 @@ async function getNote(
   };
 }
 
+async function getWebsite(supabase: SupabaseClient, projectId: string) {
+  const { data: row, error } = await supabase
+    .from("wedding_websites")
+    .select("content")
+    .eq("project_id", projectId)
+    .maybeSingle();
+
+  if (error) throw error;
+
+  if (!row) {
+    return { exists: false };
+  }
+
+  const content = parseWeddingWebsiteContent(row.content);
+  const titles = content.schedule.items
+    .map((item) => item.title.trim())
+    .filter(Boolean)
+    .slice(0, WEBSITE_SCHEDULE_TITLES_CAP);
+
+  const details = content.details;
+  const populated = [
+    details.ceremonyVenue,
+    details.ceremonyAddress,
+    details.ceremonyTime,
+    details.receptionVenue,
+    details.receptionAddress,
+    details.receptionTime,
+  ].some((value) => value.trim().length > 0);
+
+  return {
+    exists: true,
+    schedule: {
+      itemCount: content.schedule.items.length,
+      visible: content.schedule.visible,
+      titles,
+    },
+    details: { populated },
+  };
+}
+
 export async function executeReadTool(
   supabase: SupabaseClient,
   projectId: string,
@@ -581,6 +633,8 @@ export async function executeReadTool(
     }
     case "get_timeline":
       return getTimeline(supabase, projectId);
+    case "get_website":
+      return getWebsite(supabase, projectId);
     default:
       return { error: `Unknown tool: ${toolName}` };
   }

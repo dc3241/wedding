@@ -129,6 +129,19 @@ vendors. It is the one place a serif earns its keep, and TL-02 already shipped a
 **Why it is not Tier 3:** it is authenticated, internal, and has no `--ws-*` namespace. Palette
 isolation was never something it had — only serif permission.
 
+### Brand mark carve-out (logo only)
+Cormorant Garamond is sanctioned in the First Look wordmark + monogram
+(`components/brand/`) — a Tier 1 chrome exception alongside the run-sheet print
+header. It must NOT leak into any other chrome type. A brand mark is permitted its
+own voice; any serif outside `components/brand/` and the run-sheet header remains a
+drift violation.
+
+### RSVP QR carve-out (scanner contrast only)
+The website editor's RSVP share QR (`WebsiteRsvpShare`) renders **black modules on a white
+field** (`#000000` / `#FFFFFF`). Do **not** tint fg/bg with `--accent`, `--canvas`, berry, or
+any Soft stack token — phone scanners need maximum contrast. Card chrome around the glyph
+(buttons, labels, container) stays Soft stack; only the QR matrix is mono.
+
 ### Tier 2 — Emotional surfaces
 
 **Where (exhaustive — a surface not on this list is Tier 1):** the landing route and

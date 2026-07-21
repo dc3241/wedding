@@ -6,6 +6,7 @@ import {
   updateWeddingWebsite,
   updateWeddingWebsiteSlug,
 } from "./actions";
+import { WebsiteRsvpShare } from "./WebsiteRsvpShare";
 import type { WeddingWebsiteContent, WeddingWebsiteRow } from "@/components/website/types";
 import { WeddingSiteView } from "@/components/website/WeddingSiteView";
 import { weddingTemplateOptions } from "@/components/website/templates/registry";
@@ -352,6 +353,8 @@ export function WebsiteEditor({ projectId, website, accountKind }: WebsiteEditor
             {saveError}
           </p>
         ) : null}
+
+        <WebsiteRsvpShare published={published} savedSlug={savedSlug} />
       </Card>
 
       <div
