@@ -19,7 +19,7 @@ import { createClient } from "@/utils/supabase/server";
 
 function formatRenewalDate(iso: string | null) {
   if (!iso) return null;
-  return new Date(iso).toLocaleDateString(undefined, {
+  return new Date(iso).toLocaleDateString("en-US", {
     month: "long",
     day: "numeric",
     year: "numeric",

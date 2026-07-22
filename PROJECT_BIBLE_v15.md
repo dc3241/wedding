@@ -1,21 +1,24 @@
-# Wedding Planning SaaS — Project Bible (v11)
+# Wedding Planning SaaS — Project Bible (v15)
 
-Canonical state document. **Supersedes v10.** Drop this into the Project's instructions/knowledge so
-any new chat picks up cold. The repo's `.cursor/design.mdc`, `app/globals.css`,
-`design/reference.html` (stale — see §10), and `supabase/migrations/` remain the live source of
-truth; this summarizes them and the decisions behind them. Current through migration **0027** and
-the build of: the planner CRM, Stripe billing (both audiences), the wedding website builder + full
-5-template gallery, public RSVP, the seating builder through sweetheart/head treatment + rotation +
-kind-aware seat layout, the **page-by-page polish pass** (CHK-01, SET-01, TL-01/02/03, BUD-01/02/01a),
-the **signup + plan-generation repair** (ONB-00 / 0027, ONB-01), and — new in v11 — the **Soft stack
-(C1) chrome pass**: tokens live in `globals.css`, Figtree for Tier 1/2, three-tier surface taxonomy
-in `.cursor/design.mdc`, Soft-stacked couple tabs + planner + marketing/landing + leftover chrome
-token sweep. **No schema.** Tier 3 public websites (`/w/[slug]`) unchanged.
+Canonical state document. **Supersedes v14.** Drop this into the Project's instructions/knowledge so
+any new chat picks up cold. Lives in-repo at `PROJECT_BIBLE_v15.md`. The repo's `.cursor/design.mdc`,
+`app/globals.css`, `design/reference.html` (stale — see §10), and `supabase/migrations/` remain the
+live source of truth; this summarizes them and the decisions behind them. Current through migration
+**0027** and the build of: the planner CRM, Stripe billing (both audiences), the wedding website
+builder + full 5-template gallery, public RSVP, the seating builder through sweetheart/head treatment
++ rotation + kind-aware seat layout + **SEAT-08…10**, the **page-by-page polish pass** (CHK-01,
+SET-01, TL-01/02/03, BUD-01/02/01a), the **signup + plan-generation repair** (ONB-00 / 0027, ONB-01),
+the **Soft stack (C1) chrome pass** (v11), and the **landing overhaul** (**LAND-01** product-preview
+marketing surface + **LAND-01a** `formatWeddingDate` consolidation / `en-US` pin). **LAND-01 /
+LAND-01a / SEAT-08…10: no schema.** Tier 3 public websites keep `--ws-*` + Cormorant; marketing
+embeds a real Romance template thumbnail so serif stays in `components/website/`.
 
-**v11 is a design version, not a bug version.** v10 fixed the couple's first ninety seconds
-(ONB-00 / ONB-01). v11 pivots app chrome from **Modern romantic** to **Soft stack (C1)** — mauve
-canvas, raised white cards, recessed wells, berry accent, all-sans Figtree — without touching the
-data model or public template colour system (`--ws-*`).
+**v15 records LAND-01 + LAND-01a.** Soft stack chrome landed in **v11**; v12 was a documentation
+sync. v10 fixed the couple's first ninety seconds (ONB-00 / ONB-01). v13–v14 completed seating
+drag/rotate + seat-count edit + by-table breakdown. v15 rebuilds the marketing landing into
+product-preview cards (hero tabbed Checklist/Budget/Seating demos, workspace mini-mockups, scroll
+reveal, one `--deep` CTA) and consolidates wedding-date formatting so public `/w/[slug]` dates
+render identically for every visitor (`en-US`, shared helper). No migration.
 
 **Verification status (READ THIS):**
 - **v10's flags remain closed** (BUD-02 / BUD-01a live-verified; 0026 constraintdef introspected;
@@ -23,19 +26,27 @@ data model or public template colour system (`--ws-*`).
 - **Soft stack (v11) is code-complete and typecheck-clean.** Dom has **not** yet run a full live
   visual checkpoint across every Soft-stacked surface the way ONB slices were verified. Treat visual
   QA as the next human gate — Cursor cannot authenticate to the app.
+- **SEAT-08 live-verified by Dom.** **SEAT-09 / SEAT-10 implemented** (formal SEAT-09 guard
+  checkpoint remains Dom's if not already closed).
+- **LAND-01 implemented** (typecheck-clean; Cursor browser verified tabs / checklist % / five-template
+  date harness). Dom owns the full LAND-01 live checkpoint (serif audit, reduced-motion, mobile,
+  interactions) — Cursor cannot authenticate for Overview/run-sheet hydration checks while logged out.
+- **LAND-01a implemented** (shared `formatWeddingDate` + survivors; zero `toLocaleDateString(undefined`
+  left). **Open follow-up:** the repo-wide `en-US` pin also hit many Tier 1 due-date / stamp formatters
+  that may *want* viewer locale — confirm before treating that as intentional product policy (see §10).
 - **Nothing schema-blocking.** Next-free migration is still **0028** (reserved for ONB-02).
 
-Sections changed from v10: header, **§1**, **§2** (fonts), **§3** (design pointer + Soft stack
-don'ts), **§6** (surface vocabulary), **§7** (v11 subsection), **§10** (full rewrite — Soft stack
-pointer), **§11** (drift watchlist), **§13** (Soft stack open items), **§14/§15** (roadmap +
-pick-up). **§4/§5/§8/§9/§12** substantively unchanged from v10.
-Current through migration **0027**; **next-free migration is 0028.**
+Sections changed from v14: header (v15 + LAND-01/01a), **§5** (no-migration list), **§6**
+(marketing landing), **§7** (LAND-01 / LAND-01a), **§10** (new tokens + date formatting), **§14**
+(Done v15 + Decided), **§15** (pick-up). Current through migration **0027**; **next-free migration
+is 0028.**
 
 **Companion doc:** a separate **Launch Prep Runbook** exists (ops checklist for going to production).
 This bible covers product/architecture state; the runbook covers deployment. Keep both.
 
-**This bible does not live in the repo** — paste into Cursor project instructions/knowledge. Repo
-truth for design is `.cursor/design.mdc` + `app/globals.css`.
+**Repo home:** `PROJECT_BIBLE_v15.md`. Also paste into Cursor project instructions/knowledge for cold
+starts. Repo truth for design is `.cursor/design.mdc` + `app/globals.css` (Soft stack **live** —
+do not treat design.mdc as still waiting on STYLE-01 token application).
 
 ---
 
@@ -70,8 +81,9 @@ is pending ONB-02 / BUD-03 / production deployment (see §15), not a Modern roma
 - Google Places API (New) — vendor discovery
 - Gmail OAuth (scope `gmail.send`) — sending outreach from the couple's own mailbox
 - Stripe — subscription billing for couples and planners (flat monthly, test mode)
-- @dnd-kit (`core`, `sortable`, `utilities`) — lead pipeline kanban. (The seating builder does NOT
-  use drag — it uses discrete click interactions; see §7.)
+- @dnd-kit (`core`, `sortable`, `utilities`) — lead pipeline kanban only. Seating uses its own SVG
+  pointer drag (SEAT-08) plus click-to-place / click-empty-to-move / arrow nudge — **not** @dnd-kit
+  (see §7).
 - **Fonts (four families via `next/font/google` in root `app/layout.tsx`):**
   - **Figtree** (400/500/600/800) → `--font-sans` — Tier 1 app chrome + Tier 2 emotional surfaces
   - **Hanken Grotesk** (400/500) → `--ws-font-sans` — Tier 3 website **body** only (`.font-ws-sans`)
@@ -129,8 +141,8 @@ In `.cursor/main.mdc` (architecture) + `.cursor/design.mdc` (Soft stack design).
   action-enforced because a constraint would have been expensive.
 - **A dedicated action owns an integrity obligation.** Don't extend a generic
   `update<Thing>(id, fields)` writer with a field that carries a constraint the generic writer
-  doesn't understand. `setSeatingTableKind`, `rotateSeatingTable`, `setBudgetItemProjectVendor` all
-  exist for this reason.
+  doesn't understand. `setSeatingTableKind`, `rotateSeatingTable`, `setSeatingTableSeatCount`,
+  `setBudgetItemProjectVendor` all exist for this reason.
 - **One terminal routing decision point per audience (ONB-00).** `/projects` is the ONLY place
   allowed to make a terminal routing decision for a personal account. Every other reader of account
   context falls back to `/projects` and lets it decide. Five call sites currently rely on this
@@ -302,9 +314,10 @@ Applied in order. **You are the source of truth on the next number — next free
 > `project_vendor_id`, not `vendor_id`. Don't "simplify" it.
 
 > **No-migration slices to date:** the 5-template pack; the v4 assistant QA pass (V3-QA-01…06);
-> SEAT-02/03; SEAT-05/05a; CHK-01; SET-01; TL-01/02/03; BUD-01; BUD-01a; **ONB-01**; **Soft stack
-> chrome pass (v11)**. All reuse existing columns/policies. The guests table (0006) has a **single
-> `full_name` column** (not first/last); the shared `formatGuestName` helper handles that.
+> SEAT-02/03; SEAT-05/05a; **SEAT-08**; **SEAT-09**; **SEAT-10**; CHK-01; SET-01; TL-01/02/03; BUD-01;
+> BUD-01a; **ONB-01**; **Soft stack chrome pass (v11)**; **LAND-01**; **LAND-01a**. All reuse existing
+> columns/policies. The guests table (0006) has a **single `full_name` column** (not first/last); the
+> shared `formatGuestName` helper handles that.
 
 ---
 
@@ -380,8 +393,13 @@ token sweep.
 `actions.ts` (`submitRsvp`, anon client, server-validated). **Tier 3 — Soft stack does not touch
 template colour or Cormorant/Great Vibes.**
 
-**Marketing / landing:** Tier 2 Soft stack (Figtree + same palette). Exactly one deep field
-`#3D2430` on the landing route (`FinalCta`).
+**Marketing / landing (`/` → `components/marketing/`):** Tier 2 Soft stack (Figtree + same palette).
+**LAND-01** rebuilt the route into product-preview surfaces (see §7). Exactly one deep field
+`--deep` on the landing route (`FinalCta`). Page stays a server component; interactivity is
+leaf `'use client'` only (nav scroll hairline, hero tabs + checkable checklist, scroll-reveal,
+bar width animate-in). No schema, no data access, no persistence (demo state is in-memory only).
+Website feature card embeds a scaled real `RomanceTemplate` / `WeddingSiteView` thumbnail — Cormorant
+stays in Tier 3; **no marketing Cormorant carve-out**.
 
 ---
 
@@ -442,7 +460,7 @@ gate on `firstProjectId`; personal 0-projects CTA.
 - Couple tabs Soft-stacked: Checklist, Budget, Timeline, Overview, Notes, Vendors, Guests, Seating,
   Website **editor**, Contracts.
 - Planner dashboard + shell + account dashboard Soft-stacked.
-- Marketing / landing Soft-stacked as Tier 2; one `#3D2430` deep field on `FinalCta`.
+- Marketing / landing Soft-stacked as Tier 2; one `--deep` deep field on `FinalCta`.
 - Leftover chrome token sweep: auth/login, billing, leads board/detail, assistant panel, onboarding
   wizard, proposals/contracts chrome, project workspace nav.
 
@@ -451,10 +469,88 @@ gate on `firstProjectId`; personal 0-projects CTA.
 - Public `/w/[slug]` templates and `--ws-*` colour system.
 - Feature behavior of BUD/TL/CHK/ONB slices — visual vocabulary only (plus token renames in classnames).
 
-**Prior seating build (v5–v7), unchanged:** `seating_tables` (0024) + `seating_assignments` (0025) on
-a fixed 1200×800 canvas. SEAT-01…05a all discrete, write-by-id + `revalidatePath`. **Not built:**
-dance floor / floor objects (SEAT-06, deferred), assistant seating mock-up (SEAT-07), per-seat
-assignment UI.
+**Seating builder (v5–v7 + SEAT-08…10):** `seating_tables` (0024) + `seating_assignments` (0025) on a
+fixed 1200×800 SVG canvas (`viewBox`, `<g transform="translate… rotate…">`). SEAT-01…05a +
+**SEAT-08 / 09 / 10** — all writes by id + `revalidatePath`; **no new schema** for any of these
+(`seat_count` / `pos_x` / `pos_y` / `rotation` / `kind` already on 0024).
+
+**Occupancy model (authoritative — do not regress):**
+- Occupancy = **COUNT of `seating_assignments` rows** for the table (`occupancyByTable` in
+  `SeatingWorkspace`). Canvas lights seats `0..(count-1)` by that count.
+- `assignGuestToTable` upserts `seat_index: null` (table-level assign). Seat-specific UI is a later
+  slice. A guard that queries `seat_index >= N` is **wrong** and would pass a full table.
+- Full table: occupancy colour `--sage` (canvas badge + by-table card). Selection: `--accent`. Kind
+  is form + text only — never a status colour.
+
+**Gestures (current):**
+- **Place:** arm a shape → click canvas → `addSeatingTable` (toolbar seat count at create).
+- **Select:** click table (toggle). Selection lives as `selectedTableId` in `SeatingWorkspace`.
+- **Reposition:** (1) drag table → transient local transform on `pointermove` → **one**
+  `moveSeatingTable` on drop; (2) click empty canvas with a selection; (3) arrow-key nudge
+  (Shift = fine). Server `clampPosition` owns bounds — no client-side clamp for persistence.
+- **Rotate:** `rotateSeatingTable(tableId, "cw"|"ccw")` — **fixed 45° step** (`ROTATION_STEP`),
+  normalized mod 360. Panel labels ±45°.
+- **Edit seat count (SEAT-09):** selected-panel stepper (− / value / +), 1–20 via `clampSeatCount`.
+  Dedicated action `setSeatingTableSeatCount(tableId, seatCount): AssignResult`. Refuses with
+  `{ ok:false, error }` if occupancy count > requested next (message names the count; **no write**).
+  Same inline rosewood `errorMessage` surface as full-table assign refusal. Growing / shrinking when
+  occupancy fits succeeds + revalidates.
+- Drag/click disambiguation: travel under ~4px (screen) = select; at/over threshold = drag
+  (suppresses selection toggle). Pointer capture on `<svg>` retargets click — select is applied on
+  `pointerup` when it was not a drag; the retargeted SVG click is swallowed so empty-canvas move
+  does not fire.
+
+**By-table breakdown (SEAT-10):** page-wide sibling **below** the roster+canvas `lg:flex-row` (not
+inside `flex-1`). `SeatingTableBreakdown` — derived read from the same `tables` / `guests` /
+`assignments` props + `occupancyByTable` for N (do **not** recount). `guestsByTable` groups names;
+sort by `full_name` + `id` tiebreak (`formatGuestName`). Raised Soft stack cards in
+`sm:grid-cols-2 xl:grid-cols-3`; names inside each card are a **vertical** recessed list
+(`flex flex-col`), not a multi-column name grid. Empty tables still get a card ("No one seated yet").
+
+**Not built:** dance floor / floor objects (SEAT-06, deferred), assistant seating mock-up (SEAT-07),
+per-seat assignment UI.
+
+### v15 — LAND-01 landing overhaul + LAND-01a date formatting. NO SCHEMA.
+
+#### LAND-01 — marketing product-preview landing. CODE-COMPLETE; DOM LIVE CHECKPOINT PENDING.
+
+**What changed:**
+- Landing sections match the product-preview mockup structure: sticky nav (hairline on scroll),
+  hero + tabbed Checklist/Budget/Seating preview (checklist is interactive → live % + bar),
+  "both sides" cards with mini stat rails, six workspace cards each with a surface mini-mockup,
+  how-it-works steps, one `--deep` `FinalCta`, footer.
+- Preview treatments follow **live product** where mockup hex disagreed: budget spent=`--sage` /
+  committed=`--accent`; vendor Pills match outreach variants; owner chips = `Pill accent`; seating
+  selection=`--accent`, full-table fill uses `--sage-wash` (sole LAND-01 consumer —
+  `seating-preview-figures.tsx`; do not retarget `Pill` sage).
+- New Soft stack tokens (also recorded in `.cursor/design.mdc`): `--deep`, `--deep-eyebrow`,
+  `--sage-wash`. `FinalCta` uses `var(--deep)` / `var(--deep-eyebrow)` (no raw `#3D2430` /
+  `#E8B4C4` outside `globals.css` + design.mdc token tables).
+- Restrained motion: IntersectionObserver reveal + bar fills; CSS card hover deepen; honor
+  `prefers-reduced-motion`.
+- Trust line / avatar cluster from the mockup **dropped** (duplicate subcopy / invented social proof).
+
+**What did NOT change:** schema, RLS, server actions, live copy headlines/eyebrows/subcopy
+(verbatim). No new dependencies.
+
+#### LAND-01a — consolidate `formatWeddingDate`. CODE-COMPLETE.
+
+**Decision:** public wedding websites must render the couple's date identically for every visitor —
+not the guest's runtime locale. Shared helper in `components/website/template-utils.ts` is pinned
+to `"en-US"` with `{ weekday: "long", month: "long", day: "numeric", year: "numeric" }`.
+
+**Consolidation:**
+- Matching locals collapsed → shared import: Classic template, `WeddingHero`, `RunSheetDocument`.
+- **Survivors** (deliberate short format — `month: "short"`, no weekday): `account-dashboard.tsx`,
+  `planner-projects-table.tsx` — still named `formatWeddingDate` locally; locale pinned `"en-US"`.
+- Minimalist DateMonolith keeps its split visual layout; `aria-label` uses the shared long form.
+- Checkpoint also cleared **all** `toLocaleDateString(undefined` in the repo (Tier 1 due dates /
+  stamps included). **Open product question:** some Tier 1 surfaces may eventually want viewer
+  locale — do not treat the sweep as a permanent "all dates are en-US" product rule without Dom
+  confirmation (see §10).
+
+Temporary harness: `/styleguide/date-check` renders all five templates for the same demo date —
+delete after Dom's LAND-01a visual pass.
 
 ---
 
@@ -521,11 +617,11 @@ State derived from LIVE tool reads, not the transcript.
 
 ## 10. Design system — Soft stack (C1)
 
-> **This section is a POINTER.** Token VALUES live in `app/globals.css`. RULES live in
-> `.cursor/design.mdc`. Do not restate hex values or invent chrome rules here — if they disagree,
-> those two files win. `design/reference.html` is a rendered example and is currently **stale**
-> (still Modern romantic); regenerate against `.cursor/design.mdc`. `design/theme-direction.html`
-> is superseded and scheduled for deletion.
+> **This section is a POINTER.** Token VALUES live in `app/globals.css` (Soft stack live as of v11 /
+> STYLE-01). RULES live in `.cursor/design.mdc`. Do not restate hex values or invent chrome rules
+> here — if they disagree, those two files win. `design/reference.html` is a rendered example and is
+> currently **stale** (still Modern romantic); regenerate against `.cursor/design.mdc`.
+> `design/theme-direction.html` is superseded — delete when convenient.
 
 **Direction:** Soft stack (C1) — calm tool organized by **depth**. Mauve-tinted canvas; raised white
 cards; recessed wells for rows/tracks. Hierarchy = raised-contains-recessed. Romance lives in data
@@ -536,7 +632,7 @@ and Tier 3 website templates, not in chrome serifs.
 | Tier | Where | What it gets |
 |---|---|---|
 | **1 — App chrome** | `app/(app)/`, most of `components/` except `components/website/`, planner, forms, seating canvas, assistant, settings | Soft stack palette + Figtree; two depth levels; three radii; **no** accent flood; **no** Cormorant/Great Vibes |
-| **2 — Emotional** | Landing, onboarding hero/welcome, empty-state heroes | Same palette + Figtree; larger display scale; **exactly one** deep field `#3D2430` per surface; emotional card shadow OK |
+| **2 — Emotional** | Landing, onboarding hero/welcome, empty-state heroes | Same palette + Figtree; larger display scale; **exactly one** deep field `--deep` per surface; emotional card shadow OK |
 | **3 — Website + print run sheet** | `components/website/`, public `/w/[slug]`, `RunSheetDocument.tsx` print header | `--ws-*` colour only; Cormorant + (Romance) Great Vibes; Hanken via `--ws-font-sans` for body. Soft stack chrome tokens must not leak as website colour |
 
 **Serif / script location rule:** Cormorant Garamond and Great Vibes may appear **only** in
@@ -552,22 +648,33 @@ figure. Category blocks are raised cards with recessed rows (Soft stack) — do 
 "flat hairline-only blocks" from Modern romantic polish notes.
 
 **Seating canvas:** tables raised `--surface` on `--canvas`; outlines `--ring`; selection `--accent`;
-full occupancy `--sage`; kind = form + text only.
+full occupancy `--sage`; kind = form + text only. Marketing seating previews may use `--sage-wash`
+for full-table fill (`seating-preview-figures.tsx` only).
 
-### STYLE-01 status (v11)
+**Date formatting (LAND-01a):**
+- **Public / couple-identifying long wedding dates** → shared `formatWeddingDate` in
+  `components/website/template-utils.ts`, locale **`en-US`** (stable SSR + identical for all guests).
+- Short-format survivors stay local (`account-dashboard`, `planner-projects-table`) with explicit
+  `en-US`.
+- Zero `toLocaleDateString(undefined` remains. Tier 1 due-date / stamp formatters were pinned in the
+  same sweep for hydration safety — **revisit if any chrome date should follow the viewer's locale.**
+
+### STYLE-01 status (v11 + v15 token adds)
 
 | Slice | Status |
 |---|---|
-| Soft stack rules + three-tier taxonomy in `.cursor/design.mdc` | **Done** |
-| Soft stack `:root` tokens in `app/globals.css` | **Done** |
+| Soft stack rules + three-tier taxonomy in `.cursor/design.mdc` | **Done** (doc wording synced: Soft stack live, not “pending STYLE-01”) |
+| Soft stack `:root` tokens in `app/globals.css` | **Done** (v15 also added `--deep`, `--deep-eyebrow`, `--sage-wash`) |
 | Figtree → `--font-sans`; Hanken → `--ws-font-sans`; strip Cormorant from Tier 1/2 | **Done** |
-| Couple tabs + planner + marketing Soft stack UI | **Done** (v11) |
+| Couple tabs + planner + marketing Soft stack UI | **Done** (v11); marketing **product-preview** rebuild **LAND-01** (v15) |
 | Leftover chrome classname sweep (`plum`/`stone`/`ink-muted` → Soft stack names) | **Done** for Tier 1/2 consumers |
 | Legacy CSS aliases (`--plum`, `--stone`, …) still in `globals.css` | **Open** — temporary; do not add new alias consumers |
 | `design/reference.html` regenerate | **Open** |
 | `design/theme-direction.html` delete | **Open** |
 | Font-load scoping (Great Vibes only on `/w/`, etc.) | **Open** (optimisation) |
-| Dom live Soft stack visual checkpoint | **Open** |
+| Dom live Soft stack visual checkpoint | **Open** (landing now includes LAND-01 interaction checklist) |
+| Dom LAND-01 / LAND-01a live checkpoint | **Open** (Cursor code-complete; Dom owns auth-gated + reduced-motion + mobile) |
+| Tier 1 date locale policy after LAND-01a sweep | **Open** — confirm which chrome dates may use viewer locale |
 | Run sheet still uses legacy classnames (`stone`/`ink-muted`/`plum`) | **Accepted for now** — aliases map to Soft stack; intentional colour shift noted in design.mdc |
 
 **Do NOT start a new "Modern romantic polish pass."** Layout language is Soft stack. Feature polish
@@ -677,9 +784,12 @@ closed. Soft stack visual QA is the open human gate (see below).
 - Couple + planner + marketing Soft stack UI
 - Leftover Tier 1/2 `plum`/`stone`/`ink-muted` classname sweep
 
-**Open — Soft stack / design (v11):**
-- **Dom live Soft stack visual checkpoint** across couple tabs, planner, landing, login, leads,
-  billing. Typecheck is not verification.
+**Open — Soft stack / design (v11 + v15):**
+- **Dom live Soft stack + LAND-01 / LAND-01a visual checkpoint** across couple tabs, planner,
+  landing (product-preview interactions), login, leads, billing, and `/w/[slug]` date hydration.
+  Typecheck is not verification.
+- **Tier 1 date locale after LAND-01a sweep** — confirm which chrome due dates / stamps should
+  follow the viewer locale vs stay `en-US`.
 - **`design/reference.html` is stale** (Modern romantic). Regenerate against `.cursor/design.mdc`.
 - **`design/theme-direction.html` still present** — delete when convenient.
 - **Legacy CSS aliases** in `globals.css` (`--plum`, `--stone`, `--porcelain`, …). Temporary; retire
@@ -689,6 +799,7 @@ closed. Soft stack visual QA is the open human gate (see below).
 - **Font-load scoping** — root loads four families; `/w/` downloads Figtree unused and app downloads
   Great Vibes unused. Later optimisation.
 - `.font-display` and `.couple-name` are near-identical — collapse when touching consumers.
+- `/styleguide/date-check` LAND-01a harness — delete after Dom verifies.
 
 **Open — signup / routing:**
 - **`singleProjectId` is a hint, not an answer.** Five call sites fall back to `/projects` (§3/§6).
@@ -768,11 +879,31 @@ BUD-01a.
 - Page-by-page **Modern romantic** polish (VND-01 layout et al.) is **superseded** for chrome.
   Remaining VND items are **feature** follow-ups only (§13).
 
+**Done (v12 — documentation sync):** Soft stack marked live in the bible; file renamed to v12. No
+product/schema change.
+
+**Done (v13 — SEAT-08):** drag-to-reposition (commit-on-drop via existing `moveSeatingTable`);
+rotation step 15° → 45°. No schema. Live-verified (incl. select-after-capture fix).
+
+**Done (v14 — SEAT-09 + SEAT-10):**
+- **SEAT-09** — `setSeatingTableSeatCount`; selected-panel stepper; count-based occupancy refuse
+  (no silent drop). No schema.
+- **SEAT-10** — `SeatingTableBreakdown` below roster+canvas; same props as Guests box;
+  `occupancyByTable` for N; vertical name lists. No schema.
+
+**Done (v15 — LAND-01 + LAND-01a):**
+- **LAND-01** — Landing product-preview overhaul (Tier 2): tabbed hero demos, workspace mini-mockups,
+  scroll reveal / bar animate-in, `--deep` / `--deep-eyebrow` / `--sage-wash` tokens, Romance
+  template thumbnail embed (no marketing Cormorant carve-out). No schema.
+- **LAND-01a** — Shared `formatWeddingDate` (`en-US`); Classic / WeddingHero / RunSheet collapsed to
+  shared; short-format survivors kept; repo cleared of `toLocaleDateString(undefined`. No schema.
+
 Current through **0027**; next-free **0028**.
 
-**In progress:** Dom Soft stack live visual checkpoint (human). Not a Cursor slice.
+**In progress:** Dom Soft stack + LAND-01 live visual checkpoint (human). Not a Cursor slice.
 
-**Remaining couple side:** moodboard; optional seating depth; ONB-02; BUD-03 (pre-launch).
+**Remaining couple side:** moodboard; optional seating depth (per-seat UI / SEAT-07); ONB-02;
+BUD-03 (pre-launch).
 
 **Remaining planner side:** invoicing accepted proposals; deeper CRM.
 
@@ -783,9 +914,16 @@ Current through **0027**; next-free **0028**.
 **Decided:**
 - AI = Claude (`claude-sonnet-4-6`). Outreach = couple's Gmail. Payments = Stripe (flat monthly).
   Website = curated template gallery via dispatcher. Prod = separate Supabase org on Pro.
-- Seating = discrete click, not drag; SEAT-06 deferred by choice.
+- Seating = SVG pointer interactions (click place/select/empty-move, arrow nudge, **drag
+  reposition**); not @dnd-kit. SEAT-06 deferred by choice. Rotation step = **45°**. Post-place
+  `seat_count` edits via dedicated action + count-based occupancy guard. By-table breakdown is a
+  derived read (no second fetch).
 - **Budget: Allocated is items-only; quote money never enters a headline figure.** No pie/donut.
 - **Chrome = Soft stack (C1).** Do not reopen Modern romantic. Tier 3 websites stay on `--ws-*`.
+- **Public wedding long dates = shared `formatWeddingDate`, locale `en-US`** (stable for all visitors /
+  SSR). Short dashboard/table dates may keep a local short formatter with an explicit locale.
+- **Marketing website preview embeds real Tier 3 template** (scaled, non-interactive) — do not put
+  Cormorant on the marketing route outside that embed.
 - **Signup creates NO tenant.** Bootstrap once on OnboardingForm, guarded in DB (0027).
 - **ONB-02 owns migration 0028** (`commitPlan` atomicity + `vendor_targets.category` CHECK).
   **BUD-03** takes next-free at build time (v9's 0027 reservation is void; 0027 was spent on ONB-00).
@@ -796,18 +934,23 @@ Current through **0027**; next-free **0028**.
 ## 15. Start here next (pick-up point)
 
 The couple product is feature-complete, shareable, and payable; the plan is **couples-first launch**.
-Bible is at **v11**. Soft stack chrome is **code-complete**; Dom's live visual checkpoint is the open
-human gate. Schema still through **0027**; next-free **0028**.
+Bible is at **v15**. Soft stack chrome (v11) is **code-complete**; **LAND-01 / LAND-01a** are
+code-complete (no schema). Dom's live visual checkpoint (Soft stack + landing interactions + date
+hydration on Overview / `/w/[slug]`) is the open human gate. Schema still through **0027**;
+next-free **0028**.
 
 **Do not resume a Modern romantic / VND-01 layout polish pass.** Vendors chrome is Soft-stacked.
 Optional VND **feature** work (reciprocal budget link line, seed unbooked statuses, quote
 `createProject`) can ride along another vendors visit — it is not the thrust.
 
-**A. Dom Soft stack visual checkpoint (now).**
+**A. Dom Soft stack + LAND-01 / LAND-01a live checkpoint (now).**
 Walk couple tabs (Overview, Checklist, Budget, Timeline, Vendors, Guests, Seating, Website editor,
-Notes), planner dashboard/leads/billing, landing + login. Check raised/recessed hierarchy, Figtree
-(no accidental Cormorant in chrome), one deep field on landing, public `/w/[slug]` still romantic.
-Fix only real regressions — don't invent a second design system.
+Notes), planner dashboard/leads/billing, **landing** (hero tabs, checklist %, scroll bars,
+reduced-motion, mobile, serif-only-in-website-thumb, single `--deep` field), login, and public
+`/w/[slug]`. Confirm no hydration mismatch on Overview hero / run sheet / published sites. Optional:
+delete `/styleguide/date-check` after the five-template date pass. Fix only real regressions — don't
+invent a second design system. If any Tier 1 due-date should follow viewer locale, reverse those
+pins deliberately (LAND-01a open question).
 
 **B. ONB-02 — `commitPlan` atomicity + `vendor_targets.category` CHECK. Migration 0028.**
 Three sequential non-atomic inserts (tasks, budget_items, vendor_targets) with no transaction: a
@@ -845,6 +988,9 @@ monitoring; **full prod smoke — including real signup and deliberate double-cl
   FK check.
 
 **F. Seating — remaining (OPTIONAL).**
+- **SEAT-08** drag-to-reposition + 45° rotation step: **DONE** (v13). No schema.
+- **SEAT-09** edit `seat_count` after placement + occupancy guard: **DONE** (v14). No schema.
+- **SEAT-10** by-table breakdown (derived read): **DONE** (v14). No schema.
 - **SEAT-06** dance floor / floor objects: DEFERRED BY CHOICE.
 - **SEAT-07** assistant seating mock-up: NO new schema. `get_seating` + additive bulk writes.
 
@@ -854,6 +1000,6 @@ Other/Unscheduled phase-bucket; `project_vendors.status` CHECK; currency-helper 
 project-settings on Overview; regenerate `reference.html` / delete `theme-direction.html` /
 retire CSS aliases; font-load scoping.
 
-**Recommended path:** **Dom Soft stack checkpoint (A)** → **ONB-02 / 0028 (B)** → **BUD-03 (C)** →
-**Launch (D)** → invoicing → conversion (E) → remaining G. SEAT-07 when the differentiator is wanted;
-SEAT-06 stays parked.
+**Recommended path:** **Dom Soft stack + LAND-01/01a checkpoint (A)** → **ONB-02 / 0028 (B)** →
+**BUD-03 (C)** → **Launch (D)** → invoicing → conversion (E) → remaining G. SEAT-07 when the
+differentiator is wanted; SEAT-06 stays parked.

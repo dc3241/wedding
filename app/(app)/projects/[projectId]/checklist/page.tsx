@@ -39,7 +39,7 @@ function groupByPhase(tasks: TaskRow[]) {
 }
 
 function formatPhaseMetaDate(isoDate: string) {
-  return new Date(isoDate + "T00:00:00").toLocaleDateString(undefined, {
+  return new Date(isoDate + "T00:00:00").toLocaleDateString("en-US", {
     day: "numeric",
     month: "short",
     year: "numeric",
@@ -112,7 +112,7 @@ function buildSections(tasks: TaskRow[], weddingDate: string | null) {
 }
 
 function formatEyebrowDate(iso: string) {
-  return new Date(iso + "T00:00:00").toLocaleDateString(undefined, {
+  return new Date(iso + "T00:00:00").toLocaleDateString("en-US", {
     day: "numeric",
     month: "long",
     year: "numeric",

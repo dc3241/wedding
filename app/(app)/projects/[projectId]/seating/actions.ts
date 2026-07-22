@@ -103,7 +103,7 @@ export async function moveSeatingTable(
 
 export type AssignResult = { ok: true } | { ok: false; error: string };
 
-const ROTATION_STEP = 15;
+const ROTATION_STEP = 45;
 
 function normalizeRotation(value: number) {
   return ((value % 360) + 360) % 360;
@@ -160,6 +160,54 @@ export async function rotateSeatingTable(
   const { data, error } = await supabase
     .from("seating_tables")
     .update({ rotation: next })
+    .eq("id", tableId)
+    .select("project_id")
+    .single();
+
+  if (error) throw error;
+
+  revalidatePath(seatingPath(data.project_id));
+  return { ok: true };
+}
+
+export async function setSeatingTableSeatCount(
+  tableId: string,
+  seatCount: number,
+): Promise<AssignResult> {
+  const next = clampSeatCount(seatCount);
+
+  const supabase = await createClient();
+
+  const { data: table, error: readError } = await supabase
+    .from("seating_tables")
+    .select("project_id")
+    .eq("id", tableId)
+    .maybeSingle();
+
+  if (readError) throw readError;
+  if (!table) {
+    return { ok: false, error: "That table no longer exists." };
+  }
+
+  // Occupancy is COUNT of assignment rows (seat_index is null today).
+  const { count, error: countError } = await supabase
+    .from("seating_assignments")
+    .select("*", { count: "exact", head: true })
+    .eq("table_id", tableId);
+
+  if (countError) throw countError;
+
+  const occupancyCount = count ?? 0;
+  if (occupancyCount > next) {
+    return {
+      ok: false,
+      error: `This table has ${occupancyCount} guests assigned. Remove at least ${occupancyCount - next} before reducing to ${next} seats.`,
+    };
+  }
+
+  const { data, error } = await supabase
+    .from("seating_tables")
+    .update({ seat_count: next })
     .eq("id", tableId)
     .select("project_id")
     .single();

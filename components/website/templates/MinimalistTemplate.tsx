@@ -15,9 +15,9 @@ function parseDateParts(date: string) {
   if (Number.isNaN(parsed.getTime())) return null;
   return {
     day: parsed.getDate(),
-    month: parsed.toLocaleDateString(undefined, { month: "short" }).toUpperCase(),
+    month: parsed.toLocaleDateString("en-US", { month: "short" }).toUpperCase(),
     year: parsed.getFullYear(),
-    weekday: parsed.toLocaleDateString(undefined, { weekday: "long" }).toUpperCase(),
+    weekday: parsed.toLocaleDateString("en-US", { weekday: "long" }).toUpperCase(),
   };
 }
 

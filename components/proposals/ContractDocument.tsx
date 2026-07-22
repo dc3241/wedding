@@ -18,7 +18,7 @@ type ContractDocumentProps = {
 
 function formatContractDate(iso: string | null) {
   const date = iso ? new Date(iso) : new Date();
-  return date.toLocaleDateString(undefined, {
+  return date.toLocaleDateString("en-US", {
     month: "long",
     day: "numeric",
     year: "numeric",
@@ -26,7 +26,7 @@ function formatContractDate(iso: string | null) {
 }
 
 function formatAcceptedDate(iso: string) {
-  return new Date(iso).toLocaleDateString(undefined, {
+  return new Date(iso).toLocaleDateString("en-US", {
     month: "long",
     day: "numeric",
     year: "numeric",

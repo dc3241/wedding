@@ -8,7 +8,7 @@ import { sectionStackClass } from "@/lib/density";
 import { createClient } from "@/utils/supabase/server";
 
 function formatEyebrowDate(iso: string) {
-  return new Date(iso + "T00:00:00").toLocaleDateString(undefined, {
+  return new Date(iso + "T00:00:00").toLocaleDateString("en-US", {
     day: "numeric",
     month: "long",
     year: "numeric",

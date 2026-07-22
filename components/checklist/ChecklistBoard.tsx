@@ -32,7 +32,7 @@ type ChecklistBoardProps = {
 };
 
 function formatEyebrowDate(iso: string) {
-  return new Date(iso + "T00:00:00").toLocaleDateString(undefined, {
+  return new Date(iso + "T00:00:00").toLocaleDateString("en-US", {
     day: "numeric",
     month: "long",
     year: "numeric",
@@ -41,7 +41,7 @@ function formatEyebrowDate(iso: string) {
 
 function formatShortDue(date: string | null) {
   if (!date) return null;
-  return new Date(date + "T00:00:00").toLocaleDateString(undefined, {
+  return new Date(date + "T00:00:00").toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
   });

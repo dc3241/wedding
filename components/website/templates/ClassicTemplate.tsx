@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import type { WeddingWebsiteContent } from "../types";
 import { resolveWeddingTheme } from "../themes";
+import { formatWeddingDate } from "../template-utils";
 import { cn } from "@/lib/cn";
 
 type ClassicTemplateProps = {
@@ -17,15 +18,6 @@ function daysUntilWedding(weddingDate: string): number {
   wedding.setHours(0, 0, 0, 0);
   const diff = wedding.getTime() - today.getTime();
   return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
-}
-
-function formatWeddingDate(date: string) {
-  return new Date(date + "T00:00:00").toLocaleDateString(undefined, {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-  });
 }
 
 function Countdown({ weddingDate }: { weddingDate: string }) {

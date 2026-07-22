@@ -12,9 +12,9 @@ alwaysApply: true
    with any document, this file wins.
 3. **`design/reference.html`** — a **rendered example** of these rules. Non-normative. It is
    regenerated to match; it never defines.
-4. **`design/theme-direction.html`** — **superseded; scheduled for deletion in STYLE-01.**
-5. The Project Bible §10 — a **pointer** to this file. It must not restate token values or rules.
-   Any §10 content that contradicts this file is stale by definition.
+4. **`design/theme-direction.html`** — **superseded; delete when convenient** (open hygiene).
+5. The Project Bible §10 (`PROJECT_BIBLE_v13.md`) — a **pointer** to this file. It must not
+   restate token values or rules. Any §10 content that contradicts this file is stale by definition.
 
 `main.mdc` (beside this file) is canonical for **architecture** — multi-tenancy, RLS-as-sole-
 authorization, data-access conventions. This file governs **visual design only** and defers to
@@ -29,9 +29,10 @@ lift off it; recessed wells hold rows and tracks. Hierarchy is encoded by raised
 — never by decoration, never by stacking raised inside raised. Type is all-sans Figtree on Tier 1
 and Tier 2; romance lives in the data and in Tier 3 website templates, not in chrome serifs.
 
-Tokens below are the **target** Soft stack set. Live values in `app/globals.css` still reflect
-Modern romantic v3 until STYLE-01 applies them. Until then, `globals.css` remains canonical for
-what the app actually renders; this file is canonical for what rules require.
+Soft stack tokens are **live** in `app/globals.css` (STYLE-01 / v11). `globals.css` is canonical
+for what the app actually renders; this file is canonical for rules. Legacy Modern romantic names
+(`--plum`, `--stone`, …) remain only as **temporary aliases** pointing at Soft stack values —
+do not add new alias consumers.
 
 ---
 
@@ -62,10 +63,13 @@ is Tier 1.
 | `--accent` | `#C0396B` | selection, active chip, committed bar, links |
 | `--accent-wash` | `#FBEEF3` | accent tint background |
 | `--sage` | `#2F6B54` | done / booked / signed / accepted / rsvp-yes |
+| `--sage-wash` | `#EDF5F0` | sage tint background (wash family with clay/rosewood) |
 | `--clay` | `#B0762E` | in progress / sent / contacted / proposal |
 | `--clay-wash` | `#FBF1E2` | clay pill background |
 | `--rosewood` | `#C4453F` | overdue / over-plan / lost / declined / rsvp-no |
 | `--rosewood-wash` | `#FDECEB` | rosewood pill background |
+| `--deep` | `#3D2430` | Tier 2 deep field (exactly one per surface) |
+| `--deep-eyebrow` | `#E8B4C4` | eyebrow on `--deep` only |
 
 **Renames / retirements (deliberate):**
 - `--plum` → **`--accent`** (value is berry; old name would lie).
@@ -154,7 +158,7 @@ whole page.
 Tier 2 uses **Tier 1's palette and typeface** (Figtree). What it gains:
 
 - Display numerals / headlines may run to **~104px**, weight 800, tracking −.05em.
-- **Exactly one** deep field per surface: `#3D2430`, radius `28px`, shadow
+- **Exactly one** deep field per surface: `--deep`, radius `28px`, shadow
   `0 18px 44px -14px rgba(61,36,48,.45)`. One per surface (whole route), not one per section.
 - `--card-shadow-emotional` remains available for emotional-surface cards only (Tier 2).
 - **No serif.** Tier 2 does not get Cormorant.
@@ -215,7 +219,7 @@ Fonts (target wiring):
 - Cormorant Garamond (500/600) → `--font-serif` (Tier 3; Tier 1 print-header carve-out only)
 - Great Vibes → `--font-script` (**Tier 3 only**)
 
-Map all Tier 1 tokens into Tailwind (v4 `@theme inline`) in STYLE-01.
+Tier 1 tokens are mapped into Tailwind (v4 `@theme inline`) in `app/globals.css` (done in STYLE-01).
 
 ---
 
@@ -228,7 +232,7 @@ Each killed rule is quoted **verbatim** from the pre-Soft-stack `design.mdc`, th
 | "**Flat chrome** — no whisper-emotional shadow on chrome surfaces. Cards may use the standard whisper `card-shadow` only." | The two-level depth scale (`--shadow-raised` / `--shadow-recessed`). Depth is the organizing idea of Tier 1. |
 | "**Two sans weights** — Hanken Grotesk 400 and 500 only." | Figtree, four weights (400/500/600/800), on Tier 1 and Tier 2. **Hanken Grotesk is retired from Tier 1 and Tier 2 only; it survives as `--ws-font-sans` on Tier 3, where it remains the template body face.** |
 | "Two sans weights (400/500) only in chrome." | Figtree, four weights (400/500/600/800), on Tier 1 and Tier 2. **Hanken Grotesk is retired from Tier 1 and Tier 2 only; it survives as `--ws-font-sans` on Tier 3, where it remains the template body face.** |
-| "**Plum is accent** — never a full-page or full-panel color flood. `plum-tint` washes for inline empty states are OK." | Rescoped: **Tier 1 permits no accent flood at all** (`--accent-wash` for pills/washes only). **Tier 2 permits exactly one** `#3D2430` field per surface. |
+| "**Plum is accent** — never a full-page or full-panel color flood. `plum-tint` washes for inline empty states are OK." | Rescoped: **Tier 1 permits no accent flood at all** (`--accent-wash` for pills/washes only). **Tier 2 permits exactly one** `--deep` field per surface. |
 | "No blush or plum color floods (plum-tint washes for small empty states OK)." | Same rescope as above — no Tier 1 accent flood; one Tier 2 deep field. |
 | "**Display (Cormorant Garamond 600)** — Tier 2 emotional surfaces + Tier 1 data moments" | **Deleted.** Tier 1 and Tier 2 are all-sans. |
 | "**UI (Hanken Grotesk, 400/500)** — Tier 1 chrome" | **UI (Figtree, 400/500/600/800) — Tier 1 and Tier 2.** Hanken survives as `--ws-font-sans` on Tier 3 only. |
@@ -300,7 +304,10 @@ These apply on **every tier** unless a tier carve-out explicitly permits otherwi
 
 ---
 
-## Tokens (target Soft stack — apply in STYLE-01)
+## Tokens (Soft stack — live in `app/globals.css`)
+
+Canonical hex values live in `app/globals.css`. Repeated here for rule-reading convenience only —
+if a value disagrees, `globals.css` wins.
 
 ```css
 :root {
@@ -314,10 +321,13 @@ These apply on **every tier** unless a tier carve-out explicitly permits otherwi
   --accent: #C0396B;
   --accent-wash: #FBEEF3;
   --sage: #2F6B54;
+  --sage-wash: #EDF5F0;
   --clay: #B0762E;
   --clay-wash: #FBF1E2;
   --rosewood: #C4453F;
   --rosewood-wash: #FDECEB;
+  --deep: #3D2430;
+  --deep-eyebrow: #E8B4C4;
   --radius-card: 22px;
   --radius-inner: 14px;
   --radius-pill: 999px;
@@ -330,38 +340,31 @@ These apply on **every tier** unless a tier carve-out explicitly permits otherwi
 }
 ```
 
-**Live chrome values still in `app/globals.css` until STYLE-01** (for audit continuity; not the
-target): `--canvas #FAF5EE`, `--ink #221A1D`, `--plum #7E3E57`, `--stone #E8DCCE`,
-`--stone-soft #F1E8DD`, plus `--porcelain`, `--surface-2`, `--ink-soft`, `--ink-muted`,
-`--plum-deep`, `--plum-tint`, `--rose`, `--radius` / `--radius-lg`, `--card-shadow`.
+**Legacy aliases** (temporary in `globals.css`; Soft stack values via `var(...)`): `--porcelain`,
+`--surface-2`, `--ink-soft`, `--ink-muted`, `--plum`, `--plum-deep`, `--plum-tint`, `--rose`,
+`--stone`, `--stone-soft`, plus old `--radius` / `--radius-lg` / `--card-shadow` mappings. Retire
+when no consumers remain. Do not add new alias consumers.
 
 ---
 
-## Known remediation (STYLE-01)
+## Known remediation (STYLE-01 / v11)
 
-- `components/ui/input.tsx` — `placeholder:text-[#B6ABAD]` → token.
-- `components/vendors/GoogleMapsAttribution.tsx` — `text-[#5E5E5E]` → token. (Check Google's
-  attribution requirements before changing; the colour may be mandated.)
-- `bg-stone/40` and `bg-stone-soft` track patterns → `--well` + `--shadow-recessed`.
-- ≥9 live radii → the three radius tokens.
-- Apply the Soft stack `:root` above; retire `--plum` / `--stone` / `--stone-soft` from chrome.
-- Swap `--font-sans` to Figtree (400/500/600/800); strip Cormorant from all Tier 1 / Tier 2
-  surfaces (~25+ files), keeping the run sheet print-header carve-out. **Done in STYLE-01b.**
-- Define `--ws-font-sans` (Hanken Grotesk 400/500) in the Tier 3 token namespace; repoint every
-  Tier 3 template's body face from `--font-sans` to it. **Done in STYLE-01b** (`.font-ws-sans`;
-  Hanken loaded from root layout because `/w/` inherits and loads nothing).
-- Resolve **where** Hanken loads for `--ws-font-sans` on public `/w/` sites. Report the chosen
-  wiring at STYLE-01 Step 0. **Resolved: root `app/layout.tsx` (four families).**
-- `components/marketing/` (9 files) converts as **Tier 2**, not Tier 1 — all-sans Figtree with
-  scale latitude and at most one `#3D2430` field across the whole landing route.
-- **The run sheet's colour will change at STYLE-01a, and this is intended, not a regression:**
-  ink `#221A1D` → `#241C20`; `ink-muted` `#8C8083` → `#857A80`; `border/divide-stone` `#E8DCCE` →
-  `#DCD0D6`; `outline-plum` `#7E3E57` → `#C0396B`. `bg-surface` stays `#FFFFFF`. Its body face
-  moves to Figtree at STYLE-01b; the Cormorant header stays. **Do not treat these as leaks.**
-- Root layout now loads **four** families; `/w/[slug]` downloads Figtree it never uses and the app
-  downloads Great Vibes it never uses. Scope the loading (Great Vibes → `/w/` layout only) as a
-  later optimisation.
-- `.font-display` and `.couple-name` are byte-identical — collapse to one when a slice is already
-  touching their consumers.
+**Done:**
+- Soft stack `:root` tokens + Tailwind `@theme inline` mapping in `app/globals.css`.
+- Figtree → `--font-sans`; Hanken → `--ws-font-sans` (`.font-ws-sans`); Cormorant stripped from
+  Tier 1/2 (run-sheet print-header carve-out kept). Four families loaded from root `app/layout.tsx`.
+- Couple tabs + planner + marketing Soft stack UI; leftover Tier 1/2 classname sweep
+  (`plum`/`stone`/`ink-muted` → Soft stack names).
+- Marketing converts as **Tier 2** (Figtree; at most one `--deep` field on the landing route).
+- Run sheet colour shift via aliases is **intended**, not a regression. Body face is Figtree;
+  Cormorant print header stays. Do not treat as Soft stack leaks into Tier 3 website colour.
+
+**Still open:**
+- `components/vendors/GoogleMapsAttribution.tsx` — `text-[#5E5E5E]` → token only if Google's
+  attribution requirements allow it.
+- Retire legacy CSS aliases when no consumers remain (STYLE-01c).
 - `design/theme-direction.html` → delete.
-- `design/reference.html` → regenerate against this file.
+- `design/reference.html` → regenerate against this file (still Modern romantic).
+- Font-load scoping (Great Vibes → `/w/` only; avoid unused Figtree on `/w/`) — later optimisation.
+- `.font-display` and `.couple-name` are near-identical — collapse when touching consumers.
+- Dom live Soft stack visual checkpoint (human gate; Cursor cannot authenticate).

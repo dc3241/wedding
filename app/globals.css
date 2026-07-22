@@ -12,10 +12,13 @@
   --accent: #C0396B;
   --accent-wash: #FBEEF3;
   --sage: #2F6B54;
+  --sage-wash: #EDF5F0;
   --clay: #B0762E;
   --clay-wash: #FBF1E2;
   --rosewood: #C4453F;
   --rosewood-wash: #FDECEB;
+  --deep: #3D2430;
+  --deep-eyebrow: #E8B4C4;
 
   --radius-card: 22px;
   --radius-inner: 14px;
@@ -59,10 +62,13 @@
   --color-accent: var(--accent);
   --color-accent-wash: var(--accent-wash);
   --color-sage: var(--sage);
+  --color-sage-wash: var(--sage-wash);
   --color-clay: var(--clay);
   --color-clay-wash: var(--clay-wash);
   --color-rosewood: var(--rosewood);
   --color-rosewood-wash: var(--rosewood-wash);
+  --color-deep: var(--deep);
+  --color-deep-eyebrow: var(--deep-eyebrow);
 
   /* Legacy colour utilities — point at aliases so existing classes keep compiling */
   --color-porcelain: var(--porcelain);
@@ -204,19 +210,28 @@ body {
   }
 }
 
+/* Marketing landing only — deepen raised shadow on hover; no new token. */
 .marketing-card-hover {
   transition:
-    transform 0.2s ease,
-    box-shadow 0.2s ease;
+    transform 0.25s ease,
+    box-shadow 0.25s ease;
 }
 
 .marketing-card-hover:hover {
-  transform: translateY(-2px);
+  transform: translateY(-3px);
+  box-shadow:
+    0 2px 5px rgba(60, 30, 45, 0.05),
+    0 22px 46px -8px rgba(60, 30, 45, 0.14);
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .marketing-card-hover {
+    transition: none;
+  }
+
   .marketing-card-hover:hover {
     transform: none;
+    box-shadow: var(--shadow-raised);
   }
 }
 

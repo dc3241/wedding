@@ -20,6 +20,7 @@ type SeatingCanvasProps = {
   onPlace: (posX: number, posY: number) => void;
   onTableClick: (id: string) => void;
   onEmptyCanvasClick: (posX: number, posY: number) => void;
+  onTableMove: (id: string, posX: number, posY: number) => void;
 };
 
 type ViewportState = {
@@ -28,23 +29,45 @@ type ViewportState = {
   y: number;
 };
 
+type TableDragSession = {
+  pointerId: number;
+  id: string;
+  originPosX: number;
+  originPosY: number;
+  startLogicalX: number;
+  startLogicalY: number;
+  startClientX: number;
+  startClientY: number;
+};
+
+type DragVisual = {
+  id: string;
+  posX: number;
+  posY: number;
+};
+
 const MIN_SCALE = 1;
 const MAX_SCALE = 2.5;
 
 const INSET_RING_OFFSET = 5;
+const DRAG_THRESHOLD_PX = 4;
 
 function SeatingTableGraphic({
   table,
   selected,
   interactive,
   occupied,
-  onClick,
+  livePosX,
+  livePosY,
+  onPointerDown,
 }: {
   table: SeatingTable;
   selected: boolean;
   interactive: boolean;
   occupied: number;
-  onClick: () => void;
+  livePosX: number;
+  livePosY: number;
+  onPointerDown: (event: React.PointerEvent<SVGGElement>) => void;
 }) {
   const body = tableBodyForShape(table.shape);
   const seats = seatPositionsForTable(table.shape, table.seat_count, table.kind);
@@ -56,13 +79,16 @@ function SeatingTableGraphic({
 
   return (
     <g
-      transform={`translate(${table.pos_x} ${table.pos_y})`}
+      transform={`translate(${livePosX} ${livePosY})`}
       aria-label={`${table.label}, ${occupied} of ${table.seat_count} seats filled`}
-      style={{ pointerEvents: interactive ? "auto" : "none" }}
+      style={{
+        pointerEvents: interactive ? "auto" : "none",
+        cursor: interactive ? "grab" : undefined,
+      }}
+      onPointerDown={onPointerDown}
       onClick={(event) => {
-        if (!interactive) return;
+        // Selection is handled on pointerup (capture retargets click to <svg>).
         event.stopPropagation();
-        onClick();
       }}
     >
       <g transform={`rotate(${table.rotation})`}>
@@ -198,6 +224,7 @@ export function SeatingCanvas({
   onPlace,
   onTableClick,
   onEmptyCanvasClick,
+  onTableMove,
 }: SeatingCanvasProps) {
   const viewportRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
@@ -207,6 +234,7 @@ export function SeatingCanvas({
     x: 0,
     y: 0,
   });
+  const [dragVisual, setDragVisual] = useState<DragVisual | null>(null);
   const panStart = useRef<{
     pointerId: number;
     x: number;
@@ -219,6 +247,11 @@ export function SeatingCanvas({
     scale: number;
     origin: { x: number; y: number };
   } | null>(null);
+  const tableDrag = useRef<TableDragSession | null>(null);
+  const didDragRef = useRef(false);
+  // setPointerCapture on <svg> retargets the synthesized click there — swallow it
+  // so empty-canvas move doesn't steal table select/drag gestures.
+  const suppressCanvasClickRef = useRef(false);
 
   const placing = armedShape !== null;
   const viewportGesturesEnabled = allowViewportInteraction && !placing;
@@ -237,6 +270,11 @@ export function SeatingCanvas({
 
   const handleCanvasClick = useCallback(
     (event: React.MouseEvent<SVGSVGElement>) => {
+      if (suppressCanvasClickRef.current) {
+        suppressCanvasClickRef.current = false;
+        return;
+      }
+
       const svg = svgRef.current;
       if (!svg) return;
 
@@ -250,6 +288,99 @@ export function SeatingCanvas({
       onEmptyCanvasClick(x, y);
     },
     [onEmptyCanvasClick, onPlace, placing],
+  );
+
+  const handleTablePointerDown = useCallback(
+    (table: SeatingTable, event: React.PointerEvent<SVGGElement>) => {
+      if (placing) return;
+      if (event.pointerType === "mouse" && event.button !== 0) return;
+
+      const svg = svgRef.current;
+      if (!svg) return;
+
+      event.stopPropagation();
+
+      const { x, y } = clientToLogical(svg, event.clientX, event.clientY);
+      tableDrag.current = {
+        pointerId: event.pointerId,
+        id: table.id,
+        originPosX: table.pos_x,
+        originPosY: table.pos_y,
+        startLogicalX: x,
+        startLogicalY: y,
+        startClientX: event.clientX,
+        startClientY: event.clientY,
+      };
+      didDragRef.current = false;
+      setDragVisual({ id: table.id, posX: table.pos_x, posY: table.pos_y });
+      svg.setPointerCapture(event.pointerId);
+    },
+    [placing],
+  );
+
+  const handleTableDragMove = useCallback(
+    (event: React.PointerEvent<SVGSVGElement>) => {
+      const drag = tableDrag.current;
+      if (!drag || drag.pointerId !== event.pointerId) return;
+
+      const svg = svgRef.current;
+      if (!svg) return;
+
+      const { x, y } = clientToLogical(svg, event.clientX, event.clientY);
+      const dx = x - drag.startLogicalX;
+      const dy = y - drag.startLogicalY;
+
+      if (
+        Math.hypot(
+          event.clientX - drag.startClientX,
+          event.clientY - drag.startClientY,
+        ) >= DRAG_THRESHOLD_PX
+      ) {
+        didDragRef.current = true;
+      }
+
+      setDragVisual({
+        id: drag.id,
+        posX: drag.originPosX + dx,
+        posY: drag.originPosY + dy,
+      });
+    },
+    [],
+  );
+
+  const handleTableDragEnd = useCallback(
+    (event: React.PointerEvent<SVGSVGElement>) => {
+      const drag = tableDrag.current;
+      if (!drag || drag.pointerId !== event.pointerId) return;
+
+      const svg = svgRef.current;
+      if (svg?.hasPointerCapture(event.pointerId)) {
+        svg.releasePointerCapture(event.pointerId);
+      }
+
+      tableDrag.current = null;
+
+      if (didDragRef.current && svg) {
+        const { x, y } = clientToLogical(svg, event.clientX, event.clientY);
+        onTableMove(
+          drag.id,
+          drag.originPosX + (x - drag.startLogicalX),
+          drag.originPosY + (y - drag.startLogicalY),
+        );
+      } else if (event.type !== "pointercancel") {
+        // Click path: capture stole the <g> click — select here instead.
+        onTableClick(drag.id);
+      }
+
+      // Swallow the capture-retargeted SVG click that follows pointerup only.
+      if (event.type !== "pointercancel") {
+        suppressCanvasClickRef.current = true;
+      }
+
+      didDragRef.current = false;
+      setDragVisual(null);
+    },
+    [onTableClick, onTableMove],
   );
 
   const onWheel = useCallback(
@@ -377,6 +508,9 @@ export function SeatingCanvas({
         }}
         preserveAspectRatio="xMidYMid meet"
         onClick={handleCanvasClick}
+        onPointerMove={handleTableDragMove}
+        onPointerUp={handleTableDragEnd}
+        onPointerCancel={handleTableDragEnd}
         role="img"
         aria-label="Seating floor plan"
       >
@@ -411,16 +545,25 @@ export function SeatingCanvas({
           </text>
         ) : null}
 
-        {tables.map((table) => (
-          <SeatingTableGraphic
-            key={table.id}
-            table={table}
-            selected={selectedId === table.id}
-            interactive={!placing}
-            occupied={occupancyByTable[table.id] ?? 0}
-            onClick={() => onTableClick(table.id)}
-          />
-        ))}
+        {tables.map((table) => {
+          const live =
+            dragVisual?.id === table.id
+              ? dragVisual
+              : { posX: table.pos_x, posY: table.pos_y };
+
+          return (
+            <SeatingTableGraphic
+              key={table.id}
+              table={table}
+              selected={selectedId === table.id}
+              interactive={!placing}
+              occupied={occupancyByTable[table.id] ?? 0}
+              livePosX={live.posX}
+              livePosY={live.posY}
+              onPointerDown={(event) => handleTablePointerDown(table, event)}
+            />
+          );
+        })}
       </svg>
     </div>
   );

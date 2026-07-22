@@ -8,11 +8,13 @@ import {
   moveSeatingTable,
   rotateSeatingTable,
   setSeatingTableKind,
+  setSeatingTableSeatCount,
   unassignGuest,
 } from "./actions";
 import { GuestRoster } from "./GuestRoster";
 import { SeatingCanvas } from "./SeatingCanvas";
 import { SeatingSelectedPanel } from "./SeatingSelectedPanel";
+import { SeatingTableBreakdown } from "./SeatingTableBreakdown";
 import { SeatingToolbar } from "./SeatingToolbar";
 import {
   DEFAULT_SEAT_COUNT_BY_SHAPE,
@@ -64,6 +66,36 @@ export function SeatingWorkspace({
     }
     return counts;
   }, [assignments]);
+
+  const guestsByTable = useMemo(() => {
+    const byId = new Map<string, RosterGuest>();
+    for (const guest of guests) {
+      byId.set(guest.id, guest);
+    }
+
+    const grouped: Record<string, RosterGuest[]> = {};
+    for (const assignment of assignments) {
+      const guest = byId.get(assignment.guest_id);
+      if (!guest) continue;
+      const list = grouped[assignment.table_id] ?? [];
+      list.push(guest);
+      grouped[assignment.table_id] = list;
+    }
+
+    for (const tableId of Object.keys(grouped)) {
+      grouped[tableId].sort((a, b) => {
+        const aName = a.full_name?.trim() ?? "";
+        const bName = b.full_name?.trim() ?? "";
+        if (!aName && bName) return 1;
+        if (aName && !bName) return -1;
+        const byName = aName.localeCompare(bName);
+        if (byName !== 0) return byName;
+        return a.id.localeCompare(b.id);
+      });
+    }
+
+    return grouped;
+  }, [assignments, guests]);
 
   const assignmentByGuestId = useMemo(() => {
     const map = new Map<string, SeatingAssignment>();
@@ -119,6 +151,22 @@ export function SeatingWorkspace({
     [armedShape, selectedTableId],
   );
 
+  const handleSeatCountChange = useCallback(
+    (next: number) => {
+      if (!selectedTableId || armedShape) return;
+
+      const id = selectedTableId;
+      setErrorMessage(null);
+      startTransition(async () => {
+        const result = await setSeatingTableSeatCount(id, next);
+        if (!result.ok) {
+          setErrorMessage(result.error);
+        }
+      });
+    },
+    [armedShape, selectedTableId],
+  );
+
   const handleMove = useCallback(
     (posX: number, posY: number) => {
       if (!selectedTableId || armedShape) return;
@@ -130,6 +178,12 @@ export function SeatingWorkspace({
     },
     [armedShape, selectedTableId],
   );
+
+  const handleTableDragMove = useCallback((id: string, posX: number, posY: number) => {
+    startTransition(async () => {
+      await moveSeatingTable(id, { posX, posY });
+    });
+  }, []);
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -310,9 +364,14 @@ export function SeatingWorkspace({
         <SeatingSelectedPanel
           selectedId={selectedTableId}
           selectedKind={selectedTable?.kind ?? null}
+          seatCount={selectedTable?.seat_count ?? null}
+          occupancy={
+            selectedTableId ? (occupancyByTable[selectedTableId] ?? 0) : 0
+          }
           armedShape={armedShape}
           isPending={isPending}
           onKindChange={handleKindChange}
+          onSeatCountChange={handleSeatCountChange}
           onRotate={handleRotate}
           onDelete={handleDelete}
         />
@@ -351,9 +410,16 @@ export function SeatingWorkspace({
             onPlace={handlePlace}
             onTableClick={handleTableClick}
             onEmptyCanvasClick={handleEmptyCanvasClick}
+            onTableMove={handleTableDragMove}
           />
         </div>
       </div>
+
+      <SeatingTableBreakdown
+        tables={tables}
+        guestsByTable={guestsByTable}
+        occupancyByTable={occupancyByTable}
+      />
     </div>
   );
 }

@@ -67,7 +67,7 @@ export async function draftOutreach(
   }
 
   const weddingDate = project.wedding_date
-    ? new Date(project.wedding_date + "T00:00:00").toLocaleDateString(undefined, {
+    ? new Date(project.wedding_date + "T00:00:00").toLocaleDateString("en-US", {
         month: "long",
         day: "numeric",
         year: "numeric",

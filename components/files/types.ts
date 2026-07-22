@@ -81,7 +81,7 @@ export function formatFileSize(bytes: number | null): string {
 }
 
 export function formatUploadedDate(iso: string): string {
-  return new Date(iso).toLocaleDateString(undefined, {
+  return new Date(iso).toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
     year: "numeric",

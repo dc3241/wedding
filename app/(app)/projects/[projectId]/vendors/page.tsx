@@ -24,7 +24,7 @@ import { getGmailConnectionEmail } from "@/lib/gmail-connection-status";
 
 function formatDefaultDate(date: string | null) {
   if (!date) return "";
-  return new Date(date + "T00:00:00").toLocaleDateString(undefined, {
+  return new Date(date + "T00:00:00").toLocaleDateString("en-US", {
     month: "long",
     day: "numeric",
     year: "numeric",
@@ -32,7 +32,7 @@ function formatDefaultDate(date: string | null) {
 }
 
 function formatEyebrowDate(iso: string) {
-  return new Date(iso + "T00:00:00").toLocaleDateString(undefined, {
+  return new Date(iso + "T00:00:00").toLocaleDateString("en-US", {
     day: "numeric",
     month: "long",
     year: "numeric",

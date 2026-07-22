@@ -7,7 +7,7 @@ import { redirect } from "next/navigation";
 export const metadata: Metadata = {
   title: "First Look — Wedding planning, modern romantic",
   description:
-    "Checklist, budget, vendors, guests, and a shareable wedding website — calm planning for couples and professional planners.",
+    "Ask your wedding assistant, find and email vendors, and collect RSVPs on your wedding site — calm planning for couples and professional planners.",
 };
 
 export default async function HomePage() {

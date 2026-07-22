@@ -57,7 +57,7 @@ type CoupleDashboardProps = {
 const DUE_SOON_DAYS = 14;
 
 function formatDueDate(date: string) {
-  return new Date(date + "T00:00:00").toLocaleDateString(undefined, {
+  return new Date(date + "T00:00:00").toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
   });

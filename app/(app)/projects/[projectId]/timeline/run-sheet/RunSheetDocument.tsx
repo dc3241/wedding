@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { formatWeddingDate } from "@/components/website/template-utils";
 import {
   formatTimeRange,
   type TimelineAggregates,
@@ -22,16 +23,6 @@ type RunSheetDocumentProps = {
   owners: string[];
   aggregates: TimelineAggregates;
 };
-
-function formatWeddingDate(date: string | null) {
-  if (!date) return null;
-  return new Date(date + "T00:00:00").toLocaleDateString(undefined, {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-  });
-}
 
 function sheetSubtitle(ownerFilter: string | null) {
   if (!ownerFilter) return "All owners · run of show";
@@ -90,7 +81,9 @@ export function RunSheetDocument({
   aggregates,
 }: RunSheetDocumentProps) {
   const router = useRouter();
-  const dateLabel = formatWeddingDate(meta.weddingDate);
+  const dateLabel = meta.weddingDate
+    ? formatWeddingDate(meta.weddingDate)
+    : null;
   const basePath = `/projects/${projectId}/timeline/run-sheet`;
 
   function onOwnerChange(value: string) {

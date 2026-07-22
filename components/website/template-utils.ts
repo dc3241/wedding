@@ -1,5 +1,5 @@
 export function formatWeddingDate(date: string) {
-  return new Date(date + "T00:00:00").toLocaleDateString(undefined, {
+  return new Date(date + "T00:00:00").toLocaleDateString("en-US", {
     weekday: "long",
     month: "long",
     day: "numeric",
