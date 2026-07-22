@@ -11,7 +11,11 @@ export default async function OnboardingPage() {
   const supabase = await createClient();
   const account = await getAccountContext(supabase);
 
-  if (!account || account.kind === "business") {
+  if (!account) {
+    redirect("/projects");
+  }
+
+  if (account.kind === "business") {
     redirect("/dashboard");
   }
 

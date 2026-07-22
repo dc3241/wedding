@@ -49,6 +49,7 @@ export async function createProject(formData: FormData) {
   const { data: membership, error: membershipError } = await supabase
     .from("account_members")
     .select("account_id")
+    .order("created_at", { ascending: true })
     .limit(1)
     .single();
 

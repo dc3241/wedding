@@ -44,3 +44,36 @@ export async function getAccountContext(
     firstProjectId: projectIds[0] ?? null,
   };
 }
+
+/**
+ * Projects the user belongs to DIRECTLY via project_members, independent of any
+ * account. For invited couples this is their only access path; they have no
+ * accounts row and no account_members row. Ordered by created_at for stability.
+ */
+export async function getDirectProjectIds(
+  supabase: SupabaseClient,
+): Promise<string[]> {
+  try {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      return [];
+    }
+
+    const { data, error } = await supabase
+      .from("project_members")
+      .select("project_id")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: true });
+
+    if (error || !data) {
+      return [];
+    }
+
+    return data.map((row) => row.project_id);
+  } catch {
+    return [];
+  }
+}

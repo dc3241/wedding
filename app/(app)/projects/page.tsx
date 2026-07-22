@@ -1,9 +1,24 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createProject } from "@/app/(app)/projects/actions";
 import { OnboardingForm } from "@/components/projects/onboarding-form";
-import { getAccountContext } from "@/lib/account-context";
+import { Card } from "@/components/ui/card";
+import { PageHeader } from "@/components/ui/page-header";
+import {
+  getAccountContext,
+  getDirectProjectIds,
+} from "@/lib/account-context";
 import { getCoupleDestinationPath } from "@/lib/onboarding-gate";
 import { createClient } from "@/utils/supabase/server";
+
+function formatWeddingDate(date: string | null) {
+  if (!date) return null;
+  return new Date(date + "T00:00:00").toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
 
 export default async function ProjectsPage({
   searchParams,
@@ -15,6 +30,55 @@ export default async function ProjectsPage({
   const accountContext = await getAccountContext(supabase);
 
   if (!accountContext) {
+    const directIds = await getDirectProjectIds(supabase);
+
+    if (directIds.length === 1) {
+      redirect(`/projects/${directIds[0]}`);
+    }
+
+    if (directIds.length > 1) {
+      const { data: projectRows } = await supabase
+        .from("projects")
+        .select("id, name, wedding_date")
+        .in("id", directIds);
+
+      const byId = new Map((projectRows ?? []).map((p) => [p.id, p]));
+      const projects = directIds
+        .map((id) => byId.get(id))
+        .filter((p): p is NonNullable<typeof p> => p != null);
+
+      return (
+        <div className="mx-auto flex w-full max-w-[760px] flex-1 flex-col gap-8 px-6 py-12">
+          <PageHeader
+            title="Your weddings"
+            description="Weddings you've been invited to."
+          />
+          <Card className="overflow-hidden p-0">
+            <ul className="divide-y divide-hairline">
+              {projects.map((project) => {
+                const dateLabel = formatWeddingDate(project.wedding_date);
+                return (
+                  <li key={project.id}>
+                    <Link
+                      href={`/projects/${project.id}`}
+                      className="flex items-baseline justify-between gap-4 px-5 py-4 no-underline transition-colors hover:bg-well"
+                    >
+                      <span className="text-[19px] font-extrabold tracking-[-0.02em] text-ink">
+                        {project.name}
+                      </span>
+                      <span className="shrink-0 text-[13px] tabular-nums text-muted">
+                        {dateLabel ?? "No date set"}
+                      </span>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </Card>
+        </div>
+      );
+    }
+
     return (
       <div className="flex flex-1 items-center justify-center px-4 py-12">
         <OnboardingForm />
