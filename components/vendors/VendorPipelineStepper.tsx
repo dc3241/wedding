@@ -14,16 +14,11 @@ export function VendorPipelineStepper({
 }) {
   return (
     <ol
-      className={cn(
-        "flex items-center",
-        status === "declined" && "opacity-60",
-        className,
-      )}
+      className={cn("flex items-center", className)}
       aria-label="Vendor outreach pipeline"
     >
       {VENDOR_PIPELINE_STEPS.map((step, index) => {
         const state = pipelineStepState(status, index);
-        const lit = state === "complete" || state === "current";
         const isLast = index === VENDOR_PIPELINE_STEPS.length - 1;
 
         return (
@@ -34,14 +29,18 @@ export function VendorPipelineStepper({
             <span
               className={cn(
                 "size-[9px] shrink-0 rounded-full",
-                lit ? "bg-accent" : "bg-ring",
+                state === "complete" && "bg-sage",
+                state === "current" && "bg-clay",
+                state === "upcoming" && "bg-ring",
               )}
               aria-hidden
             />
             <span
               className={cn(
                 "text-[13px]",
-                lit ? "font-semibold text-accent" : "font-medium text-muted",
+                state === "complete" && "font-semibold text-sage",
+                state === "current" && "font-semibold text-clay",
+                state === "upcoming" && "font-medium text-muted",
               )}
             >
               {step.label}

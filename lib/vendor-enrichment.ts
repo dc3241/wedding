@@ -1,4 +1,5 @@
 import { ANTHROPIC_MODEL } from "@/lib/anthropic-model";
+import { vendorCategoryLabel } from "@/lib/vendor-categories";
 import { createClient } from "@/utils/supabase/server";
 
 export type EnrichmentResult =
@@ -59,7 +60,15 @@ export async function runVendorEnrichment(
     return { ok: false, error: "Could not read enough text from the website." };
   }
 
-  const extraction = await extractWithModel(vendor, siteText);
+  const extraction = await extractWithModel(
+    {
+      ...vendor,
+      category: vendor.category
+        ? vendorCategoryLabel(vendor.category)
+        : null,
+    },
+    siteText,
+  );
   if (!extraction) {
     return { ok: false, error: "Could not generate an overview." };
   }

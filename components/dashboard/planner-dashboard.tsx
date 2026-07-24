@@ -6,6 +6,7 @@ import { Pill } from "@/components/ui/pill";
 import { StatCard } from "@/components/ui/stat-card";
 import type { OutreachVendor } from "@/components/vendors/outreach-vendor";
 import { vendorStatusPill } from "@/components/vendors/vendor-status";
+import { vendorCategoryLabel } from "@/lib/vendor-categories";
 
 type OutreachRow = OutreachVendor & {
   lastContact: string | null;
@@ -135,7 +136,7 @@ function PlannerOutreachTable({
                       </Link>
                       {vendor.vendor.category ? (
                         <div className="mt-0.5 text-[12px] text-muted">
-                          {vendor.vendor.category}
+                          {vendorCategoryLabel(vendor.vendor.category)}
                         </div>
                       ) : null}
                     </td>

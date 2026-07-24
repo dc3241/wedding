@@ -1,3 +1,5 @@
+import { collectOwners, eventHasOwner } from "@/lib/timeline-owners";
+
 export type TimelineEvent = {
   id: string;
   title: string;
@@ -271,15 +273,8 @@ export function computeTimelineAggregates(
 
   const gapCount = annotated.filter((e) => e.gapAfterMinutes != null).length;
 
-  // Owners: distinct non-null, first-seen in sorted order.
-  const owners: string[] = [];
-  const seenOwners = new Set<string>();
-  for (const event of annotated) {
-    const owner = event.owner?.trim();
-    if (!owner || seenOwners.has(owner)) continue;
-    seenOwners.add(owner);
-    owners.push(owner);
-  }
+  // Owners: comma-separated SET tokens (see lib/timeline-owners.ts).
+  const owners = collectOwners(annotated.map((e) => e.owner));
 
   // Section groups in first-seen order among scheduled events.
   const sections: TimelineSectionGroup[] = [];
@@ -346,5 +341,5 @@ export function filterEventsByOwner(
   owner: string | null,
 ): TimelineEvent[] {
   if (!owner) return events;
-  return events.filter((e) => (e.owner?.trim() || null) === owner);
+  return events.filter((e) => eventHasOwner(e.owner, owner));
 }

@@ -1,63 +1,30 @@
 import {
-  VENDOR_PIPELINE_STEPS,
+  IN_FLIGHT_STATUSES,
+  OUTREACH_STATUS_HEADING,
   type OutreachVendor,
 } from "@/components/vendors/outreach-vendor";
-import { cn } from "@/lib/cn";
 
-function vendorPipelineStep(vendor: OutreachVendor) {
-  if (vendor.status === "booked") return 3;
-  if (vendor.status === "contacted" && vendor.quoted_price !== null) return 2;
-  if (vendor.status === "contacted") return 1;
-  if (vendor.status === "to_contact") return 0;
-  return 0;
-}
-
+/** Stage counts for the Outreach section — replaces the decorative aggregate dots. */
 export function VendorAggregateStepper({
   vendors,
-  className,
 }: {
   vendors: OutreachVendor[];
   className?: string;
 }) {
   if (vendors.length === 0) return null;
 
-  let litThrough = -1;
-  for (const vendor of vendors) {
-    litThrough = Math.max(litThrough, vendorPipelineStep(vendor));
-  }
+  const parts = IN_FLIGHT_STATUSES.map((status) => {
+    const n = vendors.filter((v) => v.status === status).length;
+    if (n === 0) return null;
+    const label = OUTREACH_STATUS_HEADING[status].toLowerCase();
+    return `${n} ${label}`;
+  }).filter((part): part is string => part != null);
+
+  if (parts.length === 0) return null;
 
   return (
-    <div className={cn("flex items-center", className)}>
-      {VENDOR_PIPELINE_STEPS.map((step, index) => {
-        const lit = index <= litThrough;
-        const isLast = index === VENDOR_PIPELINE_STEPS.length - 1;
-
-        return (
-          <div
-            key={step.id}
-            className={cn("flex items-center gap-2.5", !isLast && "flex-1")}
-          >
-            <span
-              className={cn(
-                "size-[9px] shrink-0 rounded-full",
-                lit ? "bg-accent" : "bg-ring",
-              )}
-              aria-hidden
-            />
-            <span
-              className={cn(
-                "text-[13px]",
-                lit ? "font-semibold text-accent" : "font-medium text-muted",
-              )}
-            >
-              {step.label}
-            </span>
-            {!isLast ? (
-              <span className="h-px flex-1 bg-hairline" aria-hidden />
-            ) : null}
-          </div>
-        );
-      })}
-    </div>
+    <p className="text-[14px] font-medium text-muted">
+      {parts.join(" · ")}
+    </p>
   );
 }

@@ -186,6 +186,9 @@ export function TimelineEventRow({
               onChange={(e) => setOwner(e.target.value)}
               disabled={isPending}
             />
+            <p className="mt-1.5 text-[13px] text-muted">
+              Commas separate multiple owners, e.g. DJ, Officiant
+            </p>
           </label>
         </div>
 

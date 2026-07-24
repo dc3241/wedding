@@ -1,36 +1,141 @@
 "use client";
 
-import { useTransition } from "react";
-import { addVendor } from "@/app/(app)/projects/[projectId]/vendors/actions";
+import { useState, useTransition } from "react";
+import {
+  addVendor,
+  type AddVendorStatus,
+} from "@/app/(app)/projects/[projectId]/vendors/actions";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
+import { VENDOR_CATEGORIES } from "@/lib/vendor-categories";
 
-export function AddVendorForm({ projectId }: { projectId: string }) {
+export type ExistingProjectVendor = {
+  name: string;
+  category: string | null;
+};
+
+function normalizeVendorName(name: string) {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function isCloseNameMatch(a: string, b: string) {
+  const left = normalizeVendorName(a);
+  const right = normalizeVendorName(b);
+  if (!left || !right) return false;
+  if (left === right) return true;
+  return left.includes(right) || right.includes(left);
+}
+
+function findSoftDuplicate(
+  existing: ExistingProjectVendor[],
+  name: string,
+  categoryId: string,
+) {
+  return existing.find(
+    (row) =>
+      row.category === categoryId && isCloseNameMatch(row.name, name),
+  );
+}
+
+export function AddVendorForm({
+  projectId,
+  existingVendors,
+  defaultCategoryId = null,
+}: {
+  projectId: string;
+  existingVendors: ExistingProjectVendor[];
+  defaultCategoryId?: string | null;
+}) {
   const [isPending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+  const [duplicateWarning, setDuplicateWarning] = useState<string | null>(null);
+  const [status, setStatus] = useState<AddVendorStatus>("to_contact");
+  const categoryDefault =
+    defaultCategoryId &&
+    VENDOR_CATEGORIES.some((c) => c.id === defaultCategoryId)
+      ? defaultCategoryId
+      : "";
+
+  function submit(
+    formEl: HTMLFormElement,
+    {
+      name,
+      categoryId,
+      contactEmail,
+      nextStatus,
+    }: {
+      name: string;
+      categoryId: string;
+      contactEmail: string;
+      nextStatus: AddVendorStatus;
+    },
+  ) {
+    startTransition(async () => {
+      setError(null);
+      const result = await addVendor(
+        projectId,
+        name,
+        categoryId,
+        contactEmail,
+        nextStatus,
+      );
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      setDuplicateWarning(null);
+      formEl.reset();
+      setStatus("to_contact");
+    });
+  }
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const form = new FormData(e.currentTarget);
-    const name = (form.get("name") as string) ?? "";
-    const category = (form.get("category") as string) ?? "";
-    const contactEmail = (form.get("contact_email") as string) ?? "";
+    const name = ((form.get("name") as string) ?? "").trim();
+    const categoryId = ((form.get("category") as string) ?? "").trim();
+    const contactEmail = ((form.get("contact_email") as string) ?? "").trim();
 
-    if (!name.trim()) return;
+    if (!name || !categoryId) return;
 
-    // Capture before the await — React nulls the synthetic event's currentTarget.
     const formEl = e.currentTarget;
+    const match = findSoftDuplicate(existingVendors, name, categoryId);
+    if (match && !duplicateWarning) {
+      setDuplicateWarning(match.name);
+      setError(null);
+      return;
+    }
 
-    startTransition(async () => {
-      await addVendor(projectId, name, category, contactEmail);
-      formEl.reset();
+    submit(formEl, { name, categoryId, contactEmail, nextStatus: status });
+  }
+
+  function handleAddAnyway(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const form = new FormData(e.currentTarget);
+    const name = ((form.get("name") as string) ?? "").trim();
+    const categoryId = ((form.get("category") as string) ?? "").trim();
+    const contactEmail = ((form.get("contact_email") as string) ?? "").trim();
+    if (!name || !categoryId) return;
+    submit(e.currentTarget, {
+      name,
+      categoryId,
+      contactEmail,
+      nextStatus: status,
     });
   }
 
   return (
-    <Card className="px-6 py-5">
-      <form onSubmit={handleSubmit} className="space-y-4">
+    <Card id="add-vendor" className="px-6 py-5 scroll-mt-6">
+      <form
+        onSubmit={duplicateWarning ? handleAddAnyway : handleSubmit}
+        className="space-y-4"
+      >
         <div>
           <Eyebrow>Add manually</Eyebrow>
           <h2 className="mt-1.5 font-display text-[19px] font-extrabold tracking-[-0.02em] text-ink">
@@ -49,6 +154,7 @@ export function AddVendorForm({ projectId }: { projectId: string }) {
               required
               placeholder="Vendor name"
               disabled={isPending}
+              onChange={() => setDuplicateWarning(null)}
             />
           </div>
           <div className="space-y-1.5">
@@ -58,13 +164,23 @@ export function AddVendorForm({ projectId }: { projectId: string }) {
             >
               Category
             </label>
-            <Input
+            <Select
               id="vendor-category"
               name="category"
-              type="text"
-              placeholder="e.g. florist"
+              required
+              defaultValue={categoryDefault}
               disabled={isPending}
-            />
+              onChange={() => setDuplicateWarning(null)}
+            >
+              <option value="" disabled>
+                Choose category
+              </option>
+              {VENDOR_CATEGORIES.map((cat) => (
+                <option key={cat.id} value={cat.id}>
+                  {cat.label}
+                </option>
+              ))}
+            </Select>
           </div>
           <div className="space-y-1.5">
             <label
@@ -82,8 +198,57 @@ export function AddVendorForm({ projectId }: { projectId: string }) {
             />
           </div>
         </div>
+
+        <fieldset className="space-y-2">
+          <legend className="text-sm font-medium text-ink">Status</legend>
+          <div className="flex flex-wrap gap-4">
+            <label className="flex items-center gap-2 text-[14px] font-medium text-ink">
+              <input
+                type="radio"
+                name="add_status"
+                value="to_contact"
+                checked={status === "to_contact"}
+                onChange={() => setStatus("to_contact")}
+                disabled={isPending}
+                className="size-4 border-ring accent-accent"
+              />
+              Still to contact
+            </label>
+            <label className="flex items-center gap-2 text-[14px] font-medium text-ink">
+              <input
+                type="radio"
+                name="add_status"
+                value="booked"
+                checked={status === "booked"}
+                onChange={() => setStatus("booked")}
+                disabled={isPending}
+                className="size-4 border-ring accent-accent"
+              />
+              Already booked
+            </label>
+          </div>
+        </fieldset>
+
+        {duplicateWarning ? (
+          <div className="rounded-[var(--radius-inner)] bg-clay-wash px-4 py-3 text-[14px] text-ink">
+            <p>
+              You already have{" "}
+              <span className="font-semibold">{duplicateWarning}</span> in this
+              category on this project. Add anyway?
+            </p>
+          </div>
+        ) : null}
+
+        {error ? (
+          <p className="text-[14px] font-medium text-rosewood">{error}</p>
+        ) : null}
+
         <Button type="submit" variant="primary" disabled={isPending}>
-          {isPending ? "Adding…" : "Add vendor"}
+          {isPending
+            ? "Adding…"
+            : duplicateWarning
+              ? "Add anyway"
+              : "Add vendor"}
         </Button>
       </form>
     </Card>

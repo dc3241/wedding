@@ -3,11 +3,13 @@ import { notFound } from "next/navigation";
 import { GoogleMapsAttribution } from "@/components/vendors/GoogleMapsAttribution";
 import { GooglePlaceRating } from "@/components/vendors/GooglePlaceRating";
 import { GoogleReviewList } from "@/components/vendors/GoogleReviewList";
+import { VendorContactFields } from "@/components/vendors/VendorContactFields";
 import { VendorDetailStatus } from "@/components/vendors/VendorDetailStatus";
 import { VendorPipelineStepper } from "@/components/vendors/VendorPipelineStepper";
 import { Card } from "@/components/ui/card";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { fetchLivePlaceDetails } from "@/lib/places-live-details";
+import { vendorCategoryLabel } from "@/lib/vendor-categories";
 import { createClient } from "@/utils/supabase/server";
 
 export default async function VendorDetailPage({
@@ -18,14 +20,21 @@ export default async function VendorDetailPage({
   const { projectId, vendorId } = await params;
   const supabase = await createClient();
 
-  const { data: row } = await supabase
-    .from("project_vendors")
-    .select(
-      "id, status, quoted_price, vendors(id, name, category, website, contact_email, ai_overview, external_place_id)",
-    )
-    .eq("project_id", projectId)
-    .eq("vendor_id", vendorId)
-    .maybeSingle();
+  const [{ data: row }, { data: targetRows }] = await Promise.all([
+    supabase
+      .from("project_vendors")
+      .select(
+        "id, status, quoted_price, vendors(id, name, category, website, contact_email, contact_phone, address, ai_overview, external_place_id)",
+      )
+      .eq("project_id", projectId)
+      .eq("vendor_id", vendorId)
+      .maybeSingle(),
+    supabase
+      .from("vendor_targets")
+      .select("id, category, status, project_vendor_id")
+      .eq("project_id", projectId)
+      .order("created_at", { ascending: true }),
+  ]);
 
   if (!row) notFound();
 
@@ -44,6 +53,13 @@ export default async function VendorDetailPage({
 
   const hasLiveRating = live?.rating != null;
 
+  const slotTargets = (targetRows ?? []).map((t) => ({
+    id: t.id,
+    category: t.category,
+    status: t.status as "needed" | "booked" | "skipped",
+    project_vendor_id: t.project_vendor_id ?? null,
+  }));
+
   return (
     <div className="space-y-6">
       <Link
@@ -59,42 +75,77 @@ export default async function VendorDetailPage({
             <div className="min-w-0">
               <h1 className="text-[20px] font-medium text-ink">{vendor.name}</h1>
               <p className="mt-px text-[13px] text-muted">
-                {vendor.category ?? "Uncategorized"}
+                {vendor.category
+                  ? vendorCategoryLabel(vendor.category)
+                  : "Uncategorized"}
               </p>
             </div>
             <VendorDetailStatus
               projectVendorId={row.id}
               status={row.status}
               quotedPrice={quotedPrice}
+              vendorCategory={vendor.category}
+              slotTargets={slotTargets}
             />
           </header>
 
-          <VendorPipelineStepper
-            status={row.status as "to_contact" | "contacted" | "booked" | "declined"}
-          />
+          {row.status !== "booked" && row.status !== "declined" ? (
+            <VendorPipelineStepper
+              status={
+                row.status as
+                  | "to_contact"
+                  | "contacted"
+                  | "replied"
+                  | "booked"
+                  | "declined"
+              }
+            />
+          ) : null}
 
-          {(vendor.contact_email || vendor.website) && (
-            <div className="flex flex-wrap gap-x-4 gap-y-1 text-[13px]">
-              {vendor.contact_email ? (
-                <a
-                  href={`mailto:${vendor.contact_email}`}
-                  className="text-accent hover:text-accent"
-                >
-                  {vendor.contact_email}
-                </a>
-              ) : null}
-              {vendor.website ? (
-                <a
-                  href={vendor.website}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-accent hover:text-accent"
-                >
-                  Website
-                </a>
+          {(vendor.contact_email ||
+            vendor.contact_phone ||
+            vendor.address ||
+            vendor.website) && (
+            <div className="flex flex-col gap-1 text-[13px]">
+              <div className="flex flex-wrap gap-x-4 gap-y-1">
+                {vendor.contact_email ? (
+                  <a
+                    href={`mailto:${vendor.contact_email}`}
+                    className="text-accent hover:opacity-80"
+                  >
+                    {vendor.contact_email}
+                  </a>
+                ) : null}
+                {vendor.contact_phone ? (
+                  <a
+                    href={`tel:${vendor.contact_phone}`}
+                    className="text-accent hover:opacity-80"
+                  >
+                    {vendor.contact_phone}
+                  </a>
+                ) : null}
+                {vendor.website ? (
+                  <a
+                    href={vendor.website}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-accent hover:opacity-80"
+                  >
+                    Website
+                  </a>
+                ) : null}
+              </div>
+              {vendor.address ? (
+                <p className="font-medium text-ink">{vendor.address}</p>
               ) : null}
             </div>
           )}
+
+          <VendorContactFields
+            vendorId={vendor.id}
+            contactPhone={vendor.contact_phone ?? null}
+            address={vendor.address ?? null}
+          />
 
           <div>
             <Eyebrow>Overview</Eyebrow>

@@ -10,6 +10,7 @@ import {
   sendAllOutreachDrafts as sendAllOutreachDraftsInternal,
   sendOutreachMessage,
 } from "@/lib/send-outreach";
+import { vendorCategoryLabel } from "@/lib/vendor-categories";
 import { createClient } from "@/utils/supabase/server";
 
 function vendorsPath(projectId: string) {
@@ -83,7 +84,9 @@ export async function draftOutreach(
     const draft = await generateOutreachDraft(
       {
         name: vendor.name,
-        category: vendor.category,
+        category: vendor.category
+          ? vendorCategoryLabel(vendor.category)
+          : null,
         aiOverview: vendor.ai_overview,
       },
       {

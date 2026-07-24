@@ -145,9 +145,6 @@ export function RunSheetDocument({
             className="rounded border border-stone bg-surface px-2.5 py-1.5 text-[13px] text-ink outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-plum"
           >
             <option value="all">All owners</option>
-            {ownerFilter && !owners.includes(ownerFilter) ? (
-              <option value={ownerFilter}>{ownerFilter}</option>
-            ) : null}
             {owners.map((owner) => (
               <option key={owner} value={owner}>
                 {owner}

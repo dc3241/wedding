@@ -33,6 +33,7 @@ async function revalidateVendorProjects(vendorId: string) {
 
   for (const link of links ?? []) {
     revalidatePath(vendorsPath(link.project_id));
+    revalidatePath(vendorDetailPath(link.project_id, vendorId));
   }
 }
 
@@ -82,7 +83,6 @@ export async function addDiscoveredVendor(
   if (!category) {
     return { ok: false, error: "Choose a valid vendor category." };
   }
-  const trimmedCategory = category.label;
   const trimmedName = place.displayName.trim();
 
   if (!trimmedName) {
@@ -120,7 +120,7 @@ export async function addDiscoveredVendor(
         source: "google_places",
         external_place_id: place.id,
         name: trimmedName,
-        category: trimmedCategory,
+        category: category.id,
         website: place.websiteUri?.trim() || null,
       })
       .select("id")
@@ -177,14 +177,28 @@ export async function addDiscoveredVendor(
   return { ok: true };
 }
 
+export type AddVendorStatus = "to_contact" | "booked";
+
 export async function addVendor(
   projectId: string,
   name: string,
-  category: string,
-  contactEmail: string
-) {
+  categoryId: string,
+  contactEmail: string,
+  status: AddVendorStatus = "to_contact",
+): Promise<{ ok: true } | { ok: false; error: string }> {
   const trimmedName = name.trim();
-  if (!trimmedName) return;
+  if (!trimmedName) {
+    return { ok: false, error: "Vendor name is required." };
+  }
+
+  const category = getVendorCategoryById(categoryId.trim());
+  if (!category) {
+    return { ok: false, error: "Choose a valid vendor category." };
+  }
+
+  if (status !== "to_contact" && status !== "booked") {
+    return { ok: false, error: "Choose a valid status." };
+  }
 
   const supabase = await createClient();
 
@@ -194,7 +208,9 @@ export async function addVendor(
     .eq("id", projectId)
     .single();
 
-  if (projectError || !project) throw projectError ?? new Error("Project not found");
+  if (projectError || !project) {
+    return { ok: false, error: "Project not found." };
+  }
 
   const { data: vendor, error: vendorError } = await supabase
     .from("vendors")
@@ -202,23 +218,132 @@ export async function addVendor(
       account_id: project.account_id,
       source: "manual",
       name: trimmedName,
-      category: category.trim() || null,
+      category: category.id,
       contact_email: contactEmail.trim() || null,
     })
     .select("id")
     .single();
 
-  if (vendorError) throw vendorError;
+  if (vendorError) {
+    return { ok: false, error: vendorError.message };
+  }
 
   const { error: linkError } = await supabase.from("project_vendors").insert({
     project_id: projectId,
     vendor_id: vendor.id,
-    status: "to_contact",
+    status,
   });
 
-  if (linkError) throw linkError;
+  if (linkError) {
+    return { ok: false, error: linkError.message };
+  }
 
   revalidatePath(vendorsPath(projectId));
+  return { ok: true };
+}
+
+export async function removeProjectVendor(projectVendorId: string) {
+  const supabase = await createClient();
+
+  const { data: row, error: fetchError } = await supabase
+    .from("project_vendors")
+    .select("project_id")
+    .eq("id", projectVendorId)
+    .single();
+
+  if (fetchError) throw fetchError;
+
+  // FK on delete sets project_vendor_id null but leaves status='booked'.
+  // Reset the slot to needed before the delete so it returns to Still to book.
+  const { error: resetError } = await supabase
+    .from("vendor_targets")
+    .update({ project_vendor_id: null, status: "needed" })
+    .eq("project_id", row.project_id)
+    .eq("project_vendor_id", projectVendorId);
+
+  if (resetError) throw resetError;
+
+  const { error } = await supabase
+    .from("project_vendors")
+    .delete()
+    .eq("id", projectVendorId);
+
+  if (error) throw error;
+
+  revalidatePath(vendorsPath(row.project_id));
+}
+
+export async function linkVendorToTarget(
+  targetId: string,
+  projectVendorId: string,
+) {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("vendor_targets")
+    .update({
+      project_vendor_id: projectVendorId,
+      status: "booked",
+    })
+    .eq("id", targetId)
+    .select("project_id")
+    .single();
+
+  if (error) throw error;
+
+  revalidatePath(vendorsPath(data.project_id));
+}
+
+export async function unlinkVendorFromTarget(targetId: string) {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("vendor_targets")
+    .update({
+      project_vendor_id: null,
+      status: "needed",
+    })
+    .eq("id", targetId)
+    .select("project_id")
+    .single();
+
+  if (error) throw error;
+
+  revalidatePath(vendorsPath(data.project_id));
+}
+
+/** Manual contact fields only — never write address from Google Places. */
+export async function updateVendorContactDetails(
+  vendorId: string,
+  fields: { contactPhone?: string; address?: string },
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const updates: { contact_phone?: string | null; address?: string | null } =
+    {};
+
+  if (fields.contactPhone !== undefined) {
+    updates.contact_phone = fields.contactPhone.trim() || null;
+  }
+  if (fields.address !== undefined) {
+    updates.address = fields.address.trim() || null;
+  }
+
+  if (Object.keys(updates).length === 0) {
+    return { ok: true };
+  }
+
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from("vendors")
+    .update(updates)
+    .eq("id", vendorId);
+
+  if (error) {
+    return { ok: false, error: error.message };
+  }
+
+  await revalidateVendorProjects(vendorId);
+  return { ok: true };
 }
 
 export async function addVendorTarget(

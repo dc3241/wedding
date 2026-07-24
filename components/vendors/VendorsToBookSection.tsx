@@ -13,24 +13,22 @@ export type VendorTargetRow = {
   category: string;
   note: string | null;
   status: "needed" | "booked" | "skipped";
+  project_vendor_id: string | null;
 };
 
-const STATUS_LABELS: Record<VendorTargetRow["status"], string> = {
+const STATUS_LABELS: Record<"needed" | "skipped", string> = {
   needed: "To book",
-  booked: "Booked",
   skipped: "Skipped",
 };
 
-const STATUS_VARIANTS: Record<VendorTargetRow["status"], PillVariant> = {
+const STATUS_VARIANTS: Record<"needed" | "skipped", PillVariant> = {
   needed: "default",
-  booked: "sage",
   skipped: "default",
 };
 
-const STATUS_SORT: Record<VendorTargetRow["status"], number> = {
+const STATUS_SORT: Record<"needed" | "skipped", number> = {
   needed: 0,
-  booked: 1,
-  skipped: 2,
+  skipped: 1,
 };
 
 function CheckIcon() {
@@ -114,23 +112,6 @@ function TargetActions({
         </>
       ) : null}
 
-      {target.status === "booked" ? (
-        <>
-          <Button
-            type="button"
-            variant="secondary"
-            disabled={isPending}
-            onClick={() => setStatus("needed")}
-          >
-            Mark to book
-          </Button>
-          <ButtonLink href={searchHref} variant="secondary" className="gap-2">
-            <SearchIcon />
-            Find vendors
-          </ButtonLink>
-        </>
-      ) : null}
-
       {target.status === "skipped" ? (
         <Button
           type="button"
@@ -145,6 +126,7 @@ function TargetActions({
   );
 }
 
+/** Empty / skipped slots — quieter than the Booked band. */
 export function VendorsToBookSection({
   targets,
 }: {
@@ -154,11 +136,16 @@ export function VendorsToBookSection({
   const projectId = params.projectId;
   const [openId, setOpenId] = useState<string | null>(null);
 
-  if (targets.length === 0) {
+  const stillOpen = targets.filter(
+    (t): t is VendorTargetRow & { status: "needed" | "skipped" } =>
+      t.status === "needed" || t.status === "skipped",
+  );
+
+  if (stillOpen.length === 0) {
     return null;
   }
 
-  const sorted = [...targets].sort(
+  const sorted = [...stillOpen].sort(
     (a, b) => STATUS_SORT[a.status] - STATUS_SORT[b.status],
   );
 
@@ -169,32 +156,30 @@ export function VendorsToBookSection({
   return (
     <section className="space-y-4">
       <p className="text-[12px] font-semibold uppercase tracking-[0.09em] text-muted">
-        Vendors to book
+        Still to book
       </p>
       <div
-        className="grid gap-4"
+        className="grid gap-3"
         style={{
           gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
         }}
       >
         {sorted.map((target) => {
           const open = openId === target.id;
-          const dimmed =
-            !open &&
-            (target.status === "booked" || target.status === "skipped");
+          const skipped = target.status === "skipped";
 
           return (
             <details
               key={target.id}
               className={cn(
-                "overflow-hidden rounded-[var(--radius-card)] bg-surface shadow-raised",
+                "overflow-hidden rounded-[var(--radius-inner)] bg-well shadow-recessed",
                 open && "[grid-column:1/-1]",
-                dimmed && "opacity-60",
+                skipped && "opacity-70",
               )}
               open={open}
             >
               <summary
-                className="cursor-pointer list-none px-5 py-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-accent [&::-webkit-details-marker]:hidden"
+                className="cursor-pointer list-none px-4 py-3.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-accent [&::-webkit-details-marker]:hidden"
                 onClick={(e) => {
                   e.preventDefault();
                   toggle(target.id);
@@ -218,7 +203,7 @@ export function VendorsToBookSection({
               </summary>
 
               {open ? (
-                <div className="space-y-4 px-5 pb-4">
+                <div className="space-y-4 px-4 pb-4">
                   {target.note ? (
                     <p className="text-[13px] leading-relaxed text-muted">
                       {target.note}

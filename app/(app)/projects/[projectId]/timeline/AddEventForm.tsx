@@ -135,6 +135,9 @@ export function AddEventForm({ projectId }: { projectId: string }) {
               placeholder="DJ, photographer, MOH…"
               disabled={isPending}
             />
+            <p className="mt-1.5 text-[13px] text-muted">
+              Commas separate multiple owners, e.g. DJ, Officiant
+            </p>
           </label>
         </div>
 

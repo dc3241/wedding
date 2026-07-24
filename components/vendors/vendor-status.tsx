@@ -7,23 +7,24 @@ export type VendorPipelineStatus = OutreachVendor["status"];
 export const VENDOR_STATUS_LABEL: Record<VendorPipelineStatus, string> = {
   to_contact: "To contact",
   contacted: "Contacted",
+  replied: "Replied",
   booked: "Booked",
   declined: "Declined",
 };
 
 export function vendorStatusPill(
   status: string,
-  quotedPrice: number | null = null,
+  _quotedPrice: number | null = null,
 ): { variant: PillVariant; label: string } {
   switch (status as VendorPipelineStatus) {
     case "booked":
       return { variant: "sage", label: "Booked" };
     case "declined":
       return { variant: "rosewood", label: "Declined" };
+    case "replied":
+      return { variant: "clay", label: "Replied" };
     case "contacted":
-      return quotedPrice !== null
-        ? { variant: "clay", label: "Replied" }
-        : { variant: "default", label: "Contacted" };
+      return { variant: "default", label: "Contacted" };
     default:
       return { variant: "default", label: "To contact" };
   }

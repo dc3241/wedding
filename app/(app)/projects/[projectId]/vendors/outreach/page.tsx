@@ -12,6 +12,7 @@ import { Pill } from "@/components/ui/pill";
 import { getAccountContext } from "@/lib/account-context";
 import { sectionStackClass } from "@/lib/density";
 import { getGmailConnectionEmail } from "@/lib/gmail-connection-status";
+import { vendorCategoryLabel } from "@/lib/vendor-categories";
 import { createClient } from "@/utils/supabase/server";
 
 type SentMessage = {
@@ -88,7 +89,9 @@ export default async function OutreachDraftsPage({
         status: row.status as OutreachDraft["status"],
         sendError: row.send_error,
         vendorName: vendor.name,
-        vendorCategory: vendor.category,
+        vendorCategory: vendor.category
+          ? vendorCategoryLabel(vendor.category)
+          : null,
       };
     })
     .filter((draft): draft is OutreachDraft => draft !== null);
