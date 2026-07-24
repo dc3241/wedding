@@ -10,6 +10,7 @@ import {
   OUTREACH_STATUS_CYCLE,
 } from "@/components/vendors/outreach-vendor";
 import { VendorStatusPill } from "@/components/vendors/vendor-status";
+import { vendorCategoryLabel } from "@/lib/vendor-categories";
 
 export function VendorDetailStatus({
   projectVendorId,
@@ -25,6 +26,13 @@ export function VendorDetailStatus({
   slotTargets?: SlotTargetOption[];
 }) {
   const [isPending, startTransition] = useTransition();
+
+  const covered = slotTargets.filter(
+    (t) => t.project_vendor_id === projectVendorId,
+  );
+  const coversLabel = covered
+    .map((t) => vendorCategoryLabel(t.category))
+    .join(" · ");
 
   function handleClick() {
     if (status === "declined") return;
@@ -76,7 +84,12 @@ export function VendorDetailStatus({
           Decline
         </button>
       )}
-      {status === "booked" ? (
+      {status === "booked" && covered.length > 0 ? (
+        <p className="max-w-[14rem] text-right text-[13px] text-muted">
+          Covers {coversLabel}
+        </p>
+      ) : null}
+      {status === "booked" && covered.length === 0 ? (
         <LinkVendorToTargetControl
           projectVendorId={projectVendorId}
           vendorCategory={vendorCategory}

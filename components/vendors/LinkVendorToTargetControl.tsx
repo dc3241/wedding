@@ -13,11 +13,18 @@ export type SlotTargetOption = {
   category: string;
   status: "needed" | "booked" | "skipped";
   project_vendor_id: string | null;
+  /** Display name of the vendor currently on this slot, if any. */
+  linkedVendorName?: string | null;
 };
 
-export function unfilledSlotTargets(targets: SlotTargetOption[]) {
+/** Slots this vendor can attach to — skipped excluded; own slots excluded. */
+export function linkableSlotTargets(
+  targets: SlotTargetOption[],
+  projectVendorId: string,
+) {
   return targets.filter(
-    (t) => t.project_vendor_id == null && t.status !== "skipped",
+    (t) =>
+      t.status !== "skipped" && t.project_vendor_id !== projectVendorId,
   );
 }
 
@@ -34,19 +41,26 @@ export function LinkVendorToTargetControl({
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pickedId, setPickedId] = useState("");
 
-  const alreadySlotted = targets.some(
-    (t) => t.project_vendor_id === projectVendorId,
-  );
-  if (alreadySlotted) return null;
+  const linkable = linkableSlotTargets(targets, projectVendorId);
+  if (linkable.length === 0) return null;
 
-  const unfilled = unfilledSlotTargets(targets);
-  if (unfilled.length === 0) return null;
-
-  const categoryMatches = vendorCategory
-    ? unfilled.filter((t) => t.category === vendorCategory)
+  const emptyMatches = vendorCategory
+    ? linkable.filter(
+        (t) => t.category === vendorCategory && t.project_vendor_id == null,
+      )
     : [];
 
   function link(targetId: string) {
+    const target = targets.find((t) => t.id === targetId);
+    if (!target) return;
+
+    if (target.project_vendor_id != null) {
+      const categoryLabel = vendorCategoryLabel(target.category);
+      const outgoing = target.linkedVendorName?.trim() || "the current vendor";
+      const ok = window.confirm(`Replace ${outgoing} on ${categoryLabel}?`);
+      if (!ok) return;
+    }
+
     startTransition(async () => {
       await linkVendorToTarget(targetId, projectVendorId);
       setPickerOpen(false);
@@ -54,8 +68,8 @@ export function LinkVendorToTargetControl({
     });
   }
 
-  if (categoryMatches.length === 1) {
-    const target = categoryMatches[0];
+  if (emptyMatches.length === 1) {
+    const target = emptyMatches[0];
     const label = vendorCategoryLabel(target.category);
     return (
       <Button
@@ -99,12 +113,21 @@ export function LinkVendorToTargetControl({
         <option value="" disabled>
           Choose slot
         </option>
-        {unfilled.map((t) => (
-          <option key={t.id} value={t.id}>
-            {vendorCategoryLabel(t.category)}
-            {t.status === "booked" ? " (booked, no vendor)" : ""}
-          </option>
-        ))}
+        {linkable.map((t) => {
+          const label = vendorCategoryLabel(t.category);
+          const occupied =
+            t.project_vendor_id != null && t.linkedVendorName
+              ? ` (now ${t.linkedVendorName})`
+              : t.status === "booked" && t.project_vendor_id == null
+                ? " (booked, no vendor)"
+                : "";
+          return (
+            <option key={t.id} value={t.id}>
+              {label}
+              {occupied}
+            </option>
+          );
+        })}
       </Select>
       <Button
         type="button"

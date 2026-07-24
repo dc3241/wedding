@@ -60,10 +60,52 @@ function AmountField({
   );
 }
 
+function lineDisplayName(item: {
+  category: string | null;
+  label: string;
+}): string {
+  const category = item.category?.trim() ?? "";
+  return category !== "" ? category : item.label;
+}
+
+function formatAlsoLinkedList(names: string[]): string {
+  if (names.length === 1) return names[0]!;
+  if (names.length === 2) return `${names[0]} and ${names[1]}`;
+  return `${names.slice(0, -1).join(", ")}, and ${names[names.length - 1]}`;
+}
+
+function alsoLinkedWarning(
+  vendorId: string,
+  vendorName: string,
+  currentItemId: string,
+  allItems: BudgetItemForAggregate[],
+): string | null {
+  const others = allItems.filter(
+    (row) =>
+      row.id !== currentItemId && row.project_vendor_id === vendorId,
+  );
+  if (others.length === 0) return null;
+
+  const names = [
+    ...new Set(others.map((row) => lineDisplayName(row))),
+  ];
+  return `${vendorName} is also linked to ${formatAlsoLinkedList(names)}`;
+}
+
 function VendorVariance({ item }: { item: BudgetItemForAggregate }) {
   const linked = item.linkedVendor;
   if (!linked) return null;
 
+  // Multi-line package: neutral context only — no over/under status colour.
+  if (item.linkedItemCount > 1) {
+    return (
+      <span className="text-[13px] text-muted">
+        Part of {linked.name} package · covers {item.linkedItemCount} lines
+      </span>
+    );
+  }
+
+  // linkedItemCount === 1: BUD-01a per-line over/under (single-element sum).
   if (linked.quotedPrice == null || item.quoteVariance == null) {
     return <span className="text-[13px] text-muted">{linked.name}</span>;
   }
@@ -94,9 +136,11 @@ function VendorVariance({ item }: { item: BudgetItemForAggregate }) {
 export function BudgetItemRow({
   item,
   projectVendors,
+  allItems,
 }: {
   item: BudgetItemForAggregate;
   projectVendors: ProjectVendorOption[];
+  allItems: BudgetItemForAggregate[];
 }) {
   const [label, setLabel] = useState(item.label);
   const [planned, setPlanned] = useState(String(item.planned_amount));
@@ -104,6 +148,10 @@ export function BudgetItemRow({
     item.actual_amount !== null ? String(item.actual_amount) : "",
   );
   const [linkError, setLinkError] = useState<string | null>(null);
+  // Immediate soft warning on select; cleared when server link catches up.
+  const [optimisticWarning, setOptimisticWarning] = useState<string | null>(
+    null,
+  );
   const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
@@ -117,6 +165,21 @@ export function BudgetItemRow({
   useEffect(() => {
     setActual(item.actual_amount !== null ? String(item.actual_amount) : "");
   }, [item.actual_amount]);
+
+  useEffect(() => {
+    setOptimisticWarning(null);
+  }, [item.project_vendor_id]);
+
+  const derivedWarning =
+    item.project_vendor_id && item.linkedVendor
+      ? alsoLinkedWarning(
+          item.project_vendor_id,
+          item.linkedVendor.name,
+          item.id,
+          allItems,
+        )
+      : null;
+  const linkWarning = optimisticWarning ?? derivedWarning;
 
   function saveLabel() {
     const trimmed = label.trim();
@@ -171,10 +234,23 @@ export function BudgetItemRow({
     if (next === current) return;
 
     setLinkError(null);
+
+    if (next == null) {
+      setOptimisticWarning(null);
+    } else {
+      const vendor = projectVendors.find((v) => v.id === next);
+      setOptimisticWarning(
+        vendor
+          ? alsoLinkedWarning(next, vendor.name, item.id, allItems)
+          : null,
+      );
+    }
+
     startTransition(async () => {
       const result = await setBudgetItemProjectVendor(item.id, next);
       if (!result.ok) {
         setLinkError(result.error);
+        setOptimisticWarning(null);
       }
     });
   }
@@ -246,12 +322,17 @@ export function BudgetItemRow({
               ))}
             </select>
             {item.linkedVendor ? <VendorVariance item={item} /> : null}
-            {linkError ? (
-              <p className="text-[13px] text-rosewood" role="alert">
-                {linkError}
-              </p>
-            ) : null}
           </div>
+          {linkWarning ? (
+            <div className="rounded-[var(--radius-inner)] bg-clay-wash px-3 py-2 text-[13px] text-ink">
+              {linkWarning}
+            </div>
+          ) : null}
+          {linkError ? (
+            <p className="text-[13px] text-rosewood" role="alert">
+              {linkError}
+            </p>
+          ) : null}
         </div>
       ) : null}
     </li>

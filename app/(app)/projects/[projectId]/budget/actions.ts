@@ -128,12 +128,6 @@ export async function setBudgetItemProjectVendor(
     .single();
 
   if (error) {
-    if (error.code === "23505") {
-      return {
-        ok: false,
-        error: "That vendor is already linked to another budget item.",
-      };
-    }
     if (error.code === "23503") {
       return {
         ok: false,

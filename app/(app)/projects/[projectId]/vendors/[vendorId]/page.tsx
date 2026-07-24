@@ -20,21 +20,27 @@ export default async function VendorDetailPage({
   const { projectId, vendorId } = await params;
   const supabase = await createClient();
 
-  const [{ data: row }, { data: targetRows }] = await Promise.all([
-    supabase
-      .from("project_vendors")
-      .select(
-        "id, status, quoted_price, vendors(id, name, category, website, contact_email, contact_phone, address, ai_overview, external_place_id)",
-      )
-      .eq("project_id", projectId)
-      .eq("vendor_id", vendorId)
-      .maybeSingle(),
-    supabase
-      .from("vendor_targets")
-      .select("id, category, status, project_vendor_id")
-      .eq("project_id", projectId)
-      .order("created_at", { ascending: true }),
-  ]);
+  const [{ data: row }, { data: targetRows }, { data: bookedPvRows }] =
+    await Promise.all([
+      supabase
+        .from("project_vendors")
+        .select(
+          "id, status, quoted_price, vendors(id, name, category, website, contact_email, contact_phone, address, ai_overview, external_place_id)",
+        )
+        .eq("project_id", projectId)
+        .eq("vendor_id", vendorId)
+        .maybeSingle(),
+      supabase
+        .from("vendor_targets")
+        .select("id, category, status, project_vendor_id")
+        .eq("project_id", projectId)
+        .order("created_at", { ascending: true }),
+      supabase
+        .from("project_vendors")
+        .select("id, vendors(name)")
+        .eq("project_id", projectId)
+        .eq("status", "booked"),
+    ]);
 
   if (!row) notFound();
 
@@ -53,11 +59,22 @@ export default async function VendorDetailPage({
 
   const hasLiveRating = live?.rating != null;
 
+  const nameByPvId = new Map(
+    (bookedPvRows ?? []).flatMap((pv) => {
+      const v = Array.isArray(pv.vendors) ? pv.vendors[0] : pv.vendors;
+      if (!v || typeof v !== "object" || !("name" in v)) return [];
+      return [[pv.id, String((v as { name: string }).name)]] as const;
+    }),
+  );
+
   const slotTargets = (targetRows ?? []).map((t) => ({
     id: t.id,
     category: t.category,
     status: t.status as "needed" | "booked" | "skipped",
     project_vendor_id: t.project_vendor_id ?? null,
+    linkedVendorName: t.project_vendor_id
+      ? (nameByPvId.get(t.project_vendor_id) ?? null)
+      : null,
   }));
 
   return (

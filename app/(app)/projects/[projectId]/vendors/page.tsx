@@ -4,9 +4,11 @@ import { AskAssistantLink } from "@/components/assistant/AskAssistantLink";
 import { ASSISTANT_PREFILLS } from "@/components/assistant/prefills";
 import {
   BookedVendorsSection,
-  type BookedSlot,
+  type BookedPackage,
+  type EmptyBookedSlot,
   type UnslottedBookedVendor,
 } from "@/components/vendors/BookedVendorsSection";
+import type { ConnectableBookedVendor } from "@/components/vendors/ConnectExistingVendorControl";
 import { DeclinedVendorsGroup } from "@/components/vendors/DeclinedVendorsGroup";
 import { GmailConnection } from "@/components/vendors/GmailConnection";
 import { OutreachToContactSection } from "@/components/vendors/OutreachToContactSection";
@@ -204,33 +206,50 @@ export default async function VendorsPage({
       .filter((id): id is string => id != null),
   );
 
-  const bookedSlots: BookedSlot[] = vendorTargets
-    .filter((t) => t.status === "booked")
-    .map((t) => {
-      const linked = t.project_vendor_id
-        ? vendorByProjectVendorId.get(t.project_vendor_id)
-        : undefined;
-      return {
+  // One card per project_vendor that owns ≥1 booked slot (venue package = N slots).
+  const packageByPvId = new Map<string, BookedPackage>();
+  for (const t of vendorTargets) {
+    if (t.status !== "booked" || t.project_vendor_id == null) continue;
+    const linked = vendorByProjectVendorId.get(t.project_vendor_id);
+    if (!linked) continue;
+
+    const existing = packageByPvId.get(t.project_vendor_id);
+    if (existing) {
+      existing.slots.push({
         id: t.id,
         category: t.category,
         note: t.note,
-        vendor: linked
-          ? {
-              vendorId: linked.vendor.id,
-              name: linked.vendor.name,
-              contact_email: linked.vendor.contact_email,
-              contact_phone: linked.vendor.contact_phone,
-              address: linked.vendor.address,
-              website: linked.vendor.website,
-              notes: linked.vendor.notes ?? linked.notes,
-              quoted_price:
-                linked.quoted_price === null || linked.quoted_price === undefined
-                  ? null
-                  : Number(linked.quoted_price),
-            }
-          : null,
-      };
+      });
+      continue;
+    }
+
+    packageByPvId.set(t.project_vendor_id, {
+      projectVendorId: t.project_vendor_id,
+      vendor: {
+        vendorId: linked.vendor.id,
+        name: linked.vendor.name,
+        contact_email: linked.vendor.contact_email,
+        contact_phone: linked.vendor.contact_phone,
+        address: linked.vendor.address,
+        website: linked.vendor.website,
+        notes: linked.vendor.notes ?? linked.notes,
+        quoted_price:
+          linked.quoted_price === null || linked.quoted_price === undefined
+            ? null
+            : Number(linked.quoted_price),
+      },
+      slots: [{ id: t.id, category: t.category, note: t.note }],
     });
+  }
+  const bookedPackages: BookedPackage[] = [...packageByPvId.values()];
+
+  const emptyBookedSlots: EmptyBookedSlot[] = vendorTargets
+    .filter((t) => t.status === "booked" && t.project_vendor_id == null)
+    .map((t) => ({
+      id: t.id,
+      category: t.category,
+      note: t.note,
+    }));
 
   const unslottedBooked: UnslottedBookedVendor[] = bookedPv
     .filter((row) => !slottedProjectVendorIds.has(row.id))
@@ -241,6 +260,14 @@ export default async function VendorsPage({
       category: row.vendor.category,
     }));
 
+  const connectableVendors: ConnectableBookedVendor[] = bookedPv.map((row) => ({
+    projectVendorId: row.id,
+    name: row.vendor.name,
+    coveredCategories: vendorTargets
+      .filter((t) => t.project_vendor_id === row.id)
+      .map((t) => t.category),
+  }));
+
   const toContactItems = outreachList.filter(
     (item) => item.status === "to_contact",
   );
@@ -248,15 +275,26 @@ export default async function VendorsPage({
     (item) => item.status === "contacted" || item.status === "replied",
   );
 
+  const nameByProjectVendorId = new Map(
+    [...inFlightPv, ...bookedPv, ...declinedPv].map((row) => [
+      row.id,
+      row.vendor.name,
+    ]),
+  );
+
   const slotOptions = vendorTargets.map((t) => ({
     id: t.id,
     category: t.category,
     status: t.status,
     project_vendor_id: t.project_vendor_id,
+    linkedVendorName: t.project_vendor_id
+      ? (nameByProjectVendorId.get(t.project_vendor_id) ?? null)
+      : null,
   }));
 
   const existingVendors = [...inFlightPv, ...bookedPv, ...declinedPv].map(
     (row) => ({
+      projectVendorId: row.id,
       name: row.vendor.name,
       category: row.vendor.category,
     }),
@@ -298,9 +336,11 @@ export default async function VendorsPage({
 
       <BookedVendorsSection
         projectId={projectId}
-        slots={bookedSlots}
+        packages={bookedPackages}
+        emptySlots={emptyBookedSlots}
         unslotted={unslottedBooked}
         slotTargets={slotOptions}
+        connectableVendors={connectableVendors}
       />
 
       <VendorsToBookSection targets={vendorTargets} />
@@ -308,6 +348,7 @@ export default async function VendorsPage({
       <AddVendorForm
         projectId={projectId}
         existingVendors={existingVendors}
+        categoryTargets={slotOptions}
         defaultCategoryId={categoryPrefill ?? null}
       />
 

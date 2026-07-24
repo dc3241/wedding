@@ -297,11 +297,12 @@ export async function linkVendorToTarget(
 export async function unlinkVendorFromTarget(targetId: string) {
   const supabase = await createClient();
 
+  // Clear the vendor only — leave status='booked' so the slot stays in the
+  // Booked band as "booked, vendor not recorded" (Connect existing / add new).
   const { data, error } = await supabase
     .from("vendor_targets")
     .update({
       project_vendor_id: null,
-      status: "needed",
     })
     .eq("id", targetId)
     .select("project_id")

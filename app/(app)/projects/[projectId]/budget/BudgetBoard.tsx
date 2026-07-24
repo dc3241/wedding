@@ -7,7 +7,9 @@ import { TotalBudgetEditor } from "./TotalBudgetEditor";
 import type {
   BudgetAggregates,
   BudgetCategoryGroup,
+  BudgetItemForAggregate,
   ProjectVendorOption,
+  VendorPackageStats,
 } from "@/lib/budget-aggregates";
 import { formatCurrency } from "@/lib/format-currency";
 import { Card } from "@/components/ui/card";
@@ -238,11 +240,13 @@ function CategorySection({
   open,
   onToggle,
   projectVendors,
+  allItems,
 }: {
   group: BudgetCategoryGroup;
   open: boolean;
   onToggle: () => void;
   projectVendors: ProjectVendorOption[];
+  allItems: BudgetItemForAggregate[];
 }) {
   return (
     <details
@@ -287,6 +291,7 @@ function CategorySection({
                 key={item.id}
                 item={item}
                 projectVendors={projectVendors}
+                allItems={allItems}
               />
             ))}
           </ul>
@@ -352,11 +357,15 @@ function BookedVendorsCard({ aggregates }: { aggregates: BudgetAggregates }) {
           Booked vendors
         </p>
         <p className="text-[15px] font-medium text-sage">
-          All {bookedCount} booked vendors are linked to budget items.
+          {bookedCount === 1
+            ? "All 1 booked vendor is linked to budget items."
+            : `All ${bookedCount} booked vendors are linked to budget items.`}
         </p>
       </Card>
     );
   }
+
+  const vendorWord = bookedUnlinkedCount === 1 ? "vendor" : "vendors";
 
   return (
     <Card className="px-6 py-[22px]">
@@ -367,8 +376,8 @@ function BookedVendorsCard({ aggregates }: { aggregates: BudgetAggregates }) {
         {bookedUnlinkedCount}
       </p>
       <p className="mt-[7px] text-[13px] leading-relaxed text-muted">
-        booked vendors not linked · {formatCurrency(bookedUnlinkedQuotedTotal)}{" "}
-        quoted
+        booked {vendorWord} not linked ·{" "}
+        {formatCurrency(bookedUnlinkedQuotedTotal)} quoted
       </p>
       <ul className="mt-3">
         {unlinkedVendors.map((vendor) => (
@@ -379,6 +388,67 @@ function BookedVendorsCard({ aggregates }: { aggregates: BudgetAggregates }) {
             {vendor.name}
           </li>
         ))}
+      </ul>
+    </Card>
+  );
+}
+
+function PackageVarianceCard({ packages }: { packages: VendorPackageStats[] }) {
+  const multi = packages.filter((pkg) => pkg.linkedItemCount > 1);
+  if (multi.length === 0) return null;
+
+  return (
+    <Card className="px-6 py-[22px]">
+      <p className="mb-[15px] text-[12px] font-semibold uppercase tracking-[0.09em] text-muted">
+        Package variance
+      </p>
+      <ul>
+        {multi.map((pkg) => {
+          const hasVariance = pkg.variance != null && pkg.quotedPrice != null;
+          const over = hasVariance && pkg.variance! > 0;
+          const equal = hasVariance && pkg.variance === 0;
+          const varianceLabel = !hasVariance
+            ? null
+            : equal
+              ? "on plan"
+              : over
+                ? `${formatCurrency(pkg.variance!)} over plan`
+                : `${formatCurrency(Math.abs(pkg.variance!))} under plan`;
+
+          return (
+            <li
+              key={pkg.id}
+              className="border-t border-hairline py-[11px] first:border-t-0 first:pt-0"
+            >
+              <p className="text-[15px] font-medium text-ink">{pkg.name}</p>
+              <p className="mt-1 text-[13px] leading-relaxed text-muted">
+                <span className="tabular-nums">
+                  {pkg.quotedPrice == null
+                    ? "No quote"
+                    : `${formatCurrency(pkg.quotedPrice)} quoted`}
+                </span>
+                {" · "}
+                <span className="tabular-nums">
+                  {formatCurrency(pkg.sumPlanned)} planned across{" "}
+                  {pkg.linkedItemCount} lines
+                </span>
+                {varianceLabel ? (
+                  <>
+                    {" · "}
+                    <span
+                      className={cn(
+                        "tabular-nums",
+                        over ? "text-rosewood" : "text-muted",
+                      )}
+                    >
+                      {varianceLabel}
+                    </span>
+                  </>
+                ) : null}
+              </p>
+            </li>
+          );
+        })}
       </ul>
     </Card>
   );
@@ -403,6 +473,7 @@ export function BudgetBoard({
   }
 
   const empty = aggregates.perCategory.length === 0;
+  const allItems = aggregates.perCategory.flatMap((group) => group.items);
   const eyebrow =
     weddingDate != null
       ? `${projectName} · ${formatEyebrowDate(weddingDate)}`
@@ -464,6 +535,7 @@ export function BudgetBoard({
                   open={openCategory === group.category}
                   onToggle={() => toggleCategory(group.category)}
                   projectVendors={projectVendors}
+                  allItems={allItems}
                 />
               ))}
             </div>
@@ -473,6 +545,7 @@ export function BudgetBoard({
         <aside className="min-w-0 space-y-4 lg:sticky lg:top-6 lg:self-start">
           <NeedsAttentionCard aggregates={aggregates} />
           <BookedVendorsCard aggregates={aggregates} />
+          <PackageVarianceCard packages={aggregates.vendorPackages} />
         </aside>
       </div>
     </div>

@@ -2,7 +2,14 @@
 
 import Link from "next/link";
 import { useState, useTransition } from "react";
-import { unlinkVendorFromTarget } from "@/app/(app)/projects/[projectId]/vendors/actions";
+import {
+  unlinkVendorFromTarget,
+  removeProjectVendor,
+} from "@/app/(app)/projects/[projectId]/vendors/actions";
+import {
+  ConnectExistingVendorControl,
+  type ConnectableBookedVendor,
+} from "@/components/vendors/ConnectExistingVendorControl";
 import {
   LinkVendorToTargetControl,
   type SlotTargetOption,
@@ -22,11 +29,18 @@ export type BookedSlotVendor = {
   quoted_price: number | null;
 };
 
-export type BookedSlot = {
+/** One raised card per linked project_vendor — may cover many category slots. */
+export type BookedPackage = {
+  projectVendorId: string;
+  vendor: BookedSlotVendor;
+  slots: { id: string; category: string; note: string | null }[];
+};
+
+/** Booked category with no vendor recorded yet. */
+export type EmptyBookedSlot = {
   id: string;
   category: string;
   note: string | null;
-  vendor: BookedSlotVendor | null;
 };
 
 export type UnslottedBookedVendor = {
@@ -44,36 +58,58 @@ function formatMoney(amount: number) {
   }).format(amount);
 }
 
-function BookedSlotCard({
+function CategoryChips({ categories }: { categories: string[] }) {
+  if (categories.length < 1) return null;
+  return (
+    <ul className="mt-2 flex flex-wrap gap-1.5" aria-label="Covered categories">
+      {categories.map((id) => (
+        <li key={id}>
+          <Pill variant="default">{vendorCategoryLabel(id)}</Pill>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function BookedPackageCard({
   projectId,
-  slot,
+  pkg,
 }: {
   projectId: string;
-  slot: BookedSlot;
+  pkg: BookedPackage;
 }) {
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
-  const categoryLabel = vendorCategoryLabel(slot.category);
-  const vendor = slot.vendor;
-  const detailHref = vendor
-    ? `/projects/${projectId}/vendors/${vendor.vendorId}`
-    : null;
-  const addHref = `/projects/${projectId}/vendors?category=${encodeURIComponent(slot.category)}#add-vendor`;
+  const vendor = pkg.vendor;
+  const detailHref = `/projects/${projectId}/vendors/${vendor.vendorId}`;
+  const categoryIds = pkg.slots.map((s) => s.category);
 
   const hasContactBits = Boolean(
-    vendor &&
-      (vendor.contact_email ||
-        vendor.contact_phone ||
-        vendor.address ||
-        vendor.website ||
-        vendor.quoted_price != null ||
-        vendor.notes),
+    vendor.contact_email ||
+      vendor.contact_phone ||
+      vendor.address ||
+      vendor.website ||
+      vendor.quoted_price != null ||
+      vendor.notes,
   );
-  const thinRecord = vendor != null && !hasContactBits;
+  const thinRecord = !hasContactBits;
 
   function handleUnbook() {
     startTransition(async () => {
-      await unlinkVendorFromTarget(slot.id);
+      for (const slot of pkg.slots) {
+        await unlinkVendorFromTarget(slot.id);
+      }
+    });
+  }
+
+  function handleRemove() {
+    const confirmed = window.confirm(
+      `Remove ${vendor.name} from this project?\n\nThis removes them from this project and clears every category slot they cover.`,
+    );
+    if (!confirmed) return;
+
+    startTransition(async () => {
+      await removeProjectVendor(pkg.projectVendorId);
     });
   }
 
@@ -90,19 +126,11 @@ function BookedSlotCard({
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
       >
-        <div className="min-w-0">
-          <p className="text-[12px] font-semibold uppercase tracking-[0.09em] text-muted">
-            {categoryLabel}
+        <div className="min-w-0 flex-1">
+          <p className="text-[15px] font-medium leading-snug text-ink break-words">
+            {vendor.name}
           </p>
-          {vendor ? (
-            <p className="mt-1 truncate text-[15px] font-medium text-ink">
-              {vendor.name}
-            </p>
-          ) : (
-            <p className="mt-1 truncate text-[15px] font-medium text-ink">
-              {categoryLabel}
-            </p>
-          )}
+          <CategoryChips categories={categoryIds} />
         </div>
         <Pill variant="sage" className="shrink-0">
           Booked
@@ -112,7 +140,7 @@ function BookedSlotCard({
       {open ? (
         <div className="space-y-3 px-5 pb-5">
           <div className="rounded-[var(--radius-inner)] bg-well px-4 py-3.5 shadow-recessed">
-            {vendor && hasContactBits ? (
+            {hasContactBits ? (
               <dl className="space-y-2.5 text-[14px]">
                 {vendor.contact_email ? (
                   <div>
@@ -180,7 +208,7 @@ function BookedSlotCard({
               </dl>
             ) : null}
 
-            {thinRecord && detailHref ? (
+            {thinRecord ? (
               <p className="text-[13px] text-muted">
                 <Link
                   href={detailHref}
@@ -191,42 +219,40 @@ function BookedSlotCard({
               </p>
             ) : null}
 
-            {!vendor ? (
-              <p className="text-[13px] text-muted">
-                No vendor details yet —{" "}
-                <Link
-                  href={addHref}
-                  className="font-medium text-accent hover:opacity-80"
-                >
-                  add them
-                </Link>
-              </p>
-            ) : null}
-
-            {slot.note ? (
-              <p className="mt-2 text-[13px] text-muted">{slot.note}</p>
-            ) : null}
+            {pkg.slots
+              .filter((s) => s.note)
+              .map((s) => (
+                <p key={s.id} className="mt-2 text-[13px] text-muted">
+                  {vendorCategoryLabel(s.category)}: {s.note}
+                </p>
+              ))}
           </div>
 
           <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
-            {detailHref ? (
-              <Link
-                href={detailHref}
-                className="text-[14px] font-semibold text-accent hover:opacity-80"
-              >
-                View details
-              </Link>
-            ) : (
-              <span />
-            )}
-            <button
-              type="button"
-              disabled={isPending}
-              onClick={handleUnbook}
-              className="rounded-[var(--radius-inner)] px-2.5 py-1.5 text-[13px] font-semibold text-muted transition-colors hover:bg-rosewood-wash hover:text-rosewood focus-visible:bg-rosewood-wash focus-visible:text-rosewood focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rosewood disabled:pointer-events-none disabled:opacity-50"
+            <Link
+              href={detailHref}
+              className="text-[14px] font-semibold text-accent hover:opacity-80"
             >
-              {isPending ? "Unbooking…" : "Unbook"}
-            </button>
+              View details
+            </Link>
+            <div className="flex flex-wrap items-center gap-1">
+              <button
+                type="button"
+                disabled={isPending}
+                onClick={handleUnbook}
+                className="rounded-[var(--radius-inner)] px-2.5 py-1.5 text-[13px] font-semibold text-muted transition-colors hover:bg-rosewood-wash hover:text-rosewood focus-visible:bg-rosewood-wash focus-visible:text-rosewood focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rosewood disabled:pointer-events-none disabled:opacity-50"
+              >
+                {isPending ? "Unbooking…" : "Unbook"}
+              </button>
+              <button
+                type="button"
+                disabled={isPending}
+                onClick={handleRemove}
+                className="rounded-[var(--radius-inner)] px-2.5 py-1.5 text-[13px] font-semibold text-muted transition-colors hover:bg-rosewood-wash hover:text-rosewood focus-visible:bg-rosewood-wash focus-visible:text-rosewood focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rosewood disabled:pointer-events-none disabled:opacity-50"
+              >
+                Remove
+              </button>
+            </div>
           </div>
         </div>
       ) : null}
@@ -234,7 +260,50 @@ function BookedSlotCard({
   );
 }
 
-export function UnslottedBookedCard({
+/** Recessed slot well — not a vendor card. */
+function EmptyBookedSlotCard({
+  projectId,
+  slot,
+  connectableVendors,
+}: {
+  projectId: string;
+  slot: EmptyBookedSlot;
+  connectableVendors: ConnectableBookedVendor[];
+}) {
+  const categoryLabel = vendorCategoryLabel(slot.category);
+  const addHref = `/projects/${projectId}/vendors?category=${encodeURIComponent(slot.category)}#add-vendor`;
+
+  return (
+    <article className="overflow-hidden rounded-[var(--radius-inner)] bg-well px-5 py-4 shadow-recessed">
+      <div className="flex items-start justify-between gap-3">
+        <p className="min-w-0 text-[15px] font-medium text-ink">
+          {categoryLabel}
+        </p>
+        <Pill variant="sage" className="shrink-0">
+          Booked
+        </Pill>
+      </div>
+      <p className="mt-1 text-[13px] text-muted">Booked · vendor not recorded</p>
+      {slot.note ? (
+        <p className="mt-2 text-[13px] text-muted">{slot.note}</p>
+      ) : null}
+      <div className="mt-3 flex flex-col items-start gap-2">
+        <ConnectExistingVendorControl
+          targetId={slot.id}
+          vendors={connectableVendors}
+        />
+        <Link
+          href={addHref}
+          className="text-[13px] font-medium text-accent hover:opacity-80"
+        >
+          Add new
+        </Link>
+      </div>
+    </article>
+  );
+}
+
+function UnslottedBookedCard({
   projectId,
   item,
   slotTargets,
@@ -243,23 +312,19 @@ export function UnslottedBookedCard({
   item: UnslottedBookedVendor;
   slotTargets: SlotTargetOption[];
 }) {
-  const categoryLabel = item.category
-    ? vendorCategoryLabel(item.category)
-    : "Uncategorized";
+  const detailHref = `/projects/${projectId}/vendors/${item.vendorId}`;
 
   return (
-    <article className="overflow-hidden rounded-[var(--radius-inner)] bg-well px-5 py-4 shadow-recessed">
+    <article className="overflow-hidden rounded-[var(--radius-card)] bg-surface px-5 py-4 shadow-raised">
       <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-[12px] font-semibold uppercase tracking-[0.09em] text-muted">
-            {categoryLabel}
-          </p>
+        <div className="min-w-0 flex-1">
           <Link
-            href={`/projects/${projectId}/vendors/${item.vendorId}`}
-            className="mt-1 block truncate text-[15px] font-medium text-ink hover:text-accent"
+            href={detailHref}
+            className="block text-[15px] font-medium leading-snug text-ink break-words hover:text-accent"
           >
             {item.name}
           </Link>
+          <p className="mt-2 text-[13px] text-muted">Not linked to a category</p>
         </div>
         <Pill variant="sage" className="shrink-0">
           Booked
@@ -278,55 +343,75 @@ export function UnslottedBookedCard({
 
 export function BookedVendorsSection({
   projectId,
-  slots,
+  packages = [],
+  emptySlots = [],
   unslotted = [],
   slotTargets = [],
+  connectableVendors = [],
 }: {
   projectId: string;
-  slots: BookedSlot[];
+  packages?: BookedPackage[];
+  emptySlots?: EmptyBookedSlot[];
   unslotted?: UnslottedBookedVendor[];
   slotTargets?: SlotTargetOption[];
+  connectableVendors?: ConnectableBookedVendor[];
 }) {
-  if (slots.length === 0 && unslotted.length === 0) return null;
+  if (
+    packages.length === 0 &&
+    emptySlots.length === 0 &&
+    unslotted.length === 0
+  ) {
+    return null;
+  }
+
+  const hasVendorCards = packages.length > 0 || unslotted.length > 0;
 
   return (
     <section className="space-y-4">
       <p className="text-[12px] font-semibold uppercase tracking-[0.09em] text-muted">
         Booked
       </p>
-      {slots.length > 0 ? (
+
+      {hasVendorCards ? (
         <div
           className="grid gap-4"
           style={{
             gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
           }}
         >
-          {slots.map((slot) => (
-            <BookedSlotCard key={slot.id} projectId={projectId} slot={slot} />
+          {packages.map((pkg) => (
+            <BookedPackageCard
+              key={pkg.projectVendorId}
+              projectId={projectId}
+              pkg={pkg}
+            />
+          ))}
+          {unslotted.map((item) => (
+            <UnslottedBookedCard
+              key={item.projectVendorId}
+              projectId={projectId}
+              item={item}
+              slotTargets={slotTargets}
+            />
           ))}
         </div>
       ) : null}
 
-      {unslotted.length > 0 ? (
-        <div className="space-y-3">
-          <p className="text-[12px] font-semibold uppercase tracking-[0.09em] text-muted">
-            Booked · no category slot ({unslotted.length})
-          </p>
-          <div
-            className="grid gap-3"
-            style={{
-              gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
-            }}
-          >
-            {unslotted.map((item) => (
-              <UnslottedBookedCard
-                key={item.projectVendorId}
-                projectId={projectId}
-                item={item}
-                slotTargets={slotTargets}
-              />
-            ))}
-          </div>
+      {emptySlots.length > 0 ? (
+        <div
+          className="grid gap-3"
+          style={{
+            gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+          }}
+        >
+          {emptySlots.map((slot) => (
+            <EmptyBookedSlotCard
+              key={slot.id}
+              projectId={projectId}
+              slot={slot}
+              connectableVendors={connectableVendors}
+            />
+          ))}
         </div>
       ) : null}
     </section>

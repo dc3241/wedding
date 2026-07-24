@@ -1,50 +1,54 @@
-# Wedding Planning SaaS — Project Bible (v20)
+# Wedding Planning SaaS — Project Bible (v21)
 
-Canonical state document. **Supersedes v19.** Drop this into the Project's instructions/knowledge so
-any new chat picks up cold. Lives in-repo at `PROJECT_BIBLE_v20.md`. The repo's `.cursor/design.mdc`,
+Canonical state document. **Supersedes v20.** Drop this into the Project's instructions/knowledge so
+any new chat picks up cold. Lives in-repo at `PROJECT_BIBLE_v21.md`. The repo's `.cursor/design.mdc`,
 `app/globals.css`, `design/reference.html` (stale — see §10), and `supabase/migrations/` remain the
 live source of truth; this summarizes them and the decisions behind them. Current through migration
-**0031**; **next-free migration is 0032** (reserved for ONB-02).
+**0032**; **next-free migration is 0033** (reserved for ONB-02). **VND-07 family: no schema.**
 
-**v20 records booked-slot ownership, the outreach/in-flight split, and multi-owner run sheets**,
-built as four slices (plus closing a v19 open):
+**v21 records one vendor covering many category slots (venue package), Booked-band legibility, a
+project-wide soft-duplicate → connect path, and many budget lines per vendor (BUD-04):**
 
 | Slice | What | Schema |
 |---|---|---|
-| **VND-05b** | Remove affordance legibility (closes v19 open) | none |
-| **VND-06** | Booked vendor ↔ category slot FK; `replied` in status CHECK; `vendors.address` | **0031** |
-| **VND-06a** | Outreach = in-flight only; Decline as exit; declined group | none |
-| **TL-04** | `timeline_events.owner` as a comma-separated SET at read (run sheet filter) | none |
+| **BUD-04** | One `project_vendor` → many `budget_items`; package variance at read | **0032** |
+| **VND-07** | One `project_vendor` → many `vendor_targets`; package cards; Connect existing | none |
+| **VND-07a** | Package card legibility; empty-slot wells; project-wide soft dup → connect | none |
+| **VND-07b** | Always render category chips (including count = 1) | none |
 
-Everything in v19 that isn't touched by the above carries forward unchanged: VND-04 / VND-05 /
-VND-05a (0030), the planner→couple invitation feature (INV-01 … INV-05, migrations 0028/0029), the
-Soft stack (C1) chrome pass (v11), the landing overhaul (LAND-01 / LAND-01a), the seating builder
-through SEAT-10, the polish pass (CHK-01, SET-01, TL-01/02/03, BUD-01/01a/02), the v10 signup repair
-(ONB-00 / ONB-01), the planner CRM, Stripe billing, the website builder + 5-template gallery, and
-public RSVP.
+Everything in v20 that isn't touched by the above carries forward unchanged: VND-05b / VND-06 /
+VND-06a / TL-04, VND-04 / VND-05 / VND-05a (0030/0031), invitations (INV-01 … INV-05), Soft stack
+(C1), LAND-01 / LAND-01a, seating through SEAT-10, polish (CHK-01, SET-01, TL-01/02/03,
+BUD-01/01a/02), ONB-00 / ONB-01, planner CRM, Stripe, website builder + public RSVP.
 
-> **Numbering note (read once):** v19 reserved **0031 for ONB-02**. Dom released that reservation so
-> VND-06 could ship; **0031 is now `vendor_target_link` (VND-06)**. ONB-02 takes **0032**.
+> **Numbering note:** **0032 is BUD-04** (`budget_item_vendor_many` — drops
+> `budget_items_project_vendor_uidx`). Applied live (Jul 23). VND-07 deliberately took **no**
+> migration — the shared `vendor_targets.project_vendor_id` across N targets **is** the package.
+> **ONB-02 owns 0033** (was reserved on 0032 until BUD-04 took the number the same way VND-06 took
+> 0031). Do not `db push`.
 
 **Verification status (READ THIS):**
-- **0031 applied live** (introspected): `vendor_targets.project_vendor_id` present; `vendors.address`
-  present; `project_vendors_status_check` includes `'replied'`. Cross-project composite FK rejection
-  verified (23503) in the VND-06 live pass.
-- **VND-05b shipped** (Jul 22) — Remove separated from the status pill; muted → rosewood on
-  hover/focus. Still present in `OutreachVendorRow.tsx`.
-- **VND-06 / VND-06a** shipped in code; 0031 live-applied. Vendors page bands: Booked → Still to
-  book → Outreach (in-flight) → Declined.
-- **TL-04** shipped in code (typecheck clean). Live §5 checkpoint (Dom) optional — discriminating
-  pair is DJ sheet showing both `"DJ"` and `"DJ, Officiant"` events, with owner strings unchanged
-  at rest.
-- **v19 carry-forward:** VND-05 checkpoint (b) fully live-verified (link-only delete). Checkpoints
-  a/c/d/e/f/g reported without pasted output — believed good; (d) is now moot for `replied` (0031
-  stores it).
-- **Still open (human gate):** Dom's live Soft stack + LAND-01 / LAND-01a visual checkpoint. See §13.
+- **0031** remains applied live (VND-06). No unique index/constraint on
+  `vendor_targets.project_vendor_id` (introspected Jul 23 — booleans false) — multi-slot linking is
+  schema-legal.
+- **0032 applied live** (BUD-04): `budget_items_project_vendor_uidx` **absent** (introspected Jul 23
+  — `unique_index_still_present: false`). Non-unique `budget_items_project_vendor_id_idx` retained.
+- **VND-07** shipped in code. Discriminating live checkpoint: one venue `project_vendor` linked to
+  four targets (Venue / DJ / Caterer / Baker); Booked band shows **one** card; remove vendor resets
+  **all four** to `needed` / null link (not SET-NULL-left-as-booked).
+- **VND-07a** shipped. Soft dup is project-wide; primary offer is connect-to-category via
+  `linkVendorToTarget`. Live failure mode that motivated the slice: three manual `vendors` rows all
+  named "Ocassions at Laguna Village" (one per category) because same-category-only warning +
+  truncated package cards hid the mistake.
+- **VND-07b** shipped. Single-category vendors show one chip (e.g. Ryland → OFFICIANT).
+- **BUD-04** shipped in code + 0032 live. Many budget lines per vendor; package variance on rail;
+  soft picker warning; headlines items-only (linking changes no Allocated/Spent/Committed).
+- **v20 carry-forward:** VND-06 / 06a / TL-04 / VND-05b as in v20.
+- **Still open (human gate):** Dom Soft stack + LAND-01 / LAND-01a visual checkpoint. See §13.
 
-Sections changed from v19: header, **§3** (owner SET note), **§5** (0031 + column reference),
-**§6** (Vendors / Timeline blurbs), **§7** (VND-05b closed + VND-06 / 06a / TL-04), **§10** (design
-open table), **§12** (prod migration range), **§13**, **§14**, **§15**.
+Sections changed from v20: header, **§3** (package = shared FK note), **§5** (0032 + no unique on
+slot FK; unlink/remove semantics), **§6** (Vendors Booked-band shape), **§7** (BUD-04 + VND-07 /
+07a / 07b), **§13**, **§14**, **§15**.
 
 **Companion doc:** a separate **Launch Prep Runbook** exists (ops checklist for going to
 production). This bible covers product/architecture state; the runbook covers deployment. Keep both.
@@ -160,7 +164,9 @@ In `.cursor/main.mdc` (architecture) + `.cursor/design.mdc` (Soft stack design).
   `update<Thing>(id, fields)` writer with a field that carries a constraint the generic writer
   doesn't understand. `setSeatingTableKind`, `rotateSeatingTable`, `setSeatingTableSeatCount`,
   `setBudgetItemProjectVendor`, **`removeProjectVendor`**, **`linkVendorToTarget` /
-  `unlinkVendorFromTarget`** all exist for this reason.
+  `unlinkVendorFromTarget`** all exist for this reason. **`linkVendorToTarget` is the sole
+  application writer that SETs `vendor_targets.project_vendor_id` to a non-null value** (VND-07);
+  unlink / remove only clear it.
 - **One terminal routing decision point per audience (ONB-00).** `/projects` is the ONLY place
   allowed to make a terminal routing decision for a personal or account-less account.
 - **Two fields that can disagree are a bug waiting to happen; derive one from the other (ONB-01).**
@@ -273,7 +279,7 @@ not resolve the token before authentication.
 
 ## 5. Migrations (source of truth: `supabase/migrations/`)
 
-Applied in order. **You are the source of truth on the next number — next free is 0032.**
+Applied in order. **You are the source of truth on the next number — next free is 0033.**
 
 > **How migrations are applied here (READ THIS BEFORE SUGGESTING ANY CLI COMMAND):** by hand-pasting
 > each file into the Supabase SQL editor and running it once, in order. There is NO CLI
@@ -408,15 +414,31 @@ alter table vendors add column if not exists address text;
 ```
 
 **Originally prompted as 0032** while ONB-02 held 0031; Dom released the reservation so VND-06 took
-**0031**. ONB-02 now owns **0032**.
+**0031**. ONB-02 was then reserved on **0032** until BUD-04 took that number (Jul 23). **ONB-02
+now owns 0033.**
+
+### 0032 budget_item_vendor_many (BUD-04) — APPLIED LIVE
+
+No new table. Drops the 0026 partial unique so one `project_vendor` may link to many
+`budget_items` (venue package on the money side — mirrors VND-07's many category slots).
+
+```sql
+drop index if exists budget_items_project_vendor_uidx;
+-- Retained (0026): budget_items_project_vendor_id_idx on (project_vendor_id) — non-unique
+```
+
+**INTROSPECTION-VERIFIED (Jul 23):** `budget_items_project_vendor_uidx` absent. Still one vendor per
+budget *item* (nullable FK unchanged); many items per vendor is now legal.
 
 ### Column reference
 
 **`tasks` (0002):** `status` CHECK `todo | in_progress | done` default `todo`; `phase` text
 **NULLABLE, free-text (NO CHECK)** — canonical order in `lib/checklist-phases.ts`.
 
-**`budget_items` (0010 + 0026):** `category` text NULLABLE free-text; `planned_amount` numeric(12,2)
-NOT NULL default 0; `actual_amount` nullable; `project_vendor_id` uuid nullable (composite FK).
+**`budget_items` (0010 + 0026 + 0032):** `category` text NULLABLE free-text; `planned_amount`
+numeric(12,2) NOT NULL default 0; `actual_amount` nullable; `project_vendor_id` uuid nullable
+(composite FK). **0032 dropped** `budget_items_project_vendor_uidx` — many lines per vendor allowed.
+Non-unique `budget_items_project_vendor_id_idx` retained.
 
 **`vendors` (0004, category normalized in 0030, `address` in 0031):** ACCOUNT-scoped. `account_id`
 NOT NULL FK→accounts cascade; `name` NOT NULL; `category` text **NULLABLE, NO CHECK — now stores
@@ -435,10 +457,12 @@ FK→`vendors(id)` **ON DELETE CASCADE**, `status` text NOT NULL **default `'to_
 numeric nullable, `role` text nullable, `notes` text nullable. Unique `(project_id, id)` (**0026**,
 for the composite FK — not 0004) and **unique `(project_id, vendor_id)` (0030)**.
 
-**`vendor_targets` (0013 + 0031):** project-scoped category slots. `category` text (still NO CHECK —
-ONB-02 / 0032 owns that decision); `status` includes booked/needed vocabulary used by the UI;
-**`project_vendor_id` uuid nullable (0031)** with composite FK to `project_vendors` and CHECK
-`project_vendor_id is null or status = 'booked'`.
+**`vendor_targets` (0013 + 0031 + VND-07 semantics):** project-scoped category slots. `category`
+text (still NO CHECK — ONB-02 / **0033** owns that decision); `status` includes booked/needed/skipped
+vocabulary used by the UI; **`project_vendor_id` uuid nullable (0031)** with composite FK to
+`project_vendors` and CHECK `project_vendor_id is null or status = 'booked'`. **No unique index or
+unique constraint on `project_vendor_id`** — one `project_vendor` may own many targets (venue
+package). That shared FK **is** the package; there is no junction table (VND-07).
 
 **`timeline_events` (0015):** day-of run sheet. `owner` text **NULLABLE, free-text, NO CHECK**. At
 rest it is a string; at read (TL-04) it is a comma-separated SET via `lib/timeline-owners.ts`. Do not
@@ -454,19 +478,28 @@ normalize on write.
 | `outreach_messages.project_vendor_id` | `outreach_messages_project_vendor_id_fkey` | **CASCADE — hard delete of outreach history** |
 
 The cascade on outreach history is why `removeProjectVendor` requires an explicit confirm that names
-it. Before delete, `removeProjectVendor` also resets any linked `vendor_targets` rows to
-`project_vendor_id: null, status: 'needed'` so slots are not left booked-with-no-vendor by accident
-of the SET NULL alone. See §7.
+it. Before delete, `removeProjectVendor` resets **every** `vendor_targets` row whose
+`project_vendor_id` matches (`.eq('project_vendor_id', projectVendorId)`) to
+`{ project_vendor_id: null, status: 'needed' }` — required for N-slot packages so the FK's
+`ON DELETE SET NULL` cannot leave N booked-empty slots after remove (VND-07 discriminating
+checkpoint). See §7.
 
-**`projects.total_budget`** — numeric(12,2) NULLABLE (0010). **`projects.wedding_date`** — date
-NULLABLE (0001).
+**Unlink vs remove (VND-07):**
+| Action | `project_vendor_id` | Slot `status` | Intent |
+|---|---|---|---|
+| `unlinkVendorFromTarget` | → null | stays **`booked`** | "Booked · vendor not recorded" empty slot |
+| `removeProjectVendor` | → null on all matching | → **`needed`** | Vendor gone; slots return to Still to book |
 
 > **Naming trap:** `project_vendors.vendor_id` → `vendors(id)` and `budget_items.project_vendor_id` →
 > `project_vendors(id)` are DIFFERENT things one join apart. Don't "simplify" it.
 
 > **No-migration slices to date:** the 5-template pack; V3-QA-01…06; SEAT-02/03/05/05a/08/09/10;
 > CHK-01; SET-01; TL-01/02/03; **TL-04**; BUD-01; BUD-01a; ONB-01; Soft stack chrome pass (v11);
-> LAND-01; LAND-01a; INV-03; INV-05; INV-02; **VND-05; VND-05a; VND-05b; VND-06a**.
+> LAND-01; LAND-01a; INV-03; INV-05; INV-02; **VND-05; VND-05a; VND-05b; VND-06a; VND-07; VND-07a;
+> VND-07b**.
+
+**`projects.total_budget`** — numeric(12,2) NULLABLE (0010). **`projects.wedding_date`** — date
+NULLABLE (0001).
 
 ---
 
@@ -534,10 +567,15 @@ Figtree display numerals. Canonical two-column split:
   countdown. The date editor works for invited couples (0029).
 - **Checklist** — CHK-01 progress band + two-column body.
 - **Budget** — BUD-01/02/01a + allocation band. **No pie/donut/circular progress.**
-- **Vendors** — Gmail mailbox card, **Add vendor form (manual, VND-05)**, Vendors-to-book target
-  cards, **Booked band** (slot-linked via VND-06), Outreach section with in-flight pipeline only
-  (VND-06a), Declined group, select-all + Draft outreach, and the shortlist rows (category label,
-  per-row pipeline, status pill, **Remove**).
+- **Vendors** — Gmail mailbox card; **Add vendor form** (manual; VND-05 + **VND-07a** project-wide
+  soft dup → connect); Still-to-book target cards; **Booked band** shaped as:
+  - **Raised package cards** — one per `project_vendor` with ≥1 linked slot; full wrapping name;
+    category **chips** for every linked slot (VND-07b, including count = 1); Unbook / Remove
+  - **Raised unslotted cards** — booked vendor with zero linked slots: "Not linked to a category" +
+    first-slot link control
+  - **Recessed empty-slot wells** — booked target, null `project_vendor_id`: "Booked · vendor not
+    recorded"; Connect existing (when any booked vendor exists) + Add new
+  Outreach = in-flight only (VND-06a); Declined group; select-all + Draft outreach; shortlist Remove.
 - **Day-of timeline** — TL-01/02/03; **TL-04 multi-owner run sheets** (comma SET at read); per-owner
   printable run sheet at `/projects/[projectId]/timeline/run-sheet`.
 - **Guests / Notes / Seating / Website editor / Contracts** — Soft-stacked in v11.
@@ -597,9 +635,9 @@ Corrected picture:
 UI:
 - `components/vendors/AddVendorForm.tsx` — category is now a select fed by `VENDOR_CATEGORIES`
   (value = id, display = label); new **Status** radio pair, "Still to contact" / "Already booked".
-- **Soft duplicate warning** — on submit, if a vendor already in this project shares the same
-  category and a close name match, an inline warning names the existing vendor and the submit button
-  becomes **"Add anyway"**. Best-effort; it does **not** block. Live-confirmed firing correctly.
+- **Soft duplicate warning** — originally same-category + close name → "Add anyway" (VND-05).
+  **Superseded by VND-07a:** match is **project-wide**; primary offer is connect existing to the
+  chosen category via `linkVendorToTarget`; Add anyway is secondary. Still soft; never blocks.
 - `OutreachShortlistRow` — category now rendered through `vendorCategoryLabel`; per-row **Remove**
   with a confirm that states it removes the vendor from this project, permanently deletes its
   outreach message history, and unlinks it from any budget item or task.
@@ -665,12 +703,15 @@ to book, or book a slot with no vendor record attached.
 
 **Actions** (`vendors/actions.ts`):
 - `linkVendorToTarget(targetId, projectVendorId)` / `unlinkVendorFromTarget(targetId)`
-- `removeProjectVendor` — before deleting the link, resets linked targets to
+- `removeProjectVendor` — before deleting the link, resets **all** matching targets to
   `{ project_vendor_id: null, status: 'needed' }`
 - `updateVendorContactDetails` — phone + address only (never Places)
 
+> **v21 note:** VND-07 changed **unlink** to leave `status = 'booked'` (empty recorded slot). Remove
+> still resets to `needed`. See §7 VND-07.
+
 **UI:** `BookedVendorsSection.tsx`, `LinkVendorToTargetControl.tsx`, `VendorContactFields.tsx`.
-Page order: Booked → Still to book → Outreach → Declined.
+Page order: Booked → Still to book → Outreach → Declined. **(v21 reshapes Booked — see VND-07.)**
 
 #### VND-06a — Outreach = in-flight only. NO SCHEMA.
 
@@ -682,7 +723,7 @@ Builds on verified VND-06.
 | Pipeline cycle | `to_contact → contacted → replied → booked → to_contact`; **Decline** is a separate exit |
 | Drawn stops | `VENDOR_PIPELINE_STEPS` = To contact → Contacted → Replied → Booked; declined is not a stop |
 | Declined | Collapsed `DeclinedVendorsGroup`; rosewood; restore → `to_contact` |
-| Booked | Not listed in Outreach; lives in Booked band (slotted or unslotted with "Add to …") |
+| Booked | Not listed in Outreach; lives in Booked band (package / unslotted / empty-slot wells — VND-07) |
 
 Closes v19 B2: drawn set and stored set agree; `replied` is reachable.
 
@@ -696,6 +737,100 @@ Officiant sheet.
 Form hint on add/edit. No write normalization; assistant write tools untouched; `get_timeline`
 returns the raw owner string. `sameOwner` conflict detection still uses full-string equality
 (deliberate). Stale `?owner=DJ,%20Officiant` yields the empty state, not the master sheet.
+
+### v21 — One vendor, many category slots (VND-07 … VND-07b)
+
+#### VND-07 — venue package / multi-slot link. NO SCHEMA.
+
+**Problem:** A venue package covers DJ, catering, baker, etc. After VND-06, (1) marking a slot
+booked left an empty booked card that only offered "add them" (new vendor), not attach existing;
+(2) `LinkVendorToTargetControl` hid once a vendor was already on one slot (`alreadySlotted`);
+(3) the Booked band rendered **one card per `vendor_targets` row**, so one venue on four slots
+looked like four vendors.
+
+**Decision:** no junction table. Shared `vendor_targets.project_vendor_id` across N targets **is**
+the package. Confirmed no unique on that column (live introspection).
+
+**Actions (same writers; semantics tightened):**
+- `linkVendorToTarget` — sole SET of `project_vendor_id` (one update: `{ status: 'booked',
+  project_vendor_id }`). Attaching to a `needed` slot books it in the same write.
+- `unlinkVendorFromTarget` — clears `project_vendor_id`, **leaves `status = 'booked'`** (empty
+  booked slot / "vendor not recorded").
+- `removeProjectVendor` — already filtered all matching targets; **must** keep
+  `.eq('project_vendor_id', …)` so N slots reset to `needed` (discriminating live check).
+
+**UI:**
+- `ConnectExistingVendorControl` on empty booked slots (primary); Add new secondary.
+- Booked band regrouped in `vendors/page.tsx` → one card per `project_vendor`.
+- Replace occupied slot allowed with confirm naming the outgoing vendor.
+- No "Also covers…" picker on the vendor/package side this slice — readout / Connect-from-slot
+  only.
+- Package card gained **Remove** (calls `removeProjectVendor`) so the N-slot reset is reachable
+  from Booked (Remove previously lived only on outreach rows).
+
+**Known residual (reported, not fixed in 07a as a Mark-booked bug):** when
+`connectableVendors.length === 0`, Connect returns null; **Add new** sibling still renders — card
+is not actionless. Optional empty-state copy ("No existing vendors to connect yet") does not exist.
+
+#### VND-07a — package card legibility + project-wide duplicate guard. NO SCHEMA.
+
+**Problem (live):** three `vendors` rows all named "Ocassions at Laguna Village" — one added per
+category — because (1) soft dup filtered **same category only**, and (2) truncated names + category
+eyebrows / `PACKAGE` label made three duplicate vendors look like one package.
+
+**Vendor card (has `project_vendor`):**
+- Remove category eyebrow and hardcoded `PACKAGE` label.
+- Vendor name = card identity; full name, wrapping, **never truncated**.
+- Covered categories as **chips** (`Pill` + `vendorCategoryLabel`). Chips are readouts, not
+  controls.
+- Zero linked targets: "Not linked to a category" + existing first-slot link control (raised card).
+
+**Empty booked slot:** recessed well (not raised card); title = category label; body =
+"Booked · vendor not recorded"; Connect primary, Add new secondary. Category must not occupy the
+vendor-name position.
+
+**`AddVendorForm` soft dup:**
+- Name match is **project-wide** (all categories).
+- Primary CTA: **Connect the existing vendor to this category instead** → `linkVendorToTarget`
+  (needs a `vendor_targets` row for that category; otherwise an error asks to add the category
+  first).
+- **Add anyway** demoted to secondary. Still soft — never blocks.
+
+#### VND-07b — always render category chips. NO SCHEMA.
+
+VND-07a suppressed chips when cover count === 1 (to avoid repeating a removed eyebrow). With no
+eyebrow, single-category vendors showed **no category at all** ("Ryland" with no Officiant signal).
+
+**Fix:** chips render whenever linked slots ≥ 1. Same chip component for one or many — do not style
+a single chip as a "primary category." No label word above the chips. Unslotted (zero slots)
+unchanged.
+
+### v21 — Many budget lines per vendor (BUD-04)
+
+#### BUD-04 — one project_vendor → many budget_items. Migration **0032**.
+
+**Problem:** 0026 enforced one budget line per `project_vendor` (`budget_items_project_vendor_uidx`
+— "a quote maps to one line"). A venue package that covers catering, cake, DJ, etc. could not be
+linked to each planned line.
+
+**Schema (0032):** drop that partial unique; keep non-unique `budget_items_project_vendor_id_idx`.
+Still **at most one vendor per budget item** (nullable FK). Linking is metadata — moves no money.
+
+**Math** (`lib/budget-aggregates.ts`, read-time only): per linked vendor expose `quotedPrice`,
+`sumPlanned`, `variance` (= quote − sum of linked planned), `linkedItemCount`. **No branch on
+`linkedItemCount` inside the math** — only in rendering. Coerce with `Number(...)`. Headlines
+(Allocated / Spent / Committed / Unallocated) remain **items-only**; vendor link does not change
+them. `bookedUnlinkedQuotedTotal` unchanged.
+
+**UI:**
+- `VendorVariance`: count === 1 → BUD-01a over/under; count > 1 → neutral
+  `Part of {name} package · covers N lines`
+- Rail `PackageVarianceCard`: only vendors with count > 1; rosewood when over plan
+- Picker: all vendors offered; soft clay warning when already on another line; never blocks
+- Removed action `23505` "already linked to another budget item" path
+
+**Files:** `0032_budget_item_vendor_many.sql`, `lib/budget-aggregates.ts`, `BudgetItemRow.tsx`,
+`BudgetBoard.tsx`, `budget/actions.ts`.
 
 ---
 
@@ -927,7 +1062,7 @@ and that `vendors.category` had three vocabularies. Every one changed the slice.
 - **Google Places / Files / Assistant / Seating / Budget:** store only `place_id`; private bucket +
   signed URLs gated by `<projectId>/`; assistant can't exceed RLS.
 - **Production infra:** prod belongs in a **separate Supabase org on Pro**. Fresh prod project,
-  migrations **0001–0031** applied by hand once each in order (NEVER `db push`), storage bucket +
+  migrations **0001–0032** applied by hand once each in order (NEVER `db push`), storage bucket +
   policies recreated, real SMTP, prod domain in auth redirect URLs. See the Launch Prep Runbook.
 - Set Anthropic + Google Cloud + Stripe + Supabase billing/spend alerts.
 
@@ -962,7 +1097,18 @@ first-membership; `project_members` recursive-policy flag (investigated, safe �
 - **Multi-owner run sheet string-equality bug** — TL-04; owner is a SET at read via
   `lib/timeline-owners.ts`. Column still free text at rest.
 
-**Open — from the v19/v20 build:**
+**Closed by v21 (VND-07 family):**
+- **One vendor could not cover multiple category slots in the UI** — VND-07: shared
+  `project_vendor_id`, package cards, Connect existing, multi-slot remove reset.
+- **Unlink left slots in Still to book** — unlink now leaves `status = 'booked'` (empty recorded
+  slot).
+- **Duplicate manual vendors per category (Ocassions ×3)** — VND-07a: project-wide soft dup +
+  connect-primary; full wrapping names + chips so packages are distinguishable from duplicates.
+- **Single-category vendor showed no category** — VND-07b: chips always when ≥1 linked slot.
+- **One budget line per vendor (0026 unique)** — BUD-04 / **0032** dropped
+  `budget_items_project_vendor_uidx`; package variance is quote vs sum of linked planned.
+
+**Open — from the v19/v20/v21 build:**
 - **VND-05 checkpoints a, c, e, f, g reported as "all set" without pasted output.** Believed good.
   (d) was the silent `replied` → 23514 case — closed by 0031. (g) remains the one to spot-check if
   outreach quality looks off (raw category id in a generated email).
@@ -973,6 +1119,8 @@ first-membership; `project_members` recursive-policy flag (investigated, safe �
   Harmless defensive code; deliberately left in place.
 - **TL-04 live Dom checkpoint** optional — discriminating pair is DJ / Officiant sheets both showing
   the shared `"DJ, Officiant"` event, with `group by owner` still showing the combined string at rest.
+- **Empty booked slot with zero project vendors:** Connect control returns null; Add new remains.
+  No "No existing vendors to connect yet" copy (optional polish).
 
 **Open — security / schema:**
 - **`viewer` can write on every project-scoped table except `projects`.** `can_edit_project` (0029)
@@ -983,13 +1131,12 @@ first-membership; `project_members` recursive-policy flag (investigated, safe �
   invitations (no role picker), but it is live the moment one does. **This is the v18
   "audit every write policy" rule coming due; it needs its own slice — see §15 WRITE-01.**
 - **`projects` has NO DELETE policy.** Silent-no-op shape, currently unreached.
-- **`vendors.category` has NO CHECK.** Deliberately deferred — **ONB-02 (0032) owns the
+- **`vendors.category` has NO CHECK.** Deliberately deferred — **ONB-02 (0033) owns the
   category-constraint policy decision** and should apply it to `vendors.category` and
   `vendor_targets.category` together against one canonical list. Making the form a picker got ~95%
   of the benefit with no list duplicated into SQL.
 - **`project_invitations.invited_by` / `accepted_by` have no FK to `auth.users`.** Cosmetic.
 - **`budget_items.category` free-text/nullable** — Uncategorized bucket handles it.
-- **0026 partial unique index** behavior-verified, not indexdef-introspected (minor).
 - **`tasks.phase` still free-text**; past `wedding_date` still permitted.
 
 **Open — invitation feature (deliberate gaps):**
@@ -1054,12 +1201,21 @@ INV-02. INV-06 deliberately not built.
 - **VND-06a** — No schema. Outreach = in-flight only; Decline as exit; declined group.
 - **TL-04** — No schema. Owner comma-SET at read (`lib/timeline-owners.ts`).
 
-Current through **0031**; next-free **0032**.
+**Done (v21 — one vendor, many slots + many budget lines):**
+- **BUD-04** — Migration **0032**. Drop `budget_items_project_vendor_uidx`; package variance UI;
+  soft multi-link warning. **Applied live.**
+- **VND-07** — No schema. Multi-slot package via shared `project_vendor_id`; Connect existing;
+  package cards; unlink leaves booked-empty; remove resets all N slots.
+- **VND-07a** — No schema. Card legibility (no PACKAGE eyebrow; full names; chips; recessed empty
+  wells); project-wide soft dup with connect-primary.
+- **VND-07b** — No schema. Chips always when ≥1 linked category.
+
+Current through **0032**; next-free **0033** (ONB-02).
 
 **In progress:** Dom Soft stack + LAND-01 live visual checkpoint (human). Not a Cursor slice.
 
 **Remaining couple side:** moodboard; optional seating depth (per-seat UI / SEAT-07); **ONB-02
-(0032)**; **BUD-03 (pre-launch)**.
+(0033)**; **BUD-03 (pre-launch)**.
 
 **Remaining planner side:** invoicing accepted proposals; deeper CRM; INV-06 (email delivery);
 optional role picker (`collaborator` / `viewer`) — **which is gated on WRITE-01**.
@@ -1073,6 +1229,8 @@ optional role picker (`collaborator` / `viewer`) — **which is gated on WRITE-0
   Website = curated template gallery via dispatcher. Prod = separate Supabase org on Pro.
 - Seating = SVG pointer interactions; not @dnd-kit. Rotation step = **45°**. SEAT-06 deferred.
 - **Budget: Allocated is items-only; quote money never enters a headline figure.** No pie/donut.
+  **One `project_vendor` may link many `budget_items` (BUD-04 / 0032)**; variance is quote vs sum
+  of linked planned (derived at read). Still at most one vendor per budget item.
 - **Chrome = Soft stack (C1).** Do not reopen Modern romantic. Tier 3 websites stay on `--ws-*`.
 - **Public wedding long dates = shared `formatWeddingDate`, locale `en-US`.**
 - **Signup creates NO tenant.** Bootstrap once on OnboardingForm, guarded in DB (0027).
@@ -1086,13 +1244,18 @@ optional role picker (`collaborator` / `viewer`) — **which is gated on WRITE-0
 - **`vendors` is account-scoped; "remove vendor" always means remove the `project_vendors` link.**
   A vendors-row delete is not exposed anywhere and should not be added casually.
 - **Near-duplicate vendors are a soft UI warning, never a constraint.** Cleanup is deletion.
+  **Match is project-wide (VND-07a), not same-category.** Primary soft remedy is connect-to-slot
+  via `linkVendorToTarget`; Add anyway remains.
 - **A booked category slot may own a `project_vendors` row via `vendor_targets.project_vendor_id`
-  (0031).** Linking requires `status = 'booked'` on the target.
+  (0031).** Linking requires `status = 'booked'` on the target. **One `project_vendor` may own many
+  slots (VND-07)** — that shared FK is the package; no junction table.
+- **Unlink clears the link and leaves the slot booked; remove clears all matching links and sets
+  those slots to needed (VND-07).**
 - **Outreach lists in-flight statuses only** (`to_contact | contacted | replied`). Declined is an
   exit; booked lives in the Booked band.
 - **`timeline_events.owner` is free text at rest and a comma-separated SET at read (TL-04).**
   `lib/timeline-owners.ts` is the sole parser.
-- **ONB-02 owns migration 0032** (`commitPlan` atomicity + `vendor_targets.category` /
+- **ONB-02 owns migration 0033** (`commitPlan` atomicity + `vendor_targets.category` /
   `vendors.category` CHECK decision). **BUD-03** takes next-free at build time.
 - **Photos: declined twice, permanently. Not deferred.**
 
@@ -1101,15 +1264,20 @@ optional role picker (`collaborator` / `viewer`) — **which is gated on WRITE-0
 ## 15. Start here next (pick-up point)
 
 The couple product is feature-complete, shareable, payable, shareable with a planner's couples, and
-now maintains booked slots + an in-flight outreach pipeline + multi-owner run sheets. Plan is
-**couples-first launch**. Bible is at **v20**. Schema through **0031**; next-free **0032**.
+maintains booked slots (including **venue packages** — one vendor, many categories) + many budget
+lines per vendor (BUD-04) + an in-flight outreach pipeline + multi-owner run sheets. Plan is
+**couples-first launch**. Bible is at **v21**. Schema through **0032**; next-free **0033** (ONB-02).
 
 **Do not resume a Modern romantic / VND-01 layout polish pass.** Vendors chrome is Soft-stacked.
+**Do not reintroduce category eyebrows or a `PACKAGE` label on Booked cards** (VND-07a). **Do not
+suppress single-category chips** (VND-07b).
 
 **A. Dom Soft stack + LAND-01 / LAND-01a live visual checkpoint (still open).**
 Walk couple tabs (Overview, Checklist, Budget, Timeline, Vendors, Guests, Seating, Website editor,
 Notes), planner dashboard/leads/billing/Access, landing, login, `/invite/[token]`, and public
-`/w/[slug]`. Confirm no hydration mismatch. Fix only real regressions.
+`/w/[slug]`. Confirm no hydration mismatch. Fix only real regressions. On Vendors, spot-check:
+package card (full name + chips), single-chip vendors, recessed empty-slot wells, soft-dup connect.
+On Budget, spot-check multi-line package variance (BUD-04).
 
 **A2. Invite Jordyn for real.** The honest end-to-end test, and the first time the design
 collaborator sees her own view. Use the Access tab on a planner project.
@@ -1117,7 +1285,7 @@ collaborator sees her own view. Use the Access tab on a planner project.
 **A3 (optional). TL-04 live checkpoint** on Dom & Jordyn if not already run — DJ / Officiant sheets
 both include the shared event; `group by owner` proves strings unchanged at rest.
 
-**B. ONB-02 — `commitPlan` atomicity + category CHECKs. Migration 0032.**
+**B. ONB-02 — `commitPlan` atomicity + category CHECKs. Migration 0033.**
 Three sequential non-atomic inserts (tasks, budget_items, vendor_targets) with no transaction: a
 failure on insert #2 leaves tasks, no budget, and `onboarded_at` unstamped. v10 proved onboarding is
 where this product breaks. **Also owns the category-constraint decision** — apply it to
@@ -1151,11 +1319,11 @@ should change in one pass. Unreached today only because nothing issues `viewer` 
 **Sequence this before the role picker, and re-run it after Phase-4 conversion.**
 
 **E. Launch (after ONB-02 + BUD-03 + visual QA).**
-Follow the **Launch Prep Runbook**: separate prod Supabase org on Pro + migrations **0001–0031** (by
+Follow the **Launch Prep Runbook**: separate prod Supabase org on Pro + migrations **0001–0032** (by
 hand — **never `db push`**) + storage + SMTP; Vercel + domain + env; Stripe live + webhook + Portal +
 Tax; prod Places key; Gmail stays testing mode; privacy + ToS; monitoring; **full prod smoke —
-including real signup, deliberate double-click, a real invitation round trip, and a vendor
-add/remove + slot-link cycle.**
+including real signup, deliberate double-click, a real invitation round trip, a vendor add/remove +
+multi-slot package link cycle (VND-07), and multi-line budget vendor links (BUD-04).**
 
 **F. Planner depth / revenue (after launch, or sooner if planner-led).**
 - Invoicing accepted proposals (recommended first post-launch).
@@ -1170,8 +1338,9 @@ add/remove + slot-link cycle.**
 invitations; per-seat assignment UI; `projects` DELETE policy decision; personal-user-with-direct-
 project visibility; website caching; RSVP→guest matching; checklist Other/Unscheduled bucket;
 orphaned-vendor handling / account vendor library; currency-helper consolidation; regenerate
-`reference.html` / delete `theme-direction.html` / retire CSS aliases; font-load scoping.
+`reference.html` / delete `theme-direction.html` / retire CSS aliases; font-load scoping;
+optional empty-state copy on empty booked slots when no vendors exist to connect.
 
-**Recommended path:** **visual checkpoint + invite Jordyn (A/A2)** → **ONB-02 / 0032 (B)** →
+**Recommended path:** **visual checkpoint + invite Jordyn (A/A2)** → **ONB-02 / 0033 (B)** →
 **BUD-03 (C)** → **Launch (E)** → WRITE-01 before any role picker (D) → invoicing → INV-06 →
 conversion (F) → remaining H.

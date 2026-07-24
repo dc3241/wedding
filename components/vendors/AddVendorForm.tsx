@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import {
   addVendor,
+  linkVendorToTarget,
   type AddVendorStatus,
 } from "@/app/(app)/projects/[projectId]/vendors/actions";
 import { Button } from "@/components/ui/button";
@@ -10,11 +11,22 @@ import { Card } from "@/components/ui/card";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
-import { VENDOR_CATEGORIES } from "@/lib/vendor-categories";
+import {
+  VENDOR_CATEGORIES,
+  vendorCategoryLabel,
+} from "@/lib/vendor-categories";
 
 export type ExistingProjectVendor = {
+  projectVendorId: string;
   name: string;
   category: string | null;
+};
+
+export type ConnectableCategoryTarget = {
+  id: string;
+  category: string;
+  project_vendor_id: string | null;
+  linkedVendorName?: string | null;
 };
 
 function normalizeVendorName(name: string) {
@@ -32,29 +44,29 @@ function isCloseNameMatch(a: string, b: string) {
   return left.includes(right) || right.includes(left);
 }
 
+/** Project-wide name match — category must not scope the soft guard. */
 function findSoftDuplicate(
   existing: ExistingProjectVendor[],
   name: string,
-  categoryId: string,
 ) {
-  return existing.find(
-    (row) =>
-      row.category === categoryId && isCloseNameMatch(row.name, name),
-  );
+  return existing.find((row) => isCloseNameMatch(row.name, name)) ?? null;
 }
 
 export function AddVendorForm({
   projectId,
   existingVendors,
+  categoryTargets = [],
   defaultCategoryId = null,
 }: {
   projectId: string;
   existingVendors: ExistingProjectVendor[];
+  categoryTargets?: ConnectableCategoryTarget[];
   defaultCategoryId?: string | null;
 }) {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
-  const [duplicateWarning, setDuplicateWarning] = useState<string | null>(null);
+  const [duplicateMatch, setDuplicateMatch] =
+    useState<ExistingProjectVendor | null>(null);
   const [status, setStatus] = useState<AddVendorStatus>("to_contact");
   const categoryDefault =
     defaultCategoryId &&
@@ -89,7 +101,7 @@ export function AddVendorForm({
         setError(result.error);
         return;
       }
-      setDuplicateWarning(null);
+      setDuplicateMatch(null);
       formEl.reset();
       setStatus("to_contact");
     });
@@ -105,9 +117,9 @@ export function AddVendorForm({
     if (!name || !categoryId) return;
 
     const formEl = e.currentTarget;
-    const match = findSoftDuplicate(existingVendors, name, categoryId);
-    if (match && !duplicateWarning) {
-      setDuplicateWarning(match.name);
+    const match = findSoftDuplicate(existingVendors, name);
+    if (match && !duplicateMatch) {
+      setDuplicateMatch(match);
       setError(null);
       return;
     }
@@ -130,10 +142,58 @@ export function AddVendorForm({
     });
   }
 
+  function handleConnectExisting(e: React.MouseEvent<HTMLButtonElement>) {
+    e.preventDefault();
+    if (!duplicateMatch) return;
+
+    const formEl = e.currentTarget.form;
+    if (!formEl) return;
+
+    const form = new FormData(formEl);
+    const categoryId = ((form.get("category") as string) ?? "").trim();
+    if (!categoryId) {
+      setError("Choose a category to connect to.");
+      return;
+    }
+
+    const target = categoryTargets.find((t) => t.category === categoryId);
+    if (!target) {
+      setError(
+        `${vendorCategoryLabel(categoryId)} isn’t on your list to book yet. Add that category first, then connect.`,
+      );
+      return;
+    }
+
+    if (
+      target.project_vendor_id != null &&
+      target.project_vendor_id !== duplicateMatch.projectVendorId
+    ) {
+      const outgoing = target.linkedVendorName?.trim() || "the current vendor";
+      const ok = window.confirm(
+        `Replace ${outgoing} on ${vendorCategoryLabel(categoryId)}?`,
+      );
+      if (!ok) return;
+    }
+
+    startTransition(async () => {
+      setError(null);
+      try {
+        await linkVendorToTarget(target.id, duplicateMatch.projectVendorId);
+        setDuplicateMatch(null);
+        formEl.reset();
+        setStatus("to_contact");
+      } catch (err) {
+        setError(
+          err instanceof Error ? err.message : "Could not connect that vendor.",
+        );
+      }
+    });
+  }
+
   return (
     <Card id="add-vendor" className="px-6 py-5 scroll-mt-6">
       <form
-        onSubmit={duplicateWarning ? handleAddAnyway : handleSubmit}
+        onSubmit={duplicateMatch ? handleAddAnyway : handleSubmit}
         className="space-y-4"
       >
         <div>
@@ -154,7 +214,7 @@ export function AddVendorForm({
               required
               placeholder="Vendor name"
               disabled={isPending}
-              onChange={() => setDuplicateWarning(null)}
+              onChange={() => setDuplicateMatch(null)}
             />
           </div>
           <div className="space-y-1.5">
@@ -170,7 +230,7 @@ export function AddVendorForm({
               required
               defaultValue={categoryDefault}
               disabled={isPending}
-              onChange={() => setDuplicateWarning(null)}
+              onChange={() => setDuplicateMatch(null)}
             >
               <option value="" disabled>
                 Choose category
@@ -229,13 +289,34 @@ export function AddVendorForm({
           </div>
         </fieldset>
 
-        {duplicateWarning ? (
-          <div className="rounded-[var(--radius-inner)] bg-clay-wash px-4 py-3 text-[14px] text-ink">
+        {duplicateMatch ? (
+          <div className="space-y-3 rounded-[var(--radius-inner)] bg-clay-wash px-4 py-3 text-[14px] text-ink">
             <p>
               You already have{" "}
-              <span className="font-semibold">{duplicateWarning}</span> in this
-              category on this project. Add anyway?
+              <span className="font-semibold">{duplicateMatch.name}</span> on
+              this project. Connect them to this category instead?
             </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                type="button"
+                variant="primary"
+                disabled={isPending}
+                onClick={handleConnectExisting}
+                className="text-[13px]"
+              >
+                {isPending
+                  ? "Connecting…"
+                  : "Connect the existing vendor to this category instead"}
+              </Button>
+              <Button
+                type="submit"
+                variant="secondary"
+                disabled={isPending}
+                className="text-[13px]"
+              >
+                Add anyway
+              </Button>
+            </div>
           </div>
         ) : null}
 
@@ -243,13 +324,11 @@ export function AddVendorForm({
           <p className="text-[14px] font-medium text-rosewood">{error}</p>
         ) : null}
 
-        <Button type="submit" variant="primary" disabled={isPending}>
-          {isPending
-            ? "Adding…"
-            : duplicateWarning
-              ? "Add anyway"
-              : "Add vendor"}
-        </Button>
+        {!duplicateMatch ? (
+          <Button type="submit" variant="primary" disabled={isPending}>
+            {isPending ? "Adding…" : "Add vendor"}
+          </Button>
+        ) : null}
       </form>
     </Card>
   );
