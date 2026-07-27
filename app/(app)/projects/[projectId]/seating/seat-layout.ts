@@ -5,12 +5,14 @@ export type TableBody = {
   halfHeight: number;
 };
 
-const ROUND_RADIUS = 48;
-const SQUARE_HALF = 48;
-const RECT_HALF_WIDTH = 64;
-const RECT_HALF_HEIGHT = 36;
-const SEAT_OFFSET = 14;
-const SEAT_RADIUS = 5;
+const ROUND_RADIUS = 62;
+const SQUARE_HALF = 62;
+const RECT_HALF_WIDTH = 80;
+const RECT_HALF_HEIGHT = 44;
+const DANCEFLOOR_HALF_WIDTH = 120;
+const DANCEFLOOR_HALF_HEIGHT = 90;
+const SEAT_OFFSET = 17;
+const SEAT_RADIUS = 6.5;
 const PER_SEAT_DEG = 30;
 const FRONT_ARC_MAX_DEG = 160;
 
@@ -23,6 +25,20 @@ export function tableBodyForShape(shape: SeatingTableShape): TableBody {
     case "rectangle":
       return { halfWidth: RECT_HALF_WIDTH, halfHeight: RECT_HALF_HEIGHT };
   }
+}
+
+export function tableBodyForElement(
+  shape: SeatingTableShape,
+  kind: SeatingTableKind = "standard",
+): TableBody {
+  if (kind === "dancefloor") {
+    return {
+      halfWidth: DANCEFLOOR_HALF_WIDTH,
+      halfHeight: DANCEFLOOR_HALF_HEIGHT,
+    };
+  }
+
+  return tableBodyForShape(shape);
 }
 
 function roundSeatPositions(count: number, radius: number) {
@@ -130,7 +146,11 @@ export function seatPositionsForTable(
   seatCount: number,
   kind: SeatingTableKind = "standard",
 ) {
-  const body = tableBodyForShape(shape);
+  if (kind === "dancefloor" || seatCount <= 0) {
+    return [];
+  }
+
+  const body = tableBodyForElement(shape, kind);
 
   if (isFrontClusteredKind(kind)) {
     if (shape === "round") {

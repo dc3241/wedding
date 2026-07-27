@@ -29,11 +29,27 @@ async function nextTableLabel(projectId: string) {
   const { count, error } = await supabase
     .from("seating_tables")
     .select("*", { count: "exact", head: true })
-    .eq("project_id", projectId);
+    .eq("project_id", projectId)
+    .neq("kind", "dancefloor");
 
   if (error) throw error;
 
   return `Table ${(count ?? 0) + 1}`;
+}
+
+async function nextDancefloorLabel(projectId: string) {
+  const supabase = await createClient();
+
+  const { count, error } = await supabase
+    .from("seating_tables")
+    .select("*", { count: "exact", head: true })
+    .eq("project_id", projectId)
+    .eq("kind", "dancefloor");
+
+  if (error) throw error;
+
+  const next = (count ?? 0) + 1;
+  return next === 1 ? "Dance floor" : `Dance floor ${next}`;
 }
 
 export async function addSeatingTable(
@@ -55,6 +71,28 @@ export async function addSeatingTable(
     shape: input.shape,
     seat_count: clampSeatCount(input.seatCount),
     kind: "standard",
+    pos_x: clampPosition(input.posX, CANVAS_WIDTH),
+    pos_y: clampPosition(input.posY, CANVAS_HEIGHT),
+    rotation: 0,
+  });
+
+  if (error) throw error;
+
+  revalidatePath(seatingPath(projectId));
+}
+
+export async function addDancefloor(
+  projectId: string,
+  input: { posX: number; posY: number },
+) {
+  const supabase = await createClient();
+
+  const { error } = await supabase.from("seating_tables").insert({
+    project_id: projectId,
+    label: await nextDancefloorLabel(projectId),
+    shape: "rectangle",
+    seat_count: 0,
+    kind: "dancefloor",
     pos_x: clampPosition(input.posX, CANVAS_WIDTH),
     pos_y: clampPosition(input.posY, CANVAS_HEIGHT),
     rotation: 0,
@@ -119,6 +157,20 @@ export async function setSeatingTableKind(
 
   const supabase = await createClient();
 
+  const { data: existing, error: readError } = await supabase
+    .from("seating_tables")
+    .select("kind, project_id")
+    .eq("id", tableId)
+    .maybeSingle();
+
+  if (readError) throw readError;
+  if (!existing) {
+    return { ok: false, error: "That table no longer exists." };
+  }
+  if (existing.kind === "dancefloor") {
+    return { ok: false, error: "Dance floors do not have a table kind." };
+  }
+
   const { data, error } = await supabase
     .from("seating_tables")
     .update({ kind })
@@ -180,13 +232,16 @@ export async function setSeatingTableSeatCount(
 
   const { data: table, error: readError } = await supabase
     .from("seating_tables")
-    .select("project_id")
+    .select("kind, project_id")
     .eq("id", tableId)
     .maybeSingle();
 
   if (readError) throw readError;
   if (!table) {
     return { ok: false, error: "That table no longer exists." };
+  }
+  if (table.kind === "dancefloor") {
+    return { ok: false, error: "Dance floors do not have seats." };
   }
 
   // Occupancy is COUNT of assignment rows (seat_index is null today).
@@ -228,13 +283,16 @@ export async function assignGuestToTable(
   // trusting the client-sent projectId for the written row.
   const { data: table, error: tableError } = await supabase
     .from("seating_tables")
-    .select("id, label, seat_count, project_id")
+    .select("id, label, seat_count, kind, project_id")
     .eq("id", input.tableId)
     .maybeSingle();
 
   if (tableError) throw tableError;
   if (!table) {
     return { ok: false, error: "That table no longer exists." };
+  }
+  if (table.kind === "dancefloor") {
+    return { ok: false, error: "Guests can only be seated at tables." };
   }
 
   // OCCUPANCY (value validation, not a permission filter). Count assignments

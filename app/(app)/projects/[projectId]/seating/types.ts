@@ -2,9 +2,13 @@ export const SEATING_TABLE_SHAPES = ["round", "square", "rectangle"] as const;
 
 export type SeatingTableShape = (typeof SEATING_TABLE_SHAPES)[number];
 
+/** Seatable table kinds shown in the Kind picker. */
 export const SEATING_TABLE_KINDS = ["standard", "sweetheart", "head"] as const;
 
-export type SeatingTableKind = (typeof SEATING_TABLE_KINDS)[number];
+export type SeatingSeatableKind = (typeof SEATING_TABLE_KINDS)[number];
+
+/** All floor-plan element kinds stored on seating_tables.kind. */
+export type SeatingTableKind = SeatingSeatableKind | "dancefloor";
 
 export const DEFAULT_SEAT_COUNT_BY_SHAPE: Record<SeatingTableShape, number> = {
   round: 8,
@@ -39,7 +43,7 @@ export type RosterGuest = {
 };
 
 export const CANVAS_WIDTH = 1200;
-export const CANVAS_HEIGHT = 800;
+export const CANVAS_HEIGHT = 1100;
 
 export const NUDGE_STEP = 15;
 export const NUDGE_FINE_STEP = 3;
@@ -48,19 +52,16 @@ export function isSeatingTableShape(value: string): value is SeatingTableShape {
   return (SEATING_TABLE_SHAPES as readonly string[]).includes(value);
 }
 
-export function isSeatingTableKind(value: string): value is SeatingTableKind {
+export function isSeatingTableKind(value: string): value is SeatingSeatableKind {
   return (SEATING_TABLE_KINDS as readonly string[]).includes(value);
 }
 
-export function seatingTableKindLabel(kind: SeatingTableKind) {
-  switch (kind) {
-    case "standard":
-      return "Standard";
-    case "sweetheart":
-      return "Sweetheart";
-    case "head":
-      return "Head";
-  }
+export function isDancefloor(kind: SeatingTableKind) {
+  return kind === "dancefloor";
+}
+
+export function isSeatableTable(table: Pick<SeatingTable, "kind">) {
+  return !isDancefloor(table.kind);
 }
 
 export function seatingShapeLabel(shape: SeatingTableShape) {

@@ -14,9 +14,11 @@ import { cn } from "@/lib/cn";
 
 type SeatingToolbarProps = {
   armedShape: SeatingTableShape | null;
+  armedDancefloor: boolean;
   seatCount: number;
   isPending: boolean;
   onToggleShape: (shape: SeatingTableShape) => void;
+  onToggleDancefloor: () => void;
   onSeatCountChange: (seatCount: number) => void;
   children?: ReactNode;
 };
@@ -63,11 +65,30 @@ function ShapeIcon({ shape }: { shape: SeatingTableShape }) {
   );
 }
 
+function DancefloorIcon() {
+  return (
+    <svg viewBox="0 0 32 32" className="size-5" aria-hidden>
+      <rect
+        x={4}
+        y={8}
+        width={24}
+        height={16}
+        rx={3}
+        className="fill-well stroke-ring"
+        strokeWidth={1.5}
+        strokeDasharray="3 2"
+      />
+    </svg>
+  );
+}
+
 export function SeatingToolbar({
   armedShape,
+  armedDancefloor,
   seatCount,
   isPending,
   onToggleShape,
+  onToggleDancefloor,
   onSeatCountChange,
   children,
 }: SeatingToolbarProps) {
@@ -77,12 +98,12 @@ export function SeatingToolbar({
         <div className="flex flex-wrap items-end gap-6">
           <div>
             <p className="mb-2 text-[12px] font-semibold uppercase tracking-[0.09em] text-muted">
-              Add table
+              Add
             </p>
             <div
-              className="flex rounded-[var(--radius-inner)] bg-well p-1 shadow-recessed"
+              className="flex flex-wrap rounded-[var(--radius-inner)] bg-well p-1 shadow-recessed"
               role="group"
-              aria-label="Table shape"
+              aria-label="Place on floor plan"
             >
               {SEATING_TABLE_SHAPES.map((shape) => {
                 const armed = armedShape === shape;
@@ -106,6 +127,22 @@ export function SeatingToolbar({
                   </button>
                 );
               })}
+              <button
+                type="button"
+                onClick={onToggleDancefloor}
+                disabled={isPending}
+                aria-pressed={armedDancefloor}
+                className={cn(
+                  "flex items-center gap-2 rounded-[var(--radius-inner)] px-3 py-2 text-[13px] font-semibold transition-colors",
+                  armedDancefloor
+                    ? "bg-accent-wash text-accent"
+                    : "text-muted hover:text-ink",
+                  isPending && "opacity-60",
+                )}
+              >
+                <DancefloorIcon />
+                Dance floor
+              </button>
             </div>
           </div>
 

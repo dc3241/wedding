@@ -1,11 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { seatPositionsForTable, tableBodyForShape, SEAT_RADIUS } from "./seat-layout";
+import { seatPositionsForTable, tableBodyForElement, SEAT_RADIUS } from "./seat-layout";
 import {
   CANVAS_HEIGHT,
   CANVAS_WIDTH,
-  seatingTableKindLabel,
+  isDancefloor,
   type SeatingTable,
   type SeatingTableShape,
 } from "./types";
@@ -14,6 +14,7 @@ import { cn } from "@/lib/cn";
 type SeatingCanvasProps = {
   tables: SeatingTable[];
   armedShape: SeatingTableShape | null;
+  armedDancefloor: boolean;
   selectedId: string | null;
   occupancyByTable: Record<string, number>;
   assignMode: boolean;
@@ -49,7 +50,6 @@ type DragVisual = {
 const MIN_SCALE = 1;
 const MAX_SCALE = 2.5;
 
-const INSET_RING_OFFSET = 5;
 const DRAG_THRESHOLD_PX = 4;
 
 function SeatingTableGraphic({
@@ -69,18 +69,22 @@ function SeatingTableGraphic({
   livePosY: number;
   onPointerDown: (event: React.PointerEvent<SVGGElement>) => void;
 }) {
-  const body = tableBodyForShape(table.shape);
+  const dancefloor = isDancefloor(table.kind);
+  const body = tableBodyForElement(table.shape, table.kind);
   const seats = seatPositionsForTable(table.shape, table.seat_count, table.kind);
   const stroke = selected ? "var(--accent)" : "var(--ring)";
   const strokeWidth = selected ? 2 : 1.5;
-  const distinguished = table.kind !== "standard";
-  const full = occupied >= table.seat_count;
+  const full = !dancefloor && occupied >= table.seat_count;
   const countColor = full ? "var(--sage)" : "var(--muted)";
 
   return (
     <g
       transform={`translate(${livePosX} ${livePosY})`}
-      aria-label={`${table.label}, ${occupied} of ${table.seat_count} seats filled`}
+      aria-label={
+        dancefloor
+          ? table.label
+          : `${table.label}, ${occupied} of ${table.seat_count} seats filled`
+      }
       style={{
         pointerEvents: interactive ? "auto" : "none",
         cursor: interactive ? "grab" : undefined,
@@ -92,7 +96,19 @@ function SeatingTableGraphic({
       }}
     >
       <g transform={`rotate(${table.rotation})`}>
-        {table.shape === "round" ? (
+        {dancefloor ? (
+          <rect
+            x={-body.halfWidth}
+            y={-body.halfHeight}
+            width={body.halfWidth * 2}
+            height={body.halfHeight * 2}
+            rx={8}
+            fill="var(--well)"
+            stroke={stroke}
+            strokeWidth={strokeWidth}
+            strokeDasharray="7 5"
+          />
+        ) : table.shape === "round" ? (
           <circle
             cx={0}
             cy={0}
@@ -114,69 +130,27 @@ function SeatingTableGraphic({
           />
         )}
 
-        {distinguished ? (
-          table.shape === "round" ? (
-            <circle
-              cx={0}
-              cy={0}
-              r={body.halfWidth - INSET_RING_OFFSET}
-              fill="none"
-              stroke="var(--ring)"
-              strokeWidth={1}
-              style={{ pointerEvents: "none" }}
-            />
-          ) : (
-            <rect
-              x={-body.halfWidth + INSET_RING_OFFSET}
-              y={-body.halfHeight + INSET_RING_OFFSET}
-              width={body.halfWidth * 2 - INSET_RING_OFFSET * 2}
-              height={body.halfHeight * 2 - INSET_RING_OFFSET * 2}
-              rx={table.shape === "square" ? 2 : 4}
-              fill="none"
-              stroke="var(--ring)"
-              strokeWidth={1}
-              style={{ pointerEvents: "none" }}
-            />
-          )
-        ) : null}
-
         {seats.map((seat, index) => (
           <circle
             key={`${table.id}-seat-${index}`}
             cx={seat.x}
             cy={seat.y}
             r={SEAT_RADIUS}
-            fill={index < occupied ? "var(--sage)" : "var(--well)"}
+            fill={index < occupied ? "var(--sage)" : "var(--surface)"}
             stroke={index < occupied ? "var(--sage)" : "var(--ring)"}
-            strokeWidth={1}
+            strokeWidth={index < occupied ? 1 : 1.75}
             style={{ pointerEvents: "none" }}
           />
         ))}
       </g>
 
-      {distinguished ? (
-        <text
-          x={0}
-          y={-18}
-          textAnchor="middle"
-          dominantBaseline="middle"
-          fill="var(--muted)"
-          fontSize={10}
-          fontFamily="var(--font-sans)"
-          fontWeight={400}
-          style={{ pointerEvents: "none" }}
-        >
-          {seatingTableKindLabel(table.kind)}
-        </text>
-      ) : null}
-
       <text
         x={0}
-        y={-4}
+        y={dancefloor ? 0 : -4}
         textAnchor="middle"
         dominantBaseline="middle"
         fill="var(--ink)"
-        fontSize={13}
+        fontSize={dancefloor ? 16 : 15}
         fontFamily="var(--font-sans)"
         fontWeight={500}
         style={{ pointerEvents: "none" }}
@@ -184,19 +158,21 @@ function SeatingTableGraphic({
         {table.label}
       </text>
 
-      <text
-        x={0}
-        y={12}
-        textAnchor="middle"
-        dominantBaseline="middle"
-        fill={countColor}
-        fontSize={11}
-        fontFamily="var(--font-sans)"
-        fontWeight={500}
-        style={{ pointerEvents: "none" }}
-      >
-        {occupied}/{table.seat_count}
-      </text>
+      {!dancefloor ? (
+        <text
+          x={0}
+          y={14}
+          textAnchor="middle"
+          dominantBaseline="middle"
+          fill={countColor}
+          fontSize={13}
+          fontFamily="var(--font-sans)"
+          fontWeight={500}
+          style={{ pointerEvents: "none" }}
+        >
+          {occupied}/{table.seat_count}
+        </text>
+      ) : null}
     </g>
   );
 }
@@ -218,6 +194,7 @@ function clientToLogical(svg: SVGSVGElement, clientX: number, clientY: number) {
 export function SeatingCanvas({
   tables,
   armedShape,
+  armedDancefloor,
   selectedId,
   occupancyByTable,
   assignMode,
@@ -253,8 +230,14 @@ export function SeatingCanvas({
   // so empty-canvas move doesn't steal table select/drag gestures.
   const suppressCanvasClickRef = useRef(false);
 
-  const placing = armedShape !== null;
+  const placing = armedShape !== null || armedDancefloor;
   const viewportGesturesEnabled = allowViewportInteraction && !placing;
+
+  const renderOrder = [...tables].sort((a, b) => {
+    const aFloor = isDancefloor(a.kind) ? 0 : 1;
+    const bFloor = isDancefloor(b.kind) ? 0 : 1;
+    return aFloor - bFloor;
+  });
 
   useEffect(() => {
     const media = window.matchMedia("(pointer: coarse)");
@@ -541,11 +524,11 @@ export function SeatingCanvas({
             fontSize={15}
             fontFamily="var(--font-sans)"
           >
-            No tables yet — arm a shape and click to place one.
+            No tables yet — arm a shape or dance floor and click to place.
           </text>
         ) : null}
 
-        {tables.map((table) => {
+        {renderOrder.map((table) => {
           const live =
             dragVisual?.id === table.id
               ? dragVisual

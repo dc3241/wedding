@@ -3,7 +3,10 @@ import type {
   RosterGuest,
   SeatingAssignment,
   SeatingTable,
+  SeatingTableKind,
+  SeatingTableShape,
 } from "./types";
+import { isSeatingTableKind, isSeatingTableShape } from "./types";
 import { PageHeader } from "@/components/ui/page-header";
 import { getAccountContext } from "@/lib/account-context";
 import { sectionStackClass } from "@/lib/density";
@@ -15,6 +18,17 @@ function formatEyebrowDate(iso: string) {
     month: "long",
     year: "numeric",
   });
+}
+
+function parseTableKind(value: string): SeatingTableKind | null {
+  if (isSeatingTableKind(value) || value === "dancefloor") {
+    return value;
+  }
+  return null;
+}
+
+function parseTableShape(value: string): SeatingTableShape | null {
+  return isSeatingTableShape(value) ? value : null;
 }
 
 export default async function SeatingPage({
@@ -54,16 +68,24 @@ export default async function SeatingPage({
       .maybeSingle(),
   ]);
 
-  const tables: SeatingTable[] = (tableRows ?? []).map((row) => ({
-    id: row.id,
-    label: row.label,
-    shape: row.shape,
-    seat_count: row.seat_count,
-    kind: row.kind,
-    pos_x: Number(row.pos_x),
-    pos_y: Number(row.pos_y),
-    rotation: Number(row.rotation),
-  }));
+  const tables: SeatingTable[] = (tableRows ?? []).flatMap((row) => {
+    const shape = parseTableShape(row.shape);
+    const kind = parseTableKind(row.kind);
+    if (!shape || !kind) return [];
+
+    return [
+      {
+        id: row.id,
+        label: row.label,
+        shape,
+        seat_count: row.seat_count,
+        kind,
+        pos_x: Number(row.pos_x),
+        pos_y: Number(row.pos_y),
+        rotation: Number(row.rotation),
+      },
+    ];
+  });
 
   const guests = (guestRows ?? []) as RosterGuest[];
   const assignments = (assignmentRows ?? []) as SeatingAssignment[];
@@ -80,7 +102,7 @@ export default async function SeatingPage({
       <PageHeader
         eyebrow={eyebrow}
         title="Seating"
-        description="Place tables, then select a guest and click a table to seat them."
+        description="Place tables and a dance floor, then select a guest and click a table to seat them."
       />
 
       <SeatingWorkspace

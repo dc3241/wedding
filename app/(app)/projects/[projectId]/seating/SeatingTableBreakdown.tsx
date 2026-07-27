@@ -1,11 +1,7 @@
 "use client";
 
 import { formatGuestName } from "@/app/(app)/projects/[projectId]/guests/types";
-import {
-  seatingTableKindLabel,
-  type RosterGuest,
-  type SeatingTable,
-} from "./types";
+import type { RosterGuest, SeatingTable } from "./types";
 import { cn } from "@/lib/cn";
 
 type SeatingTableBreakdownProps = {
@@ -32,7 +28,6 @@ export function SeatingTableBreakdown({
           const occupied = occupancyByTable[table.id] ?? 0;
           const seated = guestsByTable[table.id] ?? [];
           const full = occupied >= table.seat_count;
-          const showKind = table.kind !== "standard";
 
           return (
             <article
@@ -44,11 +39,6 @@ export function SeatingTableBreakdown({
                   <h3 className="truncate text-[15px] font-semibold text-ink">
                     {table.label}
                   </h3>
-                  {showKind ? (
-                    <p className="mt-0.5 text-[12px] font-medium text-muted">
-                      {seatingTableKindLabel(table.kind)}
-                    </p>
-                  ) : null}
                 </div>
                 <p
                   className={cn(

@@ -2,12 +2,12 @@
 
 import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
 import {
+  addDancefloor,
   addSeatingTable,
   assignGuestToTable,
   deleteSeatingTable,
   moveSeatingTable,
   rotateSeatingTable,
-  setSeatingTableKind,
   setSeatingTableSeatCount,
   unassignGuest,
 } from "./actions";
@@ -18,11 +18,12 @@ import { SeatingTableBreakdown } from "./SeatingTableBreakdown";
 import { SeatingToolbar } from "./SeatingToolbar";
 import {
   DEFAULT_SEAT_COUNT_BY_SHAPE,
+  isDancefloor,
+  isSeatableTable,
   NUDGE_FINE_STEP,
   NUDGE_STEP,
   type RosterGuest,
   type SeatingAssignment,
-  type SeatingTableKind,
   type SeatingTable,
   type SeatingTableShape,
 } from "./types";
@@ -50,14 +51,25 @@ export function SeatingWorkspace({
   assignments,
 }: SeatingWorkspaceProps) {
   const [armedShape, setArmedShape] = useState<SeatingTableShape | null>(null);
+  const [armedDancefloor, setArmedDancefloor] = useState(false);
   const [seatCount, setSeatCount] = useState(DEFAULT_SEAT_COUNT_BY_SHAPE.round);
   const [selectedTableId, setSelectedTableId] = useState<string | null>(null);
   const [selectedGuestId, setSelectedGuestId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
+  const placing = armedShape !== null || armedDancefloor;
+
   const selectedTable =
     tables.find((table) => table.id === selectedTableId) ?? null;
+  const selectedIsDancefloor = selectedTable
+    ? isDancefloor(selectedTable.kind)
+    : false;
+
+  const seatableTables = useMemo(
+    () => tables.filter(isSeatableTable),
+    [tables],
+  );
 
   const occupancyByTable = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -114,7 +126,7 @@ export function SeatingWorkspace({
   }, [tables]);
 
   const handleDelete = useCallback(() => {
-    if (!selectedTableId || armedShape) return;
+    if (!selectedTableId || placing) return;
 
     const id = selectedTableId;
     startTransition(async () => {
@@ -125,35 +137,23 @@ export function SeatingWorkspace({
         // Keep selection if delete fails.
       }
     });
-  }, [armedShape, selectedTableId]);
-
-  const handleKindChange = useCallback(
-    (kind: SeatingTableKind) => {
-      if (!selectedTableId || armedShape) return;
-
-      const id = selectedTableId;
-      startTransition(async () => {
-        await setSeatingTableKind(id, kind);
-      });
-    },
-    [armedShape, selectedTableId],
-  );
+  }, [placing, selectedTableId]);
 
   const handleRotate = useCallback(
     (direction: "cw" | "ccw") => {
-      if (!selectedTableId || armedShape) return;
+      if (!selectedTableId || placing) return;
 
       const id = selectedTableId;
       startTransition(async () => {
         await rotateSeatingTable(id, direction);
       });
     },
-    [armedShape, selectedTableId],
+    [placing, selectedTableId],
   );
 
   const handleSeatCountChange = useCallback(
     (next: number) => {
-      if (!selectedTableId || armedShape) return;
+      if (!selectedTableId || placing) return;
 
       const id = selectedTableId;
       setErrorMessage(null);
@@ -164,19 +164,19 @@ export function SeatingWorkspace({
         }
       });
     },
-    [armedShape, selectedTableId],
+    [placing, selectedTableId],
   );
 
   const handleMove = useCallback(
     (posX: number, posY: number) => {
-      if (!selectedTableId || armedShape) return;
+      if (!selectedTableId || placing) return;
 
       const id = selectedTableId;
       startTransition(async () => {
         await moveSeatingTable(id, { posX, posY });
       });
     },
-    [armedShape, selectedTableId],
+    [placing, selectedTableId],
   );
 
   const handleTableDragMove = useCallback((id: string, posX: number, posY: number) => {
@@ -188,8 +188,9 @@ export function SeatingWorkspace({
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
-        if (armedShape) {
+        if (armedShape || armedDancefloor) {
           setArmedShape(null);
+          setArmedDancefloor(false);
         } else if (selectedGuestId) {
           setSelectedGuestId(null);
         } else {
@@ -201,7 +202,7 @@ export function SeatingWorkspace({
       if (
         (event.key === "Delete" || event.key === "Backspace") &&
         selectedTableId &&
-        !armedShape &&
+        !placing &&
         !selectedGuestId
       ) {
         if (isEditableTarget(event.target)) return;
@@ -213,7 +214,7 @@ export function SeatingWorkspace({
 
       if (
         !selectedTableId ||
-        armedShape ||
+        placing ||
         selectedGuestId ||
         isEditableTarget(event.target)
       ) {
@@ -256,9 +257,11 @@ export function SeatingWorkspace({
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [
+    armedDancefloor,
     armedShape,
     handleDelete,
     handleMove,
+    placing,
     selectedGuestId,
     selectedTableId,
     tables,
@@ -266,6 +269,8 @@ export function SeatingWorkspace({
 
   function toggleShape(shape: SeatingTableShape) {
     setErrorMessage(null);
+    setArmedDancefloor(false);
+
     if (armedShape === shape) {
       setArmedShape(null);
       return;
@@ -277,7 +282,28 @@ export function SeatingWorkspace({
     setSelectedGuestId(null);
   }
 
+  function toggleDancefloor() {
+    setErrorMessage(null);
+    setArmedShape(null);
+
+    if (armedDancefloor) {
+      setArmedDancefloor(false);
+      return;
+    }
+
+    setArmedDancefloor(true);
+    setSelectedTableId(null);
+    setSelectedGuestId(null);
+  }
+
   function handlePlace(posX: number, posY: number) {
+    if (armedDancefloor) {
+      startTransition(async () => {
+        await addDancefloor(projectId, { posX, posY });
+      });
+      return;
+    }
+
     if (!armedShape) return;
 
     const shape = armedShape;
@@ -307,10 +333,16 @@ export function SeatingWorkspace({
   }
 
   function handleTableClick(tableId: string) {
-    if (armedShape) return;
+    if (placing) return;
 
     // Assign mode: a guest is selected -> seat them at the clicked table.
     if (selectedGuestId) {
+      const target = tables.find((table) => table.id === tableId);
+      if (target && isDancefloor(target.kind)) {
+        setErrorMessage("Guests can only be seated at tables.");
+        return;
+      }
+
       const guestId = selectedGuestId;
       setErrorMessage(null);
       startTransition(async () => {
@@ -332,7 +364,7 @@ export function SeatingWorkspace({
   }
 
   function handleEmptyCanvasClick(posX: number, posY: number) {
-    if (armedShape) return;
+    if (placing) return;
     if (selectedGuestId) return; // assign mode: empty clicks are a no-op
 
     if (selectedTableId) {
@@ -344,33 +376,36 @@ export function SeatingWorkspace({
     ? guests.find((guest) => guest.id === selectedGuestId) ?? null
     : null;
 
-  const hint = armedShape
-    ? `Click the floor plan to place a ${armedShape} table. Press Escape to stop placing.`
-    : selectedGuest
-      ? "Click a table to seat the selected guest. Press Escape to cancel."
-      : selectedTable
-        ? `Click an empty spot to move ${selectedTable.label}, or use arrow keys to nudge. Shift+arrow moves in smaller steps.`
-        : null;
+  const hint = armedDancefloor
+    ? "Click the floor plan to place a dance floor. Press Escape to stop placing."
+    : armedShape
+      ? `Click the floor plan to place a ${armedShape} table. Press Escape to stop placing.`
+      : selectedGuest
+        ? "Click a table to seat the selected guest. Press Escape to cancel."
+        : selectedTable
+          ? `Click an empty spot to move ${selectedTable.label}, or use arrow keys to nudge. Shift+arrow moves in smaller steps.`
+          : null;
 
   return (
     <div className={cn("flex flex-col gap-4", isPending && "opacity-90")}>
       <SeatingToolbar
         armedShape={armedShape}
+        armedDancefloor={armedDancefloor}
         seatCount={seatCount}
         isPending={isPending}
         onToggleShape={toggleShape}
+        onToggleDancefloor={toggleDancefloor}
         onSeatCountChange={setSeatCount}
       >
         <SeatingSelectedPanel
           selectedId={selectedTableId}
-          selectedKind={selectedTable?.kind ?? null}
           seatCount={selectedTable?.seat_count ?? null}
           occupancy={
             selectedTableId ? (occupancyByTable[selectedTableId] ?? 0) : 0
           }
-          armedShape={armedShape}
+          isDancefloor={selectedIsDancefloor}
+          placing={placing}
           isPending={isPending}
-          onKindChange={handleKindChange}
           onSeatCountChange={handleSeatCountChange}
           onRotate={handleRotate}
           onDelete={handleDelete}
@@ -385,7 +420,7 @@ export function SeatingWorkspace({
             assignmentByGuestId={assignmentByGuestId}
             tableLabelById={tableLabelById}
             selectedGuestId={selectedGuestId}
-            hasTables={tables.length > 0}
+            hasTables={seatableTables.length > 0}
             isPending={isPending}
             onSelectGuest={handleSelectGuest}
             onUnassign={handleUnassign}
@@ -404,6 +439,7 @@ export function SeatingWorkspace({
           <SeatingCanvas
             tables={tables}
             armedShape={armedShape}
+            armedDancefloor={armedDancefloor}
             selectedId={selectedTableId}
             occupancyByTable={occupancyByTable}
             assignMode={Boolean(selectedGuestId)}
@@ -416,7 +452,7 @@ export function SeatingWorkspace({
       </div>
 
       <SeatingTableBreakdown
-        tables={tables}
+        tables={seatableTables}
         guestsByTable={guestsByTable}
         occupancyByTable={occupancyByTable}
       />
