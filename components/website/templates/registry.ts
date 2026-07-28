@@ -1,5 +1,5 @@
 import type { ComponentType } from "react";
-import type { WeddingWebsiteContent } from "../types";
+import type { WeddingTemplateProps } from "../template-props";
 import { ClassicTemplate } from "./ClassicTemplate";
 import { EditorialTemplate } from "./EditorialTemplate";
 import { GardenTemplate } from "./GardenTemplate";
@@ -10,10 +10,7 @@ export type WeddingTemplateDefinition = {
   key: string;
   label: string;
   suggestedTheme?: string;
-  Component: ComponentType<{
-    content: WeddingWebsiteContent;
-    theme: string;
-  }>;
+  Component: ComponentType<WeddingTemplateProps>;
 };
 
 export const WEDDING_TEMPLATE_REGISTRY: Record<string, WeddingTemplateDefinition> = {

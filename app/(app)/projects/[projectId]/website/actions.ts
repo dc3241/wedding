@@ -107,6 +107,75 @@ export async function setWeddingWebsiteSchedule(
   };
 }
 
+export async function setWeddingWebsiteTravel(
+  projectId: string,
+  body: string,
+): Promise<
+  | { ok: true; summary: string; visible: boolean }
+  | { ok: false; error: string }
+> {
+  const trimmed = typeof body === "string" ? body.trim() : "";
+  if (!trimmed) {
+    return { ok: false, error: "Provide Travel & Stay copy to fill." };
+  }
+
+  const supabase = await createClient();
+
+  const { data: current, error: readError } = await supabase
+    .from("wedding_websites")
+    .select("content, slug")
+    .eq("project_id", projectId)
+    .maybeSingle();
+
+  if (readError) {
+    return { ok: false, error: readError.message };
+  }
+
+  if (!current) {
+    return {
+      ok: false,
+      error:
+        "No wedding website yet. Create it on the Website tab, then ask again.",
+    };
+  }
+
+  const content = parseWeddingWebsiteContent(current.content);
+
+  if (content.travel.body.trim()) {
+    return { ok: false, error: "travel_not_empty" };
+  }
+
+  const nextTravel = {
+    body: trimmed,
+    visible: content.travel.visible,
+  };
+
+  const result = await updateWeddingWebsite(projectId, {
+    content: {
+      travel: nextTravel,
+    },
+  });
+
+  if (!result.ok) {
+    return result;
+  }
+
+  const slug =
+    typeof current.slug === "string" && current.slug.trim()
+      ? current.slug.trim()
+      : null;
+  if (slug) {
+    revalidatePath(`/w/${slug}`);
+  }
+
+  return {
+    ok: true,
+    visible: nextTravel.visible,
+    summary:
+      "Filled the Travel & Stay section. It may still be hidden — toggle it visible on the Website tab.",
+  };
+}
+
 function rowToWebsite(row: Record<string, unknown>): WeddingWebsiteRow {
   return {
     id: String(row.id),

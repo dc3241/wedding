@@ -10,8 +10,19 @@ import {
   type Guest,
 } from "@/app/(app)/projects/[projectId]/guests/types";
 import { parseWeddingWebsiteContent } from "@/components/website/types";
+import { placesTextSearch } from "@/lib/places-text-search";
+import { resolveProjectLocationHint } from "@/lib/resolve-project-location-hint";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { vendorCategoryLabel } from "@/lib/vendor-categories";
+
+const NEARBY_PLACE_CATEGORIES = ["lodging", "airport", "restaurant"] as const;
+type NearbyPlaceCategory = (typeof NEARBY_PLACE_CATEGORIES)[number];
+
+const NEARBY_CATEGORY_LABELS: Record<NearbyPlaceCategory, string> = {
+  lodging: "hotels",
+  airport: "airports",
+  restaurant: "restaurants",
+};
 
 const CHECKLIST_ITEMS_CAP = 25;
 const GUESTS_ITEMS_CAP = 40;
@@ -116,6 +127,27 @@ export const READ_TOOL_DEFINITIONS = [
       required: [] as string[],
     },
   },
+  {
+    name: "search_nearby_places",
+    description:
+      "Search Google Places for nearby hotels (lodging), airports, or restaurants near the couple's venue. Read-only — returns candidates for Travel & Stay copy. Pass near to override the venue location; if location cannot be resolved, returns needsLocation and you must ask the couple.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        category: {
+          type: "string",
+          enum: [...NEARBY_PLACE_CATEGORIES],
+          description: "lodging (hotels), airport, or restaurant",
+        },
+        near: {
+          type: "string",
+          description:
+            "Optional location override (address or city). When omitted, uses the project's venue address if known.",
+        },
+      },
+      required: ["category"] as string[],
+    },
+  },
 ] as const;
 
 export type ReadToolName = (typeof READ_TOOL_DEFINITIONS)[number]["name"];
@@ -212,7 +244,7 @@ async function getGuests(supabase: SupabaseClient, projectId: string) {
   const { data: guests, error } = await supabase
     .from("guests")
     .select(
-      "id, full_name, email, phone, household, party_size, rsvp_status, meal_choice, notes",
+      "id, full_name, email, phone, household, party_size, rsvp_status, notes",
     )
     .eq("project_id", projectId)
     .order("household", { ascending: true, nullsFirst: false })
@@ -220,7 +252,10 @@ async function getGuests(supabase: SupabaseClient, projectId: string) {
 
   if (error) throw error;
 
-  const list = (guests ?? []) as Guest[];
+  const list = ((guests ?? []) as Omit<Guest, "members">[]).map((guest) => ({
+    ...guest,
+    members: [],
+  }));
   const total = list.length;
 
   const pendingGuests = list
@@ -607,6 +642,54 @@ async function getWebsite(supabase: SupabaseClient, projectId: string) {
   };
 }
 
+function isNearbyPlaceCategory(value: string): value is NearbyPlaceCategory {
+  return (NEARBY_PLACE_CATEGORIES as readonly string[]).includes(value);
+}
+
+async function searchNearbyPlaces(
+  supabase: SupabaseClient,
+  projectId: string,
+  input: Record<string, unknown>,
+) {
+  const categoryRaw = typeof input.category === "string" ? input.category.trim() : "";
+  if (!categoryRaw || !isNearbyPlaceCategory(categoryRaw)) {
+    return {
+      error: "category must be lodging, airport, or restaurant",
+    };
+  }
+
+  const nearRaw = typeof input.near === "string" ? input.near.trim() : "";
+  const location =
+    nearRaw || (await resolveProjectLocationHint(supabase, projectId));
+
+  if (!location) {
+    return { needsLocation: true };
+  }
+
+  const textQuery = `${NEARBY_CATEGORY_LABELS[categoryRaw]} near ${location}`;
+  const search = await placesTextSearch({
+    textQuery,
+    includedType: categoryRaw,
+    maxResultCount: 8,
+    strictTypeFiltering: true,
+    includePureServiceAreaBusinesses: false,
+  });
+
+  if (!search.ok) {
+    return { error: search.error };
+  }
+
+  return {
+    location,
+    places: search.places.slice(0, 8).map((place) => ({
+      name: place.name,
+      address: place.formattedAddress ?? null,
+      rating: place.rating ?? null,
+      place_id: place.id,
+    })),
+  };
+}
+
 export async function executeReadTool(
   supabase: SupabaseClient,
   projectId: string,
@@ -635,6 +718,8 @@ export async function executeReadTool(
       return getTimeline(supabase, projectId);
     case "get_website":
       return getWebsite(supabase, projectId);
+    case "search_nearby_places":
+      return searchNearbyPlaces(supabase, projectId, input);
     default:
       return { error: `Unknown tool: ${toolName}` };
   }

@@ -4,11 +4,6 @@ export type ScheduleItem = {
   description: string;
 };
 
-export type RegistryLink = {
-  label: string;
-  url: string;
-};
-
 export type WeddingWebsiteContent = {
   hero: {
     names: string;
@@ -38,8 +33,8 @@ export type WeddingWebsiteContent = {
     body: string;
     visible: boolean;
   };
+  /** Visibility only — gifts + external links live on the Registry tab / public sub-page. */
   registry: {
-    links: RegistryLink[];
     visible: boolean;
   };
   rsvp: {
@@ -74,7 +69,7 @@ function emptyContent(): WeddingWebsiteContent {
     },
     schedule: { items: [], visible: true },
     travel: { body: "", visible: false },
-    registry: { links: [], visible: false },
+    registry: { visible: false },
     rsvp: { visible: false },
   };
 }
@@ -120,20 +115,6 @@ function parseScheduleItems(value: unknown): ScheduleItem[] {
       };
     })
     .filter((item): item is ScheduleItem => item !== null);
-}
-
-function parseRegistryLinks(value: unknown): RegistryLink[] {
-  if (!Array.isArray(value)) return [];
-  return value
-    .map((item) => {
-      if (!item || typeof item !== "object") return null;
-      const row = item as Record<string, unknown>;
-      return {
-        label: asString(row.label, ""),
-        url: asString(row.url, ""),
-      };
-    })
-    .filter((item): item is RegistryLink => item !== null);
 }
 
 export function parseWeddingWebsiteContent(
@@ -188,7 +169,6 @@ export function parseWeddingWebsiteContent(
       visible: asBoolean(travel.visible, base.travel.visible),
     },
     registry: {
-      links: parseRegistryLinks(registry.links),
       visible: asBoolean(registry.visible, base.registry.visible),
     },
     rsvp: {

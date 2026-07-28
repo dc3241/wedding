@@ -71,21 +71,6 @@ export async function updateRsvp(guestId: string, status: RsvpStatus) {
   revalidatePath(guestsPath(data.project_id));
 }
 
-export async function updateMeal(guestId: string, choice: string) {
-  const supabase = await createClient();
-
-  const { data, error } = await supabase
-    .from("guests")
-    .update({ meal_choice: choice.trim() || null })
-    .eq("id", guestId)
-    .select("project_id")
-    .single();
-
-  if (error) throw error;
-
-  revalidatePath(guestsPath(data.project_id));
-}
-
 export async function updateGuest(
   guestId: string,
   fields: {

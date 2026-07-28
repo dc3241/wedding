@@ -14,6 +14,7 @@ export const PROJECT_TABS: ProjectTab[] = [
   { label: "Vendors", segment: "vendors" },
   { label: "Guests", segment: "guests" },
   { label: "Seating", segment: "seating" },
+  { label: "Registry", segment: "registry" },
   { label: "Website", segment: "website" },
   { label: "Contracts", segment: "contracts", plannerOnly: true },
   { label: "Access", segment: "access", plannerOnly: true },

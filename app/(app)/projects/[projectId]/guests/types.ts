@@ -1,5 +1,18 @@
 export type RsvpStatus = "pending" | "attending" | "declined";
 
+export type GuestMember = {
+  id: string;
+  project_id: string;
+  guest_id: string;
+  name: string | null;
+  meal_option_id: string | null;
+  meal_name: string | null;
+  dietary_note: string | null;
+  attending: boolean;
+  sort_order: number;
+  created_at: string;
+};
+
 export type Guest = {
   id: string;
   full_name: string;
@@ -8,8 +21,8 @@ export type Guest = {
   household: string | null;
   party_size: number;
   rsvp_status: RsvpStatus;
-  meal_choice: string | null;
   notes: string | null;
+  members: GuestMember[];
 };
 
 export const RSVP_STATUSES: RsvpStatus[] = ["pending", "attending", "declined"];
@@ -22,21 +35,61 @@ export function formatGuestName(guest: { full_name: string | null }): string {
   return name ? name : "Unnamed guest";
 }
 
-export const MEAL_OPTIONS = [
-  { value: "", label: "—" },
-  { value: "chicken", label: "Chicken" },
-  { value: "beef", label: "Beef" },
-  { value: "fish", label: "Fish" },
-  { value: "vegetarian", label: "Vegetarian" },
-  { value: "vegan", label: "Vegan" },
-] as const;
-
-export function sumPartySize(guests: Guest[]) {
+/** Invited cap — sum of authored party_size. Never derived from members. */
+export function sumInvitedCap(guests: Pick<Guest, "party_size">[]) {
   return guests.reduce((sum, guest) => sum + guest.party_size, 0);
 }
 
-export function sumPartySizeByStatus(guests: Guest[], status: RsvpStatus) {
+/**
+ * Responded headcount for a status. When a guest has members and is attending,
+ * count attending members; otherwise fall back to party_size for that status.
+ */
+export function sumRespondedHeadcount(
+  guests: Array<
+    Pick<Guest, "party_size" | "rsvp_status"> & {
+      members?: GuestMember[];
+    }
+  >,
+  status: RsvpStatus,
+) {
   return guests
     .filter((guest) => guest.rsvp_status === status)
-    .reduce((sum, guest) => sum + guest.party_size, 0);
+    .reduce((sum, guest) => {
+      const members = guest.members ?? [];
+      if (members.length > 0) {
+        if (status === "attending") {
+          return sum + members.filter((m) => m.attending).length;
+        }
+        return sum + members.length;
+      }
+      return sum + guest.party_size;
+    }, 0);
+}
+
+/** Per-guest display headcount: attending members if any, else party_size. */
+export function guestDisplayHeadcount(
+  guest: Pick<Guest, "party_size"> & { members?: GuestMember[] },
+) {
+  const members = guest.members ?? [];
+  if (members.length > 0) {
+    return members.filter((m) => m.attending).length;
+  }
+  return guest.party_size;
+}
+
+/** @deprecated Use sumInvitedCap — party_size is the invited cap. */
+export function sumPartySize(guests: Pick<Guest, "party_size">[]) {
+  return sumInvitedCap(guests);
+}
+
+/** @deprecated Use sumRespondedHeadcount. */
+export function sumPartySizeByStatus(
+  guests: Array<
+    Pick<Guest, "party_size" | "rsvp_status"> & {
+      members?: GuestMember[];
+    }
+  >,
+  status: RsvpStatus,
+) {
+  return sumRespondedHeadcount(guests, status);
 }

@@ -3,16 +3,33 @@ import { notFound } from "next/navigation";
 import { WeddingSiteView } from "@/components/website/WeddingSiteView";
 import { parseWeddingWebsiteContent } from "@/components/website/types";
 import { createAnonServerClient } from "@/utils/supabase/anon-server";
-import { RsvpForm } from "./RsvpForm";
+import {
+  RsvpForm,
+  type PublicMealOption,
+  type PublicMealServiceStyle,
+} from "./RsvpForm";
 
 export const dynamic = "force-dynamic";
+
+function parseMealServiceStyle(value: unknown): PublicMealServiceStyle {
+  if (
+    value === "none" ||
+    value === "plated" ||
+    value === "buffet" ||
+    value === "family_style" ||
+    value === "stations"
+  ) {
+    return value;
+  }
+  return "none";
+}
 
 async function loadPublishedWebsite(slug: string) {
   const supabase = createAnonServerClient();
 
   const { data: row, error } = await supabase
     .from("wedding_websites")
-    .select("content, template, theme")
+    .select("content, template, theme, meal_service_style, project_id")
     .eq("slug", slug)
     .maybeSingle();
 
@@ -20,10 +37,28 @@ async function loadPublishedWebsite(slug: string) {
     return null;
   }
 
+  const projectId = String(row.project_id);
+  const mealServiceStyle = parseMealServiceStyle(row.meal_service_style);
+
+  const { data: optionRows } = await supabase
+    .from("meal_options")
+    .select("id, name, is_kids, sort_order, created_at")
+    .eq("project_id", projectId)
+    .order("sort_order", { ascending: true })
+    .order("created_at", { ascending: true });
+
+  const mealOptions: PublicMealOption[] = (optionRows ?? []).map((option) => ({
+    id: String(option.id),
+    name: String(option.name),
+    is_kids: Boolean(option.is_kids),
+  }));
+
   return {
     content: parseWeddingWebsiteContent(row.content),
     template: String(row.template),
     theme: String(row.theme),
+    mealServiceStyle,
+    mealOptions,
   };
 }
 
@@ -76,7 +111,16 @@ export default async function PublicWeddingPage({
       content={site.content}
       template={site.template}
       theme={site.theme}
-      rsvpSlot={<RsvpForm slug={slug} />}
+      registryHref={
+        site.content.registry.visible ? `/w/${slug}/registry` : null
+      }
+      rsvpSlot={
+        <RsvpForm
+          slug={slug}
+          mealServiceStyle={site.mealServiceStyle}
+          mealOptions={site.mealOptions}
+        />
+      }
     />
   );
 }

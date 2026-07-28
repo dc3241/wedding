@@ -11,7 +11,10 @@ import {
   addEvent,
   addEvents,
 } from "@/app/(app)/projects/[projectId]/timeline/actions";
-import { setWeddingWebsiteSchedule } from "@/app/(app)/projects/[projectId]/website/actions";
+import {
+  setWeddingWebsiteSchedule,
+  setWeddingWebsiteTravel,
+} from "@/app/(app)/projects/[projectId]/website/actions";
 import { VENDOR_CATEGORIES } from "@/lib/vendor-categories";
 
 const TASK_STATUSES = ["todo", "in_progress", "done"] as const;
@@ -275,6 +278,22 @@ export const WRITE_TOOL_DEFINITIONS = [
         },
       },
       required: ["items"] as string[],
+    },
+  },
+  {
+    name: "set_website_travel",
+    description:
+      "Fill an EMPTY wedding-website Travel & Stay section with guest-facing prose (usually composed from search_nearby_places). Refuses if no website exists or if Travel & Stay already has copy — never overwrites. Pass the finished body string; do not force the section visible.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        body: {
+          type: "string",
+          description:
+            "Guest-ready Travel & Stay blurb (hotel names, approximate distance/area, booking notes).",
+        },
+      },
+      required: ["body"] as string[],
     },
   },
 ] as const;
@@ -590,6 +609,26 @@ export async function executeWriteTool(
         ok: true,
         action: "set_website_schedule",
         count: result.count,
+        summary: result.summary,
+      };
+    }
+
+    case "set_website_travel": {
+      const body = asString(input.body);
+      if (body === undefined) {
+        return toolError("body is required");
+      }
+
+      const result = await setWeddingWebsiteTravel(projectId, body);
+      if (!result.ok) {
+        return toolError(result.error);
+      }
+
+      return {
+        success: true,
+        ok: true,
+        action: "set_website_travel",
+        visible: result.visible,
         summary: result.summary,
       };
     }

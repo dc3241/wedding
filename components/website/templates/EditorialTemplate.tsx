@@ -1,15 +1,11 @@
 "use client";
 
-import type { WeddingWebsiteContent } from "../types";
+import type { WeddingTemplateProps } from "../template-props";
+import { SiteNav } from "../SiteNav";
 import { resolveWeddingTheme } from "../themes";
 import { formatWeddingDate } from "../template-utils";
 import { WeddingCountdown } from "../WeddingCountdown";
 import { cn } from "@/lib/cn";
-
-type EditorialTemplateProps = {
-  content: WeddingWebsiteContent;
-  theme: string;
-};
 
 function HairlineRule({ className }: { className?: string }) {
   return (
@@ -72,16 +68,21 @@ function DetailBlock({
   );
 }
 
-export function EditorialTemplate({ content, theme }: EditorialTemplateProps) {
+export function EditorialTemplate({
+  content,
+  theme,
+  registryHref,
+  homeHref,
+  pageSlot,
+}: WeddingTemplateProps) {
   const palette = resolveWeddingTheme(theme);
-  const { hero, story, details, schedule, travel, registry } = content;
+  const { hero, story, details, schedule, travel } = content;
   const displayDate = hero.date ? formatWeddingDate(hero.date) : null;
 
   const showStory = story.visible;
   const showDetails = details.visible;
   const showSchedule = schedule.visible && schedule.items.length > 0;
   const showTravel = travel.visible && travel.body;
-  const showRegistry = registry.visible && registry.links.length > 0;
 
   return (
     <div
@@ -116,9 +117,10 @@ export function EditorialTemplate({ content, theme }: EditorialTemplateProps) {
           {hero.showCountdown && hero.date ? (
             <WeddingCountdown weddingDate={hero.date} align="left" />
           ) : null}
+          <SiteNav registryHref={registryHref} homeHref={homeHref} />
         </header>
 
-        {showStory ? (
+        {!pageSlot && showStory ? (
           <>
             <HairlineRule className="mb-10" />
             <section className="mb-10 space-y-4">
@@ -135,7 +137,7 @@ export function EditorialTemplate({ content, theme }: EditorialTemplateProps) {
           </>
         ) : null}
 
-        {showDetails ? (
+        {!pageSlot && showDetails ? (
           <>
             <HairlineRule className="mb-10" />
             <section className="mb-10 space-y-6">
@@ -158,7 +160,7 @@ export function EditorialTemplate({ content, theme }: EditorialTemplateProps) {
           </>
         ) : null}
 
-        {showSchedule ? (
+        {!pageSlot && showSchedule ? (
           <>
             <HairlineRule className="mb-10" />
             <section className="mb-10 space-y-5">
@@ -197,7 +199,7 @@ export function EditorialTemplate({ content, theme }: EditorialTemplateProps) {
           </>
         ) : null}
 
-        {showTravel ? (
+        {!pageSlot && showTravel ? (
           <>
             <HairlineRule className="mb-10" />
             <section className="mb-10 space-y-4">
@@ -211,35 +213,11 @@ export function EditorialTemplate({ content, theme }: EditorialTemplateProps) {
             </section>
           </>
         ) : null}
-
-        {showRegistry ? (
-          <>
-            <HairlineRule className="mb-10" />
-            <section className="mb-10 space-y-4">
-              <SectionLabel>Registry</SectionLabel>
-              <ul className="space-y-2">
-                {registry.links.map((link, index) => (
-                  <li key={`${link.label}-${index}`}>
-                    {link.url ? (
-                      <a
-                        href={link.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-[15px] underline-offset-2 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
-                        style={{ color: "var(--ws-accent)" }}
-                      >
-                        {link.label || link.url}
-                      </a>
-                    ) : (
-                      <span style={{ color: "var(--ws-muted)" }}>{link.label}</span>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            </section>
-          </>
-        ) : null}
       </div>
+
+      {pageSlot ? (
+        <div className="mx-auto max-w-5xl px-6 pb-16">{pageSlot}</div>
+      ) : null}
     </div>
   );
 }

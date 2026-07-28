@@ -5,8 +5,15 @@ import { createAnonServerClient } from "@/utils/supabase/anon-server";
 const NAME_MAX = 120;
 const EMAIL_MAX = 254;
 const MESSAGE_MAX = 1000;
+const DIETARY_MAX = 500;
 const THROTTLE_WINDOW_MS = 60_000;
 const THROTTLE_MAX = 10;
+
+export type SubmitRsvpAttendeeInput = {
+  name?: string;
+  meal_option_id?: string | null;
+  dietary_note?: string;
+};
 
 export type SubmitRsvpInput = {
   slug: string;
@@ -16,10 +23,35 @@ export type SubmitRsvpInput = {
   email?: string;
   message?: string;
   honeypot?: string;
+  attendees?: SubmitRsvpAttendeeInput[];
 };
 
 function isLightEmail(value: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
+function normalizeAttendees(
+  attendees: SubmitRsvpAttendeeInput[] | undefined,
+): Array<{
+  name: string | null;
+  meal_option_id: string | null;
+  dietary_note: string | null;
+}> {
+  if (!attendees?.length) return [];
+
+  return attendees.map((row) => {
+    const rawName = row.name?.trim() ?? "";
+    const name = rawName ? rawName.slice(0, NAME_MAX) : null;
+    const rawDietary = row.dietary_note?.trim() ?? "";
+    const dietary = rawDietary ? rawDietary.slice(0, DIETARY_MAX) : null;
+    const mealId = row.meal_option_id?.trim() || null;
+
+    return {
+      name,
+      meal_option_id: mealId,
+      dietary_note: dietary,
+    };
+  });
 }
 
 export async function submitRsvp(
@@ -59,6 +91,8 @@ export async function submitRsvp(
     return { ok: false };
   }
 
+  const attendees = normalizeAttendees(input.attendees);
+
   const supabase = createAnonServerClient();
 
   const { data: website, error: lookupError } = await supabase
@@ -86,16 +120,17 @@ export async function submitRsvp(
     return { ok: false };
   }
 
-  const { error: insertError } = await supabase.from("rsvp_submissions").insert({
-    project_id: projectId,
-    name,
-    response,
-    party_size: partySize,
-    email: emailRaw || null,
-    message: messageRaw || null,
+  const { error: rpcError } = await supabase.rpc("submit_rsvp", {
+    p_slug: slug,
+    p_name: name,
+    p_response: response,
+    p_email: emailRaw || null,
+    p_message: messageRaw || null,
+    p_party_size: partySize,
+    p_attendees: attendees,
   });
 
-  if (insertError) {
+  if (rpcError) {
     return { ok: false };
   }
 

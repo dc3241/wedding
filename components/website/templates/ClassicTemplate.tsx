@@ -1,15 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { WeddingWebsiteContent } from "../types";
+import type { WeddingTemplateProps } from "../template-props";
+import { SiteNav } from "../SiteNav";
 import { resolveWeddingTheme } from "../themes";
 import { formatWeddingDate } from "../template-utils";
 import { cn } from "@/lib/cn";
-
-type ClassicTemplateProps = {
-  content: WeddingWebsiteContent;
-  theme: string;
-};
 
 function daysUntilWedding(weddingDate: string): number {
   const today = new Date();
@@ -97,9 +93,15 @@ function DetailBlock({
   );
 }
 
-export function ClassicTemplate({ content, theme }: ClassicTemplateProps) {
+export function ClassicTemplate({
+  content,
+  theme,
+  registryHref,
+  homeHref,
+  pageSlot,
+}: WeddingTemplateProps) {
   const palette = resolveWeddingTheme(theme);
-  const { hero, story, details, schedule, travel, registry } = content;
+  const { hero, story, details, schedule, travel } = content;
   const displayDate = hero.date ? formatWeddingDate(hero.date) : null;
 
   return (
@@ -130,113 +132,97 @@ export function ClassicTemplate({ content, theme }: ClassicTemplateProps) {
             </p>
           ) : null}
           {hero.showCountdown && hero.date ? <Countdown weddingDate={hero.date} /> : null}
+          <SiteNav registryHref={registryHref} homeHref={homeHref} />
         </header>
 
-        <div className="mb-10 h-px" style={{ background: "var(--ws-border)" }} aria-hidden />
+        {!pageSlot ? (
+          <>
+            <div className="mb-10 h-px" style={{ background: "var(--ws-border)" }} aria-hidden />
 
-        {story.visible ? (
-          <section className="mb-12 space-y-4">
-            <SectionHeading>{story.heading || "Our Story"}</SectionHeading>
-            {story.body ? (
-              <p className="text-[15px] whitespace-pre-line" style={{ color: "var(--ws-muted)" }}>
-                {story.body}
-              </p>
+            {story.visible ? (
+              <section className="mb-12 space-y-4">
+                <SectionHeading>{story.heading || "Our Story"}</SectionHeading>
+                {story.body ? (
+                  <p className="text-[15px] whitespace-pre-line" style={{ color: "var(--ws-muted)" }}>
+                    {story.body}
+                  </p>
+                ) : null}
+              </section>
             ) : null}
-          </section>
-        ) : null}
 
-        {details.visible ? (
-          <section className="mb-12 space-y-6">
-            <SectionHeading>Wedding details</SectionHeading>
-            <div className="space-y-6">
-              <DetailBlock
-                label="Ceremony"
-                venue={details.ceremonyVenue}
-                address={details.ceremonyAddress}
-                time={details.ceremonyTime}
-              />
-              <DetailBlock
-                label="Reception"
-                venue={details.receptionVenue}
-                address={details.receptionAddress}
-                time={details.receptionTime}
-              />
-            </div>
-          </section>
-        ) : null}
+            {details.visible ? (
+              <section className="mb-12 space-y-6">
+                <SectionHeading>Wedding details</SectionHeading>
+                <div className="space-y-6">
+                  <DetailBlock
+                    label="Ceremony"
+                    venue={details.ceremonyVenue}
+                    address={details.ceremonyAddress}
+                    time={details.ceremonyTime}
+                  />
+                  <DetailBlock
+                    label="Reception"
+                    venue={details.receptionVenue}
+                    address={details.receptionAddress}
+                    time={details.receptionTime}
+                  />
+                </div>
+              </section>
+            ) : null}
 
-        {schedule.visible && schedule.items.length > 0 ? (
-          <section className="mb-12 space-y-5">
-            <SectionHeading>Schedule</SectionHeading>
-            <ul className="space-y-4">
-              {schedule.items.map((item, index) => (
-                <li
-                  key={`${item.time}-${item.title}-${index}`}
-                  className={cn(
-                    "flex gap-4 border-t pt-4 first:border-t-0 first:pt-0",
-                  )}
-                  style={{ borderColor: "var(--ws-border)" }}
-                >
-                  {item.time ? (
-                    <span
-                      className="tabnum w-16 shrink-0 text-[14px] font-medium"
-                      style={{ color: "var(--ws-accent)" }}
+            {schedule.visible && schedule.items.length > 0 ? (
+              <section className="mb-12 space-y-5">
+                <SectionHeading>Schedule</SectionHeading>
+                <ul className="space-y-4">
+                  {schedule.items.map((item, index) => (
+                    <li
+                      key={`${item.time}-${item.title}-${index}`}
+                      className={cn(
+                        "flex gap-4 border-t pt-4 first:border-t-0 first:pt-0",
+                      )}
+                      style={{ borderColor: "var(--ws-border)" }}
                     >
-                      {item.time}
-                    </span>
-                  ) : (
-                    <span className="w-16 shrink-0" />
-                  )}
-                  <div className="min-w-0">
-                    <p className="text-[16px] font-medium" style={{ color: "var(--ws-ink)" }}>
-                      {item.title}
-                    </p>
-                    {item.description ? (
-                      <p className="mt-0.5 text-[14px]" style={{ color: "var(--ws-muted)" }}>
-                        {item.description}
-                      </p>
-                    ) : null}
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </section>
-        ) : null}
+                      {item.time ? (
+                        <span
+                          className="tabnum w-16 shrink-0 text-[14px] font-medium"
+                          style={{ color: "var(--ws-accent)" }}
+                        >
+                          {item.time}
+                        </span>
+                      ) : (
+                        <span className="w-16 shrink-0" />
+                      )}
+                      <div className="min-w-0">
+                        <p className="text-[16px] font-medium" style={{ color: "var(--ws-ink)" }}>
+                          {item.title}
+                        </p>
+                        {item.description ? (
+                          <p className="mt-0.5 text-[14px]" style={{ color: "var(--ws-muted)" }}>
+                            {item.description}
+                          </p>
+                        ) : null}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ) : null}
 
-        {travel.visible && travel.body ? (
-          <section className="mb-12 space-y-4">
-            <SectionHeading>Travel &amp; stay</SectionHeading>
-            <p className="text-[15px] whitespace-pre-line" style={{ color: "var(--ws-muted)" }}>
-              {travel.body}
-            </p>
-          </section>
-        ) : null}
-
-        {registry.visible && registry.links.length > 0 ? (
-          <section className="mb-12 space-y-4">
-            <SectionHeading>Registry</SectionHeading>
-            <ul className="space-y-2">
-              {registry.links.map((link, index) => (
-                <li key={`${link.label}-${index}`}>
-                  {link.url ? (
-                    <a
-                      href={link.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-[15px] underline-offset-2 hover:underline"
-                      style={{ color: "var(--ws-accent)" }}
-                    >
-                      {link.label || link.url}
-                    </a>
-                  ) : (
-                    <span style={{ color: "var(--ws-muted)" }}>{link.label}</span>
-                  )}
-                </li>
-              ))}
-            </ul>
-          </section>
+            {travel.visible && travel.body ? (
+              <section className="mb-12 space-y-4">
+                <SectionHeading>Travel &amp; stay</SectionHeading>
+                <p className="text-[15px] whitespace-pre-line" style={{ color: "var(--ws-muted)" }}>
+                  {travel.body}
+                </p>
+              </section>
+            ) : null}
+          </>
         ) : null}
       </div>
+
+      {pageSlot ? (
+        <div className="mx-auto max-w-5xl px-6 pb-16">{pageSlot}</div>
+      ) : null}
     </div>
   );
 }

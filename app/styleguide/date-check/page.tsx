@@ -24,7 +24,7 @@ const content: WeddingWebsiteContent = {
   },
   schedule: { items: [], visible: false },
   travel: { body: "", visible: false },
-  registry: { links: [], visible: false },
+  registry: { visible: false },
   rsvp: { visible: false },
 };
 

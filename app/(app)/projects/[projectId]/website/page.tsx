@@ -1,5 +1,9 @@
 import { CreateWebsiteButton } from "./CreateWebsiteButton";
 import { WebsiteEditor } from "./WebsiteEditor";
+import {
+  parseExternalRegistryLinks,
+  type ExternalRegistryLink,
+} from "@/components/website/registry/types";
 import { parseWeddingWebsiteContent, type WeddingWebsiteRow } from "@/components/website/types";
 import { getAccountContext } from "@/lib/account-context";
 import { createClient } from "@/utils/supabase/server";
@@ -28,21 +32,33 @@ export default async function WebsitePage({
   const account = await getAccountContext(supabase);
   const accountKind = account?.kind ?? "personal";
 
-  const { data: row } = await supabase
-    .from("wedding_websites")
-    .select("*")
-    .eq("project_id", projectId)
-    .maybeSingle();
+  const [{ data: row }, { count: giftCount }] = await Promise.all([
+    supabase
+      .from("wedding_websites")
+      .select("*")
+      .eq("project_id", projectId)
+      .maybeSingle(),
+    supabase
+      .from("registry_items")
+      .select("id", { count: "exact", head: true })
+      .eq("project_id", projectId),
+  ]);
 
   if (!row) {
     return <CreateWebsiteButton projectId={projectId} />;
   }
+
+  const externalLinks: ExternalRegistryLink[] = parseExternalRegistryLinks(
+    row.external_registry_links,
+  );
 
   return (
     <WebsiteEditor
       projectId={projectId}
       website={rowToWebsite(row)}
       accountKind={accountKind}
+      registryGiftCount={giftCount ?? 0}
+      externalRegistryLinks={externalLinks}
     />
   );
 }

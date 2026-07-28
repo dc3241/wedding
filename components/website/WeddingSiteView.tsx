@@ -8,6 +8,9 @@ type WeddingSiteViewProps = {
   template: string;
   theme: string;
   rsvpSlot?: ReactNode;
+  registryHref?: string | null;
+  homeHref?: string | null;
+  pageSlot?: ReactNode;
 };
 
 export function WeddingSiteView({
@@ -15,14 +18,24 @@ export function WeddingSiteView({
   template,
   theme,
   rsvpSlot,
+  registryHref,
+  homeHref,
+  pageSlot,
 }: WeddingSiteViewProps) {
   const { Component } = resolveWeddingTemplate(template);
   const palette = resolveWeddingTheme(theme);
+  const showRsvp = !pageSlot && content.rsvp.visible && rsvpSlot;
 
   return (
     <>
-      <Component content={content} theme={theme} />
-      {content.rsvp.visible && rsvpSlot ? (
+      <Component
+        content={content}
+        theme={theme}
+        registryHref={registryHref}
+        homeHref={homeHref}
+        pageSlot={pageSlot}
+      />
+      {showRsvp ? (
         <div
           className="font-ws-sans text-[15px] leading-relaxed"
           style={{
