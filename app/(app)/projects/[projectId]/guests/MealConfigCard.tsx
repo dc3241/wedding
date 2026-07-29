@@ -24,11 +24,13 @@ export function MealConfigCard({
   projectId,
   hasWebsite,
   mealServiceStyle,
+  mealSelectionActive,
   mealOptions,
 }: {
   projectId: string;
   hasWebsite: boolean;
   mealServiceStyle: MealServiceStyle;
+  mealSelectionActive: boolean;
   mealOptions: MealOption[];
 }) {
   const [style, setStyle] = useState<MealServiceStyle>(mealServiceStyle);
@@ -40,7 +42,7 @@ export function MealConfigCard({
   const [newIsKids, setNewIsKids] = useState(false);
   const [isAddPending, startAddTransition] = useTransition();
 
-  const showPlatedNudge = style === "plated" && mealOptions.length === 0;
+  const showPlatedNudge = mealSelectionActive && mealOptions.length === 0;
 
   function handleStyleChange(next: string) {
     if (!hasWebsite) return;
@@ -144,77 +146,88 @@ export function MealConfigCard({
         </p>
       ) : null}
 
-      <div className="mt-6 space-y-3">
-        <p className="text-[12px] font-semibold uppercase tracking-[0.09em] text-muted">
-          Meal options
+      {mealSelectionActive ? (
+        <div className="mt-6 space-y-3">
+          <p className="text-[12px] font-semibold uppercase tracking-[0.09em] text-muted">
+            Meal options
+          </p>
+
+          {mealOptions.length === 0 ? (
+            <p className="text-[13px] text-muted">No meal options yet.</p>
+          ) : (
+            <ul className="space-y-2">
+              {mealOptions.map((option) => (
+                <MealOptionRow key={option.id} option={option} />
+              ))}
+            </ul>
+          )}
+
+          <form
+            onSubmit={handleAdd}
+            className="rounded-[var(--radius-inner)] bg-well p-4 shadow-recessed space-y-3"
+          >
+            <p className="text-[14px] font-medium text-ink">Add meal option</p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5 sm:col-span-2">
+                <label
+                  htmlFor="meal-option-name"
+                  className="text-[14px] font-medium text-ink"
+                >
+                  Name
+                </label>
+                <Input
+                  id="meal-option-name"
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  placeholder="e.g. Herb chicken"
+                  required
+                  disabled={isAddPending}
+                  className="bg-surface"
+                />
+              </div>
+              <div className="space-y-1.5 sm:col-span-2">
+                <label
+                  htmlFor="meal-option-description"
+                  className="text-[14px] font-medium text-ink"
+                >
+                  Description{" "}
+                  <span className="font-normal text-muted">(optional)</span>
+                </label>
+                <Textarea
+                  id="meal-option-description"
+                  value={newDescription}
+                  onChange={(e) => setNewDescription(e.target.value)}
+                  rows={2}
+                  placeholder="Short note for guests"
+                  disabled={isAddPending}
+                  className="bg-surface"
+                />
+              </div>
+              <label className="flex items-center gap-2 text-[14px] font-medium text-ink sm:col-span-2">
+                <input
+                  type="checkbox"
+                  checked={newIsKids}
+                  onChange={(e) => setNewIsKids(e.target.checked)}
+                  disabled={isAddPending}
+                  className="size-4 rounded border-ring text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                />
+                Kids meal
+              </label>
+            </div>
+            <Button
+              type="submit"
+              variant="primary"
+              disabled={isAddPending || !newName.trim()}
+            >
+              {isAddPending ? "Adding…" : "Add option"}
+            </Button>
+          </form>
+        </div>
+      ) : (
+        <p className="mt-5 text-[13px] text-muted">
+          Meal choices apply to plated service.
         </p>
-
-        {mealOptions.length === 0 ? (
-          <p className="text-[13px] text-muted">No meal options yet.</p>
-        ) : (
-          <ul className="space-y-2">
-            {mealOptions.map((option) => (
-              <MealOptionRow key={option.id} option={option} />
-            ))}
-          </ul>
-        )}
-
-        <form
-          onSubmit={handleAdd}
-          className="rounded-[var(--radius-inner)] bg-well p-4 shadow-recessed space-y-3"
-        >
-          <p className="text-[14px] font-medium text-ink">Add meal option</p>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="space-y-1.5 sm:col-span-2">
-              <label
-                htmlFor="meal-option-name"
-                className="text-[14px] font-medium text-ink"
-              >
-                Name
-              </label>
-              <Input
-                id="meal-option-name"
-                value={newName}
-                onChange={(e) => setNewName(e.target.value)}
-                placeholder="e.g. Herb chicken"
-                required
-                disabled={isAddPending}
-                className="bg-surface"
-              />
-            </div>
-            <div className="space-y-1.5 sm:col-span-2">
-              <label
-                htmlFor="meal-option-description"
-                className="text-[14px] font-medium text-ink"
-              >
-                Description <span className="font-normal text-muted">(optional)</span>
-              </label>
-              <Textarea
-                id="meal-option-description"
-                value={newDescription}
-                onChange={(e) => setNewDescription(e.target.value)}
-                rows={2}
-                placeholder="Short note for guests"
-                disabled={isAddPending}
-                className="bg-surface"
-              />
-            </div>
-            <label className="flex items-center gap-2 text-[14px] font-medium text-ink sm:col-span-2">
-              <input
-                type="checkbox"
-                checked={newIsKids}
-                onChange={(e) => setNewIsKids(e.target.checked)}
-                disabled={isAddPending}
-                className="size-4 rounded border-ring text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-              />
-              Kids meal
-            </label>
-          </div>
-          <Button type="submit" variant="primary" disabled={isAddPending || !newName.trim()}>
-            {isAddPending ? "Adding…" : "Add option"}
-          </Button>
-        </form>
-      </div>
+      )}
     </Card>
   );
 }

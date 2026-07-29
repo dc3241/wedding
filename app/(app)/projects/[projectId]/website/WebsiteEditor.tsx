@@ -6,12 +6,16 @@ import {
   updateWeddingWebsite,
   updateWeddingWebsiteSlug,
 } from "./actions";
+import { HeroImageField } from "./HeroImageField";
+import { GalleryEditorFields } from "./GalleryEditorFields";
+import { PartyEditorFields } from "./PartyEditorFields";
+import { FaqEditorFields } from "./FaqEditorFields";
+import { TravelEditorFields } from "./TravelEditorFields";
+import { LookStep } from "./LookStep";
 import { WebsiteRsvpShare } from "./WebsiteRsvpShare";
 import type { ExternalRegistryLink } from "@/components/website/registry/types";
 import type { WeddingWebsiteContent, WeddingWebsiteRow } from "@/components/website/types";
 import { WeddingSiteView } from "@/components/website/WeddingSiteView";
-import { weddingTemplateOptions } from "@/components/website/templates/registry";
-import { weddingThemeOptions } from "@/components/website/themes";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
@@ -96,8 +100,6 @@ export function WebsiteEditor({
   const [saveError, setSaveError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
-  const templates = weddingTemplateOptions();
-  const themes = weddingThemeOptions();
   const isPlanner = accountKind === "business";
 
   useEffect(() => {
@@ -178,12 +180,15 @@ export function WebsiteEditor({
     persistContent({ ...content, details: { ...content.details, [key]: value } });
   }
 
-  function updateTravel(body: string) {
-    persistContent({ ...content, travel: { ...content.travel, body } });
+  function updateTravel(patch: Partial<WeddingWebsiteContent["travel"]>) {
+    persistContent({
+      ...content,
+      travel: { ...content.travel, ...patch },
+    });
   }
 
   function setTravelVisible(visible: boolean) {
-    persistContent({ ...content, travel: { ...content.travel, visible } });
+    updateTravel({ visible });
   }
 
   function setRegistryVisible(visible: boolean) {
@@ -192,6 +197,27 @@ export function WebsiteEditor({
 
   function setRsvpVisible(visible: boolean) {
     persistContent({ ...content, rsvp: { ...content.rsvp, visible } });
+  }
+
+  function setGalleryVisible(visible: boolean) {
+    persistContent({
+      ...content,
+      gallery: { ...content.gallery, visible },
+    });
+  }
+
+  function setPartyVisible(visible: boolean) {
+    persistContent({
+      ...content,
+      party: { ...content.party, visible },
+    });
+  }
+
+  function setFaqVisible(visible: boolean) {
+    persistContent({
+      ...content,
+      faq: { ...content.faq, visible },
+    });
   }
 
   function addScheduleItem() {
@@ -239,50 +265,24 @@ export function WebsiteEditor({
       />
 
       <Card className="space-y-5 px-6 py-5">
-        <div className="grid gap-5 sm:grid-cols-2">
-          <div>
-            <label className="mb-1.5 block text-[13px] text-muted">Template</label>
-            <div className="flex flex-wrap gap-2">
-              {templates.map((option) => (
-                <button
-                  key={option.key}
-                  type="button"
-                  onClick={() => persistTemplate(option.key)}
-                  className={cn(
-                    "rounded-[var(--radius-pill)] px-3.5 py-2 text-[13px] font-semibold transition-colors",
-                    template === option.key
-                      ? "bg-accent text-surface"
-                      : "bg-well text-muted hover:text-ink",
-                  )}
-                >
-                  {option.label}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div>
-            <label className="mb-1.5 block text-[13px] text-muted">Theme</label>
-            <div className="flex flex-wrap gap-2">
-              {themes.map((option) => (
-                <button
-                  key={option.key}
-                  type="button"
-                  onClick={() => persistTheme(option.key)}
-                  className={cn(
-                    "rounded-[var(--radius-pill)] px-3.5 py-2 text-[13px] font-semibold transition-colors",
-                    theme === option.key
-                      ? "bg-accent text-surface"
-                      : "bg-well text-muted hover:text-ink",
-                  )}
-                >
-                  {option.label}
-                </button>
-              ))}
-            </div>
+        <div>
+          <h2 className="font-display text-[19px] font-extrabold tracking-[-0.02em] text-ink">
+            Choose your look
+          </h2>
+          <p className="mt-1 text-[13px] text-muted">
+            Template personality and palette — both recolor and relayout the live preview.
+          </p>
+          <div className="mt-4">
+            <LookStep
+              template={template}
+              theme={theme}
+              onTemplateChange={persistTemplate}
+              onThemeChange={persistTheme}
+            />
           </div>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-[1fr_auto] sm:items-end">
+        <div className="grid gap-4 border-t border-hairline pt-5 sm:grid-cols-[1fr_auto] sm:items-end">
           <div>
             <label htmlFor="website-slug" className="mb-1.5 block text-[13px] text-muted">
               Public link
@@ -377,6 +377,18 @@ export function WebsiteEditor({
                 onChange={(next) => updateHero("showCountdown", next)}
                 label="Show countdown"
               />
+              <div className="border-t border-hairline pt-3">
+                <HeroImageField
+                  projectId={projectId}
+                  imageUrl={content.hero.imageUrl}
+                  onImageUrlChange={(next) =>
+                    setContent({
+                      ...content,
+                      hero: { ...content.hero, imageUrl: next },
+                    })
+                  }
+                />
+              </div>
             </div>
           </EditorSection>
 
@@ -496,15 +508,95 @@ export function WebsiteEditor({
           </EditorSection>
 
           <EditorSection
+            title="Gallery"
+            visible={content.gallery.visible}
+            onVisibleChange={setGalleryVisible}
+          >
+            <p className="text-[13px] text-muted">
+              Photos appear on your site only when this section is shown and has at least one image.
+              Removing a photo clears it from the site; storage cleanup is deferred.
+            </p>
+            <GalleryEditorFields
+              projectId={projectId}
+              images={content.gallery.images}
+              onChange={(images) =>
+                persistContent({
+                  ...content,
+                  gallery: { ...content.gallery, images },
+                })
+              }
+            />
+          </EditorSection>
+
+          <EditorSection
+            title="Wedding party"
+            visible={content.party.visible}
+            onVisibleChange={setPartyVisible}
+          >
+            <p className="text-[13px] text-muted">
+              Members appear when this section is shown and has at least one person with a name.
+            </p>
+            <PartyEditorFields
+              projectId={projectId}
+              heading={content.party.heading}
+              members={content.party.members}
+              onHeadingChange={(heading) =>
+                persistContent({
+                  ...content,
+                  party: {
+                    ...content.party,
+                    heading: heading.trim() || undefined,
+                  },
+                })
+              }
+              onChange={(members) =>
+                persistContent({
+                  ...content,
+                  party: { ...content.party, members },
+                })
+              }
+            />
+          </EditorSection>
+
+          <EditorSection
             title="Travel & stay"
             visible={content.travel.visible}
             onVisibleChange={setTravelVisible}
           >
-            <Textarea
-              rows={4}
-              value={content.travel.body}
-              onChange={(e) => updateTravel(e.target.value)}
-              placeholder="Hotels, airports, local tips…"
+            <TravelEditorFields
+              body={content.travel.body}
+              places={content.travel.places}
+              onBodyChange={(body) => updateTravel({ body })}
+              onPlacesChange={(places) => updateTravel({ places })}
+            />
+          </EditorSection>
+
+          <EditorSection
+            title="FAQ"
+            visible={content.faq.visible}
+            onVisibleChange={setFaqVisible}
+          >
+            <p className="text-[13px] text-muted">
+              Questions appear when this section is shown and has at least one complete Q&amp;A.
+            </p>
+            <FaqEditorFields
+              heading={content.faq.heading}
+              items={content.faq.items}
+              onHeadingChange={(heading) =>
+                persistContent({
+                  ...content,
+                  faq: {
+                    ...content.faq,
+                    heading: heading.trim() || undefined,
+                  },
+                })
+              }
+              onChange={(items) =>
+                persistContent({
+                  ...content,
+                  faq: { ...content.faq, items },
+                })
+              }
             />
           </EditorSection>
 
@@ -572,9 +664,9 @@ export function WebsiteEditor({
                   <div
                     className="rounded-xl border px-5 py-6 text-center text-[14px]"
                     style={{
-                      borderColor: "var(--ws-border)",
-                      color: "var(--ws-muted)",
-                      background: "var(--ws-surface)",
+                      borderColor: "rgba(255,255,255,0.28)",
+                      color: "rgba(255,255,255,0.85)",
+                      background: "rgba(255,255,255,0.1)",
                     }}
                     aria-disabled
                   >

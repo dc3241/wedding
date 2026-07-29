@@ -639,6 +639,13 @@ async function getWebsite(supabase: SupabaseClient, projectId: string) {
       titles,
     },
     details: { populated },
+    travel: {
+      visible: content.travel.visible,
+      hasIntro: Boolean(content.travel.body.trim()),
+      placeCount: content.travel.places.filter((p) => p.name.trim()).length,
+      empty: !content.travel.body.trim() &&
+        !content.travel.places.some((p) => p.name.trim()),
+    },
   };
 }
 

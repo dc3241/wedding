@@ -21,6 +21,7 @@ export type Guest = {
   household: string | null;
   party_size: number;
   rsvp_status: RsvpStatus;
+  rsvp_token: string;
   notes: string | null;
   members: GuestMember[];
 };
@@ -42,7 +43,9 @@ export function sumInvitedCap(guests: Pick<Guest, "party_size">[]) {
 
 /**
  * Responded headcount for a status. When a guest has members and is attending,
- * count attending members; otherwise fall back to party_size for that status.
+ * count attending members; otherwise fall back to party_size (invited cap) for
+ * that status. Match/apply should create members from the RSVP'd headcount so
+ * Attending reflects people, not the invite cap.
  */
 export function sumRespondedHeadcount(
   guests: Array<

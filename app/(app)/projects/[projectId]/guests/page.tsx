@@ -7,6 +7,8 @@ import {
   type MealOption,
   type MealServiceStyle,
 } from "./meal-types";
+import { RsvpAccessCard } from "./RsvpAccessCard";
+import type { RsvpAccessMode } from "./rsvp-access-actions";
 import { RsvpSubmissionsPanel } from "./RsvpSubmissionsPanel";
 import type { RsvpSubmission } from "./rsvp-submissions";
 import {
@@ -83,7 +85,7 @@ export default async function GuestsPage({
     supabase
       .from("guests")
       .select(
-        "id, full_name, email, phone, household, party_size, rsvp_status, notes",
+        "id, full_name, email, phone, household, party_size, rsvp_status, rsvp_token, notes",
       )
       .eq("project_id", projectId)
       .order("household", { ascending: true, nullsFirst: false })
@@ -126,7 +128,7 @@ export default async function GuestsPage({
       .order("created_at", { ascending: true }),
     supabase
       .from("wedding_websites")
-      .select("meal_service_style")
+      .select("meal_service_style, rsvp_access_mode, slug, published")
       .eq("project_id", projectId)
       .maybeSingle(),
   ]);
@@ -165,6 +167,7 @@ export default async function GuestsPage({
     household: row.household ?? null,
     party_size: Number(row.party_size) || 1,
     rsvp_status: row.rsvp_status as RsvpStatus,
+    rsvp_token: String(row.rsvp_token ?? ""),
     notes: row.notes ?? null,
     members: membersByGuest.get(String(row.id)) ?? [],
   }));
@@ -230,6 +233,13 @@ export default async function GuestsPage({
     typeof rawStyle === "string" && isMealServiceStyle(rawStyle)
       ? rawStyle
       : "none";
+  const mealSelectionActive = mealServiceStyle === "plated";
+  const rsvpAccessMode: RsvpAccessMode =
+    websiteRow?.rsvp_access_mode === "gated" ? "gated" : "open";
+  const siteSlug =
+    websiteRow?.published && websiteRow.slug
+      ? String(websiteRow.slug)
+      : null;
 
   const statusFilter = RSVP_STATUSES.includes(statusParam as RsvpStatus)
     ? (statusParam as RsvpStatus)
@@ -330,7 +340,15 @@ export default async function GuestsPage({
         projectId={projectId}
         hasWebsite={hasWebsite}
         mealServiceStyle={mealServiceStyle}
+        mealSelectionActive={mealSelectionActive}
         mealOptions={mealOptions}
+      />
+
+      <RsvpAccessCard
+        projectId={projectId}
+        hasWebsite={hasWebsite}
+        rsvpAccessMode={rsvpAccessMode}
+        websiteHref={`/projects/${projectId}/website`}
       />
 
       <RsvpSubmissionsPanel
@@ -338,6 +356,8 @@ export default async function GuestsPage({
         guests={allGuests.map((guest) => ({
           id: guest.id,
           full_name: guest.full_name,
+          rsvp_status: guest.rsvp_status,
+          member_count: guest.members.length,
         }))}
       />
 
@@ -397,7 +417,10 @@ export default async function GuestsPage({
                     key={guest.id}
                     guest={guest}
                     mealOptions={mealOptions}
+                    mealSelectionActive={mealSelectionActive}
                     rowClass={rowClass}
+                    siteSlug={siteSlug}
+                    showRsvpQr={rsvpAccessMode === "gated"}
                   />
                 ))}
               </tbody>

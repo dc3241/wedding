@@ -1,7 +1,11 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
-import { submitRsvp } from "./actions";
+import { useEffect, useState, useTransition, type CSSProperties } from "react";
+import {
+  lookupRsvpHousehold,
+  submitRsvp,
+  type RsvpHouseholdMatch,
+} from "./actions";
 import { cn } from "@/lib/cn";
 
 export type PublicMealOption = {
@@ -17,6 +21,8 @@ export type PublicMealServiceStyle =
   | "family_style"
   | "stations";
 
+export type PublicRsvpAccessMode = "open" | "gated";
+
 type AttendeeDraft = {
   name: string;
   meal_option_id: string;
@@ -27,9 +33,14 @@ type RsvpFormProps = {
   slug: string;
   mealServiceStyle: PublicMealServiceStyle;
   mealOptions: PublicMealOption[];
+  rsvpAccessMode?: PublicRsvpAccessMode;
+  initialGuestToken?: string | null;
+  /** Light-on-dark controls for the mockup RSVP flood band. */
+  appearance?: "default" | "on-dark";
 };
 
 type FormState = "idle" | "success" | "error";
+type GatePhase = "resolve" | "search" | "pick" | "form";
 
 function emptyAttendee(): AttendeeDraft {
   return { name: "", meal_option_id: "", dietary_note: "" };
@@ -47,12 +58,38 @@ export function RsvpForm({
   slug,
   mealServiceStyle,
   mealOptions,
+  rsvpAccessMode = "open",
+  initialGuestToken = null,
+  appearance = "default",
 }: RsvpFormProps) {
+  const onDark = appearance === "on-dark";
+  const darkVars: CSSProperties | undefined = onDark
+    ? ({
+        "--ws-muted": "rgba(255,255,255,0.7)",
+        "--ws-ink": "#ffffff",
+        "--ws-surface": "rgba(255,255,255,0.12)",
+        "--ws-border": "rgba(255,255,255,0.25)",
+        "--ws-tint": "rgba(255,255,255,0.18)",
+        "--ws-accent": "rgba(255,255,255,0.95)",
+      } as CSSProperties)
+    : undefined;
+  const gated = rsvpAccessMode === "gated";
   const plated = mealServiceStyle === "plated" && mealOptions.length > 0;
   const buffetLike =
     mealServiceStyle === "buffet" ||
     mealServiceStyle === "family_style" ||
     mealServiceStyle === "stations";
+
+  const [gatePhase, setGatePhase] = useState<GatePhase>(() => {
+    if (!gated) return "form";
+    if (initialGuestToken?.trim()) return "resolve";
+    return "search";
+  });
+  const [household, setHousehold] = useState<RsvpHouseholdMatch | null>(null);
+  const [candidates, setCandidates] = useState<RsvpHouseholdMatch[]>([]);
+  const [fullName, setFullName] = useState("");
+  const [lookupMessage, setLookupMessage] = useState<string | null>(null);
+  const [isLookupPending, startLookupTransition] = useTransition();
 
   const [name, setName] = useState("");
   const [response, setResponse] = useState<"yes" | "no" | "">("");
@@ -65,11 +102,70 @@ export function RsvpForm({
   const [formState, setFormState] = useState<FormState>("idle");
   const [isPending, startTransition] = useTransition();
 
+  const invitedCap = household?.partySize ?? null;
+
+  useEffect(() => {
+    if (!gated || !initialGuestToken?.trim()) return;
+
+    let cancelled = false;
+    startLookupTransition(async () => {
+      const rows = await lookupRsvpHousehold(slug, {
+        token: initialGuestToken.trim(),
+      });
+      if (cancelled) return;
+      if (rows.length === 1) {
+        applyHousehold(rows[0]);
+        return;
+      }
+      setLookupMessage(
+        "We couldn't find your invitation — check with the couple.",
+      );
+      setGatePhase("search");
+    });
+
+    return () => {
+      cancelled = true;
+    };
+    // Mount-only resolve for QR token.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => {
     if (plated || (buffetLike && showDietaryDetails)) {
       setAttendees((current) => resizeAttendees(current, Math.max(1, partySize)));
     }
   }, [plated, buffetLike, showDietaryDetails, partySize]);
+
+  function applyHousehold(match: RsvpHouseholdMatch) {
+    setHousehold(match);
+    setCandidates([]);
+    setLookupMessage(null);
+    setName(match.partyLabel);
+    // Start at 1 so parties of 2+ must choose how many are coming (invited cap is a soft max).
+    setPartySize(1);
+    setGatePhase("form");
+  }
+
+  function handleLookup(e: React.FormEvent) {
+    e.preventDefault();
+    setLookupMessage(null);
+    startLookupTransition(async () => {
+      const rows = await lookupRsvpHousehold(slug, { fullName });
+      if (rows.length === 0) {
+        setCandidates([]);
+        setLookupMessage(
+          "We couldn't find your name — check with the couple.",
+        );
+        return;
+      }
+      if (rows.length === 1) {
+        applyHousehold(rows[0]);
+        return;
+      }
+      setCandidates(rows);
+      setGatePhase("pick");
+    });
+  }
 
   function updateAttendee(
     index: number,
@@ -120,11 +216,12 @@ export function RsvpForm({
         message: message || undefined,
         honeypot,
         attendees: payloadAttendees,
+        householdToken: gated ? household?.householdToken ?? null : null,
       });
 
       if (result.ok) {
         setFormState("success");
-        setName("");
+        setName(household?.partyLabel ?? "");
         setResponse("");
         setPartySize(1);
         setEmail("");
@@ -143,11 +240,41 @@ export function RsvpForm({
     (attendees.length >= 1 &&
       attendees.every((row) => row.name.trim() && row.meal_option_id));
 
+  const overCap =
+    invitedCap != null &&
+    ((plated && response === "yes" && attendees.length > invitedCap) ||
+      (!plated && partySize > invitedCap));
+
+  const inputClass =
+    "w-full rounded-lg border px-3 py-2.5 text-[15px] outline-none focus-visible:ring-2 focus-visible:ring-offset-1";
+  const inputStyle = {
+    borderColor: "var(--ws-border)",
+    background: "var(--ws-surface)",
+    color: "var(--ws-ink)",
+  } as const;
+  const submitStyle = onDark
+    ? {
+        background: "#ffffff",
+        color: "var(--ws-accent-deep)",
+      }
+    : {
+        background: "var(--ws-accent)",
+        color: "var(--ws-surface)",
+      };
+
   if (formState === "success") {
     return (
       <p
         className="rounded-xl px-5 py-6 text-center text-[16px]"
-        style={{ background: "var(--ws-tint)", color: "var(--ws-ink)" }}
+        style={
+          onDark
+            ? {
+                background: "rgba(255,255,255,0.14)",
+                color: "#ffffff",
+                border: "1px solid rgba(255,255,255,0.25)",
+              }
+            : { background: "var(--ws-tint)", color: "var(--ws-ink)" }
+        }
         role="status"
       >
         Thank you — your RSVP is in.
@@ -155,13 +282,109 @@ export function RsvpForm({
     );
   }
 
-  const inputClass =
-    "w-full rounded-lg border px-3 py-2 text-[15px] outline-none focus-visible:ring-2 focus-visible:ring-offset-1";
-  const inputStyle = {
-    borderColor: "var(--ws-border)",
-    background: "var(--ws-surface)",
-    color: "var(--ws-ink)",
-  } as const;
+  if (gated && gatePhase === "resolve") {
+    return (
+      <p
+        className="text-[15px]"
+        style={{ color: onDark ? "rgba(255,255,255,0.7)" : "var(--ws-muted)", ...darkVars }}
+        role="status"
+      >
+        Finding your invitation…
+      </p>
+    );
+  }
+
+  if (gated && (gatePhase === "search" || gatePhase === "pick")) {
+    return (
+      <div className="space-y-5" style={darkVars}>
+        {gatePhase === "search" ? (
+          <form onSubmit={handleLookup} className="space-y-4">
+            <div>
+              <label
+                htmlFor="rsvp-full-name"
+                className="mb-1.5 block text-[13px] font-medium"
+                style={{ color: "var(--ws-muted)" }}
+              >
+                Enter your full name
+              </label>
+              <input
+                id="rsvp-full-name"
+                type="text"
+                required
+                minLength={2}
+                maxLength={120}
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                className={inputClass}
+                style={inputStyle}
+                autoComplete="name"
+              />
+            </div>
+            {lookupMessage ? (
+              <p
+                className="text-[14px]"
+                style={{ color: "var(--ws-muted)" }}
+                role="status"
+              >
+                {lookupMessage}
+              </p>
+            ) : null}
+            <button
+              type="submit"
+              disabled={isLookupPending || fullName.trim().length < 2}
+              className="rounded-full px-5 py-3.5 text-[13px] font-semibold tracking-[0.14em] uppercase transition-opacity disabled:cursor-not-allowed disabled:opacity-50"
+              style={submitStyle}
+            >
+              {isLookupPending ? "Looking up…" : "Continue"}
+            </button>
+          </form>
+        ) : null}
+
+        {gatePhase === "pick" ? (
+          <div className="space-y-4">
+            <p className="text-[15px]" style={{ color: "var(--ws-ink)" }}>
+              Which of these is you?
+            </p>
+            <ul className="space-y-2">
+              {candidates.map((row) => (
+                <li key={row.householdToken}>
+                  <button
+                    type="button"
+                    onClick={() => applyHousehold(row)}
+                    className="w-full rounded-lg border px-4 py-3 text-left text-[15px] font-medium transition-colors"
+                    style={{
+                      borderColor: "var(--ws-border)",
+                      background: "var(--ws-surface)",
+                      color: "var(--ws-ink)",
+                    }}
+                  >
+                    {row.partyLabel}
+                    <span
+                      className="mt-0.5 block text-[13px] font-normal"
+                      style={{ color: "var(--ws-muted)" }}
+                    >
+                      Up to {row.partySize} invited
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+            <button
+              type="button"
+              onClick={() => {
+                setGatePhase("search");
+                setCandidates([]);
+              }}
+              className="text-[14px] font-medium underline-offset-2 hover:underline"
+              style={{ color: "var(--ws-accent)" }}
+            >
+              Search again
+            </button>
+          </div>
+        ) : null}
+      </div>
+    );
+  }
 
   // style=none or plated-with-zero-options: classic headcount (unchanged / misconfig fallback).
   // Buffet-like: headcount only after Yes.
@@ -174,7 +397,18 @@ export function RsvpForm({
   const showBuffetDietary = response === "yes" && buffetLike;
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5" style={darkVars}>
+      {gated && household ? (
+        <p className="text-[14px]" style={{ color: "var(--ws-muted)" }}>
+          Responding for{" "}
+          <span className="font-medium" style={{ color: "var(--ws-ink)" }}>
+            {household.partyLabel}
+          </span>
+          {" · "}
+          invited up to {household.partySize}
+        </p>
+      ) : null}
+
       <div className="absolute -left-[9999px] h-px w-px overflow-hidden" aria-hidden>
         <label htmlFor="rsvp-website">Website</label>
         <input
@@ -264,6 +498,12 @@ export function RsvpForm({
             className={cn(inputClass, "max-w-[8rem] tabular-nums")}
             style={inputStyle}
           />
+          {overCap ? (
+            <p className="mt-1.5 text-[13px]" style={{ color: "var(--ws-muted)" }}>
+              That&apos;s more than your invited count ({invitedCap}) — the couple
+              will review.
+            </p>
+          ) : null}
         </div>
       ) : null}
 
@@ -287,6 +527,12 @@ export function RsvpForm({
               className={cn(inputClass, "max-w-[8rem] tabular-nums")}
               style={inputStyle}
             />
+            {overCap ? (
+              <p className="mt-1.5 text-[13px]" style={{ color: "var(--ws-muted)" }}>
+                That&apos;s more than your invited count ({invitedCap}) — the couple
+                will review.
+              </p>
+            ) : null}
           </div>
 
           <ul className="space-y-3">
@@ -498,7 +744,11 @@ export function RsvpForm({
       </div>
 
       {formState === "error" ? (
-        <p className="text-[14px]" style={{ color: "var(--ws-accent-deep)" }} role="alert">
+        <p
+          className="text-[14px]"
+          style={{ color: onDark ? "#f5d0c8" : "var(--ws-accent-deep)" }}
+          role="alert"
+        >
           Something went wrong — please try again.
         </p>
       ) : null}
@@ -506,12 +756,15 @@ export function RsvpForm({
       <button
         type="button"
         onClick={handleSubmit}
-        disabled={isPending || !name.trim() || !response || !platedReady}
-        className="rounded-xl px-5 py-2.5 text-[15px] font-medium transition-opacity disabled:cursor-not-allowed disabled:opacity-50"
-        style={{
-          background: "var(--ws-accent)",
-          color: "var(--ws-surface)",
-        }}
+        disabled={
+          isPending ||
+          !name.trim() ||
+          !response ||
+          !platedReady ||
+          (gated && !household)
+        }
+        className="rounded-full px-5 py-3.5 text-[13px] font-semibold tracking-[0.14em] uppercase transition-opacity disabled:cursor-not-allowed disabled:opacity-50"
+        style={submitStyle}
       >
         {isPending ? "Sending…" : "Send RSVP"}
       </button>

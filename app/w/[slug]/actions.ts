@@ -6,6 +6,7 @@ const NAME_MAX = 120;
 const EMAIL_MAX = 254;
 const MESSAGE_MAX = 1000;
 const DIETARY_MAX = 500;
+const FULL_NAME_MAX = 120;
 const THROTTLE_WINDOW_MS = 60_000;
 const THROTTLE_MAX = 10;
 
@@ -24,6 +25,13 @@ export type SubmitRsvpInput = {
   message?: string;
   honeypot?: string;
   attendees?: SubmitRsvpAttendeeInput[];
+  householdToken?: string | null;
+};
+
+export type RsvpHouseholdMatch = {
+  householdToken: string;
+  partyLabel: string;
+  partySize: number;
 };
 
 function isLightEmail(value: string): boolean {
@@ -52,6 +60,40 @@ function normalizeAttendees(
       dietary_note: dietary,
     };
   });
+}
+
+export async function lookupRsvpHousehold(
+  slug: string,
+  opts: { token?: string; fullName?: string } = {},
+): Promise<RsvpHouseholdMatch[]> {
+  const trimmedSlug = slug.trim();
+  if (!trimmedSlug) return [];
+
+  const token = opts.token?.trim() || null;
+  const fullNameRaw = opts.fullName?.trim() ?? "";
+  const fullName =
+    fullNameRaw.length >= 2 ? fullNameRaw.slice(0, FULL_NAME_MAX) : null;
+
+  if (!token && !fullName) return [];
+
+  const supabase = createAnonServerClient();
+  const { data, error } = await supabase.rpc("lookup_rsvp_household", {
+    p_slug: trimmedSlug,
+    p_token: token,
+    p_full_name: fullName,
+  });
+
+  if (error || !data) return [];
+
+  return (data as Array<{
+    household_token: string;
+    party_label: string;
+    party_size: number;
+  }>).map((row) => ({
+    householdToken: String(row.household_token),
+    partyLabel: String(row.party_label),
+    partySize: Math.max(1, Number(row.party_size) || 1),
+  }));
 }
 
 export async function submitRsvp(
@@ -91,6 +133,8 @@ export async function submitRsvp(
     return { ok: false };
   }
 
+  const householdToken = input.householdToken?.trim() || null;
+
   const attendees = normalizeAttendees(input.attendees);
 
   const supabase = createAnonServerClient();
@@ -128,6 +172,7 @@ export async function submitRsvp(
     p_message: messageRaw || null,
     p_party_size: partySize,
     p_attendees: attendees,
+    p_household_token: householdToken,
   });
 
   if (rpcError) {

@@ -14,21 +14,45 @@ export async function addGuest(
   household: string,
   email: string,
   partySize: number,
+  additionalNames: string[] = [],
 ) {
   const trimmedName = fullName.trim();
   if (!trimmedName) return;
 
   const supabase = await createClient();
 
-  const { error } = await supabase.from("guests").insert({
-    project_id: projectId,
-    full_name: trimmedName,
-    household: household.trim() || null,
-    email: email.trim() || null,
-    party_size: Math.max(1, partySize || 1),
-  });
+  const { data: guest, error } = await supabase
+    .from("guests")
+    .insert({
+      project_id: projectId,
+      full_name: trimmedName,
+      household: household.trim() || null,
+      email: email.trim() || null,
+      party_size: Math.max(1, partySize || 1),
+    })
+    .select("id")
+    .single();
 
   if (error) throw error;
+
+  const memberNames = [
+    trimmedName,
+    ...additionalNames.map((n) => n.trim()).filter(Boolean),
+  ];
+
+  const { error: membersError } = await supabase.from("guest_members").insert(
+    memberNames.map((name, index) => ({
+      project_id: projectId,
+      guest_id: guest.id,
+      name,
+      meal_option_id: null,
+      dietary_note: null,
+      attending: false,
+      sort_order: index,
+    })),
+  );
+
+  if (membersError) throw membersError;
 
   revalidatePath(guestsPath(projectId));
 }
@@ -49,9 +73,30 @@ export async function bulkAddGuests(projectId: string, text: string) {
     party_size: 1,
   }));
 
-  const { error } = await supabase.from("guests").insert(rows);
+  const { data: guests, error } = await supabase
+    .from("guests")
+    .insert(rows)
+    .select("id, full_name");
 
   if (error) throw error;
+
+  if (guests && guests.length > 0) {
+    const { error: membersError } = await supabase
+      .from("guest_members")
+      .insert(
+        guests.map((guest) => ({
+          project_id: projectId,
+          guest_id: guest.id,
+          name: guest.full_name,
+          meal_option_id: null,
+          dietary_note: null,
+          attending: false,
+          sort_order: 0,
+        })),
+      );
+
+    if (membersError) throw membersError;
+  }
 
   revalidatePath(guestsPath(projectId));
 }

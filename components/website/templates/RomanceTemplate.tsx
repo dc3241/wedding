@@ -1,117 +1,35 @@
 "use client";
 
 import type { WeddingTemplateProps } from "../template-props";
-import { SiteNav } from "../SiteNav";
+import { HeroPhotoBackdrop } from "../HeroPhotoBackdrop";
+import { OverlayNav } from "../OverlayNav";
+import { RegistryCta } from "../RegistryCta";
 import { resolveWeddingTheme } from "../themes";
 import { formatWeddingDate, splitCoupleNames } from "../template-utils";
 import { WeddingCountdown } from "../WeddingCountdown";
+import { buildSectionAnchors, SectionStack } from "../sections";
+import { SITE_GUTTER } from "../layout";
 
-function OrnamentDivider() {
-  return (
-    <div className="my-12 flex items-center justify-center gap-4" aria-hidden>
-      <div
-        className="h-px w-16 max-w-[20vw] sm:w-24"
-        style={{ background: "var(--ws-border)" }}
-      />
-      <div
-        className="size-1.5 shrink-0 rotate-45"
-        style={{ background: "var(--ws-accent)" }}
-      />
-      <div
-        className="h-px w-16 max-w-[20vw] sm:w-24"
-        style={{ background: "var(--ws-border)" }}
-      />
-    </div>
-  );
-}
-
-function SectionHeading({ children }: { children: React.ReactNode }) {
-  return (
-    <h2
-      className="font-serif-display text-[26px] tracking-[0.01em]"
-      style={{ color: "var(--ws-ink)" }}
-    >
-      {children}
-    </h2>
-  );
-}
-
-function DetailBlock({
-  label,
-  venue,
-  address,
-  time,
-}: {
-  label: string;
-  venue: string;
-  address: string;
-  time: string;
-}) {
-  if (!venue && !address && !time) return null;
-
-  return (
-    <div className="text-center">
-      <p
-        className="text-[12px] font-medium tracking-[0.06em] uppercase"
-        style={{ color: "var(--ws-muted)" }}
-      >
-        {label}
-      </p>
-      {venue ? (
-        <p className="mt-2 text-[16px] font-medium" style={{ color: "var(--ws-ink)" }}>
-          {venue}
-        </p>
-      ) : null}
-      {address ? (
-        <p className="mt-1 text-[15px] whitespace-pre-line" style={{ color: "var(--ws-muted)" }}>
-          {address}
-        </p>
-      ) : null}
-      {time ? (
-        <p className="mt-1.5 tabnum text-[15px]" style={{ color: "var(--ws-ink)" }}>
-          {time}
-        </p>
-      ) : null}
-    </div>
-  );
-}
-
-function CoupleHero({ names }: { names: string }) {
+function RomanceNames({ names }: { names: string }) {
   const parsed = splitCoupleNames(names);
-
   if (parsed.kind === "pair") {
     return (
-      <div className="space-y-1">
-        <p
-          className="font-serif-display text-[clamp(36px,6vw,52px)] leading-none tracking-[0.005em]"
-          style={{ color: "var(--ws-ink)" }}
-        >
-          {parsed.first}
-        </p>
-        <p
-          className="font-serif-display text-[clamp(52px,9vw,80px)] italic leading-none"
-          style={{ color: "var(--ws-accent)" }}
-          aria-hidden
+      <h1 className="font-serif-display m-0 text-[clamp(52px,11vw,120px)] leading-[0.98] font-medium">
+        {parsed.first}
+        <span
+          className="font-script mx-[0.12em] text-[1.15em] not-italic"
+          style={{ color: "#f2dcd8", verticalAlign: "-0.08em" }}
         >
           &amp;
-        </p>
-        <p
-          className="font-serif-display text-[clamp(36px,6vw,52px)] leading-none tracking-[0.005em]"
-          style={{ color: "var(--ws-ink)" }}
-        >
-          {parsed.second}
-        </p>
-      </div>
+        </span>
+        {parsed.second}
+      </h1>
     );
   }
-
   return (
-    <div
-      className="font-serif-display text-[clamp(40px,6vw,54px)] tracking-[0.005em]"
-      style={{ color: "var(--ws-ink)" }}
-    >
+    <h1 className="font-serif-display m-0 text-[clamp(52px,11vw,120px)] leading-[0.98] font-medium">
       {parsed.text}
-    </div>
+    </h1>
   );
 }
 
@@ -123,145 +41,71 @@ export function RomanceTemplate({
   pageSlot,
 }: WeddingTemplateProps) {
   const palette = resolveWeddingTheme(theme);
-  const { hero, story, details, schedule, travel } = content;
+  const { hero } = content;
   const displayDate = hero.date ? formatWeddingDate(hero.date) : null;
-
-  const showStory = story.visible;
-  const showDetails = details.visible;
-  const showSchedule = schedule.visible && schedule.items.length > 0;
-  const showTravel = travel.visible && travel.body;
+  const sectionAnchors = pageSlot ? [] : buildSectionAnchors(content);
+  const showRsvp = !pageSlot && content.rsvp.visible;
 
   return (
     <div
-      className="min-h-full font-ws-sans text-[15px] leading-relaxed"
+      className="min-h-full font-ws-sans text-[17px] leading-relaxed"
       style={{
         ...palette.cssVars,
         background: "var(--ws-bg)",
         color: "var(--ws-ink)",
       }}
     >
-      <div className="mx-auto max-w-[640px] px-6 py-14 sm:py-16">
-        <header className="animate-rise pb-4 text-center">
-          <CoupleHero names={hero.names} />
+      <header className="relative grid min-h-[80vh] place-items-center overflow-hidden text-center text-white">
+        <HeroPhotoBackdrop imageUrl={hero.imageUrl} fallbackTone="romance" />
+        <OverlayNav
+          names={hero.names}
+          anchors={sectionAnchors}
+          registryHref={registryHref}
+          homeHref={homeHref}
+          showRsvp={showRsvp}
+        />
+        <div
+          className="relative z-10"
+          style={{ padding: `120px ${SITE_GUTTER} 90px` }}
+        >
           <p
-            className="font-script mt-5 text-[clamp(28px,5vw,36px)]"
-            style={{ color: "var(--ws-accent-deep)" }}
+            className="font-script m-0 mb-1.5 text-[clamp(30px,6vw,58px)] font-normal"
+            style={{ color: "#f2dcd8" }}
           >
             are getting married
           </p>
+          <RomanceNames names={hero.names || "Your names"} />
           {displayDate ? (
-            <p className="tabnum mt-6 text-[15px]" style={{ color: "var(--ws-muted)" }}>
+            <p className="mt-[26px] text-[15px] tracking-[0.2em] uppercase">
               {displayDate}
             </p>
           ) : null}
           {hero.tagline ? (
-            <p className="mx-auto mt-4 max-w-md text-[16px]" style={{ color: "var(--ws-muted)" }}>
+            <p className="mx-auto mt-4 max-w-md text-[16px] opacity-90">
               {hero.tagline}
             </p>
           ) : null}
           {hero.showCountdown && hero.date ? (
-            <WeddingCountdown weddingDate={hero.date} align="center" />
+            <WeddingCountdown weddingDate={hero.date} align="center" onPhoto />
           ) : null}
-          <SiteNav registryHref={registryHref} homeHref={homeHref} />
-        </header>
+        </div>
+      </header>
 
-        {!pageSlot ? (
-          <>
-            <OrnamentDivider />
+      {!pageSlot ? (
+        <SectionStack content={content} variant="romance" separator="monogram" />
+      ) : null}
 
-            {showStory ? (
-          <section className="mb-4 space-y-4 text-center">
-            <SectionHeading>{story.heading || "Our Story"}</SectionHeading>
-            {story.body ? (
-              <p
-                className="mx-auto max-w-prose text-[15px] whitespace-pre-line"
-                style={{ color: "var(--ws-muted)" }}
-              >
-                {story.body}
-              </p>
-            ) : null}
-          </section>
-        ) : null}
-
-        {showStory && (showDetails || showSchedule || showTravel) ? (
-          <OrnamentDivider />
-        ) : null}
-
-        {showDetails ? (
-          <section className="mb-4 space-y-8">
-            <div className="text-center">
-              <SectionHeading>Wedding details</SectionHeading>
-            </div>
-            <div className="space-y-8">
-              <DetailBlock
-                label="Ceremony"
-                venue={details.ceremonyVenue}
-                address={details.ceremonyAddress}
-                time={details.ceremonyTime}
-              />
-              <DetailBlock
-                label="Reception"
-                venue={details.receptionVenue}
-                address={details.receptionAddress}
-                time={details.receptionTime}
-              />
-            </div>
-          </section>
-        ) : null}
-
-        {showDetails && (showSchedule || showTravel) ? (
-          <OrnamentDivider />
-        ) : null}
-
-        {showSchedule ? (
-          <section className="mb-4 space-y-6">
-            <div className="text-center">
-              <SectionHeading>Schedule</SectionHeading>
-            </div>
-            <ul className="mx-auto max-w-md space-y-5">
-              {schedule.items.map((item, index) => (
-                <li key={`${item.time}-${item.title}-${index}`} className="text-center">
-                  {item.time ? (
-                    <p
-                      className="tabnum text-[14px] font-medium"
-                      style={{ color: "var(--ws-accent)" }}
-                    >
-                      {item.time}
-                    </p>
-                  ) : null}
-                  <p className="mt-1 text-[16px] font-medium" style={{ color: "var(--ws-ink)" }}>
-                    {item.title}
-                  </p>
-                  {item.description ? (
-                    <p className="mt-0.5 text-[14px]" style={{ color: "var(--ws-muted)" }}>
-                      {item.description}
-                    </p>
-                  ) : null}
-                </li>
-              ))}
-            </ul>
-          </section>
-        ) : null}
-
-        {showSchedule && showTravel ? <OrnamentDivider /> : null}
-
-        {showTravel ? (
-          <section className="mb-4 space-y-4 text-center">
-            <SectionHeading>Travel &amp; stay</SectionHeading>
-            <p
-              className="mx-auto max-w-prose text-[15px] whitespace-pre-line"
-              style={{ color: "var(--ws-muted)" }}
-            >
-              {travel.body}
-            </p>
-          </section>
-        ) : null}
-          </>
-        ) : null}
-      </div>
+      {!pageSlot && content.registry.visible && registryHref ? (
+        <RegistryCta href={registryHref} />
+      ) : null}
 
       {pageSlot ? (
-        <div className="mx-auto max-w-5xl px-6 pb-16">{pageSlot}</div>
+        <div
+          className="mx-auto"
+          style={{ maxWidth: "1080px", padding: `48px ${SITE_GUTTER} 64px` }}
+        >
+          {pageSlot}
+        </div>
       ) : null}
     </div>
   );

@@ -6,6 +6,7 @@ import {
   deleteGuestMember,
   updateGuestMember,
 } from "./guest-member-actions";
+import { GuestRsvpQr } from "./GuestRsvpQr";
 import { RsvpPill } from "./guest-rsvp";
 import {
   guestDisplayHeadcount,
@@ -21,11 +22,17 @@ import { cn } from "@/lib/cn";
 export function GuestRow({
   guest,
   mealOptions,
+  mealSelectionActive,
   rowClass,
+  siteSlug,
+  showRsvpQr,
 }: {
   guest: Guest;
   mealOptions: MealOption[];
+  mealSelectionActive: boolean;
   rowClass: string;
+  siteSlug: string | null;
+  showRsvpQr: boolean;
 }) {
   const [expanded, setExpanded] = useState(guest.members.length > 0);
   const headcount = guestDisplayHeadcount(guest);
@@ -82,7 +89,23 @@ export function GuestRow({
       {expanded ? (
         <tr>
           <td colSpan={5} className="pb-4">
-            <GuestMembersPanel guest={guest} mealOptions={mealOptions} />
+            <div className="space-y-3">
+              <GuestMembersPanel
+                guest={guest}
+                mealOptions={mealOptions}
+                mealSelectionActive={mealSelectionActive}
+              />
+              {showRsvpQr ? (
+                <div className="rounded-[var(--radius-inner)] bg-well px-4 py-3 shadow-recessed">
+                  <GuestRsvpQr
+                    guestId={guest.id}
+                    guestName={guest.full_name}
+                    rsvpToken={guest.rsvp_token}
+                    siteSlug={siteSlug}
+                  />
+                </div>
+              ) : null}
+            </div>
           </td>
         </tr>
       ) : null}
@@ -93,9 +116,11 @@ export function GuestRow({
 function GuestMembersPanel({
   guest,
   mealOptions,
+  mealSelectionActive,
 }: {
   guest: Guest;
   mealOptions: MealOption[];
+  mealSelectionActive: boolean;
 }) {
   const [isAddPending, startAddTransition] = useTransition();
   const [newName, setNewName] = useState("");
@@ -107,9 +132,9 @@ function GuestMembersPanel({
     startAddTransition(async () => {
       await addGuestMember(guest.id, {
         name: newName,
-        meal_option_id: newMeal || null,
+        meal_option_id: mealSelectionActive ? newMeal || null : null,
         dietary_note: newDietary,
-        attending: true,
+        attending: false,
         sort_order: guest.members.length,
       });
       setNewName("");
@@ -131,6 +156,7 @@ function GuestMembersPanel({
               key={member.id}
               member={member}
               mealOptions={mealOptions}
+              mealSelectionActive={mealSelectionActive}
             />
           ))}
         </ul>
@@ -138,7 +164,12 @@ function GuestMembersPanel({
 
       <form
         onSubmit={handleAdd}
-        className="grid gap-2 border-t border-hairline pt-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto]"
+        className={cn(
+          "grid gap-2 border-t border-hairline pt-3",
+          mealSelectionActive
+            ? "sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto]"
+            : "sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]",
+        )}
       >
         <Input
           value={newName}
@@ -148,20 +179,22 @@ function GuestMembersPanel({
           className="bg-surface"
           aria-label="New member name"
         />
-        <Select
-          value={newMeal}
-          onChange={(e) => setNewMeal(e.target.value)}
-          disabled={isAddPending}
-          aria-label="New member meal"
-          className="bg-surface py-2 text-[14px]"
-        >
-          <option value="">No meal</option>
-          {mealOptions.map((option) => (
-            <option key={option.id} value={option.id}>
-              {option.is_kids ? `${option.name} (kids)` : option.name}
-            </option>
-          ))}
-        </Select>
+        {mealSelectionActive ? (
+          <Select
+            value={newMeal}
+            onChange={(e) => setNewMeal(e.target.value)}
+            disabled={isAddPending}
+            aria-label="New member meal"
+            className="bg-surface py-2 text-[14px]"
+          >
+            <option value="">No meal</option>
+            {mealOptions.map((option) => (
+              <option key={option.id} value={option.id}>
+                {option.is_kids ? `${option.name} (kids)` : option.name}
+              </option>
+            ))}
+          </Select>
+        ) : null}
         <Input
           value={newDietary}
           onChange={(e) => setNewDietary(e.target.value)}
@@ -181,9 +214,11 @@ function GuestMembersPanel({
 function MemberEditor({
   member,
   mealOptions,
+  mealSelectionActive,
 }: {
   member: GuestMember;
   mealOptions: MealOption[];
+  mealSelectionActive: boolean;
 }) {
   const [name, setName] = useState(member.name ?? "");
   const [meal, setMeal] = useState(member.meal_option_id ?? "");
@@ -205,7 +240,10 @@ function MemberEditor({
   return (
     <li
       className={cn(
-        "grid gap-2 rounded-[var(--radius-inner)] bg-surface p-3 sm:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,1fr)_auto_auto]",
+        "grid gap-2 rounded-[var(--radius-inner)] bg-surface p-3",
+        mealSelectionActive
+          ? "sm:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,1fr)_auto_auto]"
+          : "sm:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_auto_auto]",
         isPending && "opacity-60",
       )}
     >
@@ -221,24 +259,26 @@ function MemberEditor({
         disabled={isPending}
         aria-label="Member name"
       />
-      <Select
-        value={meal}
-        onChange={(e) => {
-          const next = e.target.value;
-          setMeal(next);
-          save({ meal_option_id: next || null });
-        }}
-        disabled={isPending}
-        aria-label="Member meal"
-        className="py-2 text-[14px]"
-      >
-        <option value="">No meal</option>
-        {mealOptions.map((option) => (
-          <option key={option.id} value={option.id}>
-            {option.is_kids ? `${option.name} (kids)` : option.name}
-          </option>
-        ))}
-      </Select>
+      {mealSelectionActive ? (
+        <Select
+          value={meal}
+          onChange={(e) => {
+            const next = e.target.value;
+            setMeal(next);
+            save({ meal_option_id: next || null });
+          }}
+          disabled={isPending}
+          aria-label="Member meal"
+          className="py-2 text-[14px]"
+        >
+          <option value="">No meal</option>
+          {mealOptions.map((option) => (
+            <option key={option.id} value={option.id}>
+              {option.is_kids ? `${option.name} (kids)` : option.name}
+            </option>
+          ))}
+        </Select>
+      ) : null}
       <Input
         value={dietary}
         onChange={(e) => setDietary(e.target.value)}

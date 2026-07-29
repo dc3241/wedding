@@ -283,17 +283,50 @@ export const WRITE_TOOL_DEFINITIONS = [
   {
     name: "set_website_travel",
     description:
-      "Fill an EMPTY wedding-website Travel & Stay section with guest-facing prose (usually composed from search_nearby_places). Refuses if no website exists or if Travel & Stay already has copy — never overwrites. Pass the finished body string; do not force the section visible.",
+      "Fill an EMPTY wedding-website Travel & Stay section with guest-facing content (usually from search_nearby_places). Prefer structured places (hotels/airports) plus a short intro. Refuses if no website exists or if Travel & Stay already has content — never overwrites. Do not force the section visible.",
     input_schema: {
       type: "object" as const,
       properties: {
+        intro: {
+          type: "string",
+          description:
+            "Optional short intro blurb for guests (getting there / where to stay).",
+        },
         body: {
           type: "string",
           description:
-            "Guest-ready Travel & Stay blurb (hotel names, approximate distance/area, booking notes).",
+            "Legacy alias for intro. Prefer intro + places when possible.",
+        },
+        places: {
+          type: "array",
+          description:
+            "Guest-facing place cards — hotels, airports, restaurants, etc.",
+          items: {
+            type: "object",
+            properties: {
+              kind: {
+                type: "string",
+                description: "stay | getting_there | other",
+              },
+              name: { type: "string" },
+              detail: {
+                type: "string",
+                description: "Address, distance, or short description.",
+              },
+              url: {
+                type: "string",
+                description: "Optional booking or maps https URL.",
+              },
+              note: {
+                type: "string",
+                description: "Optional block code or booking note.",
+              },
+            },
+            required: ["name"] as string[],
+          },
         },
       },
-      required: ["body"] as string[],
+      required: [] as string[],
     },
   },
 ] as const;
@@ -614,12 +647,31 @@ export async function executeWriteTool(
     }
 
     case "set_website_travel": {
+      const intro = asString(input.intro);
       const body = asString(input.body);
-      if (body === undefined) {
-        return toolError("body is required");
+      const placesRaw = input.places;
+      const places = Array.isArray(placesRaw)
+        ? placesRaw
+            .filter((row): row is Record<string, unknown> => !!row && typeof row === "object")
+            .map((row) => ({
+              kind: asString(row.kind),
+              name: asString(row.name) ?? "",
+              detail: asString(row.detail),
+              url: asString(row.url),
+              note: asString(row.note),
+            }))
+            .filter((row) => row.name.trim().length > 0)
+        : undefined;
+
+      if (!intro?.trim() && !body?.trim() && (!places || places.length === 0)) {
+        return toolError("Provide intro and/or at least one place");
       }
 
-      const result = await setWeddingWebsiteTravel(projectId, body);
+      const result = await setWeddingWebsiteTravel(projectId, {
+        intro: intro ?? body,
+        body,
+        places,
+      });
       if (!result.ok) {
         return toolError(result.error);
       }

@@ -2,6 +2,8 @@ import type { ReactNode } from "react";
 import type { WeddingWebsiteContent } from "./types";
 import { resolveWeddingTemplate } from "./templates/registry";
 import { resolveWeddingTheme } from "./themes";
+import { SITE_GUTTER, Wrap } from "./layout";
+import { SiteFooter } from "./SiteFooter";
 
 type WeddingSiteViewProps = {
   content: WeddingWebsiteContent;
@@ -27,7 +29,7 @@ export function WeddingSiteView({
   const showRsvp = !pageSlot && content.rsvp.visible && rsvpSlot;
 
   return (
-    <>
+    <div style={palette.cssVars}>
       <Component
         content={content}
         theme={theme}
@@ -36,29 +38,34 @@ export function WeddingSiteView({
         pageSlot={pageSlot}
       />
       {showRsvp ? (
-        <div
-          className="font-ws-sans text-[15px] leading-relaxed"
+        <section
+          id="rsvp"
+          className="scroll-mt-8 font-ws-sans"
           style={{
-            ...palette.cssVars,
-            background: "var(--ws-bg)",
-            color: "var(--ws-ink)",
+            background: "var(--ws-accent-deep)",
+            color: "#ffffff",
+            padding: `clamp(64px, 9vw, 110px) ${SITE_GUTTER}`,
           }}
         >
-          <section
-            id="rsvp"
-            className="mx-auto max-w-[640px] border-t px-6 py-12"
-            style={{ borderColor: "var(--ws-border)" }}
-          >
-            <h2
-              className="font-serif-display text-[28px] tracking-[0.005em]"
-              style={{ color: "var(--ws-ink)" }}
-            >
-              RSVP
-            </h2>
-            <div className="mt-6">{rsvpSlot}</div>
-          </section>
-        </div>
+          <Wrap>
+            <div className="mb-10 text-center">
+              <p
+                className="m-0 mb-3.5 text-[12px] font-semibold tracking-[0.22em] uppercase"
+                style={{
+                  color: "color-mix(in srgb, var(--ws-tint) 70%, #ffffff)",
+                }}
+              >
+                You&apos;re invited
+              </p>
+              <h2 className="font-serif-display m-0 text-[clamp(30px,5vw,46px)] font-medium text-white">
+                RSVP
+              </h2>
+            </div>
+            <div className="mx-auto max-w-[520px]">{rsvpSlot}</div>
+          </Wrap>
+        </section>
       ) : null}
-    </>
+      <SiteFooter names={content.hero.names} date={content.hero.date} />
+    </div>
   );
 }

@@ -1,47 +1,51 @@
-# Wedding Planning SaaS — Project Bible (v24)
+# Wedding Planning SaaS — Project Bible (v25)
 
-Canonical state document. **Supersedes v23.** Drop this into the Project's instructions/knowledge so
-any new chat picks up cold. Lives in-repo at `PROJECT_BIBLE_v24.md`. The repo's `.cursor/design.mdc`,
+Canonical state document. **Supersedes v24.** Drop this into the Project's instructions/knowledge so
+any new chat picks up cold. Lives in-repo at `PROJECT_BIBLE_v25.md`. The repo's `.cursor/design.mdc`,
 `app/globals.css`, `design/reference.html` (stale — see §10), and `supabase/migrations/` remain the
 live source of truth; this summarizes them and the decisions behind them. Current through migration
-**0040**; **next-free migration is 0041**.
+**0043**; **next-free migration is 0044**.
 
-**v24 records RSVP meal selection (MEAL-01 → MEAL-03) — couple config, per-person public RSVP,
-guest-member reconciliation — plus REG-04 legacy registry-link backfill:**
+**v25 records the photo-led wedding website overhaul (WEB-IMG-01 / WEB-LAYOUT / WEB-EDITOR), gated
+RSVP full-name lookup (RSVP-01a), and GST-01 guest-member authoring polish — atop v24 meals +
+household gate:**
 
 | Slice | What | Schema |
 |---|---|---|
-| **REG-04** | Backfill `content.registry.links` → `wedding_websites.external_registry_links` | **0037** |
-| **MEAL-01** | `meal_options` + `wedding_websites.meal_service_style`; couple Catering card | **0038** |
-| **MEAL-02** | `rsvp_attendees` + `submit_rsvp` RPC; adaptive public form; drop direct anon INSERT | **0039** |
-| **MEAL-03** | `guest_members` + `matched_guest_id`; match/promote; `meal_choice` inert (drop in 0041) | **0040** |
+| **WEB-IMG-01** | Public `website-media` bucket; hero `content.hero.imageUrl`; client upload | **0042** |
+| **WEB-LAYOUT** | Shared section vocabulary + Gallery / Party / FAQ; five-template overhaul | **NONE** (jsonb) |
+| **WEB-EDITOR** | LookStep + hero/gallery/party/FAQ/travel authoring; reorder controls | **NONE** |
+| **RSVP-01a** | `lookup_rsvp_household` matches normalized **full name** (not last-name token) | **0043** |
+| **GST-01** | Add-guest per-member names + attending checkbox persists via `updateGuestMember` | **NONE** |
 
-Everything in v23 that isn't touched by the above carries forward unchanged: gift registry
-(REG-01…03), SEAT-11 dance floors, BUD-04 / VND-07 family, invitations, Soft stack (C1), LAND-01,
-planner CRM, Stripe, website builder.
+Everything in v24 that isn't touched by the above carries forward unchanged: RSVP meals
+(MEAL-01…03), guest-gated RSVP (RSVP-01), gift registry (REG-01…04), SEAT-11, BUD-04 / VND-07,
+invitations, Soft stack (C1), LAND-01, planner CRM, Stripe.
 
-> **Numbering note:** MEAL took **0038–0040** (0037 was REG-04). **ONB-02 no longer owns 0037** — it
-> takes **next-free at build time (0041+)**. Same bump pattern as always. Do not `db push`.
-> **MEAL-03a (drop `guests.meal_choice`) owns 0041** after live backfill verification — do not
-> fold that drop into 0040.
+> **Numbering note:** WEB-IMG-01 took **0042** (MEAL-03a / ONB-02 did not). RSVP-01a took **0043**.
+> **MEAL-03a (drop `guests.meal_choice`) and ONB-02 take next-free at build time (0044+).**
+> Do not `db push`.
 
 **Verification status (READ THIS):**
 - **0031–0033** remain applied live (as in v23).
-- **0034 / 0035 / 0036** (REG-01…03) — apply/checkpoint if not yet live (see v23 Dom list).
-- **0037–0040 shipped in code (REG-04 + MEAL-01…03).** Apply by hand-paste in order. Dom
-  checkpoints (designed to fail on broken code):
-  - **0038:** `meal_options` present; anon unpublished → 0 / published → N; INSERT policy uses
-    `can_edit_project`; `meal_service_style = 'bogus'` → 23514.
-  - **0039:** `rsvp_attendees` + `submit_rsvp`; `rsvp_anon_insert` **gone**; atomicity (bogus
-    meal mid-list → 0 submissions); composite FK blocks cross-project meals; plated derives
-    `party_size`; buffet forces `meal_option_id` null; column-specific SET NULL on option delete.
-  - **0040:** `guest_members` present; `meal_choice` **still present** (not dropped); backfill
-    fidelity; match promotes attendees idempotently; unmatch preserves members; anon denial.
+- **0034–0041** (REG + MEAL + RSVP-01) — apply/checkpoint if not yet live (see v24 Dom list;
+  especially **0040** — without it Add person fails with `PGRST205`).
+- **0042 shipped in code (WEB-IMG-01).** Apply after 0041. Dom checkpoints:
+  - `storage.buckets` row `website-media` present; `public = true`; 25MB; image mimes only.
+  - Anon SELECT on bucket objects succeeds (no published gate — deliberate carve-out).
+  - Authenticated INSERT denied for non-editor / wrong first-folder `project_id`; editor upload
+    under `{projectId}/hero/…` succeeds; public URL loads without signing.
+  - `content.hero.imageUrl` round-trip via editor; clear hero clears content URL (storage orphan OK).
+- **0043 shipped in code (RSVP-01a).** Apply after 0042. Dom checkpoints:
+  - `to_regprocedure('lookup_rsvp_household(text,text,text)')` present; third arg is full-name.
+  - Exact normalized full-name match returns token/label/cap; last-name-only / partial ≠ match.
+  - Token path still works; published-site scope; `limit 25`; anon `select * from guests` denied.
+  - Public gated form copy asks for full name; Guests `RsvpAccessCard` copy matches.
 - **Still open (human gate):** Dom Soft stack + LAND-01 / LAND-01a visual checkpoint. See §13.
 
-Sections changed from v23: header, **§1**, **§3** (five anon surfaces; RSVP via RPC), **§4**
-(`can_edit_project` consumers), **§5** (0037–0040 + ONB-02 → 0041+), **§6** (Guests catering /
-match), **§7** (MEAL), **§12**, **§13**, **§14**, **§15**.
+Sections changed from v24: header, **§1**, **§3**, **§4** (lookup signature; WRITE-01 + storage),
+**§5** (0042–0043; MEAL-03a/ONB-02 → 0044+), **§6**, **§7**, **§9**, **§12**, **§13**, **§14**,
+**§15**.
 
 **Companion doc:** a separate **Launch Prep Runbook** exists (ops checklist for going to
 production). This bible covers product/architecture state; the runbook covers deployment. Keep both.
@@ -67,11 +71,12 @@ book. This is the Aisle Planner model and it is what `can_access_project`'s "OR 
 member" branch was designed for in 0001. See §4.
 
 The app spans: the couple planning product (onboarding → AI plan, checklist, vendors, guests with
-per-person meal members + RSVP→guest match, budget, notes, files, day-of timeline, gift registry
-with public share + guest claims, in-app AI assistant, seating builder), a planner CRM (contracts,
-lead pipeline, proposals → accepted agreement → printable contract, project access / invitations),
-Stripe billing for both audiences, and a public, shareable wedding website with a 5-template
-gallery, adaptive meal-aware RSVP intake, and a registry sub-page.
+per-person meal members + RSVP→guest match + optional household-gated RSVP, budget, notes, files,
+day-of timeline, gift registry with public share + guest claims, in-app AI assistant, seating
+builder), a planner CRM (contracts, lead pipeline, proposals → accepted agreement → printable
+contract, project access / invitations), Stripe billing for both audiences, and a public, shareable
+wedding website with a 5-template photo-led gallery (hero / gallery / party media, FAQ, structured
+travel), adaptive meal-aware RSVP intake (open or gated), and a registry sub-page.
 
 ---
 
@@ -137,8 +142,8 @@ In `.cursor/main.mdc` (architecture) + `.cursor/design.mdc` (Soft stack design).
 - **Service-role key is server-only and rare.** ONLY the Stripe webhook + billing/admin path.
 - **Anon READ = one published-only RLS policy + the anon key.**
 - **Anon WRITE = tightly-scoped INSERT-only RLS (or a definer RPC) + server-derived scope.** Public
-  writes are RSVP (`submit_rsvp` RPC) and registry claims (INSERT). **There are exactly FIVE anon
-  surfaces** (three reads + one INSERT + one RPC execute) — see §4.
+  writes are RSVP (`submit_rsvp` RPC) and registry claims (INSERT). **There are exactly SIX anon
+  surfaces** (three reads + one INSERT + two RPC executes) — see §4.
 - **Discrete writes over client-authoritative state.** Every mutation writes by id +
   `revalidatePath`. `useOptimistic` is the sanctioned in-pattern fallback.
 - **Keep public/reusable UI pure via prop injection.** `components/website/` imports NO Supabase/auth/
@@ -188,13 +193,19 @@ In `.cursor/main.mdc` (architecture) + `.cursor/design.mdc` (Soft stack design).
   **read-layer** concern: `lib/timeline-owners.ts` is the only place that may parse an owner string.
   Dropdown builders and filter predicates must both call it. Two parsers that can disagree recreate
   the bug. Do not normalize on write; do not invent a join table without a deliberate slice.
+- **NEW (v25) — website photos live as public URLs in `content` jsonb, not as `files` rows.**
+  Upload goes to the public `website-media` bucket; the couple editor persists the public URL into
+  `wedding_websites.content`. Clearing a hero/gallery image clears the URL only — **storage object
+  cleanup is deferred** (orphans OK until a later slice). `components/website/` still imports no
+  Supabase; upload helpers live under the website tab.
 
 **Soft stack design don'ts (Tier 1 chrome — see §10 / `.cursor/design.mdc`):**
 - No raised-inside-raised stacking.
 - No Tier 1 accent floods (`--accent-wash` for pills/washes only).
 - No Cormorant or Great Vibes outside Tier 3 (and the run-sheet print-header carve-out).
 - No ad-hoc radius utilities — use `--radius-card` / `--radius-inner` / `--radius-pill`.
-- No florals, photographic ornament, gold/metal gradients, decorative (non-hierarchical) shadows.
+- No florals, photographic ornament, gold/metal gradients, decorative (non-hierarchical) shadows
+  on Tier 1 / Tier 2. **Tier 3 website photos are product content, not chrome ornament** (WEB-IMG-01).
 - Do not import Tier 1 Soft stack tokens as website colour; websites read `--ws-*` only.
 
 ---
@@ -250,8 +261,9 @@ account kind. Any gate that reads only one of those inputs will break the other 
   `projects` UPDATE policy. **`viewer` is deliberately excluded — that is the role's entire purpose.**
   **WRITE-01 exemplars already on this gate (do not weaken):** `registry_items` writes (0034),
   `registry_claims` editor UPDATE/DELETE (0036), `meal_options` writes (0038), `guest_members`
-  writes (0040). Most other project-scoped writes still gate on `can_access_project`, which a
-  `viewer` passes — see §13 / WRITE-01.
+  writes (0040), **`website-media` storage INSERT/UPDATE/DELETE (0042)**. Most other
+  project-scoped writes still gate on `can_access_project`, which a `viewer` passes — see §13 /
+  WRITE-01.
 - `can_read_vendor(vendor_id)`, `bootstrap_account_and_project(...)`.
 - `account_members` RLS uses a plain `user_id = auth.uid()` predicate to avoid recursion.
 
@@ -264,32 +276,44 @@ account kind. Any gate that reads only one of those inputs will break the other 
 > `is_account_member` and should stay that way.** **`projects` has NO DELETE policy** — same
 > silent-no-op shape, currently unreached. Flagged in §13.
 
-### The five public (anon) surfaces
+### The six public (anon) surfaces
 
 1. **Read:** `wedding_websites` has an anon `SELECT` policy `using (published = true)` (0022).
    Columns that ride this surface (no new anon policy): `external_registry_links` (0035),
-   `meal_service_style` (0038).
-2. **Write (RPC):** `submit_rsvp(...)` — `SECURITY DEFINER`, grant execute to `anon` (0039).
-   Resolves `project_id` / published / style from slug; inserts `rsvp_submissions` + optional
-   `rsvp_attendees` atomically. **Direct anon INSERT on `rsvp_submissions` was dropped in 0039**
-   (`rsvp_anon_insert` gone; `REVOKE INSERT … FROM anon`). NO anon SELECT on submissions or
-   attendees.
+   `meal_service_style` (0038), **`rsvp_access_mode` (0041)**.
+2. **Write (RPC):** `submit_rsvp(...)` — `SECURITY DEFINER`, grant execute to `anon` (0039;
+   extended in **0041** with trailing `p_household_token`). Resolves `project_id` / published /
+   style / access mode from slug; inserts `rsvp_submissions` + optional `rsvp_attendees`
+   atomically. In **gated** mode the token MUST resolve to a `guests` row in that project or the
+   RPC RAISES (zero rows). On success gated submits set `matched_guest_id` **only** — no guests-row
+   mutation. **Direct anon INSERT on `rsvp_submissions` was dropped in 0039**. NO anon SELECT on
+   submissions or attendees.
 3. **Read:** `registry_items` has an anon `SELECT` policy gated to a published wedding site (0035).
 4. **Write:** `registry_claims` has an anon `INSERT` policy gated to published sites (0036), NO anon
    read/update/delete. Public availability is via `registry_item_availability(project_id)` (aggregate
    only; security definer; published-gated) — not a SELECT on claims.
 5. **Read:** `meal_options` has an anon `SELECT` policy gated to a published wedding site (0038).
    Draft options must not leak when unpublished.
+6. **Read (RPC):** `lookup_rsvp_household(p_slug, p_token, p_full_name)` — `SECURITY DEFINER`,
+   grant execute to `anon` (**0041**; signature/arg renamed in **0043**). Returns only
+   `{household_token, party_label, party_size}` (label = `guests.full_name`). Name path =
+   **exact match on normalized full name** (strip non-alnum, collapse whitespace, lower; length
+   ≥ 2). Token path unchanged. **NO anon SELECT on `guests`.**
 
-`rsvp_attendees` and `guest_members` have **NO anon policy of any kind**. `project_invitations` has
-NO anon policy. `/invite/[token]` is a public ROUTE that does not resolve the token before
-authentication.
+`rsvp_attendees` and `guest_members` have **NO anon policy of any kind**. `guests` has **NO anon
+policy**. `project_invitations` has NO anon policy. `/invite/[token]` is a public ROUTE that does
+not resolve the token before authentication.
+
+> **Storage carve-out (0042 — not counted as a 7th anon table/RPC surface, but record it):** objects
+> in the public `website-media` bucket are world-readable **even when the wedding site is
+> unpublished**. Knowing or guessing a URL leaks draft photos. Deliberate; contrast with
+> published-gated table reads above.
 
 ---
 
 ## 5. Migrations (source of truth: `supabase/migrations/`)
 
-Applied in order. **You are the source of truth on the next number — next free is 0041.**
+Applied in order. **You are the source of truth on the next number — next free is 0044.**
 
 > **How migrations are applied here (READ THIS BEFORE SUGGESTING ANY CLI COMMAND):** by hand-pasting
 > each file into the Supabase SQL editor and running it once, in order. There is NO CLI
@@ -427,9 +451,10 @@ alter table vendors add column if not exists address text;
 **Originally prompted as 0032** while ONB-02 held 0031; Dom released the reservation so VND-06 took
 **0031**. ONB-02 was then reserved on **0032** until BUD-04 took that number (Jul 23), then on
 **0033** until SEAT-11 took **0033** (Jul 26), then on **0034** until REG-01…03 took **0034–0036**
-(Jul 27), then on **0037** until REG-04 / MEAL took **0037–0040**. **ONB-02 takes next-free at
-build time (0041+).** **MEAL-03a (drop `guests.meal_choice`) is intended as 0041** after live
-backfill verification — if ONB-02 needs a number first, bump MEAL-03a and record it here.
+(Jul 27), then on **0037** until REG-04 / MEAL took **0037–0040**, then on **0042** until
+WEB-IMG-01 took **0042** and RSVP-01a took **0043**. **ONB-02 takes next-free at build time
+(0044+).** **MEAL-03a (drop `guests.meal_choice`) is intended as 0044+** after live backfill
+verification — if ONB-02 needs a number first, bump MEAL-03a and record it here.
 
 ### 0032 budget_item_vendor_many (BUD-04) — APPLIED LIVE
 
@@ -567,15 +592,64 @@ Couple-side per-person guest grain + RSVP→guest reconciliation. **Does not dro
   **NO anon policy.**
 - Idempotent backfill: guests with non-null `meal_choice` → one `guest_member` with
   `dietary_note = meal_choice`, `name` null, `attending = (rsvp_status = 'attending')`. Does **not**
-  map free text to `meal_option_id`; does **not** fabricate members from `party_size`.
+  map free text to `meal_option_id`. **Match/apply fabricates attending `guest_members` from
+  `rsvp_submissions.party_size` when there are no attendee rows and the guest has no members yet**
+  (so Guests Attending reflects RSVP'd headcount, not the invite cap).
+
+### 0041 rsvp_household_access (RSVP-01)
+
+Guest-gated RSVP. No new tables.
+
+- `guests.rsvp_token text` unique opaque hex (backfilled for existing rows); regenerate allowed.
+- `wedding_websites.rsvp_access_mode text NOT NULL DEFAULT 'open'` CHECK `open | gated`. Rides
+  existing published website anon read — no new anon policy for the column.
+- Function `lookup_rsvp_household(...)` — anon surface #6; returns token / party_label /
+  party_size only. **NO anon SELECT on guests.**
+- Rebuilds `submit_rsvp` with trailing `p_household_token`. Open mode ignores it. Gated mode
+  requires an in-project token or RAISES (zero submissions). Success sets `matched_guest_id`
+  pointer only — never mutates the guests row.
+
+### 0042 website_media (WEB-IMG-01)
+
+Public storage for wedding-site photos (hero; gallery / party reuse the same path).
+
+```sql
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values (
+  'website-media', 'website-media', true, 26214400,
+  array['image/png', 'image/jpeg', 'image/webp', 'image/heic']
+)
+on conflict (id) do nothing;
+```
+
+Policies on `storage.objects` for `bucket_id = 'website-media'`:
+- **SELECT** to `anon, authenticated` — **no published gate** (recorded carve-out).
+- **INSERT / UPDATE / DELETE** to `authenticated` where
+  `can_edit_project(((storage.foldername(name))[1])::uuid)` — first path folder = `project_id`.
+
+No table changes. URLs land in `wedding_websites.content` jsonb (`hero.imageUrl`, gallery images,
+party `imageUrl`). Client helper: `app/(app)/projects/[projectId]/website/website-media.ts`.
+Path shape: `{projectId}/{hero|gallery|party}/{uuid}.{ext}`.
+
+### 0043 rsvp_full_name_lookup (RSVP-01a)
+
+No table changes. Replaces `lookup_rsvp_household` so the name argument is **`p_full_name`**
+(was last-name tokenization). Match = equality on normalized full `guests.full_name` (same
+normalize: strip non-alnum → space, collapse whitespace, lower; require length ≥ 2). Token branch
+unchanged. Still published-site scoped; still returns token / label / party_size; `limit 25`;
+grant execute to `anon, authenticated`.
+
+> **Filename note:** on disk the file may be named `0043_rsvp_partial_name_lookup.sql`; the
+> behavior and header comment are full-name lookup. Prefer "full-name" in prose.
 
 ### Column reference
 
-**`guests` (0006 + 0040 semantics):** `party_size integer NOT NULL default 1` is the **invited cap**
+**`guests` (0006 + 0040 + 0041 semantics):** `party_size integer NOT NULL default 1` is the **invited cap**
 (couple-authored; never derived from members; never overwritten by RSVP match). `meal_choice text`
 nullable remains in schema through 0040 but is **inert in app code** (no live reads/writes) —
 preserved only for the 0040 backfill and for MEAL-03a drop. Per-person truth is `guest_members`.
 `rsvp_status` still lives on the household guest row; match sets it from the submission response.
+**`rsvp_token`** (0041) is the opaque household gate key — unique; never anon-selected.
 
 **`tasks` (0002):** `status` CHECK `todo | in_progress | done` default `todo`; `phase` text
 **NULLABLE, free-text (NO CHECK)** — canonical order in `lib/checklist-phases.ts`.
@@ -603,7 +677,7 @@ numeric nullable, `role` text nullable, `notes` text nullable. Unique `(project_
 for the composite FK — not 0004) and **unique `(project_id, vendor_id)` (0030)**.
 
 **`vendor_targets` (0013 + 0031 + VND-07 semantics):** project-scoped category slots. `category`
-text (still NO CHECK — ONB-02 / **next-free / 0041+** owns that decision); `status` includes booked/needed/skipped
+text (still NO CHECK — ONB-02 / **next-free / 0044+** owns that decision); `status` includes booked/needed/skipped
 vocabulary used by the UI; **`project_vendor_id` uuid nullable (0031)** with composite FK to
 `project_vendors` and CHECK `project_vendor_id is null or status = 'booked'`. **No unique index or
 unique constraint on `project_vendor_id`** — one `project_vendor` may own many targets (venue
@@ -646,7 +720,7 @@ checkpoint). See §7.
 > **No-migration slices to date:** the 5-template pack; V3-QA-01…06; SEAT-02/03/05/05a/08/09/10;
 > CHK-01; SET-01; TL-01/02/03; **TL-04**; BUD-01; BUD-01a; ONB-01; Soft stack chrome pass (v11);
 > LAND-01; LAND-01a; INV-03; INV-05; INV-02; **VND-05; VND-05a; VND-05b; VND-06a; VND-07; VND-07a;
-> VND-07b**.
+> VND-07b**; **WEB-LAYOUT; WEB-EDITOR; GST-01**.
 
 **`projects.total_budget`** — numeric(12,2) NULLABLE (0010). **`projects.wedding_date`** — date
 NULLABLE (0001).
@@ -731,17 +805,23 @@ Figtree display numerals. Canonical two-column split:
 - **Guests / Registry / Notes / Seating / Website editor / Contracts** — Soft-stacked; Registry is
   couple-visible (not `plannerOnly`) at `/projects/[projectId]/registry`. **Guests** hosts the
   Catering / Meals card (`meal_service_style` + `meal_options`), expandable `guest_members` per
-  row (invited cap = `party_size`; responded headcount = attending members when present), RSVP
-  inbox with Match-to-guest, and the project-wide caterer meal tally (`lib/caterer-tally.ts`).
+  row (invited cap = `party_size`; responded headcount = attending members when present; **GST-01**
+  add-guest collects additional names up front), RSVP inbox with Match-to-guest, project-wide
+  caterer meal tally (`lib/caterer-tally.ts`), and **RsvpAccessCard** + per-guest **GuestRsvpQr**
+  when a published slug exists. **Website** editor: LookStep (template + palette) + hero photo +
+  Gallery / Party / Travel / FAQ authoring; content persists on each edit via `persistContent`
+  (slug still requires an explicit Save).
 - **Access (planner-only)** — `app/(app)/projects/[projectId]/access/page.tsx` (INV-02).
 
 **Account-scoped planner surfaces:** `/leads`, `/leads/[leadId]`,
 `/leads/[leadId]/proposals/[proposalId]/contract`, `/account/billing`.
 
 **Public surfaces (no auth, outside `(app)`):** `app/w/[slug]` (Tier 3 templates, anon read;
-adaptive RSVP form driven by `meal_service_style` + `meal_options`), `app/w/[slug]/registry`
-(registry sub-page; anon read of `registry_items` when published), and `app/invite/[token]`
-(Tier 2, NO data read). Marketing landing at `/` → `components/marketing/`.
+photo-led sections via shared `SectionStack`; adaptive RSVP form driven by `meal_service_style` +
+`meal_options` + `rsvp_access_mode`), `app/w/[slug]/rsvp` (QR / gated deep-link landing; forces
+RSVP visible even if couple hid it on the main site), `app/w/[slug]/registry` (registry sub-page;
+anon read of `registry_items` when published), and `app/invite/[token]` (Tier 2, NO data read).
+Marketing landing at `/` → `components/marketing/`.
 
 ---
 
@@ -857,17 +937,102 @@ edited them). Name-similarity hint is offered; **no auto-match**.
 
 **Authoritative catering number:** attending `guest_members` grouped by `meal_option_id`
 (`lib/caterer-tally.ts`). `guests.party_size` = invited cap ("Invited: up to N"). Display headcount
-= attending members if any, else `party_size`. Members may exceed the cap (soft note, never block).
+= attending members if any, else `party_size`. **Match / `applyMatchedSubmission` creates members
+from named attendees, or from submission `party_size` placeholders when attendees are empty**, so
+Attending tracks people who RSVP'd yes. Members may exceed the cap (soft note, never block).
 Seating stays on `guests.id` — do not seat members in this slice.
 
 **`guests.meal_choice`:** backfilled into `dietary_note`; app code stops reading/writing it.
-**Drop is MEAL-03a / 0041** after live verification — not 0040.
+**Drop is MEAL-03a / 0044+** after live verification — not 0040 (0041 was RSVP-01; 0042–0043
+were website media + full-name lookup).
 
 **Files (meals):** `0038_meal_options.sql`, `0039_rsvp_attendees.sql`, `0040_guest_members.sql`,
 `app/(app)/projects/[projectId]/guests/{MealConfigCard,GuestRow,guest-member-actions,meal-actions,
 meal-types,rsvp-submissions}.*`, `lib/caterer-tally.ts`, `app/w/[slug]/{RsvpForm,actions,page}.tsx`.
 
-### v19 — Vendor category normalization, booked-at-add, and removal (VND-04 … VND-05b)
+### v24 — Guest-gated RSVP (RSVP-01)
+
+#### RSVP-01 — household gate. Migration **0041**.
+
+`guests.rsvp_token` (unique, opaque hex) + `wedding_websites.rsvp_access_mode` (`open` | `gated`,
+default `open`). Anon surface #6: `lookup_rsvp_household` returns token/label/cap only (label =
+`full_name`). **No anon SELECT on guests.**
+
+`submit_rsvp` gains trailing `p_household_token`. Open mode ignores it. Gated mode requires a
+token that resolves in-project or RAISES (zero submissions). Success sets `matched_guest_id`
+pointer only — never mutates the guests row (promotion stays couple-only).
+
+Public form: open = adaptive meal form; gated = QR `?g=` auto-resolve or **full-name** search
+(see RSVP-01a) → disambiguation picker → form. Couple Guests tab: Open/Gated toggle + per-guest QR
+(`/w/[slug]/rsvp?g=<token>`) with regenerate.
+
+**Files:** `0041_rsvp_household_access.sql`, `app/w/[slug]/{actions,RsvpForm,page,rsvp/page}.tsx`,
+`app/(app)/projects/[projectId]/guests/{rsvp-access-actions,RsvpAccessCard,GuestRsvpQr,GuestRow,page}.*`.
+
+### v25 — Website media + sections (WEB-IMG-01 / WEB-LAYOUT / WEB-EDITOR)
+
+#### WEB-IMG-01 — public website-media bucket + hero image. Migration **0042**.
+
+Photo foundation for the Tier 3 site. Public bucket `website-media` (25MB, image mimes); writes
+gated `can_edit_project` on path folder 1 = `project_id`; **public SELECT with no published gate**.
+Client upload helper `website-media.ts` returns a public URL; couple actions
+`setHeroImage` / `clearHeroImage` persist `content.hero.imageUrl`. Clear removes the URL only —
+storage orphan cleanup deferred. `components/website/` stays Supabase-free; templates receive the
+URL string. Gallery / party reuse the same helper with subfolders `gallery/` / `party/`.
+
+#### WEB-LAYOUT — shared section vocabulary + five-template overhaul. NO SCHEMA.
+
+Extends `WeddingWebsiteContent` with:
+- `gallery: { visible, images: { url, caption? }[] }`
+- `party: { visible, heading?, members: { name, role?, imageUrl? }[] }`
+- `faq: { visible, heading?, items: { question, answer }[] }`
+- `travel.places: TravelPlace[]` (`kind: stay | getting_there | other`, name, detail?, url?, note?)
+  — `travel.body` remains the intro / legacy freeform field
+
+`parseWeddingWebsiteContent` never throws; missing sections default hidden + empty. Shared render
+pieces under `components/website/sections/` (`SectionStack`, Story/Details/Schedule/Gallery/Party/
+Travel/Faq, `PhotoTile`, `MonogramMark`, `SectionHead`) + `HeroPhotoBackdrop`, `OverlayNav`,
+`RegistryCta`, `SiteFooter`. All five templates consume the shared vocabulary; `--ws-*` only
+(no Soft stack chrome tokens). Nav anchors derive from `buildSectionAnchors` (visible + non-empty).
+`pageSlot` still suppresses body sections on `/registry`.
+
+#### WEB-EDITOR — LookStep + section authoring. NO SCHEMA.
+
+Couple Website tab: **LookStep** (template + four palette swatches), **HeroImageField**,
+**GalleryEditorFields** / **PartyEditorFields** / **TravelEditorFields** / **FaqEditorFields**,
+**ReorderButtons** (up/down — do not pull @dnd-kit into this surface). Full-blob
+`updateWeddingWebsite` + `revalidatePath` on each content edit. Registry section on the builder
+is visibility + deep-link to the Registry tab / public sub-page (no parallel link entry —
+REG-04).
+
+**Files (website):** `0042_website_media.sql`,
+`app/(app)/projects/[projectId]/website/{website-media,HeroImageField,LookStep,GalleryEditorFields,
+PartyEditorFields,TravelEditorFields,FaqEditorFields,ReorderButtons,WebsiteEditor,actions}.*`,
+`components/website/{types,HeroPhotoBackdrop,OverlayNav,RegistryCta,SiteFooter,layout,sections/*,
+templates/*}.*`.
+
+### v25 — Gated RSVP full-name lookup (RSVP-01a)
+
+#### RSVP-01a — full-name match. Migration **0043**.
+
+Replaces last-name tokenization on anon surface #6. Public gated UX asks for **full name**; RPC
+arg is `p_full_name`; match is exact after normalize. Collisions still cap at 25 with a picker.
+QR token resolve unchanged. Guests card copy: "QR or full-name match."
+
+**Files:** `0043_rsvp_partial_name_lookup.sql` (full-name behavior),
+`app/w/[slug]/{actions,RsvpForm}.tsx`,
+`app/(app)/projects/[projectId]/guests/RsvpAccessCard.tsx`.
+
+### v25 — Guest member authoring (GST-01)
+
+#### GST-01 — per-member add + attending persist. NO SCHEMA.
+
+`addGuest` accepts additional names when party size > 1 and inserts `guest_members` for each
+(household primary + extras). Bulk add creates one member per guest. Member **Attending** checkbox
+calls `updateGuestMember` so headcount tracks without re-adding. Cap semantics unchanged:
+`guests.party_size` = invited max; attending members drive responded headcount.
+
+**Files:** `app/(app)/projects/[projectId]/guests/{actions,AddGuestForms,GuestRow,guest-member-actions}.*`.
 
 **The reported problem, and what it actually was.** Dom's report: *couples can't add vendors they've
 already booked off-platform; can't link them to a category; duplicates aren't prevented; and nothing
@@ -1143,9 +1308,12 @@ honest summary, exchange persisted; cap-hit with NO writes → persists nothing.
 **Cost controls:** static tools+system prefix prompt-cached; history windowed to
 `ASSISTANT_HISTORY_WINDOW = 10`; read-tool payloads compacted; state derived from LIVE tool reads.
 
-> **Read coverage is complete for project-scoped planning entities but NOT for account-scoped/public
-> entities (leads, proposals, website, RSVP), seating, or invitations.** The assistant also has no
-> vendor-removal tool and should not get one — it is a destructive action with a cascade.
+> **Read coverage is complete for project-scoped planning entities but NOT for account-scoped
+> entities (leads, proposals), seating, or invitations.** Website has a narrow write
+> (`set_website_travel` — fill empty Travel & Stay with intro + structured `places`; refuses
+> overwrite) plus travel `placeCount` on read; RSVP / full website authoring remain out of scope.
+> The assistant also has no vendor-removal tool and should not get one — it is a destructive action
+> with a cascade.
 
 ---
 
@@ -1347,8 +1515,9 @@ and that `vendors.category` had three vocabularies. Every one changed the slice.
 - **Google Places / Files / Assistant / Seating / Budget:** store only `place_id`; private bucket +
   signed URLs gated by `<projectId>/`; assistant can't exceed RLS.
 - **Production infra:** prod belongs in a **separate Supabase org on Pro**. Fresh prod project,
-  migrations **0001–0040** applied by hand once each in order (NEVER `db push`), storage bucket +
-  policies recreated, real SMTP, prod domain in auth redirect URLs. See the Launch Prep Runbook.
+  migrations **0001–0043** applied by hand once each in order (NEVER `db push`), storage buckets
+  (`project-files` + **`website-media`**) + policies recreated, real SMTP, prod domain in auth
+  redirect URLs. See the Launch Prep Runbook.
 - Set Anthropic + Google Cloud + Stripe + Supabase billing/spend alerts.
 
 ---
@@ -1402,16 +1571,27 @@ first-membership; `project_members` recursive-policy flag (investigated, safe �
 - **No in-app gift registry** — couple CRUD (0034), public sub-page + external link-outs (0035),
   guest reserve/purchase claims with privacy-safe availability RPC (0036).
 
-**Closed by v24 (MEAL-01…03 + REG-04):**
+**Closed by v24 (MEAL-01…03 + REG-04 + RSVP-01):**
 - **RSVP → guest matching NOT built** — `matched_guest_id` + `matchSubmissionToGuest` /
   `unmatchSubmission` (0040); attendees promote to `guest_members` on couple confirm only.
 - **No per-person meal RSVP** — `rsvp_attendees` + adaptive form + `submit_rsvp` (0039).
 - **No couple meal / service-style config** — `meal_options` + `meal_service_style` (0038).
-- **Anon surface count** — exactly **five** (website read, meal_options read, registry items read,
-  registry claims insert, `submit_rsvp` execute). Direct RSVP INSERT removed.
+- **Anon surface count** — exactly **six** (website read, meal_options read, registry items read,
+  registry claims insert, `submit_rsvp` execute, `lookup_rsvp_household` execute). Direct RSVP
+  INSERT removed. **No anon SELECT on guests.**
 - **Legacy website registry links** consolidated into `external_registry_links` (0037).
+- **Open RSVP only** — household gate via `rsvp_token` + `rsvp_access_mode` (0041).
 
-**Open — from the v19/v20/v21/v22/v23/v24 build:**
+**Closed by v25 (WEB + RSVP-01a + GST-01):**
+- **No website photos** — public `website-media` bucket + hero/gallery/party URLs in content
+  jsonb (0042 / WEB-IMG-01). **Reverses the v24 "Photos: declined permanently" decision.**
+- **Flat five-template duplication / no Gallery·Party·FAQ** — shared `SectionStack` vocabulary
+  (WEB-LAYOUT) + LookStep / section editors (WEB-EDITOR).
+- **Gated RSVP last-name search** — exact normalized full-name match (0043 / RSVP-01a).
+- **Add guest with party size > 1 forced member-editor follow-up** — GST-01 collects additional
+  names at add time; attending checkbox persists via `updateGuestMember`.
+
+**Open — from the v19/v20/v21/v22/v23/v24/v25 build:**
 - **VND-05 checkpoints a, c, e, f, g reported as "all set" without pasted output.** Believed good.
   (d) was the silent `replied` → 23514 case — closed by 0031. (g) remains the one to spot-check if
   outreach quality looks off (raw category id in a generated email).
@@ -1424,24 +1604,30 @@ first-membership; `project_members` recursive-policy flag (investigated, safe �
   the shared `"DJ, Officiant"` event, with `group by owner` still showing the combined string at rest.
 - **Empty booked slot with zero project vendors:** Connect control returns null; Add new remains.
   No "No existing vendors to connect yet" copy (optional polish).
+- **Website-media storage orphans** after clear/remove — content URL cleared; object not deleted.
+- **WeddingCountdown hydration** — SSR vs client day-boundary can mismatch the days numeral
+  (observed 44 vs 45). Prefer a client-only mount or a shared truncated "days until" calc if it
+  reappears in Dom visual QA.
 
 **Open — security / schema:**
 - **`viewer` can write on every project-scoped table except `projects` and the WRITE-01 exemplars
   already on `can_edit_project` (`registry_items`, `registry_claims` editor mutations,
-  `meal_options`, `guest_members`).** `project_vendors`, `tasks`, `budget_items`, `guests`,
-  `notes`, `timeline_events`, `seating_*`, `rsvp_submissions` member writes, and most of the rest
-  still gate writes on `can_access_project`, which a `viewer` passes. **`removeProjectVendor` is
-  the sharpest remaining example — a viewer can delete a vendor link and cascade its outreach
-  history.** Unreached today because nothing issues `viewer` invitations (no role picker), but it
-  is live the moment one does. **This is the v18 "audit every write policy" rule coming due; it
-  needs its own slice — see §15 WRITE-01.**
+  `meal_options`, `guest_members`, **`website-media` storage writes**).** `project_vendors`,
+  `tasks`, `budget_items`, `guests`, `notes`, `timeline_events`, `seating_*`, `rsvp_submissions`
+  member writes, and most of the rest still gate writes on `can_access_project`, which a `viewer`
+  passes. **`removeProjectVendor` is the sharpest remaining example — a viewer can delete a vendor
+  link and cascade its outreach history.** Unreached today because nothing issues `viewer`
+  invitations (no role picker), but it is live the moment one does. **This is the v18 "audit every
+  write policy" rule coming due; it needs its own slice — see §15 WRITE-01.**
 - **`projects` has NO DELETE policy.** Silent-no-op shape, currently unreached.
-- **`vendors.category` has NO CHECK.** Deliberately deferred — **ONB-02 (next-free / 0041+) owns the
+- **`vendors.category` has NO CHECK.** Deliberately deferred — **ONB-02 (next-free / 0044+) owns the
   category-constraint policy decision** and should apply it to `vendors.category` and
   `vendor_targets.category` together against one canonical list. Making the form a picker got ~95%
   of the benefit with no list duplicated into SQL.
-- **`guests.meal_choice` still present (inert).** Drop in **MEAL-03a / 0041** after Dom verifies
+- **`guests.meal_choice` still present (inert).** Drop in **MEAL-03a / 0044+** after Dom verifies
   backfill fidelity. Until then do not reintroduce app reads/writes.
+- **`website-media` public SELECT has no published gate.** Draft photos are fetchable by URL.
+  Intentional; do not "fix" by adding a published join without a deliberate product decision.
 - **`project_invitations.invited_by` / `accepted_by` have no FK to `auth.users`.** Cosmetic.
 - **`budget_items.category` free-text/nullable** — Uncategorized bucket handles it.
 - **`tasks.phase` still free-text**; past `wedding_date` still permitted.
@@ -1469,8 +1655,9 @@ first-membership; `project_members` recursive-policy flag (investigated, safe �
 - RSVP throttle soft (anon cannot SELECT submissions, so the count is best-effort).
 - Lead→project conversion NOT built (Phase 4).
 - Currency helpers duplicated — prefer `lib/format-currency.ts`.
-- **Apply + Dom-checkpoint 0037–0040 live** if not yet pasted (especially 0040 — without it,
-  `guest_members` is missing and Add person fails with PGRST205).
+- **Apply + Dom-checkpoint 0037–0043 live** if not yet pasted (especially **0040** — without it,
+  `guest_members` is missing and Add person fails with PGRST205; **0042** for website photos;
+  **0043** for gated full-name lookup).
 
 **Dev DB state (v20 — EXPECTED; re-introspect before relying on vendor rows):**
 - `dominicciccaglione@gmail.com` (`6bf62d70-ae1c-47cf-aff1-2125bc90f444`) — **personal**,
@@ -1540,17 +1727,28 @@ INV-02. INV-06 deliberately not built.
 - **MEAL-02** — Migration **0039**. `rsvp_attendees` + `submit_rsvp`; adaptive public form; drop
   direct anon RSVP INSERT.
 - **MEAL-03** — Migration **0040**. `guest_members` + `matched_guest_id`; match/promote;
-  caterer tally; `meal_choice` inert (drop deferred to MEAL-03a / 0041).
+  caterer tally; `meal_choice` inert (drop deferred to MEAL-03a / 0044+).
+- **RSVP-01** — Migration **0041**. Household-gated RSVP (`rsvp_token`, `rsvp_access_mode`,
+  `lookup_rsvp_household`, gated `submit_rsvp` pointer-only).
 
-Current through **0040**; next-free **0041** (MEAL-03a drop preferred; ONB-02 may take it — see
+**Done (v25 — photo-led website + RSVP full-name + guest polish):**
+- **WEB-IMG-01** — Migration **0042**. Public `website-media` bucket; hero `imageUrl`; WRITE-01
+  storage exemplar; no published gate on object SELECT.
+- **WEB-LAYOUT** — No schema. Shared section vocabulary + Gallery / Party / FAQ + structured
+  travel places; five templates on `SectionStack` / `HeroPhotoBackdrop` / `OverlayNav`.
+- **WEB-EDITOR** — No schema. LookStep + hero/gallery/party/FAQ/travel authoring + reorder.
+- **RSVP-01a** — Migration **0043**. Gated lookup matches normalized full name.
+- **GST-01** — No schema. Add-guest additional names; attending checkbox persists.
+
+Current through **0043**; next-free **0044** (MEAL-03a drop preferred; ONB-02 may take it — see
 header numbering note).
 
 **In progress:** Dom Soft stack + LAND-01 live visual checkpoint (human). Not a Cursor slice.
-Dom apply + checkpoint REG + MEAL migrations (0034–0040) if not yet pasted.
+Dom apply + checkpoint REG + MEAL + RSVP + WEB migrations (**0034–0043**) if not yet pasted.
 
 **Remaining couple side:** moodboard; optional seating depth (per-seat UI / SEAT-07); **MEAL-03a
-(0041 — drop `guests.meal_choice`)** after backfill verification; **ONB-02 (next-free /
-0041+)**; **BUD-03 (pre-launch)**.
+(0044+ — drop `guests.meal_choice`)** after backfill verification; **ONB-02 (next-free /
+0044+)**; **BUD-03 (pre-launch)**; optional website-media orphan GC.
 
 **Remaining planner side:** invoicing accepted proposals; deeper CRM; INV-06 (email delivery);
 optional role picker (`collaborator` / `viewer`) — **which is gated on WRITE-01**.
@@ -1593,7 +1791,7 @@ optional role picker (`collaborator` / `viewer`) — **which is gated on WRITE-0
   exit; booked lives in the Booked band.
 - **`timeline_events.owner` is free text at rest and a comma-separated SET at read (TL-04).**
   `lib/timeline-owners.ts` is the sole parser.
-- **ONB-02 takes next-free migration at build time (0041+)** (`commitPlan` atomicity +
+- **ONB-02 takes next-free migration at build time (0044+)** (`commitPlan` atomicity +
   `vendor_targets.category` / `vendors.category` CHECK decision). **BUD-03** takes next-free after
   that (or concurrent if no schema conflict). Coordinate with **MEAL-03a** if both need a number.
 - **Registry price is display-only** — never feeds budget headlines or `lib/budget-aggregates.ts`.
@@ -1604,7 +1802,11 @@ optional role picker (`collaborator` / `viewer`) — **which is gated on WRITE-0
 - **`guests.party_size` is the invited cap**; attending headcount for catering =
   attending `guest_members`. Never derive/overwrite the cap from members.
 - **Anon→guest-list promotion is couple-only** via `matchSubmissionToGuest` (idempotent).
-- **Photos: declined twice, permanently. Not deferred.**
+- **Website photos are in-product** via public `website-media` + content jsonb URLs (WEB-IMG-01).
+  Public object read has **no published gate** — deliberate. Clear/remove does not delete storage
+  objects (orphan GC deferred).
+- **Gated RSVP name search is exact full-name** after normalize (RSVP-01a) — not fuzzy, not
+  last-name, not prefix.
 
 ---
 
@@ -1614,25 +1816,31 @@ The couple product is feature-complete, shareable, payable, shareable with a pla
 maintains booked slots (including **venue packages** — one vendor, many categories) + many budget
 lines per vendor (BUD-04) + an in-flight outreach pipeline + multi-owner run sheets + seating dance
 floors (SEAT-11) + a **gift registry** (couple manage → public page → guest claims) + **meal-aware
-RSVP with guest-member reconciliation**. Plan is **couples-first launch**. Bible is at **v24**.
-Schema through **0040**; next-free **0041**.
+RSVP with guest-member reconciliation** + **guest-gated RSVP (RSVP-01 / 01a)** + a **photo-led
+wedding website** (hero / gallery / party / FAQ / structured travel). Plan is **couples-first
+launch**. Bible is at **v25**. Schema through **0043**; next-free **0044**.
 
 **Do not resume a Modern romantic / VND-01 layout polish pass.** Vendors chrome is Soft-stacked.
 **Do not reintroduce category eyebrows or a `PACKAGE` label on Booked cards** (VND-07a). **Do not
 suppress single-category chips** (VND-07b).
 **Do not store a registry claim counter column** — derive from `registry_item_availability`.
-**Do not add anon SELECT on `registry_claims` / `rsvp_attendees` / `guest_members`.**
+**Do not add anon SELECT on `registry_claims` / `rsvp_attendees` / `guest_members` / `guests`.**
 **Do not restore anon INSERT on `rsvp_submissions`.**
 **Do not drop `guests.meal_choice` until MEAL-03a after live backfill verification.**
-**Do not auto-match RSVPs to guests.**
+**Do not auto-match RSVPs to guests** (gated token → `matched_guest_id` is asserted, not inferred).
+**Do not put Supabase imports inside `components/website/`.**
+**Do not add a published gate to `website-media` SELECT without a deliberate product decision.**
+**Do not pull @dnd-kit into the website editor** for gallery reorder (up/down is fine).
 
 **A. Dom Soft stack + LAND-01 / LAND-01a live visual checkpoint (still open).**
 Walk couple tabs (Overview, Checklist, Budget, Timeline, Vendors, Guests, **Registry**, Seating,
 Website editor, Notes), planner dashboard/leads/billing/Access, landing, login, `/invite/[token]`,
-and public `/w/[slug]` (+ `/registry`). Confirm no hydration mismatch. Fix only real regressions.
+and public `/w/[slug]` (+ `/registry`, `/rsvp`). Confirm no hydration mismatch (watch countdown
+days). Fix only real regressions.
 On Vendors, spot-check: package card (full name + chips), single-chip vendors, recessed empty-slot
 wells, soft-dup connect. On Budget, spot-check multi-line package variance (BUD-04). On Guests,
-spot-check Catering card, member expand, match control, caterer tally.
+spot-check Catering card, member expand, match control, caterer tally, gated QR + full-name copy.
+On Website, spot-check LookStep, hero photo, gallery/party/FAQ, all five templates + palette switch.
 
 **A2. Invite Jordyn for real.** The honest end-to-end test, and the first time the design
 collaborator sees her own view. Use the Access tab on a planner project.
@@ -1640,14 +1848,16 @@ collaborator sees her own view. Use the Access tab on a planner project.
 **A3 (optional). TL-04 live checkpoint** on Dom & Jordyn if not already run — DJ / Officiant sheets
 both include the shared event; `group by owner` proves strings unchanged at rest.
 
-**A4. Apply + checkpoint REG + MEAL (0034–0040)** if not yet live. Without **0040**, Guests → Add
-person fails with `PGRST205` (`guest_members` missing). Run Dom discriminators from the v24 header.
+**A4. Apply + checkpoint REG + MEAL + RSVP + WEB (0034–0043)** if not yet live. Without **0040**,
+Guests → Add person fails with `PGRST205`. Without **0042**, hero/gallery uploads fail. Without
+**0043**, gated full-name search still expects the old last-name RPC. Run Dom discriminators from
+the v25 header (plus v24 MEAL/RSVP discriminators for 0037–0041).
 
-**A5. MEAL-03a — drop `guests.meal_choice`. Migration 0041 (after A4 backfill verification).**
+**A5. MEAL-03a — drop `guests.meal_choice`. Migration 0044+ (after A4 backfill verification).**
 Confirm `count(guests where meal_choice is not null)` matched the backfill; grep confirms zero app
 reads/writes; then drop the column. Do not fold into 0040.
 
-**B. ONB-02 — `commitPlan` atomicity + category CHECKs. Migration next-free (0041+).**
+**B. ONB-02 — `commitPlan` atomicity + category CHECKs. Migration next-free (0044+).**
 Three sequential non-atomic inserts (tasks, budget_items, vendor_targets) with no transaction: a
 failure on insert #2 leaves tasks, no budget, and `onboarded_at` unstamped. v10 proved onboarding is
 where this product breaks. **Also owns the category-constraint decision** — apply it to
@@ -1673,22 +1883,24 @@ truth). Report how many rows and every read site of `actual_amount`.
 `lib/date-months.ts`.
 
 **D. WRITE-01 — project-scoped write policy audit. DO THIS BEFORE ANY ROLE PICKER SHIPS.**
-`can_edit_project` (0029) now gates projects UPDATE plus registry / meal_options / guest_members
-exemplars. Every other project-scoped table still gates writes on `can_access_project`, which a
-`viewer` passes — including `removeProjectVendor`, which cascades outreach history. Enumerate every
-project-scoped table, decide per table whether the gate should be `can_access_project` (read-alike)
-or `can_edit_project` (write), and migrate the ones that should change in one pass. Unreached today
-only because nothing issues `viewer` invitations.
+`can_edit_project` (0029) now gates projects UPDATE plus registry / meal_options / guest_members /
+**website-media** exemplars. Every other project-scoped table still gates writes on
+`can_access_project`, which a `viewer` passes — including `removeProjectVendor`, which cascades
+outreach history. Enumerate every project-scoped table, decide per table whether the gate should be
+`can_access_project` (read-alike) or `can_edit_project` (write), and migrate the ones that should
+change in one pass. Unreached today only because nothing issues `viewer` invitations.
 **Sequence this before the role picker, and re-run it after Phase-4 conversion.**
 
 **E. Launch (after ONB-02 + BUD-03 + visual QA).**
-Follow the **Launch Prep Runbook**: separate prod Supabase org on Pro + migrations **0001–0040**
-(+ 0041 if MEAL-03a shipped) by hand — **never `db push`** + storage + SMTP; Vercel + domain + env;
-Stripe live + webhook + Portal + Tax; prod Places key; Gmail stays testing mode; privacy + ToS;
-monitoring; **full prod smoke — including real signup, deliberate double-click, a real invitation
-round trip, a vendor add/remove + multi-slot package link cycle (VND-07), multi-line budget vendor
-links (BUD-04), a seating dance-floor place/move/delete (SEAT-11), a plated RSVP + match-to-guest
-cycle (MEAL), and a registry claim.**
+Follow the **Launch Prep Runbook**: separate prod Supabase org on Pro + migrations **0001–0043**
+(+ 0044 if MEAL-03a shipped) by hand — **never `db push`** + storage (`project-files` +
+`website-media`) + SMTP; Vercel + domain + env; Stripe live + webhook + Portal + Tax; prod Places
+key; Gmail stays testing mode; privacy + ToS; monitoring; **full prod smoke — including real
+signup, deliberate double-click, a real invitation round trip, a vendor add/remove + multi-slot
+package link cycle (VND-07), multi-line budget vendor links (BUD-04), a seating dance-floor
+place/move/delete (SEAT-11), a plated RSVP + match-to-guest cycle (MEAL), a gated QR + full-name
+RSVP cycle (RSVP-01/01a), a hero/gallery upload + five-template public render (WEB), and a
+registry claim.**
 
 **F. Planner depth / revenue (after launch, or sooner if planner-led).**
 - Invoicing accepted proposals (recommended first post-launch).
@@ -1700,13 +1912,13 @@ cycle (MEAL), and a registry claim.**
 **SEAT-07** assistant seating mock-up: no new schema. Per-member seating (seat `guest_members`) is
 a separate future slice — do not sneak it into polish.
 
-**H (other rounding-out):** moodboard; assistant tools for leads/proposals/website/RSVP/seating/
+**H (other rounding-out):** moodboard; assistant tools for leads/proposals/RSVP/seating/
 invitations; per-seat assignment UI; `projects` DELETE policy decision; personal-user-with-direct-
-project visibility; website caching; checklist Other/Unscheduled bucket; orphaned-vendor handling /
-account vendor library; currency-helper consolidation; regenerate `reference.html` / delete
-`theme-direction.html` / retire CSS aliases; font-load scoping; optional empty-state copy on empty
-booked slots when no vendors exist to connect.
+project visibility; website caching; website-media orphan GC; checklist Other/Unscheduled bucket;
+orphaned-vendor handling / account vendor library; currency-helper consolidation; regenerate
+`reference.html` / delete `theme-direction.html` / retire CSS aliases; font-load scoping; optional
+empty-state copy on empty booked slots when no vendors exist to connect; countdown hydration harden.
 
-**Recommended path:** **apply/checkpoint MEAL+REG (A4)** → **visual checkpoint + invite Jordyn
-(A/A2)** → **MEAL-03a (A5)** → **ONB-02 / 0041+ (B)** → **BUD-03 (C)** → **Launch (E)** →
+**Recommended path:** **apply/checkpoint REG+MEAL+RSVP+WEB (A4)** → **visual checkpoint + invite
+Jordyn (A/A2)** → **MEAL-03a (A5)** → **ONB-02 / 0044+ (B)** → **BUD-03 (C)** → **Launch (E)** →
 WRITE-01 before any role picker (D) → invoicing → INV-06 → conversion (F) → remaining H.

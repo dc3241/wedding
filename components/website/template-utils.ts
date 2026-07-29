@@ -31,3 +31,22 @@ export function splitCoupleNames(names: string): SplitCoupleNames {
 
   return { kind: "combined", text: trimmed };
 }
+
+/** Initials for MonogramMark — derived at render from hero.names, never stored. */
+export function monogramInitials(names: string): string {
+  const parsed = splitCoupleNames(names);
+  if (parsed.kind === "pair") {
+    const a = parsed.first.charAt(0);
+    const b = parsed.second.charAt(0);
+    if (a && b) return `${a}${b}`.toUpperCase();
+  }
+  const parts =
+    parsed.kind === "combined" ? parsed.text.split(/\s+/).filter(Boolean) : [];
+  if (parts.length >= 2) {
+    return `${parts[0].charAt(0)}${parts[parts.length - 1].charAt(0)}`.toUpperCase();
+  }
+  if (parts.length === 1 && parts[0].charAt(0)) {
+    return parts[0].charAt(0).toUpperCase();
+  }
+  return "";
+}

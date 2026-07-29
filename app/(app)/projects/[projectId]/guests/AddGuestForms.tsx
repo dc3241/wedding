@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { addGuest, bulkAddGuests } from "./actions";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -11,6 +11,9 @@ import { Textarea } from "@/components/ui/textarea";
 export function AddGuestForms({ projectId }: { projectId: string }) {
   const [isAddPending, startAddTransition] = useTransition();
   const [isBulkPending, startBulkTransition] = useTransition();
+  const [partySize, setPartySize] = useState(1);
+
+  const additionalSlots = Math.max(0, partySize - 1);
 
   function handleAddSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -19,13 +22,25 @@ export function AddGuestForms({ projectId }: { projectId: string }) {
     const name = (form.get("name") as string) ?? "";
     const household = (form.get("household") as string) ?? "";
     const email = (form.get("email") as string) ?? "";
-    const partySize = Number(form.get("party_size") ?? 1);
+    const size = Number(form.get("party_size") ?? 1);
+    const additionalNames: string[] = [];
+    for (let i = 0; i < Math.max(0, size - 1); i++) {
+      additionalNames.push((form.get(`additional_name_${i}`) as string) ?? "");
+    }
 
     if (!name.trim()) return;
 
     startAddTransition(async () => {
-      await addGuest(projectId, name, household, email, partySize);
+      await addGuest(
+        projectId,
+        name,
+        household,
+        email,
+        size,
+        additionalNames,
+      );
       formEl.reset();
+      setPartySize(1);
     });
   }
 
@@ -59,7 +74,7 @@ export function AddGuestForms({ projectId }: { projectId: string }) {
                 htmlFor="guest-name"
                 className="text-[14px] font-medium text-ink"
               >
-                Name
+                Full name
               </label>
               <Input
                 id="guest-name"
@@ -70,6 +85,23 @@ export function AddGuestForms({ projectId }: { projectId: string }) {
                 disabled={isAddPending}
               />
             </div>
+            {Array.from({ length: additionalSlots }, (_, index) => (
+              <div key={index} className="space-y-1.5 sm:col-span-2">
+                <label
+                  htmlFor={`guest-additional-name-${index}`}
+                  className="text-[14px] font-medium text-ink"
+                >
+                  Name
+                </label>
+                <Input
+                  id={`guest-additional-name-${index}`}
+                  name={`additional_name_${index}`}
+                  type="text"
+                  placeholder="Name"
+                  disabled={isAddPending}
+                />
+              </div>
+            ))}
             <div className="space-y-1.5">
               <label
                 htmlFor="guest-household"
@@ -112,7 +144,11 @@ export function AddGuestForms({ projectId }: { projectId: string }) {
                 name="party_size"
                 type="number"
                 min={1}
-                defaultValue={1}
+                value={partySize}
+                onChange={(e) => {
+                  const next = Math.max(1, Number(e.target.value) || 1);
+                  setPartySize(next);
+                }}
                 disabled={isAddPending}
               />
             </div>

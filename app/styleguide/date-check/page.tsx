@@ -23,7 +23,10 @@ const content: WeddingWebsiteContent = {
     visible: false,
   },
   schedule: { items: [], visible: false },
-  travel: { body: "", visible: false },
+  travel: { body: "", places: [], visible: false },
+  gallery: { visible: false, images: [] },
+  party: { visible: false, members: [] },
+  faq: { visible: false, items: [] },
   registry: { visible: false },
   rsvp: { visible: false },
 };

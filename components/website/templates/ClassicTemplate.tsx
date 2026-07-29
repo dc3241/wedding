@@ -1,95 +1,33 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import type { WeddingTemplateProps } from "../template-props";
-import { SiteNav } from "../SiteNav";
+import { HeroPhotoBackdrop } from "../HeroPhotoBackdrop";
+import { OverlayNav } from "../OverlayNav";
+import { RegistryCta } from "../RegistryCta";
 import { resolveWeddingTheme } from "../themes";
-import { formatWeddingDate } from "../template-utils";
+import { formatWeddingDate, splitCoupleNames } from "../template-utils";
+import { WeddingCountdown } from "../WeddingCountdown";
+import { buildSectionAnchors, SectionStack } from "../sections";
+import { SITE_GUTTER } from "../layout";
 import { cn } from "@/lib/cn";
 
-function daysUntilWedding(weddingDate: string): number {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const wedding = new Date(weddingDate + "T00:00:00");
-  wedding.setHours(0, 0, 0, 0);
-  const diff = wedding.getTime() - today.getTime();
-  return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
-}
-
-function Countdown({ weddingDate }: { weddingDate: string }) {
-  const [days, setDays] = useState(() => daysUntilWedding(weddingDate));
-
-  useEffect(() => {
-    setDays(daysUntilWedding(weddingDate));
-    const interval = window.setInterval(() => {
-      setDays(daysUntilWedding(weddingDate));
-    }, 60_000);
-    return () => window.clearInterval(interval);
-  }, [weddingDate]);
-
+function ClassicNames({ names }: { names: string }) {
+  const parsed = splitCoupleNames(names);
+  if (parsed.kind === "pair") {
+    return (
+      <h1 className="font-serif-display m-0 text-[clamp(52px,11vw,120px)] leading-[0.98] font-medium [text-shadow:0_2px_30px_rgba(0,0,0,.25)]">
+        {parsed.first}
+        <span className="mx-[0.12em] italic" style={{ color: "#f3e7d6" }}>
+          &amp;
+        </span>
+        {parsed.second}
+      </h1>
+    );
+  }
   return (
-    <div className="mt-8 text-center">
-      <div
-        className="font-serif-display tabnum text-[64px] leading-none"
-        style={{ color: "var(--ws-accent)" }}
-      >
-        {days}
-      </div>
-      <div className="mt-1.5 text-[13px] tracking-[0.04em]" style={{ color: "var(--ws-muted)" }}>
-        days to go
-      </div>
-    </div>
-  );
-}
-
-function SectionHeading({ children }: { children: React.ReactNode }) {
-  return (
-    <h2
-      className="font-serif-display text-[28px] tracking-[0.005em]"
-      style={{ color: "var(--ws-ink)" }}
-    >
-      {children}
-    </h2>
-  );
-}
-
-function DetailBlock({
-  label,
-  venue,
-  address,
-  time,
-}: {
-  label: string;
-  venue: string;
-  address: string;
-  time: string;
-}) {
-  if (!venue && !address && !time) return null;
-
-  return (
-    <div>
-      <p
-        className="text-[12px] font-medium tracking-[0.06em] uppercase"
-        style={{ color: "var(--ws-muted)" }}
-      >
-        {label}
-      </p>
-      {venue ? (
-        <p className="mt-1 text-[16px] font-medium" style={{ color: "var(--ws-ink)" }}>
-          {venue}
-        </p>
-      ) : null}
-      {address ? (
-        <p className="mt-0.5 text-[15px] whitespace-pre-line" style={{ color: "var(--ws-muted)" }}>
-          {address}
-        </p>
-      ) : null}
-      {time ? (
-        <p className="mt-1 tabnum text-[15px]" style={{ color: "var(--ws-ink)" }}>
-          {time}
-        </p>
-      ) : null}
-    </div>
+    <h1 className="font-serif-display m-0 text-[clamp(52px,11vw,120px)] leading-[0.98] font-medium [text-shadow:0_2px_30px_rgba(0,0,0,.25)]">
+      {parsed.text}
+    </h1>
   );
 }
 
@@ -101,127 +39,77 @@ export function ClassicTemplate({
   pageSlot,
 }: WeddingTemplateProps) {
   const palette = resolveWeddingTheme(theme);
-  const { hero, story, details, schedule, travel } = content;
+  const { hero } = content;
   const displayDate = hero.date ? formatWeddingDate(hero.date) : null;
+  const sectionAnchors = pageSlot ? [] : buildSectionAnchors(content);
+  const showRsvp = !pageSlot && content.rsvp.visible;
 
   return (
     <div
-      className="min-h-full font-ws-sans text-[15px] leading-relaxed"
+      className="min-h-full font-ws-sans text-[17px] leading-relaxed"
       style={{
         ...palette.cssVars,
         background: "var(--ws-bg)",
         color: "var(--ws-ink)",
       }}
     >
-      <div className="mx-auto max-w-[640px] px-6 py-12">
-        <header className="pb-10 text-center">
-          <div
-            className="font-serif-display text-[clamp(40px,6vw,54px)] tracking-[0.005em]"
-            style={{ color: "var(--ws-ink)" }}
-          >
-            {hero.names || "Your names"}
-          </div>
-          {displayDate ? (
-            <div className="tabnum mt-3.5 text-base" style={{ color: "var(--ws-muted)" }}>
-              {displayDate}
-            </div>
-          ) : null}
+      <header
+        className={cn(
+          "relative grid place-items-center overflow-hidden text-center text-white",
+          pageSlot ? "min-h-[42vh]" : "min-h-screen",
+        )}
+      >
+        <HeroPhotoBackdrop imageUrl={hero.imageUrl} fallbackTone="warm" />
+        <OverlayNav
+          names={hero.names}
+          anchors={sectionAnchors}
+          registryHref={registryHref}
+          homeHref={homeHref}
+          showRsvp={showRsvp}
+        />
+        <div
+          className="relative z-10"
+          style={{ padding: `120px ${SITE_GUTTER} 90px` }}
+        >
           {hero.tagline ? (
-            <p className="mt-4 text-[16px]" style={{ color: "var(--ws-muted)" }}>
+            <p className="mb-[26px] text-[12px] tracking-[0.28em] uppercase opacity-90">
               {hero.tagline}
             </p>
+          ) : (
+            <p className="mb-[26px] text-[12px] tracking-[0.28em] uppercase opacity-90">
+              Together with their families
+            </p>
+          )}
+          <ClassicNames names={hero.names || "Your names"} />
+          {displayDate ? (
+            <p className="mt-[26px] text-[15px] tracking-[0.2em] uppercase">
+              {displayDate}
+            </p>
           ) : null}
-          {hero.showCountdown && hero.date ? <Countdown weddingDate={hero.date} /> : null}
-          <SiteNav registryHref={registryHref} homeHref={homeHref} />
-        </header>
+          {hero.showCountdown && hero.date ? (
+            <WeddingCountdown weddingDate={hero.date} align="center" onPhoto />
+          ) : null}
+        </div>
+      </header>
 
-        {!pageSlot ? (
-          <>
-            <div className="mb-10 h-px" style={{ background: "var(--ws-border)" }} aria-hidden />
+      {!pageSlot ? (
+        <SectionStack content={content} variant="classic" separator="monogram" />
+      ) : null}
 
-            {story.visible ? (
-              <section className="mb-12 space-y-4">
-                <SectionHeading>{story.heading || "Our Story"}</SectionHeading>
-                {story.body ? (
-                  <p className="text-[15px] whitespace-pre-line" style={{ color: "var(--ws-muted)" }}>
-                    {story.body}
-                  </p>
-                ) : null}
-              </section>
-            ) : null}
-
-            {details.visible ? (
-              <section className="mb-12 space-y-6">
-                <SectionHeading>Wedding details</SectionHeading>
-                <div className="space-y-6">
-                  <DetailBlock
-                    label="Ceremony"
-                    venue={details.ceremonyVenue}
-                    address={details.ceremonyAddress}
-                    time={details.ceremonyTime}
-                  />
-                  <DetailBlock
-                    label="Reception"
-                    venue={details.receptionVenue}
-                    address={details.receptionAddress}
-                    time={details.receptionTime}
-                  />
-                </div>
-              </section>
-            ) : null}
-
-            {schedule.visible && schedule.items.length > 0 ? (
-              <section className="mb-12 space-y-5">
-                <SectionHeading>Schedule</SectionHeading>
-                <ul className="space-y-4">
-                  {schedule.items.map((item, index) => (
-                    <li
-                      key={`${item.time}-${item.title}-${index}`}
-                      className={cn(
-                        "flex gap-4 border-t pt-4 first:border-t-0 first:pt-0",
-                      )}
-                      style={{ borderColor: "var(--ws-border)" }}
-                    >
-                      {item.time ? (
-                        <span
-                          className="tabnum w-16 shrink-0 text-[14px] font-medium"
-                          style={{ color: "var(--ws-accent)" }}
-                        >
-                          {item.time}
-                        </span>
-                      ) : (
-                        <span className="w-16 shrink-0" />
-                      )}
-                      <div className="min-w-0">
-                        <p className="text-[16px] font-medium" style={{ color: "var(--ws-ink)" }}>
-                          {item.title}
-                        </p>
-                        {item.description ? (
-                          <p className="mt-0.5 text-[14px]" style={{ color: "var(--ws-muted)" }}>
-                            {item.description}
-                          </p>
-                        ) : null}
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            ) : null}
-
-            {travel.visible && travel.body ? (
-              <section className="mb-12 space-y-4">
-                <SectionHeading>Travel &amp; stay</SectionHeading>
-                <p className="text-[15px] whitespace-pre-line" style={{ color: "var(--ws-muted)" }}>
-                  {travel.body}
-                </p>
-              </section>
-            ) : null}
-          </>
-        ) : null}
-      </div>
+      {!pageSlot && content.registry.visible && registryHref ? (
+        <RegistryCta href={registryHref} />
+      ) : null}
 
       {pageSlot ? (
-        <div className="mx-auto max-w-5xl px-6 pb-16">{pageSlot}</div>
+        <div
+          className="mx-auto"
+          style={{
+            maxWidth: "1080px",
+            padding: `48px ${SITE_GUTTER} 64px`,
+          }}
+        >
+          {pageSlot}
+        </div>
       ) : null}
     </div>
   );

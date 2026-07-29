@@ -4,7 +4,10 @@ import { revalidatePath } from "next/cache";
 import {
   buildSeedContent,
   parseWeddingWebsiteContent,
+  travelHasContent,
   type ScheduleItem,
+  type TravelPlace,
+  type TravelPlaceKind,
   type WeddingWebsiteContent,
   type WeddingWebsiteRow,
 } from "@/components/website/types";
@@ -107,16 +110,72 @@ export async function setWeddingWebsiteSchedule(
   };
 }
 
+export type TravelFillInput = {
+  /** Intro blurb. */
+  intro?: string;
+  /** Legacy alias for intro (older assistant tool calls). */
+  body?: string;
+  places?: Array<{
+    kind?: string;
+    name: string;
+    detail?: string;
+    url?: string;
+    note?: string;
+  }>;
+};
+
+function parseTravelFillKind(value: unknown): TravelPlaceKind {
+  if (value === "stay" || value === "getting_there" || value === "other") {
+    return value;
+  }
+  return "other";
+}
+
+function normalizeTravelFillPlaces(
+  places: TravelFillInput["places"],
+): TravelPlace[] {
+  if (!Array.isArray(places)) return [];
+  const out: TravelPlace[] = [];
+  for (const item of places) {
+    if (!item || typeof item !== "object") continue;
+    const name = typeof item.name === "string" ? item.name.trim() : "";
+    if (!name) continue;
+    const place: TravelPlace = {
+      kind: parseTravelFillKind(item.kind),
+      name,
+    };
+    if (typeof item.detail === "string" && item.detail.trim()) {
+      place.detail = item.detail.trim();
+    }
+    if (typeof item.url === "string" && item.url.trim()) {
+      place.url = item.url.trim();
+    }
+    if (typeof item.note === "string" && item.note.trim()) {
+      place.note = item.note.trim();
+    }
+    out.push(place);
+  }
+  return out;
+}
+
 export async function setWeddingWebsiteTravel(
   projectId: string,
-  body: string,
+  input: TravelFillInput | string,
 ): Promise<
   | { ok: true; summary: string; visible: boolean }
   | { ok: false; error: string }
 > {
-  const trimmed = typeof body === "string" ? body.trim() : "";
-  if (!trimmed) {
-    return { ok: false, error: "Provide Travel & Stay copy to fill." };
+  const payload: TravelFillInput =
+    typeof input === "string" ? { intro: input } : input ?? {};
+
+  const intro = (payload.intro ?? payload.body ?? "").trim();
+  const places = normalizeTravelFillPlaces(payload.places);
+
+  if (!intro && places.length === 0) {
+    return {
+      ok: false,
+      error: "Provide an intro and/or at least one Travel place.",
+    };
   }
 
   const supabase = await createClient();
@@ -141,12 +200,13 @@ export async function setWeddingWebsiteTravel(
 
   const content = parseWeddingWebsiteContent(current.content);
 
-  if (content.travel.body.trim()) {
+  if (travelHasContent(content.travel)) {
     return { ok: false, error: "travel_not_empty" };
   }
 
   const nextTravel = {
-    body: trimmed,
+    body: intro,
+    places,
     visible: content.travel.visible,
   };
 
@@ -254,7 +314,7 @@ export async function updateWeddingWebsite(
 
   const { data: current, error: readError } = await supabase
     .from("wedding_websites")
-    .select("content, template, theme")
+    .select("content, template, theme, slug")
     .eq("project_id", projectId)
     .maybeSingle();
 
@@ -297,6 +357,14 @@ export async function updateWeddingWebsite(
   }
 
   revalidatePath(websitePath(projectId));
+  const slug =
+    typeof current.slug === "string" && current.slug.trim()
+      ? current.slug.trim()
+      : null;
+  if (slug) {
+    revalidatePath(`/w/${slug}`);
+    revalidatePath(`/w/${slug}/registry`);
+  }
   return { ok: true };
 }
 
@@ -350,5 +418,57 @@ export async function setWeddingWebsitePublished(
   }
 
   revalidatePath(websitePath(projectId));
+  return { ok: true };
+}
+
+async function revalidateWebsitePublic(projectId: string) {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("wedding_websites")
+    .select("slug")
+    .eq("project_id", projectId)
+    .maybeSingle();
+  const slug =
+    typeof data?.slug === "string" && data.slug.trim() ? data.slug.trim() : null;
+  if (slug) {
+    revalidatePath(`/w/${slug}`);
+  }
+}
+
+/** Persist a public website-media URL onto content.hero.imageUrl. */
+export async function setHeroImage(
+  projectId: string,
+  url: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const trimmed = typeof url === "string" ? url.trim() : "";
+  if (!trimmed) {
+    return { ok: false, error: "Image URL is required." };
+  }
+
+  const result = await updateWeddingWebsite(projectId, {
+    content: {
+      hero: { imageUrl: trimmed },
+    } as Record<string, unknown>,
+  });
+
+  if (!result.ok) return result;
+
+  await revalidateWebsitePublic(projectId);
+  return { ok: true };
+}
+
+/** Clear content.hero.imageUrl (does not delete the storage object). */
+export async function clearHeroImage(
+  projectId: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const result = await updateWeddingWebsite(projectId, {
+    content: {
+      hero: { imageUrl: "" },
+    } as Record<string, unknown>,
+  });
+
+  if (!result.ok) return result;
+
+  await revalidateWebsitePublic(projectId);
   return { ok: true };
 }

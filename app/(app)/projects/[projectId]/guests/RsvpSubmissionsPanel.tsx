@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import {
+  applyMatchedSubmission,
   matchSubmissionToGuest,
   unmatchSubmission,
 } from "./guest-member-actions";
@@ -15,11 +16,19 @@ import {
   type RsvpSubmission,
   type RsvpSubmissionStatus,
 } from "./rsvp-submissions";
+import type { RsvpStatus } from "./types";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Pill } from "@/components/ui/pill";
 import { Select } from "@/components/ui/select";
 import { cn } from "@/lib/cn";
+
+export type RsvpMatchGuest = {
+  id: string;
+  full_name: string;
+  rsvp_status: RsvpStatus;
+  member_count: number;
+};
 
 function formatSubmittedAt(iso: string) {
   return new Date(iso).toLocaleString(undefined, {
@@ -29,6 +38,25 @@ function formatSubmittedAt(iso: string) {
     hour: "numeric",
     minute: "2-digit",
   });
+}
+
+function needsGuestListApply(
+  submission: RsvpSubmission,
+  guest: RsvpMatchGuest | undefined,
+): boolean {
+  if (!submission.matched_guest_id || !guest) return false;
+
+  if (submission.response === "yes") {
+    if (guest.rsvp_status !== "attending") return true;
+    // Headcount lives on members; empty means RSVP'd party_size never applied.
+    return guest.member_count === 0;
+  }
+
+  if (submission.response === "no") {
+    return guest.rsvp_status !== "declined";
+  }
+
+  return false;
 }
 
 function AttendeeList({ attendees }: { attendees: RsvpAttendee[] }) {
@@ -63,15 +91,37 @@ function MatchControl({
   guests,
 }: {
   submission: RsvpSubmission;
-  guests: Array<{ id: string; full_name: string }>;
+  guests: RsvpMatchGuest[];
 }) {
   const hintId = useMemo(
-    () => hintGuestMatch(submission.name, guests),
+    () =>
+      hintGuestMatch(
+        submission.name,
+        guests.map((guest) => ({ id: guest.id, full_name: guest.full_name })),
+      ),
     [submission.name, guests],
   );
   const [guestId, setGuestId] = useState(hintId ?? "");
   const [message, setMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const applyStartedRef = useRef(false);
+
+  const matchedGuest = submission.matched_guest_id
+    ? guests.find((guest) => guest.id === submission.matched_guest_id)
+    : undefined;
+  const pendingApply = needsGuestListApply(submission, matchedGuest);
+
+  useEffect(() => {
+    if (!pendingApply || applyStartedRef.current) return;
+    applyStartedRef.current = true;
+    startTransition(async () => {
+      const result = await applyMatchedSubmission(submission.id);
+      if (!result.ok) {
+        applyStartedRef.current = false;
+        setMessage("Could not apply this RSVP to the guest list.");
+      }
+    });
+  }, [pendingApply, submission.id]);
 
   if (submission.matched_guest_id) {
     return (
@@ -80,6 +130,30 @@ function MatchControl({
         <span className="text-[13px] font-medium text-ink">
           {submission.matched_guest_name ?? "Guest"}
         </span>
+        {pendingApply ? (
+          <button
+            type="button"
+            disabled={isPending}
+            onClick={() => {
+              setMessage(null);
+              startTransition(async () => {
+                const result = await applyMatchedSubmission(submission.id);
+                if (!result.ok) {
+                  setMessage("Could not apply this RSVP to the guest list.");
+                }
+              });
+            }}
+            className="rounded-[var(--radius-pill)] bg-accent px-3.5 py-2 text-[13px] font-semibold text-surface disabled:opacity-50"
+          >
+            {isPending ? "Applying…" : "Apply to guest list"}
+          </button>
+        ) : (
+          <span className="text-[13px] text-muted">
+            {submission.response === "yes"
+              ? `Applied · party of ${submission.party_size}`
+              : "Applied · declined"}
+          </span>
+        )}
         <button
           type="button"
           disabled={isPending}
@@ -112,7 +186,8 @@ function MatchControl({
       </p>
       {hintGuest ? (
         <p className="text-[13px] text-muted">
-          Suggested: <span className="font-medium text-ink">{hintGuest.full_name}</span>
+          Suggested:{" "}
+          <span className="font-medium text-ink">{hintGuest.full_name}</span>
         </p>
       ) : null}
       <div className="flex flex-wrap items-center gap-2">
@@ -167,7 +242,7 @@ function SubmissionRow({
   guests,
 }: {
   submission: RsvpSubmission;
-  guests: Array<{ id: string; full_name: string }>;
+  guests: RsvpMatchGuest[];
 }) {
   const [isPending, startTransition] = useTransition();
 
@@ -255,7 +330,7 @@ export function RsvpSubmissionsPanel({
   guests,
 }: {
   submissions: RsvpSubmission[];
-  guests: Array<{ id: string; full_name: string }>;
+  guests: RsvpMatchGuest[];
 }) {
   const newCount = submissions.filter((row) => row.status === "new").length;
 

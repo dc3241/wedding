@@ -1,70 +1,30 @@
 "use client";
 
 import type { WeddingTemplateProps } from "../template-props";
-import { SiteNav } from "../SiteNav";
+import { HeroPhotoBackdrop } from "../HeroPhotoBackdrop";
+import { OverlayNav } from "../OverlayNav";
+import { RegistryCta } from "../RegistryCta";
 import { resolveWeddingTheme } from "../themes";
-import { formatWeddingDate } from "../template-utils";
+import { formatWeddingDate, splitCoupleNames } from "../template-utils";
 import { WeddingCountdown } from "../WeddingCountdown";
-import { cn } from "@/lib/cn";
+import { buildSectionAnchors, SectionStack } from "../sections";
+import { SITE_GUTTER } from "../layout";
 
-function HairlineRule({ className }: { className?: string }) {
+function EditorialNames({ names }: { names: string }) {
+  const parsed = splitCoupleNames(names);
+  if (parsed.kind === "pair") {
+    return (
+      <h1 className="font-serif-display m-0 max-w-[12ch] text-[clamp(56px,12vw,132px)] leading-[0.95] font-medium">
+        {parsed.first}
+        <br />
+        <span style={{ opacity: 0.92 }}>&amp;</span> {parsed.second}
+      </h1>
+    );
+  }
   return (
-    <div
-      className={cn("h-px w-full", className)}
-      style={{ background: "var(--ws-border)" }}
-      aria-hidden
-    />
-  );
-}
-
-function SectionLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <h2
-      className="text-[12px] font-medium tracking-[0.08em] uppercase"
-      style={{ color: "var(--ws-muted)" }}
-    >
-      {children}
-    </h2>
-  );
-}
-
-function DetailBlock({
-  label,
-  venue,
-  address,
-  time,
-}: {
-  label: string;
-  venue: string;
-  address: string;
-  time: string;
-}) {
-  if (!venue && !address && !time) return null;
-
-  return (
-    <div>
-      <p
-        className="text-[11px] font-medium tracking-[0.07em] uppercase"
-        style={{ color: "var(--ws-accent)" }}
-      >
-        {label}
-      </p>
-      {venue ? (
-        <p className="mt-1.5 text-[16px] font-medium" style={{ color: "var(--ws-ink)" }}>
-          {venue}
-        </p>
-      ) : null}
-      {address ? (
-        <p className="mt-0.5 text-[15px] whitespace-pre-line" style={{ color: "var(--ws-muted)" }}>
-          {address}
-        </p>
-      ) : null}
-      {time ? (
-        <p className="mt-1 tabnum text-[15px]" style={{ color: "var(--ws-ink)" }}>
-          {time}
-        </p>
-      ) : null}
-    </div>
+    <h1 className="font-serif-display m-0 max-w-[12ch] text-[clamp(56px,12vw,132px)] leading-[0.95] font-medium">
+      {parsed.text}
+    </h1>
   );
 }
 
@@ -76,147 +36,69 @@ export function EditorialTemplate({
   pageSlot,
 }: WeddingTemplateProps) {
   const palette = resolveWeddingTheme(theme);
-  const { hero, story, details, schedule, travel } = content;
+  const { hero } = content;
   const displayDate = hero.date ? formatWeddingDate(hero.date) : null;
-
-  const showStory = story.visible;
-  const showDetails = details.visible;
-  const showSchedule = schedule.visible && schedule.items.length > 0;
-  const showTravel = travel.visible && travel.body;
+  const sectionAnchors = pageSlot ? [] : buildSectionAnchors(content);
+  const showRsvp = !pageSlot && content.rsvp.visible;
 
   return (
     <div
-      className="min-h-full font-ws-sans text-[15px] leading-relaxed"
+      className="min-h-full font-ws-sans text-[17px] leading-relaxed"
       style={{
         ...palette.cssVars,
         background: "var(--ws-bg)",
         color: "var(--ws-ink)",
       }}
     >
-      <div className="mx-auto w-full max-w-[640px] px-6 py-14 md:mr-auto md:ml-[max(1.5rem,calc((100vw-640px)/6))] md:pr-12">
-        <header className="pb-12">
+      <header
+        className="relative grid min-h-[74vh] overflow-hidden text-left text-white"
+        style={{ placeItems: "center start" }}
+      >
+        <HeroPhotoBackdrop imageUrl={hero.imageUrl} fallbackTone="editorial" />
+        <OverlayNav
+          names={hero.names}
+          anchors={sectionAnchors}
+          registryHref={registryHref}
+          homeHref={homeHref}
+          showRsvp={showRsvp}
+        />
+        <div
+          className="relative z-10 mx-auto w-full"
+          style={{
+            maxWidth: "1080px",
+            padding: `120px ${SITE_GUTTER} 90px`,
+          }}
+        >
+          <p className="mb-[26px] text-[12px] tracking-[0.28em] uppercase opacity-90">
+            {hero.tagline || "The wedding of"}
+          </p>
+          <EditorialNames names={hero.names || "Your names"} />
           {displayDate ? (
-            <p
-              className="tabnum text-[11px] font-medium tracking-[0.1em] uppercase"
-              style={{ color: "var(--ws-muted)" }}
-            >
+            <p className="mt-[26px] text-[15px] tracking-[0.2em] uppercase">
               {displayDate}
             </p>
           ) : null}
-          <h1
-            className="font-serif-display mt-3 max-w-[18ch] text-[clamp(44px,7vw,64px)] leading-[0.95] tracking-[-0.01em]"
-            style={{ color: "var(--ws-ink)" }}
-          >
-            {hero.names || "Your names"}
-          </h1>
-          {hero.tagline ? (
-            <p className="mt-5 max-w-md text-[16px]" style={{ color: "var(--ws-muted)" }}>
-              {hero.tagline}
-            </p>
-          ) : null}
           {hero.showCountdown && hero.date ? (
-            <WeddingCountdown weddingDate={hero.date} align="left" />
+            <WeddingCountdown weddingDate={hero.date} align="left" onPhoto />
           ) : null}
-          <SiteNav registryHref={registryHref} homeHref={homeHref} />
-        </header>
+        </div>
+      </header>
 
-        {!pageSlot && showStory ? (
-          <>
-            <HairlineRule className="mb-10" />
-            <section className="mb-10 space-y-4">
-              <SectionLabel>{story.heading || "Our Story"}</SectionLabel>
-              {story.body ? (
-                <p
-                  className="max-w-prose text-[15px] whitespace-pre-line"
-                  style={{ color: "var(--ws-muted)" }}
-                >
-                  {story.body}
-                </p>
-              ) : null}
-            </section>
-          </>
-        ) : null}
+      {!pageSlot ? (
+        <SectionStack content={content} variant="editorial" separator="monogram" />
+      ) : null}
 
-        {!pageSlot && showDetails ? (
-          <>
-            <HairlineRule className="mb-10" />
-            <section className="mb-10 space-y-6">
-              <SectionLabel>Wedding details</SectionLabel>
-              <div className="space-y-7">
-                <DetailBlock
-                  label="Ceremony"
-                  venue={details.ceremonyVenue}
-                  address={details.ceremonyAddress}
-                  time={details.ceremonyTime}
-                />
-                <DetailBlock
-                  label="Reception"
-                  venue={details.receptionVenue}
-                  address={details.receptionAddress}
-                  time={details.receptionTime}
-                />
-              </div>
-            </section>
-          </>
-        ) : null}
-
-        {!pageSlot && showSchedule ? (
-          <>
-            <HairlineRule className="mb-10" />
-            <section className="mb-10 space-y-5">
-              <SectionLabel>Schedule</SectionLabel>
-              <ul className="space-y-0">
-                {schedule.items.map((item, index) => (
-                  <li
-                    key={`${item.time}-${item.title}-${index}`}
-                    className="grid grid-cols-[4.5rem_1fr] gap-x-4 border-t py-4 first:border-t-0 first:pt-0"
-                    style={{ borderColor: "var(--ws-border)" }}
-                  >
-                    {item.time ? (
-                      <span
-                        className="tabnum text-[13px] font-medium"
-                        style={{ color: "var(--ws-accent)" }}
-                      >
-                        {item.time}
-                      </span>
-                    ) : (
-                      <span />
-                    )}
-                    <div className="min-w-0">
-                      <p className="text-[16px] font-medium" style={{ color: "var(--ws-ink)" }}>
-                        {item.title}
-                      </p>
-                      {item.description ? (
-                        <p className="mt-0.5 text-[14px]" style={{ color: "var(--ws-muted)" }}>
-                          {item.description}
-                        </p>
-                      ) : null}
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          </>
-        ) : null}
-
-        {!pageSlot && showTravel ? (
-          <>
-            <HairlineRule className="mb-10" />
-            <section className="mb-10 space-y-4">
-              <SectionLabel>Travel &amp; stay</SectionLabel>
-              <p
-                className="max-w-prose text-[15px] whitespace-pre-line"
-                style={{ color: "var(--ws-muted)" }}
-              >
-                {travel.body}
-              </p>
-            </section>
-          </>
-        ) : null}
-      </div>
+      {!pageSlot && content.registry.visible && registryHref ? (
+        <RegistryCta href={registryHref} />
+      ) : null}
 
       {pageSlot ? (
-        <div className="mx-auto max-w-5xl px-6 pb-16">{pageSlot}</div>
+        <div
+          className="mx-auto"
+          style={{ maxWidth: "1080px", padding: `48px ${SITE_GUTTER} 64px` }}
+        >
+          {pageSlot}
+        </div>
       ) : null}
     </div>
   );
