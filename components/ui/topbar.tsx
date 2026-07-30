@@ -71,7 +71,7 @@ export function SegmentedToggle({
     <div
       role="tablist"
       className={cn(
-        "flex rounded-full border border-ring bg-surface p-[3px]",
+        "flex rounded-[var(--radius-pill)] bg-well p-1 shadow-recessed",
         className,
       )}
       {...props}
@@ -97,8 +97,10 @@ export function SegmentedToggleItem({
       role="tab"
       aria-selected={active}
       className={cn(
-        "cursor-pointer rounded-full border-none bg-transparent px-3.5 py-1.5 text-[13px] font-medium text-muted transition-[color,background] duration-150",
-        active && "bg-accent text-surface",
+        "cursor-pointer rounded-[var(--radius-pill)] border-none px-3.5 py-1.5 text-[13px] font-medium transition-[color,background,box-shadow,transform] duration-150 motion-reduce:transition-none",
+        active
+          ? "bg-accent text-surface shadow-raised"
+          : "bg-transparent text-muted hover:text-ink",
         className,
       )}
       {...props}

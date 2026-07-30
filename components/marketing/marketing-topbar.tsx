@@ -4,10 +4,33 @@ import { ButtonLink } from "@/components/ui/button";
 import { NavLink, NavLinks, Wordmark } from "@/components/ui/topbar";
 import { cn } from "@/lib/cn";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
+const SECTION_NAV = [
+  { id: "features", label: "Features", href: "/#features" },
+  { id: "couples", label: "For couples", href: "/#couples" },
+  { id: "planners", label: "For planners", href: "/#planners" },
+] as const;
+
+const navLinkClass =
+  "relative rounded-none bg-transparent px-3 py-1.5 text-[14px] font-medium text-muted no-underline transition-colors duration-150 hover:bg-transparent hover:text-ink after:absolute after:inset-x-3 after:bottom-0.5 after:h-[2px] after:origin-left after:scale-x-0 after:bg-accent after:transition-transform after:duration-150 hover:after:scale-x-100 motion-reduce:after:transition-none";
+
+const navLinkActiveClass = "text-ink after:scale-x-100";
+
 export function MarketingTopbar() {
+  const pathname = usePathname();
+  const [mounted, setMounted] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [activeSection, setActiveSection] = useState<string | null>(null);
+
+  // Pathname-dependent active styles only after mount — avoids SSR/client mismatch.
+  const onHome = mounted && pathname === "/";
+  const onPricing = mounted && pathname === "/pricing";
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     function onScroll() {
@@ -18,35 +41,75 @@ export function MarketingTopbar() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
+  useEffect(() => {
+    if (!onHome) {
+      setActiveSection(null);
+      return;
+    }
+
+    const ids = SECTION_NAV.map((item) => item.id);
+    const elements = ids
+      .map((id) => document.getElementById(id))
+      .filter((el): el is HTMLElement => el != null);
+
+    if (elements.length === 0) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((e) => e.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio);
+        if (visible[0]?.target.id) {
+          setActiveSection(visible[0].target.id);
+        }
+      },
+      { rootMargin: "-20% 0px -55% 0px", threshold: [0, 0.25, 0.5, 1] },
+    );
+
+    for (const el of elements) observer.observe(el);
+    return () => observer.disconnect();
+  }, [onHome]);
+
   return (
     <header
       className={cn(
-        "sticky top-0 z-50 border-b bg-canvas/82 backdrop-blur-[10px] transition-[border-color,background] duration-200",
-        scrolled
-          ? "border-hairline bg-canvas/94"
-          : "border-transparent",
+        "sticky top-0 z-50 border-b bg-canvas/82 backdrop-blur-[10px] transition-[border-color,background] duration-200 motion-reduce:transition-none",
+        scrolled ? "border-hairline bg-canvas/94" : "border-transparent",
       )}
     >
-      <div className="mx-auto flex h-[72px] max-w-6xl items-center justify-between px-6 md:px-10">
-        <Link href="/" className="no-underline">
+      <div className="mx-auto flex h-[72px] max-w-6xl items-center justify-between gap-3 px-6 md:px-10">
+        <Link href="/" className="shrink-0 no-underline">
           <Wordmark />
         </Link>
-        <NavLinks className="gap-1">
-          <NavLink href="#features">Features</NavLink>
-          <NavLink href="#for-planners">For planners</NavLink>
-          <NavLink href="/login" className="md:hidden">
-            Log in
+        <NavLinks className="min-w-0 flex-1 justify-center gap-0.5 lg:gap-1">
+          {SECTION_NAV.map((item) => {
+            const isActive = onHome && activeSection === item.id;
+            return (
+              <NavLink
+                key={item.id}
+                href={item.href}
+                className={cn(navLinkClass, isActive && navLinkActiveClass)}
+              >
+                {item.label}
+              </NavLink>
+            );
+          })}
+          <NavLink
+            href="/pricing"
+            className={cn(navLinkClass, onPricing && navLinkActiveClass)}
+          >
+            Pricing
           </NavLink>
         </NavLinks>
-        <div className="flex items-center gap-2 sm:gap-5">
+        <div className="flex shrink-0 items-center gap-2 sm:gap-3">
           <ButtonLink
             href="/login"
-            variant="ghost"
-            className="hidden text-[15px] text-muted hover:bg-transparent hover:text-ink sm:inline-flex"
+            variant="default"
+            className="hidden sm:inline-flex"
           >
             Log in
           </ButtonLink>
-          <ButtonLink href="/login" variant="primary" className="text-sm md:text-[15px]">
+          <ButtonLink href="/login" variant="primary">
             Get started
           </ButtonLink>
         </div>

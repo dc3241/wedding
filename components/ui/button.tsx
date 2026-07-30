@@ -8,16 +8,17 @@ type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: ButtonVariant;
 };
 
+/** Ghost pill = `default`; accent pill = `primary`. Shared by marketing + app. */
 const baseClasses =
-  "inline-flex cursor-pointer items-center justify-center rounded-[var(--radius-pill)] border text-[14px] font-semibold transition-[background,border-color,color] duration-150 px-4 py-2.5";
+  "inline-flex cursor-pointer items-center justify-center rounded-[var(--radius-pill)] border-[1.5px] text-[14px] font-semibold transition-[background,border-color,color,box-shadow,transform,filter] duration-150 px-5 py-2.5 motion-reduce:transition-none";
 
 export const buttonVariantClasses: Record<ButtonVariant, string> = {
   default:
-    "border-ring bg-surface text-ink hover:border-muted disabled:opacity-50 disabled:hover:border-ring",
+    "border-hairline bg-surface text-ink hover:border-accent hover:text-accent disabled:opacity-50 disabled:hover:border-hairline disabled:hover:text-ink",
   primary:
-    "border-accent bg-accent text-surface hover:opacity-90 disabled:opacity-50 disabled:hover:opacity-50",
+    "border-accent bg-accent text-surface shadow-raised hover:-translate-y-px hover:brightness-[0.94] disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:brightness-100 motion-reduce:hover:translate-y-0",
   secondary:
-    "border-ring bg-surface text-ink hover:border-muted disabled:opacity-50 disabled:hover:border-ring",
+    "border-hairline bg-surface text-ink hover:border-accent hover:text-accent disabled:opacity-50 disabled:hover:border-hairline disabled:hover:text-ink",
   ghost:
     "border-transparent bg-transparent text-ink hover:bg-accent-wash disabled:opacity-50 disabled:hover:bg-transparent",
 };

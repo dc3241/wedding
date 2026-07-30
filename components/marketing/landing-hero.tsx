@@ -18,13 +18,17 @@ export function LandingHero() {
             of five tabs and a shared spreadsheet.
           </p>
           <div className="mt-8 flex flex-wrap items-center gap-3">
-            <ButtonLink href="/signup" className="px-5 py-3 text-[15px] md:px-7 md:py-3.5 md:text-[16px]">
+            <ButtonLink
+              href="/signup"
+              variant="primary"
+              className="px-6 py-3.5 text-[15px] md:px-8 md:py-4 md:text-[16px]"
+            >
               Start free
             </ButtonLink>
             <ButtonLink
               href="/login"
-              variant="secondary"
-              className="px-5 py-3 text-[15px] md:px-7 md:py-3.5 md:text-[16px]"
+              variant="default"
+              className="px-6 py-3.5 text-[15px] md:px-8 md:py-4 md:text-[16px]"
             >
               Sign in
             </ButtonLink>

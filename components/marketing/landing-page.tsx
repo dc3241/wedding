@@ -1,4 +1,5 @@
 import { AudienceSplit } from "./audience-split";
+import { CapabilitiesPanel } from "./capabilities-panel";
 import { FeatureGrid } from "./feature-grid";
 import { FinalCta } from "./final-cta";
 import { HowItWorks } from "./how-it-works";
@@ -12,6 +13,7 @@ export function LandingPage() {
       <MarketingTopbar />
       <main>
         <LandingHero />
+        <CapabilitiesPanel />
         <AudienceSplit />
         <FeatureGrid />
         <HowItWorks />

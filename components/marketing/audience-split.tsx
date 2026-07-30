@@ -5,10 +5,7 @@ import { Pill } from "@/components/ui/pill";
 
 export function AudienceSplit() {
   return (
-    <section
-      id="for-planners"
-      className="mx-auto max-w-6xl px-6 py-16 md:px-10 md:py-20"
-    >
+    <section className="mx-auto max-w-6xl px-6 py-16 md:px-10 md:py-20">
       <ScrollReveal className="mb-11 max-w-[60ch]">
         <Eyebrow className="mb-4 block">Built for both sides</Eyebrow>
         <h2 className="text-[32px] font-extrabold tracking-[-0.03em] text-ink md:text-[42px]">
@@ -18,7 +15,10 @@ export function AudienceSplit() {
 
       <div className="grid gap-6 md:grid-cols-2">
         <ScrollReveal>
-          <article className="marketing-card-hover h-full rounded-[var(--radius-card)] bg-surface p-7 shadow-raised md:p-8">
+          <article
+            id="couples"
+            className="marketing-card-hover h-full scroll-mt-24 rounded-[var(--radius-card)] bg-surface p-7 shadow-raised md:p-8"
+          >
             <Eyebrow className="block">For couples</Eyebrow>
             <h3 className="mt-3 text-[22px] font-extrabold tracking-[-0.02em] text-ink md:text-[24px]">
               One calm place for the whole plan
@@ -47,7 +47,10 @@ export function AudienceSplit() {
         </ScrollReveal>
 
         <ScrollReveal delayMs={80}>
-          <article className="marketing-card-hover h-full rounded-[var(--radius-card)] bg-surface p-7 shadow-raised md:p-8">
+          <article
+            id="planners"
+            className="marketing-card-hover h-full scroll-mt-24 rounded-[var(--radius-card)] bg-surface p-7 shadow-raised md:p-8"
+          >
             <Eyebrow className="block">For planners</Eyebrow>
             <h3 className="mt-3 text-[22px] font-extrabold tracking-[-0.02em] text-ink md:text-[24px]">
               Every client wedding at a glance
