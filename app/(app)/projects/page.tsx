@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { createProject } from "@/app/(app)/projects/actions";
+import { createProjectFromForm } from "@/app/(app)/projects/actions";
 import { OnboardingForm } from "@/components/projects/onboarding-form";
 import { Card } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
@@ -112,7 +112,7 @@ export default async function ProjectsPage({
               Your account is ready. Add a wedding to continue.
             </p>
           </div>
-          <form action={createProject} className="space-y-4">
+          <form action={createProjectFromForm} className="space-y-4">
             <div className="space-y-2">
               <label htmlFor="name" className="text-sm font-medium text-ink">
                 Wedding name

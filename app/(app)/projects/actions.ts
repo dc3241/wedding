@@ -1,10 +1,16 @@
 "use server";
 
+import { randomUUID } from "crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getCoupleDestinationPath } from "@/lib/onboarding-gate";
 import { getPostLoginPath } from "@/lib/post-login-path";
 import { createClient } from "@/utils/supabase/server";
+import type { SupabaseClient } from "@supabase/supabase-js";
+
+export type CreateProjectResult =
+  | { ok: true; projectId: string }
+  | { ok: false; error: string };
 
 export async function bootstrapAccountAndProject(formData: FormData) {
   const accountKind = formData.get("accountKind") as string;
@@ -33,6 +39,7 @@ export async function bootstrapAccountAndProject(formData: FormData) {
 
   revalidatePath("/projects");
   revalidatePath("/dashboard");
+  revalidatePath("/", "layout");
 
   if (accountKind === "business") {
     redirect("/dashboard");
@@ -41,35 +48,100 @@ export async function bootstrapAccountAndProject(formData: FormData) {
   redirect(await getCoupleDestinationPath(supabase, projectId as string));
 }
 
-export async function createProject(formData: FormData) {
-  const name = formData.get("name") as string;
+/**
+ * Resolve the account to attach a new project to.
+ * Prefer business (planner) when present; otherwise personal (couple).
+ * Filters by auth user explicitly — do not rely on nested `accounts.kind` embeds alone.
+ */
+async function resolveProjectAccountId(
+  supabase: SupabaseClient,
+): Promise<{ accountId: string } | { error: string }> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  const supabase = await createClient();
-
-  const { data: membership, error: membershipError } = await supabase
-    .from("account_members")
-    .select("account_id")
-    .order("created_at", { ascending: true })
-    .limit(1)
-    .single();
-
-  if (membershipError) {
-    redirect(
-      `/projects?error=${encodeURIComponent(membershipError.message)}`
-    );
+  if (!user) {
+    return { error: "Not signed in." };
   }
 
-  const { data: project, error } = await supabase
-    .from("projects")
-    .insert({ account_id: membership.account_id, name })
-    .select("id")
-    .single();
+  const { data: memberships, error: membershipError } = await supabase
+    .from("account_members")
+    .select("account_id")
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: true });
+
+  if (membershipError) {
+    return { error: membershipError.message };
+  }
+
+  if (!memberships?.length) {
+    return { error: "No account found." };
+  }
+
+  const accountIds = memberships.map((row) => row.account_id);
+  const { data: accounts, error: accountsError } = await supabase
+    .from("accounts")
+    .select("id, kind")
+    .in("id", accountIds);
+
+  if (accountsError) {
+    return { error: accountsError.message };
+  }
+
+  const business = accounts?.find((account) => account.kind === "business");
+  if (business) {
+    return { accountId: business.id };
+  }
+
+  const personal = accounts?.find((account) => account.kind === "personal");
+  if (personal) {
+    return { accountId: personal.id };
+  }
+
+  return { accountId: memberships[0].account_id };
+}
+
+export async function createProject(
+  name: string,
+): Promise<CreateProjectResult> {
+  const trimmed = name.trim();
+  if (!trimmed) {
+    return { ok: false, error: "Wedding name is required." };
+  }
+
+  const supabase = await createClient();
+  const resolved = await resolveProjectAccountId(supabase);
+
+  if ("error" in resolved) {
+    return { ok: false, error: resolved.error };
+  }
+
+  // No `.select()` after insert: projects SELECT RLS (`can_access_project`)
+  // re-queries by id and can reject INSERT…RETURNING for the in-flight row.
+  const projectId = randomUUID();
+  const { error } = await supabase.from("projects").insert({
+    id: projectId,
+    account_id: resolved.accountId,
+    name: trimmed,
+  });
 
   if (error) {
-    redirect(`/projects?error=${encodeURIComponent(error.message)}`);
+    return { ok: false, error: error.message };
   }
 
   revalidatePath("/projects");
   revalidatePath("/dashboard");
-  redirect(`/projects/${project.id}`);
+  revalidatePath("/", "layout");
+  return { ok: true, projectId };
+}
+
+/** Form-action wrapper for the couple empty-account page (redirects). */
+export async function createProjectFromForm(formData: FormData) {
+  const result = await createProject((formData.get("name") as string) ?? "");
+
+  if (!result.ok) {
+    redirect(`/projects?error=${encodeURIComponent(result.error)}`);
+  }
+
+  redirect(`/projects/${result.projectId}`);
 }
