@@ -4,8 +4,8 @@ import { useState, useTransition } from "react";
 import { CopyInviteLink } from "./CopyInviteLink";
 import {
   createProjectInvitation,
-  type ProjectInviteRole,
 } from "@/lib/invitations/actions";
+import type { ProjectInviteRole } from "@/lib/invitations/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 

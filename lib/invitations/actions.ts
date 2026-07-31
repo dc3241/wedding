@@ -2,38 +2,17 @@
 
 import { createHash, randomBytes } from "node:crypto";
 import { revalidatePath } from "next/cache";
+import { PROJECT_INVITE_ROLES } from "@/lib/invitations/constants";
+import type {
+  AcceptInvitationResult,
+  CreateInvitationResult,
+  ProjectInviteRole,
+  RemoveProjectMemberResult,
+  RevokeInvitationResult,
+} from "@/lib/invitations/types";
 import { createClient } from "@/utils/supabase/server";
 
-export type CreateInvitationResult =
-  | { ok: true; token: string; invitationId: string }
-  | { ok: false; error: string };
-
-export type RevokeInvitationResult =
-  | { ok: true }
-  | { ok: false; error: string };
-
-export type AcceptInvitationResult =
-  | { ok: true; projectId: string }
-  | {
-      ok: false;
-      error:
-        | "expired"
-        | "revoked"
-        | "email_mismatch"
-        | "invalid"
-        | "already"
-        | string;
-    };
-
-export type RemoveProjectMemberResult =
-  | { ok: true }
-  | { ok: false; error: string };
-
 const INVITE_TTL_MS = 14 * 24 * 60 * 60 * 1000;
-
-/** Roles this invite UI may issue. `viewer` is deferred to WRITE-01. */
-export const PROJECT_INVITE_ROLES = ["couple", "collaborator"] as const;
-export type ProjectInviteRole = (typeof PROJECT_INVITE_ROLES)[number];
 
 function isProjectInviteRole(role: string): role is ProjectInviteRole {
   return (PROJECT_INVITE_ROLES as readonly string[]).includes(role);
