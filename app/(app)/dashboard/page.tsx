@@ -2,7 +2,6 @@ import { redirect } from "next/navigation";
 import { AccountDashboard } from "@/components/dashboard/account-dashboard";
 import {
   buildUrgentItems,
-  countActiveWeddings,
   countTasksDueThisWeek,
   countVendorsNeedingAction,
   type TaskRow,
@@ -10,6 +9,8 @@ import {
 } from "@/lib/dashboard-aggregates";
 import { getAccountContext } from "@/lib/account-context";
 import { createClient } from "@/utils/supabase/server";
+
+const projectSelect = "id, name, wedding_date, status" as const;
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -26,34 +27,50 @@ export default async function DashboardPage() {
     redirect("/projects");
   }
 
-  const [
-    { data: projects },
-    { data: tasks },
-    { data: vendorRows },
-  ] = await Promise.all([
-    supabase
-      .from("projects")
-      .select("id, name, wedding_date, status")
-      .order("wedding_date", { ascending: true, nullsFirst: false })
-      .order("created_at", { ascending: true }),
-    supabase
-      .from("tasks")
-      .select("id, title, status, due_date, project_id, projects(name)")
-      .neq("status", "done")
-      .not("due_date", "is", null),
-    supabase
-      .from("project_vendors")
-      .select("id, status, project_id, vendors(name), projects(name)"),
-  ]);
+  const [{ data: activeProjects }, { data: archivedProjects }] =
+    await Promise.all([
+      supabase
+        .from("projects")
+        .select(projectSelect)
+        .is("archived_at", null)
+        .order("wedding_date", { ascending: true, nullsFirst: false })
+        .order("created_at", { ascending: true }),
+      supabase
+        .from("projects")
+        .select(projectSelect)
+        .not("archived_at", "is", null)
+        .order("wedding_date", { ascending: true, nullsFirst: false })
+        .order("created_at", { ascending: true }),
+    ]);
 
-  const projectList = projects ?? [];
+  const activeList = activeProjects ?? [];
+  const archivedList = archivedProjects ?? [];
+  const activeProjectIds = activeList.map((project) => project.id);
+
+  const [{ data: tasks }, { data: vendorRows }] =
+    activeProjectIds.length === 0
+      ? [{ data: [] as TaskRow[] }, { data: [] as VendorRow[] }]
+      : await Promise.all([
+          supabase
+            .from("tasks")
+            .select("id, title, status, due_date, project_id, projects(name)")
+            .in("project_id", activeProjectIds)
+            .neq("status", "done")
+            .not("due_date", "is", null),
+          supabase
+            .from("project_vendors")
+            .select("id, status, project_id, vendors(name), projects(name)")
+            .in("project_id", activeProjectIds),
+        ]);
+
   const taskList = (tasks ?? []) as TaskRow[];
   const vendors = (vendorRows ?? []) as VendorRow[];
 
   return (
     <AccountDashboard
-      projects={projectList}
-      activeWeddings={countActiveWeddings(projectList)}
+      activeProjects={activeList}
+      archivedProjects={archivedList}
+      activeWeddings={activeList.length}
       tasksDueThisWeek={countTasksDueThisWeek(taskList)}
       vendorsNeedingAction={countVendorsNeedingAction(vendors)}
       urgentItems={buildUrgentItems(taskList, vendors)}

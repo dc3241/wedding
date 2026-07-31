@@ -6,7 +6,6 @@ import { Card } from "@/components/ui/card";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { Wordmark } from "@/components/ui/topbar";
 import { acceptProjectInvitation } from "@/lib/invitations/actions";
-import { setPendingInvite } from "@/lib/invitations/pending-invite";
 import { createClient } from "@/utils/supabase/server";
 import type { Metadata } from "next";
 
@@ -96,8 +95,6 @@ export default async function InvitePage({
       `/invite/${encodeURIComponent(token)}?error=${encodeURIComponent(result.error)}`,
     );
   }
-
-  await setPendingInvite(token);
 
   return (
     <InviteShell>

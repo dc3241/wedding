@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { DashboardWeddingList } from "@/components/dashboard/dashboard-wedding-list";
 import { NewWeddingForm } from "@/components/projects/new-wedding-form";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
@@ -11,7 +12,8 @@ import type {
 } from "@/lib/dashboard-aggregates";
 
 type AccountDashboardProps = {
-  projects: PlannerProjectSummary[];
+  activeProjects: PlannerProjectSummary[];
+  archivedProjects: PlannerProjectSummary[];
   activeWeddings: number;
   tasksDueThisWeek: number;
   vendorsNeedingAction: number;
@@ -25,17 +27,6 @@ function formatWeddingDate(date: string | null) {
     day: "numeric",
     year: "numeric",
   });
-}
-
-function daysUntil(date: string | null) {
-  if (!date) return null;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const wedding = new Date(date + "T00:00:00");
-  return Math.max(
-    0,
-    Math.ceil((wedding.getTime() - today.getTime()) / 86_400_000),
-  );
 }
 
 function urgentLabel(item: UrgentItem) {
@@ -65,7 +56,8 @@ function urgentTitle(item: UrgentItem) {
 }
 
 export function AccountDashboard({
-  projects,
+  activeProjects,
+  archivedProjects,
   activeWeddings,
   tasksDueThisWeek,
   vendorsNeedingAction,
@@ -122,50 +114,10 @@ export function AccountDashboard({
         )}
       </section>
 
-      <section>
-        <SectionHeader>All weddings</SectionHeader>
-        {projects.length === 0 ? (
-          <EmptyState>
-            No weddings yet. Create your first client wedding to get started.
-          </EmptyState>
-        ) : (
-          <div className="overflow-hidden rounded-[var(--radius-card)] bg-surface shadow-[var(--shadow-raised)]">
-            <div className="divide-y divide-hairline">
-              {projects.map((project) => {
-                const days = daysUntil(project.wedding_date);
-                const active = project.status === "active";
-
-                return (
-                  <Link
-                    key={project.id}
-                    href={`/projects/${project.id}`}
-                    className="flex items-center justify-between gap-4 px-5 py-4 transition-colors hover:bg-well"
-                  >
-                    <div className="min-w-0">
-                      <div className="truncate text-[19px] font-extrabold tracking-[-0.02em] text-ink">
-                        {project.name}
-                      </div>
-                      <div className="mt-0.5 text-[13px] tabular-nums text-muted">
-                        {formatWeddingDate(project.wedding_date)}
-                      </div>
-                    </div>
-                    <div className="flex shrink-0 items-center gap-3">
-                      {days !== null ? (
-                        <span className="text-[13px] tabular-nums text-muted">
-                          {days}d
-                        </span>
-                      ) : null}
-                      <Pill variant={active ? "sage" : undefined}>
-                        {active ? "Active" : project.status}
-                      </Pill>
-                    </div>
-                  </Link>
-                );
-              })}
-            </div>
-          </div>
-        )}
-      </section>
+      <DashboardWeddingList
+        activeProjects={activeProjects}
+        archivedProjects={archivedProjects}
+      />
     </div>
   );
 }

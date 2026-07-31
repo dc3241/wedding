@@ -27,6 +27,7 @@ export default async function AppLayout({
     const { data: projects } = await supabase
       .from("projects")
       .select("id, name, wedding_date")
+      .is("archived_at", null)
       .order("wedding_date", { ascending: true, nullsFirst: false })
       .order("created_at", { ascending: true });
 
