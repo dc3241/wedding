@@ -31,6 +31,14 @@ export type RemoveProjectMemberResult =
 
 const INVITE_TTL_MS = 14 * 24 * 60 * 60 * 1000;
 
+/** Roles this invite UI may issue. `viewer` is deferred to WRITE-01. */
+export const PROJECT_INVITE_ROLES = ["couple", "collaborator"] as const;
+export type ProjectInviteRole = (typeof PROJECT_INVITE_ROLES)[number];
+
+function isProjectInviteRole(role: string): role is ProjectInviteRole {
+  return (PROJECT_INVITE_ROLES as readonly string[]).includes(role);
+}
+
 function accessPath(projectId: string) {
   return `/projects/${projectId}/access`;
 }
@@ -65,10 +73,15 @@ function mapAcceptError(message: string): AcceptInvitationResult {
 export async function createProjectInvitation(
   projectId: string,
   email: string,
+  role: string = "couple",
 ): Promise<CreateInvitationResult> {
   const trimmed = email.trim();
   if (!trimmed) {
     return { ok: false, error: "Email is required." };
+  }
+
+  if (!isProjectInviteRole(role)) {
+    return { ok: false, error: "Invalid invitation role." };
   }
 
   const supabase = await createClient();
@@ -89,7 +102,7 @@ export async function createProjectInvitation(
     .insert({
       project_id: projectId,
       email: trimmed,
-      role: "couple",
+      role,
       token_hash: tokenHash,
       invited_by: user.id,
       expires_at: expiresAt,

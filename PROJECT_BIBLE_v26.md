@@ -1,51 +1,50 @@
-# Wedding Planning SaaS — Project Bible (v25)
+# Wedding Planning SaaS — Project Bible (v26)
 
-Canonical state document. **Supersedes v24.** Drop this into the Project's instructions/knowledge so
-any new chat picks up cold. Lives in-repo at `PROJECT_BIBLE_v25.md`. The repo's `.cursor/design.mdc`,
+Canonical state document. **Supersedes v25.** Drop this into the Project's instructions/knowledge so
+any new chat picks up cold. Lives in-repo at `PROJECT_BIBLE_v26.md`. The repo's `.cursor/design.mdc`,
 `app/globals.css`, `design/reference.html` (stale — see §10), and `supabase/migrations/` remain the
 live source of truth; this summarizes them and the decisions behind them. Current through migration
-**0043**; **next-free migration is 0044**.
+**0043**; **next-free migration is 0044** (INV-07 added no migration).
 
-**v25 records the photo-led wedding website overhaul (WEB-IMG-01 / WEB-LAYOUT / WEB-EDITOR), gated
-RSVP full-name lookup (RSVP-01a), and GST-01 guest-member authoring polish — atop v24 meals +
-household gate:**
+**v26 records per-wedding collaborator invites (INV-07), the planner New-wedding create RLS fix
+(CREATE-01), and marketing pricing + capabilities (PRICE-01 / LAND-02) — atop v25 website media +
+gated full-name RSVP:**
 
 | Slice | What | Schema |
 |---|---|---|
-| **WEB-IMG-01** | Public `website-media` bucket; hero `content.hero.imageUrl`; client upload | **0042** |
-| **WEB-LAYOUT** | Shared section vocabulary + Gallery / Party / FAQ; five-template overhaul | **NONE** (jsonb) |
-| **WEB-EDITOR** | LookStep + hero/gallery/party/FAQ/travel authoring; reorder controls | **NONE** |
-| **RSVP-01a** | `lookup_rsvp_household` matches normalized **full name** (not last-name token) | **0043** |
-| **GST-01** | Add-guest per-member names + attending checkbox persists via `updateGuestMember` | **NONE** |
+| **INV-07** | Access tab invites `collaborator` (same `/invite/[token]` path); writer allowlist `{couple, collaborator}`; accept already copies `project_invitations.role` | **NONE** (`role` since **0028**) |
+| **CREATE-01** | Planner `createProject` no longer INSERT…RETURNING; explicit business-account resolve; form surfaces errors | **NONE** |
+| **LAND-02** | Marketing topbar section anchors + sticky chrome; static capabilities checklist on landing | **NONE** |
+| **PRICE-01** | `/pricing` couple/planner plan cards + in-card annual cadence (presentation only; Stripe → PRICE-02) | **NONE** |
 
-Everything in v24 that isn't touched by the above carries forward unchanged: RSVP meals
-(MEAL-01…03), guest-gated RSVP (RSVP-01), gift registry (REG-01…04), SEAT-11, BUD-04 / VND-07,
-invitations, Soft stack (C1), LAND-01, planner CRM, Stripe.
+Everything in v25 that isn't touched by the above carries forward unchanged: photo-led website
+(WEB-*), RSVP-01a, GST-01, meals, registry, Soft stack (C1), LAND-01, planner CRM, Stripe.
 
-> **Numbering note:** WEB-IMG-01 took **0042** (MEAL-03a / ONB-02 did not). RSVP-01a took **0043**.
-> **MEAL-03a (drop `guests.meal_choice`) and ONB-02 take next-free at build time (0044+).**
-> Do not `db push`.
+> **Numbering note:** INV-07 / CREATE-01 / LAND-02 / PRICE-01 took **no** migration. **MEAL-03a
+> (drop `guests.meal_choice`) and ONB-02 take next-free at build time (0044+).** Do not `db push`.
+> **Do not offer `viewer` from Access** until WRITE-01 — collaborator is deliberately the only
+> non-couple invite role today.
 
 **Verification status (READ THIS):**
 - **0031–0033** remain applied live (as in v23).
-- **0034–0041** (REG + MEAL + RSVP-01) — apply/checkpoint if not yet live (see v24 Dom list;
-  especially **0040** — without it Add person fails with `PGRST205`).
-- **0042 shipped in code (WEB-IMG-01).** Apply after 0041. Dom checkpoints:
-  - `storage.buckets` row `website-media` present; `public = true`; 25MB; image mimes only.
-  - Anon SELECT on bucket objects succeeds (no published gate — deliberate carve-out).
-  - Authenticated INSERT denied for non-editor / wrong first-folder `project_id`; editor upload
-    under `{projectId}/hero/…` succeeds; public URL loads without signing.
-  - `content.hero.imageUrl` round-trip via editor; clear hero clears content URL (storage orphan OK).
-- **0043 shipped in code (RSVP-01a).** Apply after 0042. Dom checkpoints:
-  - `to_regprocedure('lookup_rsvp_household(text,text,text)')` present; third arg is full-name.
-  - Exact normalized full-name match returns token/label/cap; last-name-only / partial ≠ match.
-  - Token path still works; published-site scope; `limit 25`; anon `select * from guests` denied.
-  - Public gated form copy asks for full name; Guests `RsvpAccessCard` copy matches.
+- **0034–0043** — apply/checkpoint if not yet live (v24/v25 Dom lists; especially **0040** /
+  **0042** / **0043**).
+- **INV-07 (no migration).** Dom checkpoints:
+  - Invite collaborator → accept with fresh account-less user →
+    `select role from project_members where project_id = <p> and user_id = <u>` returns
+    **`collaborator`** (read the row, not the Access-tab pill).
+  - Couple invite path still inserts / accepts as **`couple`**.
+  - Pre-INV-07 pending invites (default `couple`) still accept as couple.
+  - Writer rejects role `viewer` (`Invalid invitation role.`).
+  - Collaborator sees that one wedding, no CRM tabs, no other clients.
+- **CREATE-01:** planner dashboard "New wedding" succeeds under projects RLS; failures surface in
+  the form (not a silent redirect).
+- **PRICE-01 / LAND-02:** `/pricing` renders; landing nav anchors + capabilities panel; no Stripe
+  object changes (PRICE-02 still open).
 - **Still open (human gate):** Dom Soft stack + LAND-01 / LAND-01a visual checkpoint. See §13.
 
-Sections changed from v24: header, **§1**, **§3**, **§4** (lookup signature; WRITE-01 + storage),
-**§5** (0042–0043; MEAL-03a/ONB-02 → 0044+), **§6**, **§7**, **§9**, **§12**, **§13**, **§14**,
-**§15**.
+Sections changed from v25: header, **§1**, **§4** (user classes + invitations), **§6** (Access /
+invited routing), **§7** (INV-07 / CREATE-01 / LAND-02 / PRICE-01), **§13**, **§14**, **§15**.
 
 **Companion doc:** a separate **Launch Prep Runbook** exists (ops checklist for going to
 production). This bible covers product/architecture state; the runbook covers deployment. Keep both.
@@ -64,19 +63,21 @@ A couple is a `personal` account owning exactly ONE project (their wedding); a p
 one foundation, differentiated by routing and role-gated tabs. (The "two separate products" approach
 was explicitly rejected.)
 
-**As of v18 there is a THIRD class of user: the invited couple.** A planner invites a couple by
-email; that couple gets a `project_members` row on ONE project and **no account of their own** — no
-`accounts` row, no `account_members` row. They see that project and nothing else in the planner's
-book. This is the Aisle Planner model and it is what `can_access_project`'s "OR direct project
-member" branch was designed for in 0001. See §4.
+**As of v18 there is a THIRD class of user: the invited project member** (originally couple-only;
+**v26 / INV-07 also issues `collaborator`**). A planner invites by email; the invitee gets a
+`project_members` row on ONE project and **no account of their own** — no `accounts` row, no
+`account_members` row. They see that project and nothing else in the planner's book — no CRM tabs.
+This is the Aisle Planner model and it is what `can_access_project`'s "OR direct project member"
+branch was designed for in 0001. **Not** account-level seats / `account_invitations`. See §4.
 
 The app spans: the couple planning product (onboarding → AI plan, checklist, vendors, guests with
 per-person meal members + RSVP→guest match + optional household-gated RSVP, budget, notes, files,
 day-of timeline, gift registry with public share + guest claims, in-app AI assistant, seating
 builder), a planner CRM (contracts, lead pipeline, proposals → accepted agreement → printable
-contract, project access / invitations), Stripe billing for both audiences, and a public, shareable
-wedding website with a 5-template photo-led gallery (hero / gallery / party media, FAQ, structured
-travel), adaptive meal-aware RSVP intake (open or gated), and a registry sub-page.
+contract, project access / couple + collaborator invitations), Stripe billing for both audiences,
+marketing `/` + `/pricing`, and a public, shareable wedding website with a 5-template photo-led
+gallery (hero / gallery / party media, FAQ, structured travel), adaptive meal-aware RSVP intake
+(open or gated), and a registry sub-page.
 
 ---
 
@@ -215,18 +216,32 @@ In `.cursor/main.mdc` (architecture) + `.cursor/design.mdc` (Soft stack design).
 Tables: `accounts` (kind: personal | business), `account_members`, `projects`, `project_members`,
 `project_invitations` (0028).
 
-### The three user classes
+### The three user classes (invited members share one class, two roles)
 
 | Class | `accounts` | `account_members` | `project_members` | Sees |
 |---|---|---|---|---|
 | Self-serve couple | personal | 1 row | none | their one project |
 | Planner | business | 1 row | none | all their projects |
-| **Invited couple** | **none** | **none** | **1 row per project** | **only invited projects** |
+| **Invited member** | **none** | **none** | **1 row per project** (`couple` **or** `collaborator`) | **only invited projects** |
 
-**A planner opening their own project has NO `project_members` row.** An invited couple has NO
+**A planner opening their own project has NO `project_members` row.** An invited member has NO
 account kind. Any gate that reads only one of those inputs will break the other class. This is why
 `plannerOnly` tab filtering resolves from ACCOUNT kind and must never be switched to
-`project_members.role` — see §6.
+`project_members.role` — see §6. **`viewer` exists on the enum but is not issued by Access (INV-07
+allowlist); do not offer it until WRITE-01.**
+
+### `project_invitations` (0028; INV-07 uses existing `role`)
+
+- `project_id`, `email`, **`role project_role NOT NULL DEFAULT 'couple'`**, `token_hash` (sha256 hex;
+  raw token never stored), `invited_by`, `expires_at`, `accepted_at` / `accepted_by`, `revoked_at`,
+  `created_at`
+- Partial unique: one live invite per `(project_id, lower(email))`
+- Policies: all four gated by `can_manage_project_access` — **unchanged by INV-07**
+- **`accept_project_invitation` inserts `project_members.role` from `v_inv.role`** (never hardcodes
+  `'couple'`). Existing pending invites without an explicit writer role keep the column default
+  `couple`.
+- **Sole app writer:** `createProjectInvitation(projectId, email, role)` — server allowlist
+  `{couple, collaborator}`; rejects `viewer`. Couple path still passes `couple` explicitly.
 
 ### `project_members` (0001)
 
@@ -719,8 +734,8 @@ checkpoint). See §7.
 
 > **No-migration slices to date:** the 5-template pack; V3-QA-01…06; SEAT-02/03/05/05a/08/09/10;
 > CHK-01; SET-01; TL-01/02/03; **TL-04**; BUD-01; BUD-01a; ONB-01; Soft stack chrome pass (v11);
-> LAND-01; LAND-01a; INV-03; INV-05; INV-02; **VND-05; VND-05a; VND-05b; VND-06a; VND-07; VND-07a;
-> VND-07b**; **WEB-LAYOUT; WEB-EDITOR; GST-01**.
+> LAND-01; LAND-01a; INV-03; INV-05; INV-02; **INV-07**; **VND-05; VND-05a; VND-05b; VND-06a;
+> VND-07; VND-07a; VND-07b**; **WEB-LAYOUT; WEB-EDITOR; GST-01**; **CREATE-01; LAND-02; PRICE-01**.
 
 **`projects.total_budget`** — numeric(12,2) NULLABLE (0010). **`projects.wedding_date`** — date
 NULLABLE (0001).
@@ -732,7 +747,8 @@ NULLABLE (0001).
 Unchanged from v18. One login. `lib/post-login-path.ts` routes by account kind.
 - **Planner (business):** `/dashboard`, `PlannerShell` + `PlannerProjectSidebar`.
 - **Couple (personal):** into their project workspace (`CoupleShell`), gated by onboarding.
-- **Invited couple (no account):** into the invited project via `/projects`.
+- **Invited member (no account):** into the invited project via `/projects` (couple **or**
+  collaborator — same path; role only affects `can_edit_project` / future WRITE-01 gates).
 
 ### The signup → workspace path
 
@@ -811,7 +827,9 @@ Figtree display numerals. Canonical two-column split:
   when a published slug exists. **Website** editor: LookStep (template + palette) + hero photo +
   Gallery / Party / Travel / FAQ authoring; content persists on each edit via `persistContent`
   (slug still requires an explicit Save).
-- **Access (planner-only)** — `app/(app)/projects/[projectId]/access/page.tsx` (INV-02).
+- **Access (planner-only)** — `app/(app)/projects/[projectId]/access/page.tsx` (INV-02 + **INV-07**).
+  Separate couple vs collaborator invite cards; pending/accepted lists show role pills; revoke /
+  remove unchanged. Helper copy: collaborators help **this** wedding only — not the planner's book.
 
 **Account-scoped planner surfaces:** `/leads`, `/leads/[leadId]`,
 `/leads/[leadId]/proposals/[proposalId]/contract`, `/account/billing`.
@@ -821,7 +839,7 @@ photo-led sections via shared `SectionStack`; adaptive RSVP form driven by `meal
 `meal_options` + `rsvp_access_mode`), `app/w/[slug]/rsvp` (QR / gated deep-link landing; forces
 RSVP visible even if couple hid it on the main site), `app/w/[slug]/registry` (registry sub-page;
 anon read of `registry_items` when published), and `app/invite/[token]` (Tier 2, NO data read).
-Marketing landing at `/` → `components/marketing/`.
+Marketing landing at `/` → `components/marketing/`; **`/pricing`** (PRICE-01).
 
 ---
 
@@ -829,9 +847,10 @@ Marketing landing at `/` → `components/marketing/`.
 
 Pattern: a folder under the relevant scope with `page.tsx` (server read) + `actions.ts` (`'use server'`
 writes by id + `revalidatePath`); RLS authorizes. v1–v15 features unchanged; see v15/v18 for their
-detail. The planner→couple invitation feature (INV-01 … INV-05, migrations 0028/0029) is unchanged
-from v18 — including **INV-06 (transactional email) deliberately NOT built**; planners copy the link
-and send it themselves.
+detail. The planner→project invitation feature (INV-01 … INV-05, migrations 0028/0029) plus
+**INV-07 (collaborator role on the same mechanism)** is current — including **INV-06 (transactional
+email) deliberately NOT built**; planners copy the link and send it themselves. **`viewer` is still
+not offered from Access** (WRITE-01 gate).
 
 **Seating occupancy model (authoritative — do not regress):** occupancy = **COUNT of
 `seating_assignments` rows** for the table. `assignGuestToTable` upserts `seat_index: null`. A guard
@@ -1033,6 +1052,53 @@ calls `updateGuestMember` so headcount tracks without re-adding. Cap semantics u
 `guests.party_size` = invited max; attending members drive responded headcount.
 
 **Files:** `app/(app)/projects/[projectId]/guests/{actions,AddGuestForms,GuestRow,guest-member-actions}.*`.
+
+### v26 — Collaborator invites + create fix + marketing pricing
+
+#### INV-07 — per-wedding collaborator invites. NO SCHEMA.
+
+Planners invite an associate to **one** wedding as `project_members.role = 'collaborator'`. Same
+`project_invitations` row + `/invite/[token]` accept path as couples — **one writer, role argument**,
+not a second mechanism and not account-level seats.
+
+Step 0 found `project_invitations.role` and `accept_project_invitation` → `v_inv.role` already shipped
+in **0028**; INV-07 skipped migration and left the RPC alone. Live enum probe:
+`couple | collaborator | viewer`.
+
+`createProjectInvitation(projectId, email, role = "couple")` allowlists `{couple, collaborator}` and
+rejects `viewer`. Access tab: distinct couple vs collaborator cards; lists show role; revoke/remove
+reuse INV-02. Collaborators land in the couple workspace for that project only (no CRM —
+`plannerOnly` is account-kind gated).
+
+**Files:** `lib/invitations/actions.ts`,
+`app/(app)/projects/[projectId]/access/{page,InviteForm}.tsx`.
+
+#### CREATE-01 — planner New wedding create under projects RLS. NO SCHEMA.
+
+`createProject` was failing for planners because INSERT…RETURNING re-read the row under
+`can_access_project` before the insert was visible to that policy path. Fix: client-generated
+`projectId`, insert without `.select()`, resolve the **business** account explicitly when present,
+surface errors in `NewWeddingForm`. No RLS / migration change.
+
+**Files:** `app/(app)/projects/actions.ts`, `components/projects/new-wedding-form.tsx`,
+`app/(app)/projects/page.tsx`.
+
+#### LAND-02 — marketing header + capabilities. NO SCHEMA.
+
+Sticky marketing topbar with home section anchors (`/#features`, `/#couples`, `/#planners`), Pricing
+nav to `/pricing`, chunkier CTAs. Landing gains a static capabilities checklist panel
+(`capabilities-panel.tsx`).
+
+**Files:** `components/marketing/{marketing-topbar,landing-page,capabilities-panel,audience-split,
+feature-grid,landing-hero}.tsx`, `components/ui/{button,topbar}.tsx`.
+
+#### PRICE-01 — `/pricing` presentation. NO SCHEMA.
+
+Public pricing page with couple plans (Free / The full plan $99 one-time with $7-week CTA copy) and
+planner plans (monthly $59 / annual $590 in-card cadence + Agency). **Stripe Price objects and
+checkout routing are PRICE-02** — CTAs still go to `/signup` where noted.
+
+**Files:** `app/pricing/page.tsx`, `components/marketing/pricing-plans.tsx`.
 
 **The reported problem, and what it actually was.** Dom's report: *couples can't add vendors they've
 already booked off-platform; can't link them to a category; duplicates aren't prevented; and nothing
@@ -1591,7 +1657,15 @@ first-membership; `project_members` recursive-policy flag (investigated, safe �
 - **Add guest with party size > 1 forced member-editor follow-up** — GST-01 collects additional
   names at add time; attending checkbox persists via `updateGuestMember`.
 
-**Open — from the v19/v20/v21/v22/v23/v24/v25 build:**
+**Closed by v26 (INV-07 + CREATE-01 + LAND-02 / PRICE-01):**
+- **No collaborator invite** — Access issues `collaborator` via the same invitation mechanism
+  (INV-07); accept copies `project_invitations.role`. **`viewer` still not issued.**
+- **Planner New wedding create silent-fail under projects RLS** — CREATE-01 (no RETURNING;
+  explicit business account; form errors).
+- **No public pricing page / thin marketing nav** — LAND-02 capabilities + PRICE-01 `/pricing`
+  (Stripe wiring deferred to PRICE-02).
+
+**Open — from the v19/v20/v21/v22/v23/v24/v25/v26 build:**
 - **VND-05 checkpoints a, c, e, f, g reported as "all set" without pasted output.** Believed good.
   (d) was the silent `replied` → 23514 case — closed by 0031. (g) remains the one to spot-check if
   outreach quality looks off (raw category id in a generated email).
@@ -1616,9 +1690,9 @@ first-membership; `project_members` recursive-policy flag (investigated, safe �
   `tasks`, `budget_items`, `guests`, `notes`, `timeline_events`, `seating_*`, `rsvp_submissions`
   member writes, and most of the rest still gate writes on `can_access_project`, which a `viewer`
   passes. **`removeProjectVendor` is the sharpest remaining example — a viewer can delete a vendor
-  link and cascade its outreach history.** Unreached today because nothing issues `viewer`
-  invitations (no role picker), but it is live the moment one does. **This is the v18 "audit every
-  write policy" rule coming due; it needs its own slice — see §15 WRITE-01.**
+  link and cascade its outreach history.** Unreached today because Access **still does not issue
+  `viewer`** (INV-07 allowlist is `{couple, collaborator}` only). Collaborators are intended
+  editors (`can_edit_project` includes them). **WRITE-01 before any `viewer` invite.** See §15.
 - **`projects` has NO DELETE policy.** Silent-no-op shape, currently unreached.
 - **`vendors.category` has NO CHECK.** Deliberately deferred — **ONB-02 (next-free / 0044+) owns the
   category-constraint policy decision** and should apply it to `vendors.category` and
@@ -1639,7 +1713,8 @@ first-membership; `project_members` recursive-policy flag (investigated, safe �
 - Dual-account is foreclosed by 0027, deliberately. Reversible in one `create or replace`.
 - **Next.js Server Component cookie write** (`setPendingInvite`) is version-dependent and may break
   on a Next upgrade. Fix would be a Route Handler at `app/invite/[token]/route.ts`.
-- No email delivery (INV-06). No role picker.
+- No email delivery (INV-06). **`viewer` invite still deferred** (WRITE-01). Collaborator invite
+  shipped (INV-07).
 
 **Open — Soft stack / design (the standing human gate):**
 - **Dom live Soft stack + LAND-01 / LAND-01a visual checkpoint** across couple tabs, planner,
@@ -1740,18 +1815,27 @@ INV-02. INV-06 deliberately not built.
 - **RSVP-01a** — Migration **0043**. Gated lookup matches normalized full name.
 - **GST-01** — No schema. Add-guest additional names; attending checkbox persists.
 
+**Done (v26 — collaborator invites + create fix + marketing pricing):**
+- **INV-07** — No schema. Access invites `collaborator` via existing `project_invitations.role`;
+  writer allowlist `{couple, collaborator}`; same `/invite/[token]` path. **`viewer` still blocked.**
+- **CREATE-01** — No schema. Planner New wedding create without INSERT…RETURNING; explicit
+  business-account resolve; form error surfacing.
+- **LAND-02** — No schema. Marketing topbar anchors + capabilities checklist.
+- **PRICE-01** — No schema. `/pricing` presentation (Stripe objects → PRICE-02).
+
 Current through **0043**; next-free **0044** (MEAL-03a drop preferred; ONB-02 may take it — see
-header numbering note).
+header numbering note). INV-07 did not consume a migration number.
 
 **In progress:** Dom Soft stack + LAND-01 live visual checkpoint (human). Not a Cursor slice.
 Dom apply + checkpoint REG + MEAL + RSVP + WEB migrations (**0034–0043**) if not yet pasted.
+Dom INV-07 live checkpoint (collaborator `project_members.role` row).
 
 **Remaining couple side:** moodboard; optional seating depth (per-seat UI / SEAT-07); **MEAL-03a
 (0044+ — drop `guests.meal_choice`)** after backfill verification; **ONB-02 (next-free /
 0044+)**; **BUD-03 (pre-launch)**; optional website-media orphan GC.
 
 **Remaining planner side:** invoicing accepted proposals; deeper CRM; INV-06 (email delivery);
-optional role picker (`collaborator` / `viewer`) — **which is gated on WRITE-01**.
+**`viewer` invite (after WRITE-01)**; PRICE-02 (Stripe Price objects + checkout for pricing CTAs).
 
 **Phase 4 — bridge:** lead→project conversion. **Re-audit every write policy when this ships.**
 
@@ -1770,9 +1854,12 @@ optional role picker (`collaborator` / `viewer`) — **which is gated on WRITE-0
 - **Chrome = Soft stack (C1).** Do not reopen Modern romantic. Tier 3 websites stay on `--ws-*`.
 - **Public wedding long dates = shared `formatWeddingDate`, locale `en-US`.**
 - **Signup creates NO tenant.** Bootstrap once on OnboardingForm, guarded in DB (0027).
-- **Invited couples get project membership and NO account of their own.**
+- **Invited members (couple or collaborator) get project membership and NO account of their own.**
+  Per-wedding only — not whole-book seats.
 - **No planner-set passwords. No service-role user creation. No anon read on invitations.**
 - **Invitation tokens are hashed at rest and shown exactly once.**
+- **Access may invite `couple` and `collaborator` only (INV-07).** `viewer` stays off the UI until
+  WRITE-01.
 - **`viewer` cannot edit PROJECTS** (0029) — but see WRITE-01 for every other table.
 - **`projects.account_id` is immutable** (trigger).
 - **`vendors.category` stores canonical ids.** Labels are a display concern, resolved via
@@ -1807,18 +1894,21 @@ optional role picker (`collaborator` / `viewer`) — **which is gated on WRITE-0
   objects (orphan GC deferred).
 - **Gated RSVP name search is exact full-name** after normalize (RSVP-01a) — not fuzzy, not
   last-name, not prefix.
+- **Marketing pricing copy is presentation-first (PRICE-01).** Live Stripe Prices / trial checkout
+  are PRICE-02 — do not invent Price IDs in the marketing page.
 
 ---
 
 ## 15. Start here next (pick-up point)
 
-The couple product is feature-complete, shareable, payable, shareable with a planner's couples, and
-maintains booked slots (including **venue packages** — one vendor, many categories) + many budget
-lines per vendor (BUD-04) + an in-flight outreach pipeline + multi-owner run sheets + seating dance
-floors (SEAT-11) + a **gift registry** (couple manage → public page → guest claims) + **meal-aware
-RSVP with guest-member reconciliation** + **guest-gated RSVP (RSVP-01 / 01a)** + a **photo-led
-wedding website** (hero / gallery / party / FAQ / structured travel). Plan is **couples-first
-launch**. Bible is at **v25**. Schema through **0043**; next-free **0044**.
+The couple product is feature-complete, shareable, payable, shareable with a planner's couples **and
+collaborators**, and maintains booked slots (including **venue packages** — one vendor, many
+categories) + many budget lines per vendor (BUD-04) + an in-flight outreach pipeline + multi-owner
+run sheets + seating dance floors (SEAT-11) + a **gift registry** (couple manage → public page →
+guest claims) + **meal-aware RSVP with guest-member reconciliation** + **guest-gated RSVP
+(RSVP-01 / 01a)** + a **photo-led wedding website** (hero / gallery / party / FAQ / structured
+travel) + marketing **`/pricing`**. Plan is **couples-first launch**. Bible is at **v26**. Schema
+through **0043**; next-free **0044**.
 
 **Do not resume a Modern romantic / VND-01 layout polish pass.** Vendors chrome is Soft-stacked.
 **Do not reintroduce category eyebrows or a `PACKAGE` label on Booked cards** (VND-07a). **Do not
@@ -1831,19 +1921,24 @@ suppress single-category chips** (VND-07b).
 **Do not put Supabase imports inside `components/website/`.**
 **Do not add a published gate to `website-media` SELECT without a deliberate product decision.**
 **Do not pull @dnd-kit into the website editor** for gallery reorder (up/down is fine).
+**Do not offer `viewer` from Access until WRITE-01.** Collaborator invites are INV-07 — done.
+**Do not fork a second invitation mechanism** for roles — extend `createProjectInvitation` only.
+**Do not wire PRICE-01 CTAs to invented Stripe Price IDs** — that is PRICE-02.
 
 **A. Dom Soft stack + LAND-01 / LAND-01a live visual checkpoint (still open).**
 Walk couple tabs (Overview, Checklist, Budget, Timeline, Vendors, Guests, **Registry**, Seating,
-Website editor, Notes), planner dashboard/leads/billing/Access, landing, login, `/invite/[token]`,
-and public `/w/[slug]` (+ `/registry`, `/rsvp`). Confirm no hydration mismatch (watch countdown
-days). Fix only real regressions.
+Website editor, Notes), planner dashboard/leads/billing/Access, landing, **`/pricing`**, login,
+`/invite/[token]`, and public `/w/[slug]` (+ `/registry`, `/rsvp`). Confirm no hydration mismatch
+(watch countdown days). Fix only real regressions.
 On Vendors, spot-check: package card (full name + chips), single-chip vendors, recessed empty-slot
 wells, soft-dup connect. On Budget, spot-check multi-line package variance (BUD-04). On Guests,
 spot-check Catering card, member expand, match control, caterer tally, gated QR + full-name copy.
 On Website, spot-check LookStep, hero photo, gallery/party/FAQ, all five templates + palette switch.
+On Access, spot-check couple vs collaborator invite cards + role pills.
 
 **A2. Invite Jordyn for real.** The honest end-to-end test, and the first time the design
-collaborator sees her own view. Use the Access tab on a planner project.
+collaborator sees her own view. Prefer an **INV-07 collaborator** invite on a planner project;
+confirm `project_members.role = 'collaborator'` in SQL after accept.
 
 **A3 (optional). TL-04 live checkpoint** on Dom & Jordyn if not already run — DJ / Officiant sheets
 both include the shared event; `group by owner` proves strings unchanged at rest.
@@ -1882,30 +1977,32 @@ truth). Report how many rows and every read site of `actual_amount`.
 **UI:** separate **"Upcoming"** rail card ABOVE "Needs attention". Date math server-side via
 `lib/date-months.ts`.
 
-**D. WRITE-01 — project-scoped write policy audit. DO THIS BEFORE ANY ROLE PICKER SHIPS.**
+**D. WRITE-01 — project-scoped write policy audit. DO THIS BEFORE ANY `viewer` INVITE SHIPS.**
 `can_edit_project` (0029) now gates projects UPDATE plus registry / meal_options / guest_members /
 **website-media** exemplars. Every other project-scoped table still gates writes on
 `can_access_project`, which a `viewer` passes — including `removeProjectVendor`, which cascades
 outreach history. Enumerate every project-scoped table, decide per table whether the gate should be
 `can_access_project` (read-alike) or `can_edit_project` (write), and migrate the ones that should
-change in one pass. Unreached today only because nothing issues `viewer` invitations.
-**Sequence this before the role picker, and re-run it after Phase-4 conversion.**
+change in one pass. **Collaborator invites (INV-07) are intentional editors** and already pass
+`can_edit_project`. Unreached `viewer` writes remain the hazard. **Sequence this before offering
+`viewer` from Access, and re-run it after Phase-4 conversion.**
 
 **E. Launch (after ONB-02 + BUD-03 + visual QA).**
 Follow the **Launch Prep Runbook**: separate prod Supabase org on Pro + migrations **0001–0043**
 (+ 0044 if MEAL-03a shipped) by hand — **never `db push`** + storage (`project-files` +
 `website-media`) + SMTP; Vercel + domain + env; Stripe live + webhook + Portal + Tax; prod Places
 key; Gmail stays testing mode; privacy + ToS; monitoring; **full prod smoke — including real
-signup, deliberate double-click, a real invitation round trip, a vendor add/remove + multi-slot
-package link cycle (VND-07), multi-line budget vendor links (BUD-04), a seating dance-floor
-place/move/delete (SEAT-11), a plated RSVP + match-to-guest cycle (MEAL), a gated QR + full-name
-RSVP cycle (RSVP-01/01a), a hero/gallery upload + five-template public render (WEB), and a
-registry claim.**
+signup, deliberate double-click, a real couple **and** collaborator invitation round trip, planner
+New wedding create (CREATE-01), a vendor add/remove + multi-slot package link cycle (VND-07),
+multi-line budget vendor links (BUD-04), a seating dance-floor place/move/delete (SEAT-11), a plated
+RSVP + match-to-guest cycle (MEAL), a gated QR + full-name RSVP cycle (RSVP-01/01a), a hero/gallery
+upload + five-template public render (WEB), and a registry claim.**
 
 **F. Planner depth / revenue (after launch, or sooner if planner-led).**
 - Invoicing accepted proposals (recommended first post-launch).
 - INV-06 email delivery.
-- Role picker (`collaborator` / `viewer`) — **gated on WRITE-01**.
+- **`viewer` invite** — **gated on WRITE-01** (collaborator already shipped in INV-07).
+- PRICE-02 — Stripe Prices + checkout for `/pricing` CTAs (incl. $7 trial → $99).
 - Lead→project conversion (Phase 4) — **re-audit write policies**.
 
 **G. Seating — remaining (OPTIONAL).** SEAT-08/09/10/11 DONE. SEAT-06 deferred by choice.
@@ -1920,5 +2017,6 @@ orphaned-vendor handling / account vendor library; currency-helper consolidation
 empty-state copy on empty booked slots when no vendors exist to connect; countdown hydration harden.
 
 **Recommended path:** **apply/checkpoint REG+MEAL+RSVP+WEB (A4)** → **visual checkpoint + invite
-Jordyn (A/A2)** → **MEAL-03a (A5)** → **ONB-02 / 0044+ (B)** → **BUD-03 (C)** → **Launch (E)** →
-WRITE-01 before any role picker (D) → invoicing → INV-06 → conversion (F) → remaining H.
+Jordyn as collaborator (A/A2)** → **MEAL-03a (A5)** → **ONB-02 / 0044+ (B)** → **BUD-03 (C)** →
+**Launch (E)** → WRITE-01 before `viewer` (D) → invoicing → INV-06 / PRICE-02 → conversion (F) →
+remaining H.

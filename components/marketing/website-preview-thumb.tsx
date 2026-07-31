@@ -31,14 +31,18 @@ const DEMO_CONTENT: WeddingWebsiteContent = {
 /**
  * Framed scale-down of the real Romance template so Cormorant stays in
  * `components/website/` (Tier 3). Non-interactive marketing chrome.
+ *
+ * RomanceTemplate's hero is min-h-[80vh] — far taller than this 118px window.
+ * Preview-only: collapse that min-height so the hero sizes to its name/date
+ * band, then nudge so that band sits in the clip (live sites untouched).
  */
 export function WebsitePreviewThumb() {
   return (
     <div
-      className="relative h-[118px] overflow-hidden rounded-[var(--radius-inner)] shadow-recessed"
+      className="relative h-[118px] overflow-hidden rounded-[var(--radius-inner)] shadow-recessed [&_header]:!min-h-0"
       aria-hidden
     >
-      <div className="pointer-events-none absolute inset-0 origin-top scale-[0.42]">
+      <div className="pointer-events-none absolute inset-0 origin-top scale-[0.42] -translate-y-[56px]">
         <div className="w-[238%] -translate-x-[29%]">
           <RomanceTemplate content={DEMO_CONTENT} theme="blush" />
         </div>

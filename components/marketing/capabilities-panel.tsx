@@ -4,7 +4,7 @@ const GROUPS = [
   {
     label: "The plan",
     items: [
-      "AI starter plan from your date & budget",
+      "Starter plan from your date & budget",
       "Checklist with smart phases",
       "Day-of run sheet, printable",
       "Notes & file storage",
@@ -67,10 +67,9 @@ const GROUPS = [
   {
     label: "Always on",
     items: [
-      "AI assistant across every tab",
+      "Assistant on every tab",
       "Wedding-day countdown",
       "Shareable public wedding site",
-      "Works for couples & planners alike",
     ],
   },
 ] as const;

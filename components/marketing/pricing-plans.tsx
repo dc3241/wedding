@@ -29,7 +29,7 @@ const COUPLE_PLANS: Plan[] = [
     description: "Everything you need to start planning the day you get engaged.",
     cta: { label: "Start free", href: "/signup", variant: "default" },
     features: [
-      "AI starter plan from your date & budget",
+      "Starter plan from your date & budget",
       "Checklist & day-of timeline",
       "Guest list & basic budget",
       "One wedding website",
@@ -44,7 +44,7 @@ const COUPLE_PLANS: Plan[] = [
     cta: { label: "Start your $7 week", href: "/signup", variant: "primary" },
     features: [
       "Everything in Free",
-      "AI planning assistant & vendor outreach",
+      "Planning assistant & vendor outreach",
       "Full budget with vendor links",
       "Seating chart, RSVP & registry",
       "Photo-led website + custom RSVP",

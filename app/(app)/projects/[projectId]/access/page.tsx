@@ -6,6 +6,7 @@ import {
 import { InviteForm } from "./InviteForm";
 import { Card } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
+import { Pill } from "@/components/ui/pill";
 import { getAccountContext } from "@/lib/account-context";
 import { sectionStackClass } from "@/lib/density";
 import { createClient } from "@/utils/supabase/server";
@@ -32,6 +33,18 @@ function expiresInLabel(expiresAt: string) {
   if (days <= 0) return "expired";
   if (days === 1) return "expires in 1 day";
   return `expires in ${days} days`;
+}
+
+function inviteRoleLabel(role: string) {
+  return role === "collaborator" ? "Collaborator" : "Couple";
+}
+
+function InviteRolePill({ role }: { role: string }) {
+  return (
+    <Pill variant={role === "collaborator" ? "default" : "accent"}>
+      {inviteRoleLabel(role)}
+    </Pill>
+  );
 }
 
 export default async function AccessPage({
@@ -86,20 +99,45 @@ export default async function AccessPage({
       <PageHeader
         eyebrow={eyebrow}
         title="Access"
-        description="Invite the couple to this wedding. They see only this project."
+        description="Invite the couple or a collaborator to this wedding. They see only this project."
       />
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)] lg:items-start lg:gap-8">
         <div className="min-w-0 space-y-5">
           <Card className="p-5">
             <h2 className="text-[19px] font-extrabold tracking-[-0.02em] text-ink">
-              Invite
+              Invite the couple
             </h2>
             <p className="mt-1 text-[13px] text-muted">
-              Send a link to the couple&apos;s email. Role is couple.
+              Send a link to the couple&apos;s email. They get couple access to
+              this wedding only.
             </p>
             <div className="mt-4">
-              <InviteForm projectId={projectId} />
+              <InviteForm
+                projectId={projectId}
+                role="couple"
+                emailId="invite-couple-email"
+                placeholder="couple@example.com"
+              />
+            </div>
+          </Card>
+
+          <Card className="p-5">
+            <h2 className="text-[19px] font-extrabold tracking-[-0.02em] text-ink">
+              Invite a collaborator
+            </h2>
+            <p className="mt-1 text-[13px] text-muted">
+              Collaborators can help plan this wedding. They won&apos;t see your
+              other clients.
+            </p>
+            <div className="mt-4">
+              <InviteForm
+                projectId={projectId}
+                role="collaborator"
+                emailId="invite-collaborator-email"
+                placeholder="associate@example.com"
+                submitLabel="Invite collaborator"
+              />
             </div>
           </Card>
 
@@ -121,9 +159,12 @@ export default async function AccessPage({
                     className="flex items-center justify-between gap-3 rounded-[var(--radius-inner)] bg-well px-3 py-3 shadow-recessed"
                   >
                     <div className="min-w-0">
-                      <p className="truncate text-[15px] font-medium text-ink">
-                        {row.email}
-                      </p>
+                      <div className="flex min-w-0 flex-wrap items-center gap-2">
+                        <p className="truncate text-[15px] font-medium text-ink">
+                          {row.email}
+                        </p>
+                        <InviteRolePill role={row.role} />
+                      </div>
                       <p className="text-[13px] text-muted">
                         {expiresInLabel(row.expires_at)}
                       </p>
@@ -153,9 +194,12 @@ export default async function AccessPage({
                     className="flex items-center justify-between gap-3 rounded-[var(--radius-inner)] bg-well px-3 py-3 shadow-recessed"
                   >
                     <div className="min-w-0">
-                      <p className="truncate text-[15px] font-medium text-ink">
-                        {row.email}
-                      </p>
+                      <div className="flex min-w-0 flex-wrap items-center gap-2">
+                        <p className="truncate text-[15px] font-medium text-ink">
+                          {row.email}
+                        </p>
+                        <InviteRolePill role={row.role} />
+                      </div>
                       <p className="text-[13px] text-muted">
                         Accepted{" "}
                         {row.accepted_at
@@ -183,11 +227,16 @@ export default async function AccessPage({
             </h2>
             <ul className="mt-3 space-y-2 text-[13px] text-muted">
               <li>
-                An invited couple sees only this wedding — not your full book.
+                An invited couple or collaborator sees only this wedding — not
+                your full book.
               </li>
               <li>
-                They can edit the wedding date and budget target. They cannot see
-                Contracts.
+                Couples can edit the wedding date and budget target. They cannot
+                see Contracts.
+              </li>
+              <li>
+                Collaborators help plan this wedding only. They do not get
+                planner CRM access.
               </li>
               <li>
                 They do not get their own account. Removing access takes the

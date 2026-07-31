@@ -11,7 +11,7 @@ export function FinalCta() {
             Ready when you are
           </p>
           <h2 className="mx-auto mt-4 max-w-[18ch] text-[32px] font-extrabold tracking-[-0.03em] text-white md:text-[40px]">
-            Start planning with Soft stack calm.
+            Start planning, calmly.
           </h2>
           <p className="mx-auto mt-4 max-w-md text-[15px] leading-relaxed text-white/70">
             Free to begin. Bring your date — we&apos;ll structure the plan, help

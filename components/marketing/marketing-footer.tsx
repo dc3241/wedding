@@ -20,7 +20,7 @@ export function MarketingFooter() {
           </Link>
         </nav>
         <p className="text-[12px] text-muted">
-          © {new Date().getFullYear()} Soft stack planning.
+          © {new Date().getFullYear()} First Look.
         </p>
       </div>
     </footer>

@@ -8,7 +8,7 @@ export function LandingHero() {
     <section className="mx-auto max-w-6xl px-6 pt-16 pb-5 md:px-10 md:pt-[76px]">
       <div className="grid items-center gap-12 md:grid-cols-2 md:gap-16">
         <ScrollReveal>
-          <Eyebrow className="mb-5 block">Soft stack planning</Eyebrow>
+          <Eyebrow className="mb-5 block">Wedding planning, together</Eyebrow>
           <h1 className="max-w-[16ch] text-[42px] font-extrabold leading-[1.02] tracking-[-0.03em] text-ink md:text-[52px] lg:text-[64px]">
             Wedding planning that stays calm under pressure.
           </h1>

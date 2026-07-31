@@ -2,7 +2,10 @@
 
 import { useState, useTransition } from "react";
 import { CopyInviteLink } from "./CopyInviteLink";
-import { createProjectInvitation } from "@/lib/invitations/actions";
+import {
+  createProjectInvitation,
+  type ProjectInviteRole,
+} from "@/lib/invitations/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -18,7 +21,19 @@ function mapInviteError(message: string): string {
   return message;
 }
 
-export function InviteForm({ projectId }: { projectId: string }) {
+export function InviteForm({
+  projectId,
+  role,
+  emailId,
+  placeholder,
+  submitLabel = "Invite",
+}: {
+  projectId: string;
+  role: ProjectInviteRole;
+  emailId: string;
+  placeholder?: string;
+  submitLabel?: string;
+}) {
   const [email, setEmail] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [inviteUrl, setInviteUrl] = useState<string | null>(null);
@@ -30,7 +45,7 @@ export function InviteForm({ projectId }: { projectId: string }) {
     setInviteUrl(null);
 
     startTransition(async () => {
-      const result = await createProjectInvitation(projectId, email);
+      const result = await createProjectInvitation(projectId, email, role);
       if (!result.ok) {
         setError(mapInviteError(result.error));
         return;
@@ -45,17 +60,17 @@ export function InviteForm({ projectId }: { projectId: string }) {
     <div className="space-y-4">
       <form onSubmit={handleSubmit} className="space-y-3">
         <div className="space-y-1.5">
-          <label htmlFor="invite-email" className="text-sm font-medium text-ink">
+          <label htmlFor={emailId} className="text-sm font-medium text-ink">
             Email
           </label>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
             <Input
-              id="invite-email"
+              id={emailId}
               name="email"
               type="email"
               required
               autoComplete="email"
-              placeholder="couple@example.com"
+              placeholder={placeholder}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               disabled={isPending}
@@ -67,7 +82,7 @@ export function InviteForm({ projectId }: { projectId: string }) {
               disabled={isPending}
               className="shrink-0"
             >
-              {isPending ? "Sending…" : "Invite"}
+              {isPending ? "Sending…" : submitLabel}
             </Button>
           </div>
         </div>

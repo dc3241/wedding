@@ -1,8 +1,7 @@
-import { AudienceSplit } from "./audience-split";
+import { AudienceSection } from "./audience-section";
 import { CapabilitiesPanel } from "./capabilities-panel";
 import { FeatureGrid } from "./feature-grid";
 import { FinalCta } from "./final-cta";
-import { HowItWorks } from "./how-it-works";
 import { LandingHero } from "./landing-hero";
 import { MarketingFooter } from "./marketing-footer";
 import { MarketingTopbar } from "./marketing-topbar";
@@ -13,10 +12,9 @@ export function LandingPage() {
       <MarketingTopbar />
       <main>
         <LandingHero />
+        <AudienceSection />
         <CapabilitiesPanel />
-        <AudienceSplit />
         <FeatureGrid />
-        <HowItWorks />
         <FinalCta />
       </main>
       <MarketingFooter />

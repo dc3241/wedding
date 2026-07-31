@@ -5,7 +5,7 @@ import { NavLink, NavLinks, Wordmark } from "@/components/ui/topbar";
 import { cn } from "@/lib/cn";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type MouseEvent } from "react";
 
 const SECTION_NAV = [
   { id: "features", label: "Features", href: "/#features" },
@@ -17,6 +17,37 @@ const navLinkClass =
   "relative rounded-none bg-transparent px-3 py-1.5 text-[14px] font-medium text-muted no-underline transition-colors duration-150 hover:bg-transparent hover:text-ink after:absolute after:inset-x-3 after:bottom-0.5 after:h-[2px] after:origin-left after:scale-x-0 after:bg-accent after:transition-transform after:duration-150 hover:after:scale-x-100 motion-reduce:after:transition-none";
 
 const navLinkActiveClass = "text-ink after:scale-x-100";
+
+/**
+ * Same-page section nav: set a CLEAN single hash (never append), scroll to the
+ * target, and fire hashchange so audience-section can sync its tab.
+ * Off-home, let Next.js <Link> do a normal navigation to /#id.
+ */
+function navigateToSection(
+  e: MouseEvent<HTMLAnchorElement>,
+  sectionId: string,
+  onHome: boolean,
+) {
+  if (!onHome) return;
+
+  e.preventDefault();
+  const nextUrl = `/#${sectionId}`;
+  if (window.location.pathname + window.location.hash !== nextUrl) {
+    window.history.pushState(null, "", nextUrl);
+  } else {
+    // Already on this hash — still ensure a single clean fragment.
+    window.history.replaceState(null, "", nextUrl);
+  }
+  window.dispatchEvent(new Event("hashchange"));
+
+  const reduceMotion = window.matchMedia(
+    "(prefers-reduced-motion: reduce)",
+  ).matches;
+  document.getElementById(sectionId)?.scrollIntoView({
+    behavior: reduceMotion ? "auto" : "smooth",
+    block: "start",
+  });
+}
 
 export function MarketingTopbar() {
   const pathname = usePathname();
@@ -89,6 +120,7 @@ export function MarketingTopbar() {
                 key={item.id}
                 href={item.href}
                 className={cn(navLinkClass, isActive && navLinkActiveClass)}
+                onClick={(e) => navigateToSection(e, item.id, onHome)}
               >
                 {item.label}
               </NavLink>
