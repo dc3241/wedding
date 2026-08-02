@@ -30,8 +30,17 @@ type BudgetItemInput = {
   label: string | null;
   planned_amount: number;
   actual_amount: number | null;
+  due_date?: string | null;
   notes: string | null;
   project_vendor_id: string | null;
+};
+
+type BudgetPaymentInput = {
+  id: string;
+  budget_item_id: string;
+  amount: number;
+  paid_on: string | null;
+  note: string | null;
 };
 
 type GuestStats = {
@@ -50,6 +59,7 @@ type CoupleDashboardProps = {
   vendors: OutreachVendor[];
   totalBudget: number | null;
   budgetItems: BudgetItemInput[];
+  budgetPayments?: BudgetPaymentInput[];
   guestStats: GuestStats;
   website: { published: boolean } | null;
 };
@@ -290,11 +300,13 @@ function BudgetRailCard({
   projectId,
   totalBudget,
   budgetItems,
+  budgetPayments,
   vendors,
 }: {
   projectId: string;
   totalBudget: number | null;
   budgetItems: BudgetItemInput[];
+  budgetPayments: BudgetPaymentInput[];
   vendors: OutreachVendor[];
 }) {
   const projectVendors: ProjectVendorOption[] = vendors.map((v) => ({
@@ -308,12 +320,13 @@ function BudgetRailCard({
     budgetItems,
     totalBudget,
     projectVendors,
+    budgetPayments,
   );
-  const { allocated, spent, unallocated } = aggregates;
+  const { allocated, paidTotal, unallocated } = aggregates;
   const overAllocated = unallocated !== null && unallocated < 0;
 
-  const spentPct =
-    allocated > 0 ? Math.min(100, (spent / allocated) * 100) : 0;
+  const paidPct =
+    allocated > 0 ? Math.min(100, (paidTotal / allocated) * 100) : 0;
 
   return (
     <Link
@@ -331,20 +344,20 @@ function BudgetRailCard({
         ) : (
           <>
             <p className="font-display text-[30px] font-extrabold leading-none tracking-[-0.03em] tabular-nums text-ink">
-              {formatCurrency(spent)}
+              {formatCurrency(paidTotal)}
             </p>
             <p className="mt-[7px] text-[13px] leading-relaxed text-muted">
-              spent of {formatCurrency(allocated)} allocated
+              paid of {formatCurrency(allocated)} allocated
             </p>
             <div
               className="mt-4 h-2.5 overflow-hidden rounded-[var(--radius-pill)] bg-[#EDE4E8] p-0.5"
               role="img"
-              aria-label={`Spent ${formatCurrency(spent)} of ${formatCurrency(allocated)} allocated`}
+              aria-label={`Paid ${formatCurrency(paidTotal)} of ${formatCurrency(allocated)} allocated`}
             >
-              {spentPct > 0 ? (
+              {paidPct > 0 ? (
                 <div
                   className="h-full rounded-[var(--radius-pill)] bg-sage transition-[width] duration-300"
-                  style={{ width: `${spentPct}%` }}
+                  style={{ width: `${paidPct}%` }}
                 />
               ) : null}
             </div>
@@ -531,6 +544,7 @@ export function CoupleDashboard({
   vendors,
   totalBudget,
   budgetItems,
+  budgetPayments = [],
   guestStats,
   website,
 }: CoupleDashboardProps) {
@@ -557,6 +571,7 @@ export function CoupleDashboard({
             projectId={projectId}
             totalBudget={totalBudget}
             budgetItems={budgetItems}
+            budgetPayments={budgetPayments}
             vendors={vendors}
           />
           <VendorsRailCard projectId={projectId} vendors={vendors} />

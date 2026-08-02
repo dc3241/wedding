@@ -3,6 +3,14 @@
 import { useState, useTransition } from "react";
 import { AddBudgetItemForm } from "./AddBudgetItemForm";
 import { BudgetItemRow } from "./BudgetItemRow";
+import {
+  BudgetFilterBar,
+  itemMatchesStatus,
+  statusMatchLabel,
+  todayLocalDateKey,
+  type BudgetStatusFilter,
+} from "./BudgetFilterBar";
+import { BudgetQuickAdd } from "./BudgetQuickAdd";
 import { TotalBudgetEditor } from "./TotalBudgetEditor";
 import { dismissBudgetAlert } from "./actions";
 import type {
@@ -16,6 +24,7 @@ import { formatCurrency } from "@/lib/format-currency";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
+import { Pill } from "@/components/ui/pill";
 import { cn } from "@/lib/cn";
 
 type BudgetBoardProps = {
@@ -41,33 +50,41 @@ function AllocationBand({
   projectId: string;
   aggregates: BudgetAggregates;
 }) {
-  const { totalBudget, allocated, spent, committed, unallocated } = aggregates;
+  const {
+    totalBudget,
+    allocated,
+    actualTotal,
+    paidTotal,
+    committed,
+    unallocated,
+  } = aggregates;
 
   const overAllocated = unallocated !== null && unallocated < 0;
   const showBar = totalBudget !== null;
 
-  let spentPct = 0;
+  // "Paid so far" bar = paidTotal / total_budget (ledger only — never actual).
+  let paidPct = 0;
   let committedPct = 0;
   if (showBar && totalBudget > 0) {
     if (overAllocated) {
       const fillBase = allocated > 0 ? allocated : totalBudget;
-      spentPct = Math.min(100, (spent / fillBase) * 100);
-      committedPct = Math.min(100 - spentPct, (committed / fillBase) * 100);
+      paidPct = Math.min(100, (paidTotal / fillBase) * 100);
+      committedPct = Math.min(100 - paidPct, (committed / fillBase) * 100);
     } else {
-      spentPct = Math.min(100, (spent / totalBudget) * 100);
+      paidPct = Math.min(100, (paidTotal / totalBudget) * 100);
       committedPct = Math.min(
-        100 - spentPct,
+        100 - paidPct,
         (committed / totalBudget) * 100,
       );
     }
   } else if (showBar && overAllocated) {
-    spentPct = allocated > 0 ? Math.min(100, (spent / allocated) * 100) : 0;
-    committedPct = Math.min(100 - spentPct, 100);
+    paidPct = allocated > 0 ? Math.min(100, (paidTotal / allocated) * 100) : 0;
+    committedPct = Math.min(100 - paidPct, 100);
   }
 
   const headlinePct =
     totalBudget !== null && totalBudget > 0
-      ? Math.round((spent / totalBudget) * 100)
+      ? Math.round((paidTotal / totalBudget) * 100)
       : null;
 
   return (
@@ -80,7 +97,7 @@ function AllocationBand({
                 {headlinePct}%
               </p>
               <p className="mt-2 text-[14px] font-medium text-muted">
-                spent of {formatCurrency(totalBudget!)}
+                paid so far of {formatCurrency(totalBudget!)}
               </p>
             </>
           ) : (
@@ -106,13 +123,13 @@ function AllocationBand({
           aria-label={
             overAllocated
               ? "Budget fully allocated, over target"
-              : `Spent ${formatCurrency(spent)}, committed ${formatCurrency(committed)} of ${formatCurrency(totalBudget)}`
+              : `Paid ${formatCurrency(paidTotal)}, committed ${formatCurrency(committed)} of ${formatCurrency(totalBudget)}`
           }
         >
-          {spentPct > 0 ? (
+          {paidPct > 0 ? (
             <div
               className="h-full rounded-[var(--radius-pill)] bg-sage transition-[width] duration-300"
-              style={{ width: `${spentPct}%` }}
+              style={{ width: `${paidPct}%` }}
             />
           ) : null}
           {committedPct > 0 ? (
@@ -131,8 +148,8 @@ function AllocationBand({
         className={cn(
           "mt-6 grid gap-5",
           totalBudget === null
-            ? "grid-cols-3"
-            : "grid-cols-2 sm:grid-cols-4",
+            ? "grid-cols-2 sm:grid-cols-4"
+            : "grid-cols-2 sm:grid-cols-3 lg:grid-cols-5",
         )}
       >
         <StatCell label="Allocated" value={formatCurrency(allocated)} />
@@ -147,7 +164,8 @@ function AllocationBand({
             tone={unallocated < 0 ? "rosewood" : "default"}
           />
         ) : null}
-        <StatCell label="Spent" value={formatCurrency(spent)} />
+        <StatCell label="Actual" value={formatCurrency(actualTotal)} />
+        <StatCell label="Paid so far" value={formatCurrency(paidTotal)} />
         <StatCell label="Committed" value={formatCurrency(committed)} />
       </dl>
     </Card>
@@ -237,18 +255,34 @@ function CategoryBar({ group }: { group: BudgetCategoryGroup }) {
 }
 
 function CategorySection({
+  projectId,
   group,
+  visibleItems,
+  matchBadge,
   open,
   onToggle,
   projectVendors,
   allItems,
+  todayKey,
 }: {
+  projectId: string;
   group: BudgetCategoryGroup;
+  visibleItems: BudgetItemForAggregate[];
+  matchBadge: string | null;
   open: boolean;
   onToggle: () => void;
   projectVendors: ProjectVendorOption[];
   allItems: BudgetItemForAggregate[];
+  todayKey: string;
 }) {
+  const nextDues = visibleItems
+    .map((item) => item.nextDue)
+    .filter((due): due is NonNullable<typeof due> => due != null)
+    .sort((a, b) => a.due_on.localeCompare(b.due_on));
+  const earliestNext = nextDues[0] ?? null;
+  const earliestPast =
+    earliestNext != null && earliestNext.due_on < todayKey;
+
   return (
     <details
       className={cn(
@@ -265,31 +299,46 @@ function CategorySection({
         }}
       >
         <div className="flex items-baseline justify-between gap-x-3">
-          <span className="truncate text-[15px] font-medium text-ink">
-            {group.category}
+          <span className="flex min-w-0 items-center gap-2">
+            <span className="truncate text-[15px] font-medium text-ink">
+              {group.category}
+            </span>
+            {matchBadge ? <Pill>{matchBadge}</Pill> : null}
           </span>
-          <span className="shrink-0 text-[15px] font-medium tabular-nums text-ink">
-            {formatCurrency(group.plannedTotal)}
-          </span>
+          {group.plannedTotal > 0 ? (
+            <span className="shrink-0 text-[15px] font-medium tabular-nums text-ink">
+              {formatCurrency(group.plannedTotal)}
+            </span>
+          ) : null}
         </div>
         <CategoryBar group={group} />
-        <div className="mt-2">
+        <div className="mt-2 space-y-1">
           <CategoryStateLine group={group} />
+          {earliestNext ? (
+            <p
+              className={cn(
+                "text-[13px] font-medium tabular-nums",
+                earliestPast ? "text-rosewood" : "text-muted",
+              )}
+            >
+              {formatCurrency(earliestNext.amount)} next due{" "}
+              {new Date(earliestNext.due_on + "T00:00:00").toLocaleDateString(
+                "en-US",
+                { day: "numeric", month: "short" },
+              )}
+              {earliestPast ? " · past due" : ""}
+            </p>
+          ) : null}
         </div>
       </summary>
 
       {open ? (
         <div className="px-3.5 pb-3.5">
-          <div className="mb-2 grid grid-cols-[minmax(0,1fr)_96px_96px_52px] gap-x-2 px-4 text-[12px] font-semibold uppercase tracking-[0.09em] text-muted">
-            <span>Item</span>
-            <span className="text-right">Planned</span>
-            <span className="text-right">Total Spent</span>
-            <span />
-          </div>
           <ul>
-            {group.items.map((item) => (
+            {visibleItems.map((item) => (
               <BudgetItemRow
                 key={item.id}
+                projectId={projectId}
                 item={item}
                 projectVendors={projectVendors}
                 allItems={allItems}
@@ -486,6 +535,8 @@ export function BudgetBoard({
   projectVendors,
 }: BudgetBoardProps) {
   const [showAdd, setShowAdd] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<BudgetStatusFilter>("all");
+  const [categoryFilter, setCategoryFilter] = useState("");
   // One open at a time — seed with the first over-plan category if any.
   const [openCategory, setOpenCategory] = useState<string | null>(() => {
     const firstOver = aggregates.perCategory.find((group) => group.isOver);
@@ -496,12 +547,33 @@ export function BudgetBoard({
     setOpenCategory((prev) => (prev === key ? null : key));
   }
 
+  const todayKey = todayLocalDateKey();
   const empty = aggregates.perCategory.length === 0;
   const allItems = aggregates.perCategory.flatMap((group) => group.items);
+  const categoryOptions = aggregates.perCategory.map((group) => group.category);
+
+  const filteredGroups = aggregates.perCategory
+    .filter(
+      (group) => categoryFilter === "" || group.category === categoryFilter,
+    )
+    .map((group) => {
+      const visibleItems = group.items.filter((item) =>
+        itemMatchesStatus(item, statusFilter, todayKey),
+      );
+      return {
+        group,
+        visibleItems,
+        matchBadge: statusMatchLabel(statusFilter, visibleItems.length),
+      };
+    })
+    .filter((row) => row.visibleItems.length > 0);
+
   const eyebrow =
     weddingDate != null
       ? `${projectName} · ${formatEyebrowDate(weddingDate)}`
       : projectName;
+
+  const filtersActive = statusFilter !== "all" || categoryFilter !== "";
 
   return (
     <div className="space-y-6">
@@ -516,20 +588,23 @@ export function BudgetBoard({
               {aggregates.perCategory.length}{" "}
               {aggregates.perCategory.length === 1 ? "category" : "categories"}
             </p>
-            <button
-              type="button"
-              onClick={() => setShowAdd((v) => !v)}
-              aria-expanded={showAdd}
-              aria-pressed={showAdd}
-              className={cn(
-                "rounded-[var(--radius-pill)] px-4 py-2.5 text-[14px] font-semibold transition-colors",
-                showAdd
-                  ? "bg-accent text-surface"
-                  : "bg-accent-wash text-accent",
-              )}
-            >
-              {showAdd ? "Cancel" : "Add item"}
-            </button>
+            <div className="flex flex-wrap items-center gap-2">
+              <BudgetQuickAdd projectId={projectId} />
+              <button
+                type="button"
+                onClick={() => setShowAdd((v) => !v)}
+                aria-expanded={showAdd}
+                aria-pressed={showAdd}
+                className={cn(
+                  "rounded-[var(--radius-pill)] px-4 py-2.5 text-[14px] font-semibold transition-colors",
+                  showAdd
+                    ? "bg-accent text-surface"
+                    : "bg-accent-wash text-accent",
+                )}
+              >
+                {showAdd ? "Cancel" : "Add item"}
+              </button>
+            </div>
           </div>
 
           {showAdd ? (
@@ -546,24 +621,46 @@ export function BudgetBoard({
               Add your first budget item to start tracking categories.
             </EmptyState>
           ) : (
-            <div
-              className="grid gap-4"
-              style={{
-                // Cap at 4 cols: track min is at least ~1/4 of the row (3× gap-4).
-                gridTemplateColumns:
-                  "repeat(auto-fit, minmax(min(100%, max(180px, calc((100% - 3rem) / 4))), 1fr))",
-              }}
-            >
-              {aggregates.perCategory.map((group) => (
-                <CategorySection
-                  key={group.category}
-                  group={group}
-                  open={openCategory === group.category}
-                  onToggle={() => toggleCategory(group.category)}
-                  projectVendors={projectVendors}
-                  allItems={allItems}
-                />
-              ))}
+            <div className="space-y-4">
+              <BudgetFilterBar
+                status={statusFilter}
+                onStatusChange={setStatusFilter}
+                category={categoryFilter}
+                onCategoryChange={setCategoryFilter}
+                categories={categoryOptions}
+              />
+
+              {filteredGroups.length === 0 ? (
+                <EmptyState>
+                  {filtersActive
+                    ? "No items match these filters."
+                    : "Add your first budget item to start tracking categories."}
+                </EmptyState>
+              ) : (
+                <div
+                  className="grid gap-4"
+                  style={{
+                    // Cap at 4 cols: track min is at least ~1/4 of the row (3× gap-4).
+                    gridTemplateColumns:
+                      "repeat(auto-fit, minmax(min(100%, max(180px, calc((100% - 3rem) / 4))), 1fr))",
+                  }}
+                >
+                  {filteredGroups.map(({ group, visibleItems, matchBadge }) => (
+                    <CategorySection
+                      key={group.category}
+                      projectId={projectId}
+                      group={group}
+                      visibleItems={visibleItems}
+                      matchBadge={matchBadge}
+                      open={openCategory === group.category}
+                      onToggle={() => toggleCategory(group.category)}
+                      projectVendors={projectVendors}
+                      allItems={allItems}
+                      todayKey={todayKey}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </div>

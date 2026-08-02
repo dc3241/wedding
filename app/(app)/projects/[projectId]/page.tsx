@@ -40,6 +40,7 @@ export default async function ProjectPage({
     { data: tasks },
     { data: vendorRows },
     { data: budgetItemRows },
+    { data: paymentRows },
     { data: guestRows },
     { data: websiteRow },
   ] = await Promise.all([
@@ -63,11 +64,15 @@ export default async function ProjectPage({
     supabase
       .from("budget_items")
       .select(
-        "id, category, label, planned_amount, actual_amount, notes, project_vendor_id",
+        "id, category, label, planned_amount, actual_amount, due_date, notes, project_vendor_id",
       )
       .eq("project_id", projectId)
       .order("category", { ascending: true, nullsFirst: false })
       .order("label", { ascending: true }),
+    supabase
+      .from("budget_payments")
+      .select("id, budget_item_id, amount, paid_on, note")
+      .eq("project_id", projectId),
     supabase
       .from("guests")
       .select("id, party_size, rsvp_status")
@@ -142,8 +147,17 @@ export default async function ProjectPage({
       row.actual_amount === null || row.actual_amount === undefined
         ? null
         : Number(row.actual_amount),
+    due_date: row.due_date ?? null,
     notes: row.notes,
     project_vendor_id: row.project_vendor_id ?? null,
+  }));
+
+  const budgetPayments = (paymentRows ?? []).map((row) => ({
+    id: row.id,
+    budget_item_id: row.budget_item_id,
+    amount: Number(row.amount),
+    paid_on: row.paid_on ?? null,
+    note: row.note ?? null,
   }));
 
   const guests = (guestRows ?? []) as Pick<
@@ -172,6 +186,7 @@ export default async function ProjectPage({
       vendors={vendors}
       totalBudget={totalBudget}
       budgetItems={budgetItems}
+      budgetPayments={budgetPayments}
       guestStats={guestStats}
       website={website}
     />

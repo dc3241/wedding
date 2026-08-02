@@ -21,8 +21,10 @@ export function AddBudgetItemForm({
     const label = (form.get("label") as string) ?? "";
     const plannedRaw = (form.get("planned_amount") as string) ?? "0";
     const actualRaw = (form.get("actual_amount") as string) ?? "";
+    const dueRaw = (form.get("due_date") as string) ?? "";
     const plannedAmount = Number(plannedRaw);
     const actualAmount = actualRaw.trim() ? Number(actualRaw) : null;
+    const dueDate = dueRaw.trim() || null;
 
     // Capture before the await — React nulls the synthetic event's currentTarget.
     const formEl = e.currentTarget;
@@ -36,6 +38,7 @@ export function AddBudgetItemForm({
         actualAmount !== null && !Number.isNaN(actualAmount)
           ? actualAmount
           : null,
+        dueDate,
       );
       formEl.reset();
       onAdded?.();
@@ -44,8 +47,8 @@ export function AddBudgetItemForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="space-y-1.5">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+        <div className="min-w-0 space-y-1.5">
           <label
             htmlFor="budget-category"
             className="text-sm font-medium text-ink"
@@ -60,7 +63,7 @@ export function AddBudgetItemForm({
             disabled={isPending}
           />
         </div>
-        <div className="space-y-1.5">
+        <div className="min-w-0 space-y-1.5">
           <label htmlFor="budget-label" className="text-sm font-medium text-ink">
             Vendor Name{" "}
             <span className="font-normal text-muted">(optional)</span>
@@ -73,12 +76,12 @@ export function AddBudgetItemForm({
             disabled={isPending}
           />
         </div>
-        <div className="space-y-1.5">
+        <div className="min-w-0 space-y-1.5">
           <label
             htmlFor="budget-planned"
             className="text-sm font-medium text-ink"
           >
-            Planned
+            Estimate
           </label>
           <Input
             id="budget-planned"
@@ -90,7 +93,7 @@ export function AddBudgetItemForm({
             disabled={isPending}
           />
         </div>
-        <div className="space-y-1.5">
+        <div className="min-w-0 space-y-1.5">
           <label
             htmlFor="budget-actual"
             className="text-sm font-medium text-ink"
@@ -104,6 +107,23 @@ export function AddBudgetItemForm({
             type="number"
             min={0}
             step="0.01"
+            disabled={isPending}
+          />
+        </div>
+        <div className="min-w-0 space-y-1.5">
+          <label
+            htmlFor="budget-due-date"
+            className="text-sm font-medium text-ink"
+          >
+            Due date{" "}
+            <span className="font-normal text-muted">
+              (optional first installment)
+            </span>
+          </label>
+          <Input
+            id="budget-due-date"
+            name="due_date"
+            type="date"
             disabled={isPending}
           />
         </div>

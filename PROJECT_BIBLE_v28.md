@@ -490,7 +490,31 @@ create policy "contract templates managed by account members" on contract_templa
 `category` is NO-CHECK free text, in-app validated. **VERIFIED:** `to_regclass('contract_templates')`
 not null; ALL policy present; account isolation holds.
 
+### 0051 budget_payments (BUD-03) — APPLIED LIVE
+
+Per-item `due_date date` + project-scoped `budget_payments` ledger. `actual_amount` **not** renamed
+(now means Actual/cost; Paid = Σ ledger only). No backfill. Composite FK
+`(project_id, budget_item_id) → budget_items(project_id, id)` ON DELETE CASCADE via unique
+`budget_items_project_id_id_key`. RLS: single `FOR ALL` `can_access_project` (mirrors `budget_items`
+write gate — WRITE-01 sharp edge). Read rewire: `paidTotal = Σ payments`;
+`committed = max(allocated − paidTotal, 0)` (planned-but-not-yet-paid); over-plan alert still
+compares category Actual vs Estimate.
+
+### 0052 payment_schedule (BUD-SCHED-01) — paste by hand
+
+Dated installments per budget item (`amount`, `due_on`, optional `label`). Backfills existing
+`budget_items.due_date` → one "Balance" row (once). **Does not drop `due_date`** (write-dead in app;
+drop in 0053+ after parity). RLS: `can_access_project` FOR ALL — WRITE-01 sharp edge. Waterfall:
+ledger paid covers installments by due_on order; Past-due filter uses next uncovered installment.
+
 ### Column reference (v28 additions; v27 entries unchanged)
+
+**`budget_items` (0010 + 0026 + 0048 + 0051):** `planned_amount` (Estimate); `actual_amount` (Actual
+cost — not Paid); **`due_date` date nullable (0051)**; `project_vendor_id` optional link. Unique
+`(project_id, id)` index for payment composite FK.
+
+**`budget_payments` (0051):** project-scoped ledger rows — `amount`, `paid_on` date, optional `note`.
+Paid is derived only from this table. Deletes cascade with the parent item.
 
 **`projects` (0001 + 0010 + 0044 + 0045 index):** `wedding_date` date nullable; `total_budget`
 numeric(12,2) nullable; `archived_at` timestamptz nullable (0044). **New unique index
@@ -983,9 +1007,10 @@ in v27 §13.
 **Open — security / schema (carried forward + v28):**
 - **`viewer` can write on every project-scoped table except `projects` and the WRITE-01 exemplars**
   (`registry_items`, `registry_claims` editor writes, `meal_options`, `guest_members`, `website-media`
-  storage). `project_vendors`, `tasks`, `budget_items`, `guests`, `notes`, `timeline_events`,
-  `seating_*`, `files` (incl. the new `category`), rsvp member writes, etc. still gate writes on
-  `can_access_project`, which a `viewer` passes. Unreached today (Access issues only
+  storage). `project_vendors`, `tasks`, `budget_items`, **`budget_payments` (BUD-03 / 0051)**,
+  **`payment_schedule` (BUD-SCHED-01 / 0052)**, `guests`,
+  `notes`, `timeline_events`, `seating_*`, `files` (incl. the new `category`), rsvp member writes, etc.
+  still gate writes on `can_access_project`, which a `viewer` passes. Unreached today (Access issues only
   `{couple, collaborator}`). **WRITE-01 before any `viewer` invite.**
 - **`projects` has NO DELETE policy** (silent-no-op shape, unreached).
 - **Four category columns have NO CHECK** — form pickers + in-app validation keep garbage out in
@@ -1162,15 +1187,19 @@ inserts → a SECURITY DEFINER function. **Also owns the category-constraint dec
 `vendor_targets.category`, `vendors.category`, **`files.category`, and `contract_templates.category`**
 — apply one CHECK against one canonical list, or decide deliberately not to and record why.
 
-**C. BUD-03 — budget payments + deadlines (pre-launch).** `budget_payments` child table; derive
-`spent`/`committed` from paid payments; Upcoming rail card. Backfill `actual_amount` (refuse dual
-sources). Cheap now, a production money migration later.
+**C. BUD-03 — budget payments + deadlines (pre-launch).** `budget_payments` child table (0051 live);
+derive Paid / `committed` from ledger (`committed` = planned-but-not-yet-paid). Data-model + item-row
+UI shipped this slice; Category/Unpaid/Paid-in-full/Past-due filter + dashboard overhaul = next.
+Do **not** dual-source Paid from `actual_amount`. Assistant `getBudget` double-count still stale.
 
 **D. WRITE-01 — project-scoped write policy audit. BEFORE ANY `viewer` INVITE.** Enumerate every
 project-scoped table; decide per table `can_access_project` (read-alike) vs `can_edit_project` (write);
-migrate the ones that should change in one pass. `removeProjectVendor`, `deleteTask`, and now
-`files.category`/`setFileCategory` are the sharp `can_access_project` writes a `viewer` would pass.
-Collaborators (INV-07) are intended editors and already pass `can_edit_project`. Re-run after Phase-4.
+migrate the ones that should change in one pass. `removeProjectVendor`, `deleteTask`,
+`files.category`/`setFileCategory`, **`budget_payments` / `addBudgetPayment` /
+`removeBudgetPayment` (BUD-03)**, and **`payment_schedule` / `addScheduleInstallment` /
+`removeScheduleInstallment` (BUD-SCHED-01)** are the sharp `can_access_project` writes a `viewer`
+would pass. Collaborators (INV-07) are intended editors and already pass `can_edit_project`. Re-run
+after Phase-4.
 
 **E. Launch (after ONB-02 + BUD-03 + visual QA).** Separate prod Supabase org on Pro + migrations
 **0001–0047** (+ 0048 if MEAL-03a shipped) by hand — never `db push` — + storage buckets + SMTP;

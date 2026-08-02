@@ -7,6 +7,27 @@ function budgetPath(projectId: string) {
   return `/projects/${projectId}/budget`;
 }
 
+function revalidateBudget(projectId: string) {
+  revalidatePath(budgetPath(projectId));
+  revalidatePath(`/projects/${projectId}`);
+}
+
+/** YYYY-MM-DD only — rejects timestamps / empty. */
+function parseDateOnly(value: string): string | null {
+  const trimmed = value.trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return null;
+  const [y, m, d] = trimmed.split("-").map(Number);
+  const check = new Date(y!, m! - 1, d!);
+  if (
+    check.getFullYear() !== y ||
+    check.getMonth() !== m! - 1 ||
+    check.getDate() !== d
+  ) {
+    return null;
+  }
+  return trimmed;
+}
+
 export async function setBudgetTarget(projectId: string, amount: number | null) {
   const supabase = await createClient();
 
@@ -17,7 +38,7 @@ export async function setBudgetTarget(projectId: string, amount: number | null) 
 
   if (error) throw error;
 
-  revalidatePath(budgetPath(projectId));
+  revalidateBudget(projectId);
 }
 
 export async function addBudgetItem(
@@ -26,22 +47,78 @@ export async function addBudgetItem(
   label: string | null,
   plannedAmount: number,
   actualAmount?: number | null,
+  dueDate?: string | null,
 ) {
   const trimmedLabel = (label ?? "").trim() || null;
+  const planned = Math.max(0, plannedAmount || 0);
+
+  let dueDateValue: string | null = null;
+  if (dueDate != null && dueDate.trim() !== "") {
+    dueDateValue = parseDateOnly(dueDate);
+    if (dueDateValue === null) {
+      throw new Error("dueDate must be a valid YYYY-MM-DD date");
+    }
+  }
 
   const supabase = await createClient();
 
-  const { error } = await supabase.from("budget_items").insert({
-    project_id: projectId,
-    category: category.trim() || null,
-    label: trimmedLabel,
-    planned_amount: Math.max(0, plannedAmount || 0),
-    actual_amount: actualAmount ?? null,
-  });
+  // due_date is write-dead (BUD-SCHED-01) — first installment goes on payment_schedule.
+  const { data: item, error } = await supabase
+    .from("budget_items")
+    .insert({
+      project_id: projectId,
+      category: category.trim() || null,
+      label: trimmedLabel,
+      planned_amount: planned,
+      actual_amount: actualAmount ?? null,
+    })
+    .select("id")
+    .single();
 
   if (error) throw error;
 
-  revalidatePath(budgetPath(projectId));
+  if (dueDateValue != null) {
+    const { error: scheduleError } = await supabase
+      .from("payment_schedule")
+      .insert({
+        project_id: projectId,
+        budget_item_id: item.id,
+        amount: planned,
+        due_on: dueDateValue,
+        label: "Balance",
+      });
+    if (scheduleError) throw scheduleError;
+  }
+
+  revalidateBudget(projectId);
+}
+
+/** Quick-add bulk: one 0-planned row per category string. No dedupe. Free-text category. */
+export async function addBudgetItemsBulk(
+  projectId: string,
+  categories: string[],
+) {
+  const rows = categories
+    .map((category) => category.trim())
+    .filter((category) => category.length > 0)
+    .map((category) => ({
+      project_id: projectId,
+      category,
+      label: null,
+      planned_amount: 0,
+      actual_amount: null,
+      due_date: null,
+    }));
+
+  if (rows.length === 0) return;
+
+  const supabase = await createClient();
+
+  const { error } = await supabase.from("budget_items").insert(rows);
+
+  if (error) throw error;
+
+  revalidateBudget(projectId);
 }
 
 export async function updateBudgetItem(
@@ -89,7 +166,7 @@ export async function updateBudgetItem(
 
   if (error) throw error;
 
-  revalidatePath(budgetPath(data.project_id));
+  revalidateBudget(data.project_id);
 }
 
 export async function removeBudgetItem(itemId: string) {
@@ -104,7 +181,7 @@ export async function removeBudgetItem(itemId: string) {
 
   if (error) throw error;
 
-  revalidatePath(budgetPath(data.project_id));
+  revalidateBudget(data.project_id);
 }
 
 export type SetBudgetItemProjectVendorResult =
@@ -134,8 +211,100 @@ export async function setBudgetItemProjectVendor(
     return { ok: false, error: error.message };
   }
 
-  revalidatePath(budgetPath(data.project_id));
+  revalidateBudget(data.project_id);
   return { ok: true };
+}
+
+export async function addBudgetPayment(
+  projectId: string,
+  budgetItemId: string,
+  amount: number,
+  paidOn: string,
+  note?: string | null,
+) {
+  if (!(amount > 0) || Number.isNaN(amount)) {
+    throw new Error("amount must be a positive number");
+  }
+
+  const paidOnDate = parseDateOnly(paidOn);
+  if (paidOnDate === null) {
+    throw new Error("paidOn must be a valid YYYY-MM-DD date");
+  }
+
+  const supabase = await createClient();
+
+  const { error } = await supabase.from("budget_payments").insert({
+    project_id: projectId,
+    budget_item_id: budgetItemId,
+    amount,
+    paid_on: paidOnDate,
+    note: (note ?? "").trim() || null,
+  });
+
+  if (error) throw error;
+
+  revalidateBudget(projectId);
+}
+
+export async function removeBudgetPayment(paymentId: string) {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("budget_payments")
+    .delete()
+    .eq("id", paymentId)
+    .select("project_id")
+    .single();
+
+  if (error) throw error;
+
+  revalidateBudget(data.project_id);
+}
+
+export async function addScheduleInstallment(
+  projectId: string,
+  budgetItemId: string,
+  amount: number,
+  dueOn: string,
+  label?: string | null,
+) {
+  if (!(amount >= 0) || Number.isNaN(amount)) {
+    throw new Error("amount must be a non-negative number");
+  }
+
+  const dueOnDate = parseDateOnly(dueOn);
+  if (dueOnDate === null) {
+    throw new Error("dueOn must be a valid YYYY-MM-DD date");
+  }
+
+  const supabase = await createClient();
+
+  const { error } = await supabase.from("payment_schedule").insert({
+    project_id: projectId,
+    budget_item_id: budgetItemId,
+    amount,
+    due_on: dueOnDate,
+    label: (label ?? "").trim() || null,
+  });
+
+  if (error) throw error;
+
+  revalidateBudget(projectId);
+}
+
+export async function removeScheduleInstallment(installmentId: string) {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("payment_schedule")
+    .delete()
+    .eq("id", installmentId)
+    .select("project_id")
+    .single();
+
+  if (error) throw error;
+
+  revalidateBudget(data.project_id);
 }
 
 export async function dismissBudgetAlert(
@@ -157,5 +326,5 @@ export async function dismissBudgetAlert(
 
   if (error) throw error;
 
-  revalidatePath(budgetPath(projectId));
+  revalidateBudget(projectId);
 }

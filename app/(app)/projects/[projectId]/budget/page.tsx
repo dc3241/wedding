@@ -4,6 +4,7 @@ import {
   computeBudgetAggregates,
   type ProjectVendorOption,
 } from "@/lib/budget-aggregates";
+import { toLocalDateKey } from "@/app/(app)/calendar/calendar-source";
 import { getAccountContext } from "@/lib/account-context";
 import { sectionStackClass } from "@/lib/density";
 import { createClient } from "@/utils/supabase/server";
@@ -23,6 +24,8 @@ export default async function BudgetPage({
     { data: items },
     { data: vendorRows },
     { data: dismissalRows },
+    { data: paymentRows },
+    { data: scheduleRows },
   ] = await Promise.all([
     supabase
       .from("projects")
@@ -32,7 +35,7 @@ export default async function BudgetPage({
     supabase
       .from("budget_items")
       .select(
-        "id, category, label, planned_amount, actual_amount, notes, project_vendor_id",
+        "id, category, label, planned_amount, actual_amount, due_date, notes, project_vendor_id",
       )
       .eq("project_id", projectId)
       .order("category", { ascending: true, nullsFirst: false })
@@ -47,6 +50,18 @@ export default async function BudgetPage({
       .select("category, overage_at_dismiss")
       .eq("project_id", projectId)
       .eq("alert_kind", "over_plan"),
+    supabase
+      .from("budget_payments")
+      .select("id, budget_item_id, amount, paid_on, note")
+      .eq("project_id", projectId)
+      .order("paid_on", { ascending: true, nullsFirst: false })
+      .order("created_at", { ascending: true }),
+    supabase
+      .from("payment_schedule")
+      .select("id, budget_item_id, amount, due_on, label")
+      .eq("project_id", projectId)
+      .order("due_on", { ascending: true })
+      .order("created_at", { ascending: true }),
   ]);
 
   // Existing coercion — do not "fix"; PostgREST numerics arrive as strings.
@@ -64,6 +79,7 @@ export default async function BudgetPage({
       row.actual_amount === null || row.actual_amount === undefined
         ? null
         : Number(row.actual_amount),
+    due_date: row.due_date ?? null,
     notes: row.notes,
     project_vendor_id: row.project_vendor_id ?? null,
   }));
@@ -86,10 +102,31 @@ export default async function BudgetPage({
     },
   );
 
+  const payments = (paymentRows ?? []).map((row) => ({
+    id: row.id,
+    budget_item_id: row.budget_item_id,
+    amount: Number(row.amount),
+    paid_on: row.paid_on ?? null,
+    note: row.note ?? null,
+  }));
+
+  const schedule = (scheduleRows ?? []).map((row) => ({
+    id: row.id,
+    budget_item_id: row.budget_item_id,
+    amount: Number(row.amount),
+    due_on: row.due_on,
+    label: row.label ?? null,
+  }));
+
+  const todayKey = toLocalDateKey(new Date());
+
   const aggregates = computeBudgetAggregates(
     budgetItems,
     totalBudget,
     projectVendors,
+    payments,
+    schedule,
+    todayKey,
   );
 
   aggregates.needsAttention.overCategories = applyOverPlanDismissals(
