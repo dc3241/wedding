@@ -5,6 +5,7 @@ import {
   isMealServiceStyle,
   type MealServiceStyle,
 } from "./meal-types";
+import { createWeddingWebsite } from "../website/actions";
 import { createClient } from "@/utils/supabase/server";
 
 function guestsPath(projectId: string) {
@@ -13,7 +14,6 @@ function guestsPath(projectId: string) {
 
 export type SetMealServiceStyleResult =
   | { ok: true }
-  | { ok: false; reason: "no_website" }
   | { ok: false; reason: "invalid" }
   | { ok: false; reason: "error" };
 
@@ -38,7 +38,10 @@ export async function setMealServiceStyle(
   }
 
   if (!website) {
-    return { ok: false, reason: "no_website" };
+    const created = await createWeddingWebsite(projectId);
+    if (!created.ok) {
+      return { ok: false, reason: "error" };
+    }
   }
 
   const { error } = await supabase

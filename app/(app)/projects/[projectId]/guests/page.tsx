@@ -338,7 +338,6 @@ export default async function GuestsPage({
 
       <MealConfigCard
         projectId={projectId}
-        hasWebsite={hasWebsite}
         mealServiceStyle={mealServiceStyle}
         mealSelectionActive={mealSelectionActive}
         mealOptions={mealOptions}
@@ -408,7 +407,10 @@ export default async function GuestsPage({
                   <th className="pb-3 pr-4 font-semibold">Household</th>
                   <th className="pb-3 pr-4 text-right font-semibold">Headcount</th>
                   <th className="pb-3 pr-4 font-semibold">RSVP</th>
-                  <th className="pb-3 font-semibold">People</th>
+                  <th className="pb-3 pr-4 font-semibold">People</th>
+                  <th className="pb-3 text-right font-semibold">
+                    <span className="sr-only">Actions</span>
+                  </th>
                 </tr>
               </thead>
               <tbody>

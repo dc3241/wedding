@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { clampDueDateToToday } from "@/lib/date-months";
 import { createClient } from "@/utils/supabase/server";
 import {
   dueDateFromWedding,
@@ -67,6 +68,21 @@ export async function toggleTask(taskId: string, nextStatus: string) {
   revalidatePath(checklistPath(data.project_id));
 }
 
+export async function deleteTask(taskId: string) {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("tasks")
+    .delete()
+    .eq("id", taskId)
+    .select("project_id")
+    .single();
+
+  if (error) throw error;
+
+  revalidatePath(checklistPath(data.project_id));
+}
+
 export async function updateTaskTitle(taskId: string, title: string) {
   const trimmed = title.trim();
   if (!trimmed) return;
@@ -104,12 +120,17 @@ export async function generateStarterChecklist(projectId: string) {
   const weddingDate = project?.wedding_date ?? null;
   const phasePositions = new Map<string, number>();
 
+  const today = new Date();
+  const todayIso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+
   const rows = STARTER_TASKS.map((task) => {
     const position = phasePositions.get(task.phase) ?? 0;
     phasePositions.set(task.phase, position + 1);
 
-    const due_date =
-      weddingDate !== null ? dueDateFromWedding(weddingDate, task) : null;
+    const due_date = clampDueDateToToday(
+      weddingDate !== null ? dueDateFromWedding(weddingDate, task) : null,
+      todayIso,
+    );
 
     return {
       project_id: projectId,

@@ -54,7 +54,13 @@ export function PlannerProjectSidebar({
   const activeProjectId = extractProjectId(pathname);
   const onDashboard =
     pathname === "/dashboard" || pathname.startsWith("/dashboard?");
+  const onCalendar =
+    pathname === "/calendar" || pathname.startsWith("/calendar?");
   const onLeads = pathname === "/leads" || pathname.startsWith("/leads?");
+  const onVendors =
+    pathname === "/vendors" || pathname.startsWith("/vendors?");
+  const onContracts =
+    pathname === "/contracts" || pathname.startsWith("/contracts?");
   const onBilling =
     pathname === "/account/billing" ||
     pathname.startsWith("/account/billing?");
@@ -66,8 +72,17 @@ export function PlannerProjectSidebar({
           <Link href="/dashboard" className={navLinkClass(onDashboard)}>
             Dashboard
           </Link>
+          <Link href="/calendar" className={navLinkClass(onCalendar)}>
+            Calendar
+          </Link>
           <Link href="/leads" className={navLinkClass(onLeads)}>
             Leads
+          </Link>
+          <Link href="/vendors" className={navLinkClass(onVendors)}>
+            Vendors
+          </Link>
+          <Link href="/contracts" className={navLinkClass(onContracts)}>
+            Contracts
           </Link>
           <Link href="/account/billing" className={navLinkClass(onBilling)}>
             Billing

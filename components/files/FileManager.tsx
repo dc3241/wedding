@@ -16,6 +16,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Select } from "@/components/ui/select";
+import { VENDOR_CATEGORIES } from "@/lib/vendor-categories";
 import { createClient } from "@/utils/supabase/client";
 import { cn } from "@/lib/cn";
 
@@ -119,6 +121,8 @@ export function FileManager({
   const inputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uploadCategory, setUploadCategory] = useState("");
+  const isContract = kind === "contract";
 
   async function handleFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -160,6 +164,9 @@ export function FileManager({
           mimeType,
           sizeBytes: file.size,
           kind,
+          ...(isContract
+            ? { category: uploadCategory === "" ? null : uploadCategory }
+            : {}),
         });
       } catch (recordErr) {
         await supabase.storage.from(PROJECT_FILES_BUCKET).remove([storagePath]);
@@ -185,24 +192,47 @@ export function FileManager({
             PDFs, images, and documents up to 25 MB.
           </p>
         </div>
-        <div>
-          <input
-            ref={inputRef}
-            type="file"
-            accept={FILE_INPUT_ACCEPT}
-            onChange={handleFileSelected}
-            disabled={isUploading}
-            className="sr-only"
-            aria-label="Upload file"
-          />
-          <Button
-            type="button"
-            variant="primary"
-            disabled={isUploading}
-            onClick={() => inputRef.current?.click()}
-          >
-            {isUploading ? "Uploading…" : "Upload file"}
-          </Button>
+        <div className="flex flex-wrap items-end gap-3">
+          {isContract ? (
+            <label className="flex min-w-[160px] flex-col gap-1.5">
+              <span className="text-[13px] font-medium text-muted">
+                Category
+              </span>
+              <Select
+                value={uploadCategory}
+                onChange={(e) => setUploadCategory(e.target.value)}
+                disabled={isUploading}
+                aria-label="Contract category"
+                className="min-w-[160px]"
+              >
+                <option value="">Uncategorized</option>
+                {VENDOR_CATEGORIES.map((cat) => (
+                  <option key={cat.id} value={cat.id}>
+                    {cat.label}
+                  </option>
+                ))}
+              </Select>
+            </label>
+          ) : null}
+          <div>
+            <input
+              ref={inputRef}
+              type="file"
+              accept={FILE_INPUT_ACCEPT}
+              onChange={handleFileSelected}
+              disabled={isUploading}
+              className="sr-only"
+              aria-label="Upload file"
+            />
+            <Button
+              type="button"
+              variant="primary"
+              disabled={isUploading}
+              onClick={() => inputRef.current?.click()}
+            >
+              {isUploading ? "Uploading…" : "Upload file"}
+            </Button>
+          </div>
         </div>
       </div>
 

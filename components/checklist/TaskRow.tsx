@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useTransition } from "react";
 import {
+  deleteTask,
   toggleTask,
   updateTaskTitle,
 } from "@/app/(app)/projects/[projectId]/checklist/actions";
@@ -68,10 +69,16 @@ export function TaskRow({ task }: { task: ChecklistTask }) {
     });
   }
 
+  function handleDelete() {
+    startTransition(async () => {
+      await deleteTask(task.id);
+    });
+  }
+
   return (
     <li
       className={cn(
-        "mb-2 flex items-start gap-3 rounded-[var(--radius-inner)] bg-well px-4 py-3.5 shadow-recessed last:mb-0",
+        "group mb-2 flex items-start gap-3 rounded-[var(--radius-inner)] bg-well px-4 py-3.5 shadow-recessed last:mb-0",
         isPending && "opacity-60",
       )}
     >
@@ -126,6 +133,32 @@ export function TaskRow({ task }: { task: ChecklistTask }) {
       </div>
 
       {inProgress ? <Pill variant="clay">In progress</Pill> : null}
+
+      <button
+        type="button"
+        onClick={handleDelete}
+        disabled={isPending}
+        aria-label={`Delete ${task.title}`}
+        className={cn(
+          "mt-0.5 ml-1 shrink-0 rounded-[var(--radius-inner)] p-1.5 text-muted opacity-0 transition-all",
+          "hover:bg-rosewood-wash hover:text-rosewood",
+          "focus-visible:bg-rosewood-wash focus-visible:text-rosewood focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rosewood",
+          "group-hover:opacity-100 group-focus-within:opacity-100",
+          "disabled:pointer-events-none disabled:opacity-50",
+        )}
+      >
+        <svg
+          viewBox="0 0 16 16"
+          className="size-4"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          aria-hidden
+        >
+          <path d="M3.5 4.5h9M6.5 4.5V3.25a.75.75 0 0 1 .75-.75h1.5a.75.75 0 0 1 .75.75V4.5m1.5 0V12.5a1 1 0 0 1-1 1h-5a1 1 0 0 1-1-1V4.5" />
+          <path d="M7 7v4.5M9 7v4.5" />
+        </svg>
+      </button>
     </li>
   );
 }

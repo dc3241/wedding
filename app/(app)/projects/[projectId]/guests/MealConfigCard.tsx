@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useState, useTransition } from "react";
 import {
   addMealOption,
@@ -22,13 +21,11 @@ import { Textarea } from "@/components/ui/textarea";
 
 export function MealConfigCard({
   projectId,
-  hasWebsite,
   mealServiceStyle,
   mealSelectionActive,
   mealOptions,
 }: {
   projectId: string;
-  hasWebsite: boolean;
   mealServiceStyle: MealServiceStyle;
   mealSelectionActive: boolean;
   mealOptions: MealOption[];
@@ -45,18 +42,12 @@ export function MealConfigCard({
   const showPlatedNudge = mealSelectionActive && mealOptions.length === 0;
 
   function handleStyleChange(next: string) {
-    if (!hasWebsite) return;
     const value = next as MealServiceStyle;
     setStyle(value);
     setStyleMessage(null);
     startStyleTransition(async () => {
       const result = await setMealServiceStyle(projectId, value);
       if (result.ok) return;
-      if (result.reason === "no_website") {
-        setStyleMessage("Create your wedding website first.");
-        setStyle(mealServiceStyle);
-        return;
-      }
       setStyleMessage("Could not save service style.");
       setStyle(mealServiceStyle);
     });
@@ -98,43 +89,23 @@ export function MealConfigCard({
         >
           Service style
         </label>
-        {!hasWebsite ? (
-          <div className="rounded-[var(--radius-inner)] bg-well px-4 py-3 shadow-recessed">
-            <p className="text-[14px] font-medium text-ink">
-              Set up your wedding website first
-            </p>
-            <p className="mt-1 text-[13px] text-muted">
-              Service style lives on your wedding website. Meal options below
-              stay editable either way.
-            </p>
-            <Link
-              href={`/projects/${projectId}/website`}
-              className="mt-2 inline-block text-[14px] font-semibold text-accent hover:underline"
-            >
-              Open website settings
-            </Link>
-          </div>
-        ) : (
-          <>
-            <Select
-              id="meal-service-style"
-              value={style}
-              onChange={(e) => handleStyleChange(e.target.value)}
-              disabled={isStylePending}
-            >
-              {MEAL_SERVICE_STYLES.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </Select>
-            {styleMessage ? (
-              <p className="text-[13px] font-medium text-rosewood" role="status">
-                {styleMessage}
-              </p>
-            ) : null}
-          </>
-        )}
+        <Select
+          id="meal-service-style"
+          value={style}
+          onChange={(e) => handleStyleChange(e.target.value)}
+          disabled={isStylePending}
+        >
+          {MEAL_SERVICE_STYLES.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </Select>
+        {styleMessage ? (
+          <p className="text-[13px] font-medium text-rosewood" role="status">
+            {styleMessage}
+          </p>
+        ) : null}
       </div>
 
       {showPlatedNudge ? (

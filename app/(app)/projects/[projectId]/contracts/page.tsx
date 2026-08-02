@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { ContractCategoryControl } from "@/components/contracts/ContractCategoryControl";
 import { ContractStatusControl } from "@/components/contracts/ContractStatusControl";
 import { FileManager } from "@/components/files/FileManager";
 import type { ProjectFile } from "@/components/files/types";
@@ -33,7 +34,7 @@ export default async function ContractsPage({
   const [{ data: fileRows }, { data: project }] = await Promise.all([
     supabase
       .from("files")
-      .select("id, name, mime_type, size_bytes, created_at, status")
+      .select("id, name, mime_type, size_bytes, created_at, status, category")
       .eq("project_id", projectId)
       .eq("kind", "contract")
       .order("created_at", { ascending: false }),
@@ -54,16 +55,22 @@ export default async function ContractsPage({
         : Number(row.size_bytes),
     created_at: row.created_at,
     status: row.status,
+    category: row.category,
   }));
 
   const trailingSlots = Object.fromEntries(
     fileList.map((file) => [
       file.id,
-      <ContractStatusControl
-        key={file.id}
-        fileId={file.id}
-        initialStatus={file.status ?? null}
-      />,
+      <div key={file.id} className="flex flex-wrap items-center justify-end gap-2">
+        <ContractCategoryControl
+          fileId={file.id}
+          initialCategory={file.category ?? null}
+        />
+        <ContractStatusControl
+          fileId={file.id}
+          initialStatus={file.status ?? null}
+        />
+      </div>,
     ]),
   );
 

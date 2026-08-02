@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { removeGuest } from "./actions";
 import {
   addGuestMember,
   deleteGuestMember,
@@ -35,12 +36,30 @@ export function GuestRow({
   showRsvpQr: boolean;
 }) {
   const [expanded, setExpanded] = useState(guest.members.length > 0);
+  const [isDeleting, startDeleteTransition] = useTransition();
   const headcount = guestDisplayHeadcount(guest);
   const overCap = guest.members.length > guest.party_size;
 
+  function handleDeleteHousehold() {
+    const peopleNote =
+      guest.members.length > 0
+        ? " People listed under it will be removed too."
+        : "";
+    if (
+      !window.confirm(
+        `Delete “${guest.full_name}” from the guest list?${peopleNote} This cannot be undone.`,
+      )
+    ) {
+      return;
+    }
+    startDeleteTransition(async () => {
+      await removeGuest(guest.id);
+    });
+  }
+
   return (
     <>
-      <tr className={rowClass}>
+      <tr className={cn(rowClass, isDeleting && "opacity-60")}>
         <td className="py-3 pr-4">
           <button
             type="button"
@@ -72,7 +91,7 @@ export function GuestRow({
         <td className="py-3 pr-4">
           <RsvpPill guestId={guest.id} status={guest.rsvp_status} />
         </td>
-        <td className="py-3">
+        <td className="py-3 pr-4">
           <button
             type="button"
             onClick={() => setExpanded((value) => !value)}
@@ -85,10 +104,20 @@ export function GuestRow({
                 : "Add people"}
           </button>
         </td>
+        <td className="py-3 text-right">
+          <button
+            type="button"
+            onClick={handleDeleteHousehold}
+            disabled={isDeleting}
+            className="text-[13px] font-medium text-muted transition-colors hover:text-rosewood disabled:opacity-50"
+          >
+            {isDeleting ? "Deleting…" : "Delete"}
+          </button>
+        </td>
       </tr>
       {expanded ? (
         <tr>
-          <td colSpan={5} className="pb-4">
+          <td colSpan={6} className="pb-4">
             <div className="space-y-3">
               <GuestMembersPanel
                 guest={guest}

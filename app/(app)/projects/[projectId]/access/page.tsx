@@ -62,27 +62,38 @@ export default async function AccessPage({
 
   const stackClass = sectionStackClass("business");
 
-  const [{ data: project }, { data: pendingRows }, { data: acceptedRows }] =
-    await Promise.all([
-      supabase
-        .from("projects")
-        .select("name, wedding_date")
-        .eq("id", projectId)
-        .maybeSingle(),
-      supabase
-        .from("project_invitations")
-        .select("id, email, role, expires_at, created_at")
-        .eq("project_id", projectId)
-        .is("accepted_at", null)
-        .is("revoked_at", null)
-        .order("created_at", { ascending: false }),
-      supabase
-        .from("project_invitations")
-        .select("id, email, role, accepted_at, accepted_by")
-        .eq("project_id", projectId)
-        .not("accepted_at", "is", null)
-        .order("accepted_at", { ascending: false }),
-    ]);
+  const [
+    { data: project },
+    { data: pendingRows },
+    { data: memberRows },
+    { data: acceptedInviteRows },
+  ] = await Promise.all([
+    supabase
+      .from("projects")
+      .select("name, wedding_date")
+      .eq("id", projectId)
+      .maybeSingle(),
+    supabase
+      .from("project_invitations")
+      .select("id, email, role, expires_at, created_at")
+      .eq("project_id", projectId)
+      .is("accepted_at", null)
+      .is("revoked_at", null)
+      .order("created_at", { ascending: false }),
+    // Live access — not accepted invitations (those survive remove).
+    supabase
+      .from("project_members")
+      .select("user_id, role, created_at")
+      .eq("project_id", projectId)
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("project_invitations")
+      .select("email, accepted_at, accepted_by")
+      .eq("project_id", projectId)
+      .not("accepted_at", "is", null)
+      .not("accepted_by", "is", null)
+      .order("accepted_at", { ascending: false }),
+  ]);
 
   const projectName = project?.name ?? "Wedding";
   const weddingDate = project?.wedding_date ?? null;
@@ -92,7 +103,29 @@ export default async function AccessPage({
       : projectName;
 
   const pending = pendingRows ?? [];
-  const accepted = acceptedRows ?? [];
+
+  const inviteByUser = new Map<
+    string,
+    { email: string; accepted_at: string }
+  >();
+  for (const row of acceptedInviteRows ?? []) {
+    if (row.accepted_by && !inviteByUser.has(row.accepted_by)) {
+      inviteByUser.set(row.accepted_by, {
+        email: row.email,
+        accepted_at: row.accepted_at as string,
+      });
+    }
+  }
+
+  const hasAccess = (memberRows ?? []).map((member) => {
+    const invite = inviteByUser.get(member.user_id);
+    return {
+      userId: member.user_id,
+      role: member.role,
+      email: invite?.email ?? "Member",
+      accepted_at: invite?.accepted_at ?? member.created_at,
+    };
+  });
 
   return (
     <div className={stackClass}>
@@ -182,15 +215,15 @@ export default async function AccessPage({
                 Has access
               </h2>
             </div>
-            {accepted.length === 0 ? (
+            {hasAccess.length === 0 ? (
               <p className="px-5 py-8 text-center text-[13px] text-muted">
-                No one has accepted an invitation yet.
+                No one has access via invitation yet.
               </p>
             ) : (
               <ul className="space-y-2 px-3 py-3">
-                {accepted.map((row) => (
+                {hasAccess.map((row) => (
                   <li
-                    key={row.id}
+                    key={row.userId}
                     className="flex items-center justify-between gap-3 rounded-[var(--radius-inner)] bg-well px-3 py-3 shadow-recessed"
                   >
                     <div className="min-w-0">
@@ -201,18 +234,13 @@ export default async function AccessPage({
                         <InviteRolePill role={row.role} />
                       </div>
                       <p className="text-[13px] text-muted">
-                        Accepted{" "}
-                        {row.accepted_at
-                          ? formatShortDate(row.accepted_at)
-                          : "—"}
+                        Accepted {formatShortDate(row.accepted_at)}
                       </p>
                     </div>
-                    {row.accepted_by ? (
-                      <RemoveAccessButton
-                        projectId={projectId}
-                        userId={row.accepted_by}
-                      />
-                    ) : null}
+                    <RemoveAccessButton
+                      projectId={projectId}
+                      userId={row.userId}
+                    />
                   </li>
                 ))}
               </ul>

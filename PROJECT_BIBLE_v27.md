@@ -1,50 +1,61 @@
-# Wedding Planning SaaS — Project Bible (v26)
+# Wedding Planning SaaS — Project Bible (v27)
 
-Canonical state document. **Supersedes v25.** Drop this into the Project's instructions/knowledge so
-any new chat picks up cold. Lives in-repo at `PROJECT_BIBLE_v26.md`. The repo's `.cursor/design.mdc`,
+Canonical state document. **Supersedes v26.** Drop this into the Project's instructions/knowledge so
+any new chat picks up cold. Lives in-repo at `PROJECT_BIBLE_v27.md`. The repo's `.cursor/design.mdc`,
 `app/globals.css`, `design/reference.html` (stale — see §10), and `supabase/migrations/` remain the
 live source of truth; this summarizes them and the decisions behind them. Current through migration
-**0043**; **next-free migration is 0044** (INV-07 added no migration).
+**0044**; **next-free migration is 0045**.
 
-**v26 records per-wedding collaborator invites (INV-07), the planner New-wedding create RLS fix
-(CREATE-01), and marketing pricing + capabilities (PRICE-01 / LAND-02) — atop v25 website media +
-gated full-name RSVP:**
+**v27 records planner wedding archive (ARCH-01 / 01a), pending-invite cookie in middleware
+(INV-08), landing audience toggle (LAND-03), checklist delete + due-date/phase write hygiene
+(CHK-02 / CHK-03), and Access Has-access = live membership — atop v26 collaborator invites +
+pricing:**
 
 | Slice | What | Schema |
 |---|---|---|
-| **INV-07** | Access tab invites `collaborator` (same `/invite/[token]` path); writer allowlist `{couple, collaborator}`; accept already copies `project_invitations.role` | **NONE** (`role` since **0028**) |
-| **CREATE-01** | Planner `createProject` no longer INSERT…RETURNING; explicit business-account resolve; form surfaces errors | **NONE** |
-| **LAND-02** | Marketing topbar section anchors + sticky chrome; static capabilities checklist on landing | **NONE** |
-| **PRICE-01** | `/pricing` couple/planner plan cards + in-card annual cadence (presentation only; Stripe → PRICE-02) | **NONE** |
+| **ARCH-01** | `projects.archived_at`; sole writer `set_project_archived` (definer, `can_manage_project_access`); planner dashboard Active/Archived + sidebar filters active only | **0044** |
+| **ARCH-01a** | Dashboard child aggregates (Urgent / vendors-needing-action / tasks-due) scoped to active project IDs only | **NONE** |
+| **INV-08** | Pending-invite cookie set in `middleware.ts` on `/invite/*` (not Server Component render); closes the Next 16 cookie-write crash | **NONE** |
+| **LAND-03** | Couples/Planners audience toggle + unify band under hero; drop How-it-works / audience-split; marketing copy must not lead with "AI" | **NONE** |
+| **CHK-02** | Per-task `deleteTask` + row trash (rosewood hover); existing `FOR ALL` RLS; no confirm | **NONE** |
+| **CHK-03** | Assistant `add_task`: clamp due date; derive canonical phase; drop model-authored `phase` | **NONE** |
+| **INV-02b** | Access "Has access" lists live `project_members` (not surviving accepted invites); remove soft-revokes matching invites | **NONE** |
 
-Everything in v25 that isn't touched by the above carries forward unchanged: photo-led website
-(WEB-*), RSVP-01a, GST-01, meals, registry, Soft stack (C1), LAND-01, planner CRM, Stripe.
+Everything in v26 that isn't touched by the above carries forward unchanged: INV-07, CREATE-01,
+LAND-02, PRICE-01, photo-led website (WEB-*), RSVP-01a, GST-01, meals, registry, Soft stack (C1),
+LAND-01, planner CRM, Stripe.
 
-> **Numbering note:** INV-07 / CREATE-01 / LAND-02 / PRICE-01 took **no** migration. **MEAL-03a
-> (drop `guests.meal_choice`) and ONB-02 take next-free at build time (0044+).** Do not `db push`.
-> **Do not offer `viewer` from Access** until WRITE-01 — collaborator is deliberately the only
-> non-couple invite role today.
+> **Numbering note:** **0044 is archive.** **MEAL-03a (drop `guests.meal_choice`) and ONB-02 take
+> next-free at build time (0045+).** Do not `db push`. **Do not offer `viewer` from Access** until
+> WRITE-01 — collaborator is deliberately the only non-couple invite role today.
+> **Marketing copy policy:** do not promote or lead with "AI"; frame as the app / "automatically" /
+> "the assistant."
 
 **Verification status (READ THIS):**
 - **0031–0033** remain applied live (as in v23).
 - **0034–0043** — apply/checkpoint if not yet live (v24/v25 Dom lists; especially **0040** /
   **0042** / **0043**).
-- **INV-07 (no migration).** Dom checkpoints:
-  - Invite collaborator → accept with fresh account-less user →
-    `select role from project_members where project_id = <p> and user_id = <u>` returns
-    **`collaborator`** (read the row, not the Access-tab pill).
-  - Couple invite path still inserts / accepts as **`couple`**.
-  - Pre-INV-07 pending invites (default `couple`) still accept as couple.
-  - Writer rejects role `viewer` (`Invalid invitation role.`).
-  - Collaborator sees that one wedding, no CRM tabs, no other clients.
-- **CREATE-01:** planner dashboard "New wedding" succeeds under projects RLS; failures surface in
-  the form (not a silent redirect).
-- **PRICE-01 / LAND-02:** `/pricing` renders; landing nav anchors + capabilities panel; no Stripe
-  object changes (PRICE-02 still open).
+- **0044 (ARCH-01)** — **APPLIED LIVE (added + run).** Spot-check remains: archive a wedding → drops
+  from Active list, sidebar, and Urgent/vendor/task aggregates; Unarchive restores. Invitee / couple
+  paths still see their project if they have membership.
+- **INV-08:** logged-out `/invite/[token]` sets `pending_invite_token` cookie **without** a render
+  crash; signup/login still consumes it.
+- **LAND-03:** `/` shows Couples/Planners toggle under hero; topbar `/#couples` `/#planners` sync
+  the tab; no "AI" / "Soft stack" in marketing copy.
+- **CHK-02:** delete a task (incl. done) → `select id from tasks where id = …` returns **zero rows**;
+  phase band count drops by one. **(Delete DB-confirmed this cycle by rowcount inference — a fresh
+  assistant build produced 40 rows not 55, proving the removed set left the table; the literal
+  per-row row-gone query is the on-record checkpoint.)**
+- **CHK-03:** assistant-built checklist → every `tasks.phase` is a canonical
+  `lib/checklist-phases.ts` string; `due_date < current_date` count is **0**. **VERIFIED (DB):**
+  cleared, rebuilt via assistant, group-by all-canonical, zero past dates, one band per phase,
+  single ad-hoc "due next Tuesday" derives the correct single phase.
+- **INV-02b:** Remove access → member disappears from Has access **and** loses `can_access_project`.
 - **Still open (human gate):** Dom Soft stack + LAND-01 / LAND-01a visual checkpoint. See §13.
 
-Sections changed from v25: header, **§1**, **§4** (user classes + invitations), **§6** (Access /
-invited routing), **§7** (INV-07 / CREATE-01 / LAND-02 / PRICE-01), **§13**, **§14**, **§15**.
+Sections changed from v26: header, **§1**, **§3** (write-boundary rule), **§4** (archive RPC + Access
+membership), **§5** (**0044**), **§6** (dashboard archive, invite middleware, checklist, marketing),
+**§7** (v27 slices), **§9** (write-tool audit), **§13**, **§14**, **§15**.
 
 **Companion doc:** a separate **Launch Prep Runbook** exists (ops checklist for going to
 production). This bible covers product/architecture state; the runbook covers deployment. Keep both.
@@ -74,8 +85,9 @@ The app spans: the couple planning product (onboarding → AI plan, checklist, v
 per-person meal members + RSVP→guest match + optional household-gated RSVP, budget, notes, files,
 day-of timeline, gift registry with public share + guest claims, in-app AI assistant, seating
 builder), a planner CRM (contracts, lead pipeline, proposals → accepted agreement → printable
-contract, project access / couple + collaborator invitations), Stripe billing for both audiences,
-marketing `/` + `/pricing`, and a public, shareable wedding website with a 5-template photo-led
+contract, project access / couple + collaborator invitations, **archive finished weddings off the
+active book**), Stripe billing for both audiences, marketing `/` + `/pricing` (audience toggle +
+capabilities + pricing cards), and a public, shareable wedding website with a 5-template photo-led
 gallery (hero / gallery / party media, FAQ, structured travel), adaptive meal-aware RSVP intake
 (open or gated), and a registry sub-page.
 
@@ -166,9 +178,10 @@ In `.cursor/main.mdc` (architecture) + `.cursor/design.mdc` (Soft stack design).
   `update<Thing>(id, fields)` writer with a field that carries a constraint the generic writer
   doesn't understand. `setSeatingTableKind`, `rotateSeatingTable`, `setSeatingTableSeatCount`,
   `setBudgetItemProjectVendor`, **`removeProjectVendor`**, **`linkVendorToTarget` /
-  `unlinkVendorFromTarget`** all exist for this reason. **`linkVendorToTarget` is the sole
-  application writer that SETs `vendor_targets.project_vendor_id` to a non-null value** (VND-07);
-  unlink / remove only clear it.
+  `unlinkVendorFromTarget`**, **`set_project_archived`** all exist for this reason.
+  **`linkVendorToTarget` is the sole application writer that SETs `vendor_targets.project_vendor_id`
+  to a non-null value** (VND-07); unlink / remove only clear it. **`set_project_archived` is the sole
+  writer of `projects.archived_at`** (ARCH-01) — no direct app-code UPDATE.
 - **One terminal routing decision point per audience (ONB-00).** `/projects` is the ONLY place
   allowed to make a terminal routing decision for a personal or account-less account.
 - **Two fields that can disagree are a bug waiting to happen; derive one from the other (ONB-01).**
@@ -199,6 +212,21 @@ In `.cursor/main.mdc` (architecture) + `.cursor/design.mdc` (Soft stack design).
   `wedding_websites.content`. Clearing a hero/gallery image clears the URL only — **storage object
   cleanup is deferred** (orphans OK until a later slice). `components/website/` still imports no
   Supabase; upload helpers live under the website tab.
+- **NEW (v27) — a value with a canonical vocabulary or derivation must be enforced at the WRITE
+  BOUNDARY, on EVERY writer.** Task `phase` (`phaseFromMonthsBefore`), computed task `due_date`
+  (floor via `clampDueDateToToday`, `lib/date-months.ts`), status enums, and vendor category all
+  have a canonical source. A free-text column, a CHECK-less column, **or a model-supplied
+  assistant-tool argument** is NOT a license to author the value. Enforcement may live in the form,
+  the server action, or the tool body — but it must exist on *every* path that writes the column,
+  not just the form. This fault line opened three times on `tasks` (ONB-01 couple plan → the
+  starter-checklist button → the assistant `add_task` tool), each a writer that skipped the canonical
+  derivation; all three now route through the shared helpers (`clampDueDateToToday`; phase derived
+  from the clamped due date, never authored — same reason `phase` is absent from the onboarding
+  generator's JSON shape, §8). Deriving phase from the clamped date also collapses the "phase and
+  date can disagree" hazard: one is computed from the other. **Corollary (proven by the v27
+  write-tool audit, §9): where the app's column is DELIBERATELY free-text, the assistant matching
+  that is CORRECT, not a gap** — `budget_items.category` and `timeline_events.owner`/`section` are
+  authored free on purpose; do NOT "harden" them to enums.
 
 **Soft stack design don'ts (Tier 1 chrome — see §10 / `.cursor/design.mdc`):**
 - No raised-inside-raised stacking.
@@ -270,7 +298,8 @@ allowlist); do not offer it until WRITE-01.**
 - **`is_account_member(account_id)`** — account-scoped features (leads, proposals, subscriptions),
   project INSERT.
 - **`can_manage_project_access(project_id)` (0028)** — `is_account_member` of the project's owning
-  account. Gates all four `project_invitations` policies AND the `project_members` DELETE policy.
+  account. Gates all four `project_invitations` policies, the `project_members` DELETE policy, **and
+  `set_project_archived` (0044)** — archive is owning-account only, not invited members.
 - **`can_edit_project(project_id)` (0029)** — `is_account_member` of the owning account **OR** a
   `project_members` row for `auth.uid()` with `role in ('couple','collaborator')`. Gates the
   `projects` UPDATE policy. **`viewer` is deliberately excluded — that is the role's entire purpose.**
@@ -289,7 +318,22 @@ allowlist); do not offer it until WRITE-01.**
 > **`projects` UPDATE — replaced in 0029.** Now `"editors update projects"` on
 > `can_edit_project(id)` in both `using` and `with check`. **`projects` INSERT still gates on
 > `is_account_member` and should stay that way.** **`projects` has NO DELETE policy** — same
-> silent-no-op shape, currently unreached. Flagged in §13.
+> silent-no-op shape, currently unreached. Flagged in §13. **Archive does not use the UPDATE
+> policy** — it goes through `set_project_archived` only (0044); do not add a direct
+> `archived_at` write from app code.
+
+### `projects.archived_at` + `set_project_archived` (0044 / ARCH-01)
+
+- Column: `archived_at timestamptz` nullable. Null = active; non-null = archived (timestamp of first
+  archive; re-archive keeps the original via `coalesce`).
+- **Sole writer:** `set_project_archived(p_project_id, p_archived)` — `SECURITY DEFINER`, grant
+  execute to `authenticated`, revoke from `anon`. Gate = `can_manage_project_access`. Returns the
+  resulting `archived_at` (null when unarchived).
+- App action: `setProjectArchived` in `app/(app)/dashboard/actions.ts` → RPC + revalidate
+  `/dashboard` and layout. **Planner UI only** (Active/Archived toggle on the dashboard wedding
+  list). Sidebar and "Active weddings" count filter `.is("archived_at", null)`.
+- **Does not delete data.** Invited members keep `project_members` and can still open the project
+  by URL; it simply leaves the planner's active book and cross-project aggregates (ARCH-01a).
 
 ### The six public (anon) surfaces
 
@@ -328,7 +372,7 @@ not resolve the token before authentication.
 
 ## 5. Migrations (source of truth: `supabase/migrations/`)
 
-Applied in order. **You are the source of truth on the next number — next free is 0044.**
+Applied in order. **You are the source of truth on the next number — next free is 0045.**
 
 > **How migrations are applied here (READ THIS BEFORE SUGGESTING ANY CLI COMMAND):** by hand-pasting
 > each file into the Supabase SQL editor and running it once, in order. There is NO CLI
@@ -467,9 +511,9 @@ alter table vendors add column if not exists address text;
 **0031**. ONB-02 was then reserved on **0032** until BUD-04 took that number (Jul 23), then on
 **0033** until SEAT-11 took **0033** (Jul 26), then on **0034** until REG-01…03 took **0034–0036**
 (Jul 27), then on **0037** until REG-04 / MEAL took **0037–0040**, then on **0042** until
-WEB-IMG-01 took **0042** and RSVP-01a took **0043**. **ONB-02 takes next-free at build time
-(0044+).** **MEAL-03a (drop `guests.meal_choice`) is intended as 0044+** after live backfill
-verification — if ONB-02 needs a number first, bump MEAL-03a and record it here.
+WEB-IMG-01 took **0042** and RSVP-01a took **0043**. **ARCH-01 took 0044.** **ONB-02 takes
+next-free at build time (0045+).** **MEAL-03a (drop `guests.meal_choice`) is intended as 0045+**
+after live backfill verification — if ONB-02 needs a number first, bump MEAL-03a and record it here.
 
 ### 0032 budget_item_vendor_many (BUD-04) — APPLIED LIVE
 
@@ -657,7 +701,23 @@ grant execute to `anon, authenticated`.
 > **Filename note:** on disk the file may be named `0043_rsvp_partial_name_lookup.sql`; the
 > behavior and header comment are full-name lookup. Prefer "full-name" in prose.
 
+### 0044 project_archive (ARCH-01)
+
+Adds `projects.archived_at timestamptz` (nullable). Creates `set_project_archived(uuid, boolean)`
+→ `timestamptz`: security definer; raises `42501` unless `can_manage_project_access`; sets
+`archived_at = coalesce(archived_at, now())` when archiving, `null` when unarchiving; returns the
+column value. Grant execute to `authenticated`; revoke from `anon`. **No RLS policy change** —
+direct client `UPDATE` of `archived_at` is not the intended path (sole writer = the RPC).
+
+**APPLIED LIVE.** Post-paste confirm (still worth spot-checking):
+`to_regprocedure('public.set_project_archived(uuid,boolean)')` and a null→non-null→null round trip
+on a throwaway project.
+
 ### Column reference
+
+**`projects` (0001 + 0010 + 0044):** `wedding_date` date nullable; `total_budget` numeric(12,2)
+nullable; **`archived_at` timestamptz nullable (0044)** — null = on the active book. Archive via
+`set_project_archived` only.
 
 **`guests` (0006 + 0040 + 0041 semantics):** `party_size integer NOT NULL default 1` is the **invited cap**
 (couple-authored; never derived from members; never overwritten by RSVP match). `meal_choice text`
@@ -667,7 +727,12 @@ preserved only for the 0040 backfill and for MEAL-03a drop. Per-person truth is 
 **`rsvp_token`** (0041) is the opaque household gate key — unique; never anon-selected.
 
 **`tasks` (0002):** `status` CHECK `todo | in_progress | done` default `todo`; `phase` text
-**NULLABLE, free-text (NO CHECK)** — canonical order in `lib/checklist-phases.ts`.
+**NULLABLE, free-text (NO CHECK)** — canonical order / writers in `lib/checklist-phases.ts`
+(`"12+ months" | "9 months" | "6 months" | "3 months" | "1 month" | "week of"`). **Computed due
+dates floor through `clampDueDateToToday` (`lib/date-months.ts`)** — sole owner of "no task is
+created with a due_date before today." Assistant `add_task` derives phase from clamped due date
+(CHK-03); undated ad-hoc tasks get `phase: null` (Other bucket). **Hard delete via `deleteTask`
+(CHK-02)** — nothing FKs `tasks.id`.
 
 **`budget_items` (0010 + 0026 + 0032):** `category` text NULLABLE free-text; `planned_amount`
 numeric(12,2) NOT NULL default 0; `actual_amount` nullable; `project_vendor_id` uuid nullable
@@ -692,7 +757,7 @@ numeric nullable, `role` text nullable, `notes` text nullable. Unique `(project_
 for the composite FK — not 0004) and **unique `(project_id, vendor_id)` (0030)**.
 
 **`vendor_targets` (0013 + 0031 + VND-07 semantics):** project-scoped category slots. `category`
-text (still NO CHECK — ONB-02 / **next-free / 0044+** owns that decision); `status` includes booked/needed/skipped
+text (still NO CHECK — ONB-02 / **next-free / 0045+** owns that decision); `status` includes booked/needed/skipped
 vocabulary used by the UI; **`project_vendor_id` uuid nullable (0031)** with composite FK to
 `project_vendors` and CHECK `project_vendor_id is null or status = 'booked'`. **No unique index or
 unique constraint on `project_vendor_id`** — one `project_vendor` may own many targets (venue
@@ -734,11 +799,12 @@ checkpoint). See §7.
 
 > **No-migration slices to date:** the 5-template pack; V3-QA-01…06; SEAT-02/03/05/05a/08/09/10;
 > CHK-01; SET-01; TL-01/02/03; **TL-04**; BUD-01; BUD-01a; ONB-01; Soft stack chrome pass (v11);
-> LAND-01; LAND-01a; INV-03; INV-05; INV-02; **INV-07**; **VND-05; VND-05a; VND-05b; VND-06a;
-> VND-07; VND-07a; VND-07b**; **WEB-LAYOUT; WEB-EDITOR; GST-01**; **CREATE-01; LAND-02; PRICE-01**.
+> LAND-01; LAND-01a; INV-03; INV-05; INV-02; **INV-07**; **INV-08**; **INV-02b**; **VND-05; VND-05a; VND-05b; VND-06a;
+> VND-07; VND-07a; VND-07b**; **WEB-LAYOUT; WEB-EDITOR; GST-01**; **CREATE-01; LAND-02; LAND-03; PRICE-01**;
+> **ARCH-01a; CHK-02; CHK-03**.
 
 **`projects.total_budget`** — numeric(12,2) NULLABLE (0010). **`projects.wedding_date`** — date
-NULLABLE (0001).
+NULLABLE (0001). **`projects.archived_at`** — timestamptz NULLABLE (0044).
 
 ---
 
@@ -746,9 +812,13 @@ NULLABLE (0001).
 
 Unchanged from v18. One login. `lib/post-login-path.ts` routes by account kind.
 - **Planner (business):** `/dashboard`, `PlannerShell` + `PlannerProjectSidebar`.
+  Dashboard splits Active vs Archived wedding lists (`DashboardWeddingList`); sidebar and
+  Active-weddings count read only `archived_at is null`. Cross-project Urgent / vendors-needing-
+  action / tasks-due aggregates filter to **active project IDs only** (ARCH-01a).
 - **Couple (personal):** into their project workspace (`CoupleShell`), gated by onboarding.
 - **Invited member (no account):** into the invited project via `/projects` (couple **or**
   collaborator — same path; role only affects `can_edit_project` / future WRITE-01 gates).
+  Archive does not revoke membership.
 
 ### The signup → workspace path
 
@@ -781,19 +851,22 @@ throw.**
 > **`plannerOnly` resolves from ACCOUNT KIND, never from `project_members.role`.** A planner opening
 > their own project has no `project_members` row at all. Do not "improve" this.
 
-### Invitation acceptance path (INV-05)
+### Invitation acceptance path (INV-05 + INV-08)
 
 ```
 /invite/[token]
-  authenticated   → acceptProjectInvitation(token)
-                    → /projects/{projectId}   or   ?error=<reason>
-  unauthenticated → setPendingInvite(token)   [httpOnly cookie, 30 min]
-                    → STATIC generic invite page (Sign up / Log in)
+  middleware (logged-out) → set pending_invite_token cookie   [httpOnly, 30 min]
+  authenticated           → acceptProjectInvitation(token)
+                            → /projects/{projectId}   or   ?error=<reason>
+  unauthenticated         → STATIC generic invite page (Sign up / Log in)
+                            (cookie already set by middleware — page does NOT cookies().set)
 ```
 
 **The route MUST NOT resolve the token before authentication.** `consumePendingInvite` runs at BOTH
 auth entry points (`app/auth/callback/route.ts` and `app/login/actions.ts`) because **password login
-never passes through `/auth/callback`**.
+never passes through `/auth/callback`**. Cookie name/options live in
+`lib/invitations/pending-invite-config.ts` (shared by middleware + consume). **INV-08 closed the
+Next 16 Server Component cookie-write crash** — do not move the write back into `InvitePage`.
 
 ### Shared project workspace
 
@@ -805,7 +878,9 @@ Figtree display numerals. Canonical two-column split:
 
 - **Overview** — `WeddingHero` (couple) / `SlimHero` (planner); inline wedding-date editor +
   countdown. The date editor works for invited couples (0029).
-- **Checklist** — CHK-01 progress band + two-column body.
+- **Checklist** — CHK-01 progress band + two-column body; **CHK-02** per-row delete (hard delete,
+  rosewood hover, no confirm). Phase bands use canonical `lib/checklist-phases.ts` labels; null
+  phase → **Other** (shown only when non-empty). Computed due dates clamp via `clampDueDateToToday`.
 - **Budget** — BUD-01/02/01a + allocation band. **No pie/donut/circular progress.**
 - **Vendors** — Gmail mailbox card; **Add vendor form** (manual; VND-05 + **VND-07a** project-wide
   soft dup → connect); Still-to-book target cards; **Booked band** shaped as:
@@ -827,9 +902,12 @@ Figtree display numerals. Canonical two-column split:
   when a published slug exists. **Website** editor: LookStep (template + palette) + hero photo +
   Gallery / Party / Travel / FAQ authoring; content persists on each edit via `persistContent`
   (slug still requires an explicit Save).
-- **Access (planner-only)** — `app/(app)/projects/[projectId]/access/page.tsx` (INV-02 + **INV-07**).
-  Separate couple vs collaborator invite cards; pending/accepted lists show role pills; revoke /
-  remove unchanged. Helper copy: collaborators help **this** wedding only — not the planner's book.
+- **Access (planner-only)** — `app/(app)/projects/[projectId]/access/page.tsx` (INV-02 + **INV-07**
+  + **INV-02b**). Separate couple vs collaborator invite cards; pending list from live invites;
+  **Has access lists live `project_members`** (email from accepted invite when present) — not
+  accepted invitation rows that outlive a remove. Revoke / remove unchanged in shape; remove also
+  soft-revokes matching invitations and `router.refresh`s. Helper copy: collaborators help **this**
+  wedding only — not the planner's book.
 
 **Account-scoped planner surfaces:** `/leads`, `/leads/[leadId]`,
 `/leads/[leadId]/proposals/[proposalId]/contract`, `/account/billing`.
@@ -839,7 +917,9 @@ photo-led sections via shared `SectionStack`; adaptive RSVP form driven by `meal
 `meal_options` + `rsvp_access_mode`), `app/w/[slug]/rsvp` (QR / gated deep-link landing; forces
 RSVP visible even if couple hid it on the main site), `app/w/[slug]/registry` (registry sub-page;
 anon read of `registry_items` when published), and `app/invite/[token]` (Tier 2, NO data read).
-Marketing landing at `/` → `components/marketing/`; **`/pricing`** (PRICE-01).
+Marketing landing at `/` → `components/marketing/` (**LAND-03** Couples/Planners audience toggle +
+unify band under hero; capabilities panel; **no How-it-works**); **`/pricing`** (PRICE-01).
+**Marketing copy must not lead with "AI"** — frame as the app / automatically / the assistant.
 
 ---
 
@@ -962,8 +1042,8 @@ Attending tracks people who RSVP'd yes. Members may exceed the cap (soft note, n
 Seating stays on `guests.id` — do not seat members in this slice.
 
 **`guests.meal_choice`:** backfilled into `dietary_note`; app code stops reading/writing it.
-**Drop is MEAL-03a / 0044+** after live verification — not 0040 (0041 was RSVP-01; 0042–0043
-were website media + full-name lookup).
+**Drop is MEAL-03a / 0045+** after live verification — not 0040 (0041 was RSVP-01; 0042–0043
+were website media + full-name lookup; **0044 is archive**).
 
 **Files (meals):** `0038_meal_options.sql`, `0039_rsvp_attendees.sql`, `0040_guest_members.sql`,
 `app/(app)/projects/[projectId]/guests/{MealConfigCard,GuestRow,guest-member-actions,meal-actions,
@@ -1070,7 +1150,8 @@ rejects `viewer`. Access tab: distinct couple vs collaborator cards; lists show 
 reuse INV-02. Collaborators land in the couple workspace for that project only (no CRM —
 `plannerOnly` is account-kind gated).
 
-**Files:** `lib/invitations/actions.ts`,
+**Files:** `lib/invitations/actions.ts`, `lib/invitations/{constants,types}.ts` (non-async exports
+moved out of the `'use server'` file — Next forbids them),
 `app/(app)/projects/[projectId]/access/{page,InviteForm}.tsx`.
 
 #### CREATE-01 — planner New wedding create under projects RLS. NO SCHEMA.
@@ -1089,8 +1170,9 @@ Sticky marketing topbar with home section anchors (`/#features`, `/#couples`, `/
 nav to `/pricing`, chunkier CTAs. Landing gains a static capabilities checklist panel
 (`capabilities-panel.tsx`).
 
-**Files:** `components/marketing/{marketing-topbar,landing-page,capabilities-panel,audience-split,
-feature-grid,landing-hero}.tsx`, `components/ui/{button,topbar}.tsx`.
+**Files:** `components/marketing/{marketing-topbar,landing-page,capabilities-panel,landing-hero,
+feature-grid}.tsx`, `components/ui/{button,topbar}.tsx`. *(audience-split / how-it-works removed by
+LAND-03.)*
 
 #### PRICE-01 — `/pricing` presentation. NO SCHEMA.
 
@@ -1099,6 +1181,107 @@ planner plans (monthly $59 / annual $590 in-card cadence + Agency). **Stripe Pri
 checkout routing are PRICE-02** — CTAs still go to `/signup` where noted.
 
 **Files:** `app/pricing/page.tsx`, `components/marketing/pricing-plans.tsx`.
+
+### v27 — Archive + invite cookie + landing toggle + checklist hygiene
+
+#### ARCH-01 — planner archives finished weddings. Migration **0044**.
+
+`projects.archived_at` + `set_project_archived` (definer, `can_manage_project_access`). Planner
+dashboard Active/Archived toggle (`DashboardWeddingList`); sidebar lists active only. Archive is
+reversible; does not delete project data or revoke memberships.
+
+**Files:** `supabase/migrations/0044_project_archive.sql`,
+`app/(app)/dashboard/{page,actions}.ts`, `app/(app)/layout.tsx`,
+`components/dashboard/{account-dashboard,dashboard-wedding-list}.tsx`.
+
+#### ARCH-01a — archived projects drop out of dashboard aggregates. NO SCHEMA.
+
+Dashboard `tasks` / `project_vendors` reads for Urgent, vendors-needing-action, and tasks-due use
+`.in("project_id", activeProjectIds)` (skip queries when empty). List/count paths already filtered
+by ARCH-01.
+
+**Files:** `app/(app)/dashboard/page.tsx`.
+
+#### INV-08 — pending-invite cookie in middleware. NO SCHEMA.
+
+On Next 16.2.9, `InvitePage` calling `cookies().set` during render threw. Middleware now sets
+`pending_invite_token` on `/invite/*` when logged out; page is static. Cookie options shared via
+`pending-invite-config.ts`. Closes the §13 Server Component cookie-write caveat.
+
+**Files:** `middleware.ts`, `lib/invitations/pending-invite-config.ts`,
+`lib/invitations/pending-invite.ts`, `app/invite/[token]/page.tsx`,
+`utils/supabase/middleware.ts`.
+
+#### LAND-03 — audience toggle + marketing copy sweep. NO SCHEMA.
+
+Replaces two-card `audience-split` + How-it-works with interactive Couples/Planners tabs + unify
+band under the hero (`audience-section.tsx`). Topbar hash targets `/#couples` `/#planners` sync the
+tab. **Copy policy:** marketing must not promote or lead with "AI"; frame as the app /
+"automatically" / "the assistant." No "Soft stack" in user-facing marketing.
+
+**Files:** `components/marketing/{audience-section,landing-page,marketing-topbar,capabilities-panel,
+landing-hero,website-preview-thumb,final-cta,marketing-footer,pricing-plans}.tsx`
+(deleted: `audience-split.tsx`, `how-it-works.tsx`).
+
+#### CHK-02 — delete checklist tasks. NO SCHEMA.
+
+`deleteTask(taskId)` mirrors `toggleTask` (delete by id, RLS `FOR ALL` on `can_access_project`).
+Step 0 confirmed `tasks` has the 0002 `for all` policy so DELETE is already covered (same shape as
+`project_vendors`) and nothing FKs `tasks.id` (clean delete, no cascade). Per-row trash in `TaskRow`
+— muted at rest, rosewood on hover/focus, spatially away from status (VND-05b lesson). No confirm
+(a task carries no cascade; worst case is re-adding); works for any status including done and
+overdue. No assistant delete tool (additive-only contract stands).
+
+**Verification:** delete DB-confirmed by rowcount inference this cycle — after clearing and
+rebuilding, a fresh assistant build produced 40 rows not 55, proving the removed set genuinely left
+the table (not merely hidden). On-record checkpoint is the literal per-row `select id … → 0`.
+
+**Files:** `app/(app)/projects/[projectId]/checklist/actions.ts`,
+`components/checklist/TaskRow.tsx`.
+
+#### CHK-03 — assistant task writes canonical phase + clamped date. NO SCHEMA.
+
+**Problem:** the assistant's `add_task` (`lib/assistant/write-tools.ts`) let the **model author**
+both `phase` (free string) and `due_date` (format-validated only, passed straight to `addTask`). As
+the **third** `tasks` writer — never routed through the shared floor — it wrote non-canonical phases
+(`"1 Month Out"` vs canonical `"1 month"`, forking the checklist into duplicate lowercase/title-case
+bands) **and** past dates (Jun 2026, a valid `YYYY-MM-DD` the validator accepted). Two on-screen
+bugs, one cause: model-supplied values with no enforcement at the write boundary.
+
+**Fix (chosen: sanitize at the boundary + derive phase, NOT convert the tool to an offset — `add_task`
+is general-purpose and must still handle single ad-hoc "add X due next Tuesday"):**
+- `phase` **removed from the tool schema**; description states phase is derived, not authored. Model
+  `phase` ignored.
+- With `due_date`: clamp via `clampDueDateToToday`; fetch `wedding_date`; derive canonical phase via
+  `wholeMonthsBetween(clampedDue, weddingDate)` → `phaseFromMonthsBefore(...)`. Phase follows the
+  **clamped** date, so phase and date cannot disagree and the model cannot invent a phase string.
+- Without `due_date`: `due_date: null`, `phase: null` (ad-hoc task, no basis for a phase — Other
+  bucket handles it). Format validation retained.
+
+**Shared floor extracted:** `clampDueDateToToday` now lives in `lib/date-months.ts` and is called by
+**all three** `tasks` writers — `toWeddingPlan` (`onboarding/plan-actions.ts`, its inline runway-
+month cap retained as a scheduling heuristic — the floor is the guarantee, the cap is a nicety),
+`generateStarterChecklist` (`checklist/actions.ts`), and `add_task`. This closes the ONB-01 floor as
+a shared, single-owner helper rather than inline logic one writer skipped.
+
+**Verified (DB):** cleared, rebuilt via assistant → group-by all-canonical phases, zero
+`due_date < current_date`, one band per phase; single ad-hoc "due next Tuesday" derives the correct
+single phase. **Distribution, not absence** is the pass condition (a floor that flattens all tasks
+onto today also shows zero overdue).
+
+**Files:** `lib/assistant/write-tools.ts`, `lib/date-months.ts` (`clampDueDateToToday`),
+`app/(app)/onboarding/plan-actions.ts`,
+`app/(app)/projects/[projectId]/checklist/actions.ts`.
+
+#### INV-02b — Has access = live membership. NO SCHEMA.
+
+Access "Has access" reads `project_members` (join email from accepted invites when present).
+`removeProjectMember` still deletes the membership row (that revokes `can_access_project`) and
+best-effort soft-revokes matching invitations so history stays aligned; UI refreshes after revoke/
+remove.
+
+**Files:** `app/(app)/projects/[projectId]/access/{page,AccessActions}.tsx`,
+`lib/invitations/actions.ts`.
 
 **The reported problem, and what it actually was.** Dom's report: *couples can't add vendors they've
 already booked off-platform; can't link them to a category; duplicates aren't prevented; and nothing
@@ -1336,7 +1519,8 @@ them. `bookedUnlinkedQuotedTotal` unchanged.
 `generate-wedding-plan.ts` returns strict JSON (defensive parsing); editable preview; **Approve**
 (`commitPlan`) inserts tasks/budget_items/vendor_targets, stamps `onboarded_at`, guards
 double-commit. (`saveOnboarding` remains the ONLY onboarding-path write of `wedding_date`;
-post-onboarding edits go through SET-01's `updateWeddingDate`.)
+post-onboarding edits go through SET-01's `updateWeddingDate`.) **Computed task due dates floor
+through `clampDueDateToToday` (CHK-03 shared helper) and `phase` is derived, never authored.**
 
 > **⚠️ `onboarded_at` lives on `wedding_profile`, NOT on `projects`.** `lib/onboarding-gate.ts` reads
 > `wedding_profile.onboarded_at` for a given `project_id`. **A planner-created project has no
@@ -1380,6 +1564,28 @@ honest summary, exchange persisted; cap-hit with NO writes → persists nothing.
 > overwrite) plus travel `placeCount` on read; RSVP / full website authoring remain out of scope.
 > The assistant also has no vendor-removal tool and should not get one — it is a destructive action
 > with a cascade.
+
+> **Assistant write-tool canonical audit (v27 / CHK-03 follow-up). COMPLETE — closed, not
+> deferred.** 12 write tools (all in `lib/assistant/write-tools.ts`); **zero** pass an unvalidated
+> canonical value to the DB.
+> - **Enforced (canonical / derivation):** `add_task` phase (derived) + due_date (clamped);
+>   `update_task_status` (`todo|in_progress|done`); `update_guest_rsvp`
+>   (`pending|attending|declined`); `add_vendor_target` category (schema enum + action rejects
+>   unknown via `getVendorCategoryById`); `set_website_travel` kind (`stay|getting_there|other`,
+>   action coerces unknown → `other`).
+> - **Free-text by design (correct, NOT a gap):** `add_budget_item` category; `add_timeline_event` /
+>   `add_timeline_events` owner + section; note/guest text fields; website schedule item text. These
+>   columns are free-text in the app itself; the assistant matching that is the right non-action.
+>   Do not harden them to enums (see §3 corollary).
+> - **Two soft notes, both fine:** `add_vendor_target` enforces at the *action* not the tool body
+>   (still a hard reject before DB — enforcement at the action boundary is enforcement);
+>   `set_website_travel` **coerces** rather than rejects an invalid kind (correct for a low-stakes
+>   display enum — degrade the place to `other`, don't throw away the write; contrast task phase,
+>   where derive-from-truth is correct).
+>
+> The property this confirms: the assistant write layer is *consistent with the app's own
+> enforcement* — canonical where the app is canonical, free where the app is free. Re-run this audit
+> when a new write tool ships (esp. leads/proposals/RSVP/seating tools).
 
 ---
 
@@ -1475,6 +1681,8 @@ silently didn't work?* If the answer is "the same," the checkpoint is decoration
   `project_vendors ⋈ vendors` = 0) discriminates.
 - **VND-05a: a raw category id in an AI prompt throws nothing and renders nothing wrong.** Only
   reading the generated outreach email discriminates.
+- **CHK-03: a due-date floor that flattens all tasks onto today shows zero overdue, same as a
+  correct floor.** Only the DISTRIBUTION (front floored, tail spread to real offsets) discriminates.
 
 **Verification lessons (v18):**
 1. **Confirm the migration landed before believing any checkpoint.** One error rolls back the whole
@@ -1490,7 +1698,9 @@ silently didn't work?* If the answer is "the same," the checkpoint is decoration
    answered exactly that and never mentioned `addVendor` — so two rounds of planning proceeded on
    the false belief that manual add didn't exist, and were only corrected because Dom said *"I added
    it manually through the add vendor area."* **Phrase enumeration questions as "list EVERY code
-   path that inserts into X" and require a count.**
+   path that inserts into X" and require a count.** *(Re-confirmed v27: the ONB-01 floor fix touched
+   only the two writers it enumerated; the assistant `add_task` — a third `tasks` writer — stayed
+   unclamped until CHK-03 enumerated ALL writers by count.)*
 5. **Cursor answering a Step 0 question is not Cursor acting on it.** VND-05's Step 0 dutifully
    listed **eight** read sites of `vendors.category`; the shipped summary reported fixing **one**.
    The other seven silently changed meaning. **Enumeration is not remediation — when Step 0 produces
@@ -1499,6 +1709,18 @@ silently didn't work?* If the answer is "the same," the checkpoint is decoration
 6. **A control the spec author cannot find on the page has not shipped.** Remove was rendered,
    functional, and invisible. Treat "I don't see it" from someone who wrote the requirement as a
    design defect, not a user error.
+
+**NEW verification lessons (v27):**
+
+7. **An insert-only writer looks broken after a clear-and-rebuild unless you separate stale from
+   fresh.** A phase/date fix verified against a rebuilt checklist is unreadable if old rows remain
+   (two vocabularies mix in the group-by). Clear first, rebuild, then read — and read the group-by,
+   not the header labels (phase headers are derived from offset and are correct even when a due date
+   was floored).
+8. **A guard that silently no-ops and a broken guard that doubles rows look identical in the UI —
+   count the rows.** `generateStarterChecklist`'s double-insert guard (`if count>0 return`) was
+   confirmed only by asserting the row count stays put on a second click; "it looks fine" would have
+   passed a broken guard too.
 
 **Verify schema claims by introspection, not narration.** Run introspection **one statement at a
 time** and coerce long definitions to booleans so they cannot truncate. **This bit again at 0030** —
@@ -1511,9 +1733,18 @@ difference (see the v19 header).
 **Step 0 is load-bearing. When Step 0 contradicts the prompt, Step 0 wins.** During the VND build
 Step 0 correctly caught: that `project_vendors` already had DELETE coverage via an `ALL` policy (so
 removal needed no migration); that no column was needed for manual vendors; that `'lead'` was dead;
-and that `vendors.category` had three vocabularies. Every one changed the slice.
+and that `vendors.category` had three vocabularies. Every one changed the slice. **CHK-02's Step 0
+likewise caught the `tasks` `for all` policy (DELETE already covered, no migration).**
 
-**Don't diagnose from a screenshot.** Get the rows.
+**Don't diagnose from a screenshot.** Get the rows. *(v27: three checklist bugs in a row were each
+resolved by a group-by / rowcount query, never by the screenshot.)*
+
+**Documentation discipline (v27):** the bible is written from the reasoning in the working session,
+not from a code scan. A code scan reliably catches **factual drift** (migration numbers, file paths,
+whether a file exists) — use it for that, as a findings list, not as bible prose. But it cannot
+reconstruct *why* (a deliberate deferral, a "closed not deferred," a derive-vs-coerce choice), and a
+scan reconciling the bible TO the code will silently overwrite exactly those decisions. Principles
+and audit conclusions come from the conversation; Cursor does not author the bible.
 
 **Drift watchlist:**
 - Manual permission filters; naive first-membership lookups
@@ -1522,9 +1753,12 @@ and that `vendors.category` had three vocabularies. Every one changed the slice.
 - Non-idempotent migrations (`create policy` / `create trigger` without `if exists` drops)
 - **Adding a CHECK without reconciling the column's DEFAULT against it**
 - **A free-text input wired to nothing where a canonical list exists**
+- **A writer (form, action, OR assistant tool) that authors a value with a canonical derivation
+  instead of deriving/clamping it at the write boundary** (§3 — three `tasks` instances)
 - **Changing what a column CONTAINS without enumerating every reader of it**
 - **Promising a constraint that has no shared key to act on**
 - **Deleting the account-scoped parent when the user meant to remove the project-scoped link**
+- **Writing `projects.archived_at` directly instead of via `set_project_archived`**
 - Cormorant / Great Vibes outside Tier 3; Tier 1 accent floods; raised-inside-raised; ad-hoc radii
 - Kind encoded in status colour; trusting client-sent totals/entitlement/ids/angles
 - Reaching for service-role; hardcoded lists instead of single sources
@@ -1545,6 +1779,10 @@ and that `vendors.category` had three vocabularies. Every one changed the slice.
 - Summing two different things into one headline figure
 - Duplicating date math instead of `lib/date-months.ts`
 - Storing two fields that can disagree when one could be derived
+- Hardening a deliberately-free-text column (`budget_items.category`, `timeline_events.owner`) to an
+  enum
+- Setting the pending-invite cookie from a Server Component render (middleware only — INV-08)
+- Leading marketing copy with "AI"
 - Reintroducing Modern romantic chrome; using Soft stack tokens as public website colour
 - Hiding a tab and calling it authorization — gate the ROUTE
 
@@ -1569,7 +1807,10 @@ and that `vendors.category` had three vocabularies. Every one changed the slice.
 - **Invitations:** raw tokens are 32 random bytes, base64url, **stored only as sha256 hex**.
   Acceptance is bound to `auth.email()`. Expiry 14 days; revocation immediate. No anon RLS policy,
   no service-role path, no user created on the couple's behalf. Pending-invite cookie is httpOnly,
-  `sameSite: lax`, secure in production, 30-minute lifetime, consumed once.
+  `sameSite: lax`, secure in production, 30-minute lifetime, consumed once, **set in middleware**
+  (INV-08).
+- **Archive:** `set_project_archived` is definer, `can_manage_project_access`-gated, `authenticated`
+  only (anon revoked). Reversible; deletes no data and revokes no membership.
 - **Vendor removal (v19):** deletes the project link only. **It hard-deletes `outreach_messages` for
   that link via FK cascade** — sent-email history for that vendor is unrecoverable. The confirm copy
   names this. If outreach history ever needs to be retained for compliance or dispute purposes,
@@ -1581,7 +1822,7 @@ and that `vendors.category` had three vocabularies. Every one changed the slice.
 - **Google Places / Files / Assistant / Seating / Budget:** store only `place_id`; private bucket +
   signed URLs gated by `<projectId>/`; assistant can't exceed RLS.
 - **Production infra:** prod belongs in a **separate Supabase org on Pro**. Fresh prod project,
-  migrations **0001–0043** applied by hand once each in order (NEVER `db push`), storage buckets
+  migrations **0001–0044** applied by hand once each in order (NEVER `db push`), storage buckets
   (`project-files` + **`website-media`**) + policies recreated, real SMTP, prod domain in auth
   redirect URLs. See the Launch Prep Runbook.
 - Set Anthropic + Google Cloud + Stripe + Supabase billing/spend alerts.
@@ -1665,7 +1906,20 @@ first-membership; `project_members` recursive-policy flag (investigated, safe �
 - **No public pricing page / thin marketing nav** — LAND-02 capabilities + PRICE-01 `/pricing`
   (Stripe wiring deferred to PRICE-02).
 
-**Open — from the v19/v20/v21/v22/v23/v24/v25/v26 build:**
+**Closed by v27 (ARCH-01/01a + INV-08 + LAND-03 + CHK-02/03 + INV-02b):**
+- **No planner archive** — `archived_at` + `set_project_archived` (0044); Active/Archived UI;
+  aggregates exclude archived (ARCH-01a).
+- **Invite cookie write crashes on Next 16** — middleware sets the cookie (INV-08).
+- **Weak audience-split / How-it-works / AI marketing leaks** — LAND-03 toggle + copy policy.
+- **No checklist delete** — CHK-02 hard delete by id.
+- **Assistant writes invented phases / past due dates** — CHK-03 clamp + derive canonical phase;
+  shared `clampDueDateToToday` now on all three `tasks` writers (couple plan, starter button,
+  assistant). Closes the ONB-01 floor as a single-owner helper.
+- **Has access lists removed members** — INV-02b reads live `project_members`.
+- **Assistant write-tool canonical coverage unverified** — §9 audit: 12 tools, zero unvalidated
+  canonical writes to DB. Closed, not deferred.
+
+**Open — from the v19/v20/v21/v22/v23/v24/v25/v26/v27 build:**
 - **VND-05 checkpoints a, c, e, f, g reported as "all set" without pasted output.** Believed good.
   (d) was the silent `replied` → 23514 case — closed by 0031. (g) remains the one to spot-check if
   outreach quality looks off (raw category id in a generated email).
@@ -1690,31 +1944,37 @@ first-membership; `project_members` recursive-policy flag (investigated, safe �
   `tasks`, `budget_items`, `guests`, `notes`, `timeline_events`, `seating_*`, `rsvp_submissions`
   member writes, and most of the rest still gate writes on `can_access_project`, which a `viewer`
   passes. **`removeProjectVendor` is the sharpest remaining example — a viewer can delete a vendor
-  link and cascade its outreach history.** Unreached today because Access **still does not issue
-  `viewer`** (INV-07 allowlist is `{couple, collaborator}` only). Collaborators are intended
-  editors (`can_edit_project` includes them). **WRITE-01 before any `viewer` invite.** See §15.
+  link and cascade its outreach history.** `deleteTask` (CHK-02) is the same class — a viewer could
+  hard-delete tasks. Unreached today because Access **still does not issue `viewer`** (INV-07
+  allowlist is `{couple, collaborator}` only). Collaborators are intended editors (`can_edit_project`
+  includes them). **WRITE-01 before any `viewer` invite.** See §15.
 - **`projects` has NO DELETE policy.** Silent-no-op shape, currently unreached.
-- **`vendors.category` has NO CHECK.** Deliberately deferred — **ONB-02 (next-free / 0044+) owns the
-  category-constraint policy decision** and should apply it to `vendors.category` and
-  `vendor_targets.category` together against one canonical list. Making the form a picker got ~95%
-  of the benefit with no list duplicated into SQL.
-- **`guests.meal_choice` still present (inert).** Drop in **MEAL-03a / 0044+** after Dom verifies
+- **`vendors.category` / `vendor_targets.category` have NO CHECK.** After the v27 write-tool audit
+  this is the **sole remaining place a canonical value lacks a *DB-level* constraint** — the form is
+  a picker, the `addVendor` action validates ids, and the assistant `add_vendor_target` action
+  rejects unknowns, so nothing writes garbage in practice; the gap is structural (belt behind the
+  suspenders), not behavioral. **ONB-02 (next-free / 0045+) owns the category-constraint decision**
+  and should apply it to both columns against one canonical list, or decide deliberately not to and
+  record why. When it lands, vendor category matches task status (code + DB CHECK) as fully enforced.
+- **`guests.meal_choice` still present (inert).** Drop in **MEAL-03a / 0045+** after Dom verifies
   backfill fidelity. Until then do not reintroduce app reads/writes.
 - **`website-media` public SELECT has no published gate.** Draft photos are fetchable by URL.
   Intentional; do not "fix" by adding a published join without a deliberate product decision.
 - **`project_invitations.invited_by` / `accepted_by` have no FK to `auth.users`.** Cosmetic.
-- **`budget_items.category` free-text/nullable** — Uncategorized bucket handles it.
-- **`tasks.phase` still free-text**; past `wedding_date` still permitted.
+- **`budget_items.category` free-text/nullable** — Uncategorized bucket handles it. Free-text is
+  deliberate; do not enum it (§3 corollary).
+- **`tasks.phase` still free-text**; past `wedding_date` still permitted. Phase is derived by every
+  writer (§3) but the column carries no CHECK — a future non-derived writer could fork it, which is
+  why §3's write-boundary rule is the guard, not the column type.
 
 **Open — invitation feature (deliberate gaps):**
 - A user who ALREADY has a personal account can accept an invitation, but routing sends personal
   users to `getCoupleDestinationPath` — **their direct project stays invisible.** Test with an
   account-less fixture.
 - Dual-account is foreclosed by 0027, deliberately. Reversible in one `create or replace`.
-- **Next.js Server Component cookie write** (`setPendingInvite`) is version-dependent and may break
-  on a Next upgrade. Fix would be a Route Handler at `app/invite/[token]/route.ts`.
 - No email delivery (INV-06). **`viewer` invite still deferred** (WRITE-01). Collaborator invite
-  shipped (INV-07).
+  shipped (INV-07). Pending-invite cookie lives in **middleware** (INV-08) — do not restore a
+  Server Component `cookies().set` on `/invite/[token]`.
 
 **Open — Soft stack / design (the standing human gate):**
 - **Dom live Soft stack + LAND-01 / LAND-01a visual checkpoint** across couple tabs, planner,
@@ -1730,17 +1990,22 @@ first-membership; `project_members` recursive-policy flag (investigated, safe �
 - RSVP throttle soft (anon cannot SELECT submissions, so the count is best-effort).
 - Lead→project conversion NOT built (Phase 4).
 - Currency helpers duplicated — prefer `lib/format-currency.ts`.
-- **Apply + Dom-checkpoint 0037–0043 live** if not yet pasted (especially **0040** — without it,
+- **Apply + Dom-checkpoint 0037–0044 live** if not yet pasted (especially **0040** — without it,
   `guest_members` is missing and Add person fails with PGRST205; **0042** for website photos;
-  **0043** for gated full-name lookup).
+  **0043** for gated full-name lookup; **0044** for planner archive).
 
-**Dev DB state (v20 — EXPECTED; re-introspect before relying on vendor rows):**
+**Dev DB state (v20 baseline + v27 additions — EXPECTED; re-introspect before relying on vendor/task rows):**
 - `dominicciccaglione@gmail.com` (`6bf62d70-ae1c-47cf-aff1-2125bc90f444`) — **personal**,
   "Dom & Jordyn 2027" (`1c7878d1-c7dd-4c48-b355-d2d9f1e944bb`), wedding 2027-02-13.
 - `d.ciccaglione1@gmail.com` (`1779eba2-c4b4-456e-a95f-ba15661f5662`) — **business**,
-  "Events by Jordyn", **Mila & Griffin** (`1f1a2a78-5c8f-4e7c-902b-74eb5e1318f9`, planner-created, no
-  `wedding_profile`, `wedding_date = 2027-02-15`, `total_budget = 40000.00`, 0 project_members).
-  **Must remain at these values.**
+  "Events by Jordyn". Planner projects:
+  - **Mila & Griffin** (`1f1a2a78-5c8f-4e7c-902b-74eb5e1318f9`, planner-created, no `wedding_profile`,
+    `wedding_date = 2027-02-15`, `total_budget = 40000.00`, 0 project_members). **Must remain at these
+    values.**
+  - **Matt & Courtney** (`b7c32347-722a-4c6d-8ba4-c98cd2eb77e8`, planner-created, `wedding_date =
+    2027-06-13`) — the v27 checklist test project. Its `tasks` were cleared/rebuilt during CHK-01a /
+    CHK-03 verification; after the fix the two earliest tasks floor to today and phases are canonical.
+    Task rows here are churn, not fixtures — re-introspect, don't rely on a specific set.
 - `d.ciccaglione@icloud.com` (`ed4c4b9b-b6b3-41ad-8764-aad854046841`) — **orphaned auth user, 0
   memberships.** The invited-couple fixture.
 - Timeline owners on Dom & Jordyn (post TL-04 setup): includes `DJ`, `Officiant`, `DJ, Officiant`,
@@ -1802,7 +2067,7 @@ INV-02. INV-06 deliberately not built.
 - **MEAL-02** — Migration **0039**. `rsvp_attendees` + `submit_rsvp`; adaptive public form; drop
   direct anon RSVP INSERT.
 - **MEAL-03** — Migration **0040**. `guest_members` + `matched_guest_id`; match/promote;
-  caterer tally; `meal_choice` inert (drop deferred to MEAL-03a / 0044+).
+  caterer tally; `meal_choice` inert (drop deferred to MEAL-03a / 0045+).
 - **RSVP-01** — Migration **0041**. Household-gated RSVP (`rsvp_token`, `rsvp_access_mode`,
   `lookup_rsvp_household`, gated `submit_rsvp` pointer-only).
 
@@ -1818,21 +2083,34 @@ INV-02. INV-06 deliberately not built.
 **Done (v26 — collaborator invites + create fix + marketing pricing):**
 - **INV-07** — No schema. Access invites `collaborator` via existing `project_invitations.role`;
   writer allowlist `{couple, collaborator}`; same `/invite/[token]` path. **`viewer` still blocked.**
+  Non-async exports live in `lib/invitations/{constants,types}.ts`.
 - **CREATE-01** — No schema. Planner New wedding create without INSERT…RETURNING; explicit
   business-account resolve; form error surfacing.
 - **LAND-02** — No schema. Marketing topbar anchors + capabilities checklist.
 - **PRICE-01** — No schema. `/pricing` presentation (Stripe objects → PRICE-02).
 
-Current through **0043**; next-free **0044** (MEAL-03a drop preferred; ONB-02 may take it — see
-header numbering note). INV-07 did not consume a migration number.
+**Done (v27 — archive + invite cookie + landing toggle + checklist hygiene):**
+- **ARCH-01** — Migration **0044**. `projects.archived_at` + `set_project_archived`; planner
+  Active/Archived UI; sidebar filters active only.
+- **ARCH-01a** — No schema. Dashboard child aggregates scoped to active project IDs.
+- **INV-08** — No schema. Pending-invite cookie set in middleware (closes Next 16 render crash).
+- **LAND-03** — No schema. Couples/Planners audience toggle + unify band; marketing copy policy
+  (no leading "AI").
+- **CHK-02** — No schema. Per-task hard delete + row trash.
+- **CHK-03** — No schema. Assistant `add_task` clamps due date and derives canonical phase;
+  shared `clampDueDateToToday` on all three `tasks` writers (plan, starter checklist, assistant).
+- **INV-02b** — No schema. Has access = live `project_members`; remove soft-revokes invites.
+
+Current through **0044**; next-free **0045** (MEAL-03a drop preferred; ONB-02 may take it — see
+header numbering note).
 
 **In progress:** Dom Soft stack + LAND-01 live visual checkpoint (human). Not a Cursor slice.
-Dom apply + checkpoint REG + MEAL + RSVP + WEB migrations (**0034–0043**) if not yet pasted.
-Dom INV-07 live checkpoint (collaborator `project_members.role` row).
+Dom apply + checkpoint REG + MEAL + RSVP + WEB + ARCH migrations (**0034–0044**) if not yet pasted.
+Dom INV-07 live checkpoint (collaborator `project_members.role` row). Dom ARCH-01 archive round trip.
 
 **Remaining couple side:** moodboard; optional seating depth (per-seat UI / SEAT-07); **MEAL-03a
-(0044+ — drop `guests.meal_choice`)** after backfill verification; **ONB-02 (next-free /
-0044+)**; **BUD-03 (pre-launch)**; optional website-media orphan GC.
+(0045+ — drop `guests.meal_choice`)** after backfill verification; **ONB-02 (next-free /
+0045+)**; **BUD-03 (pre-launch)**; optional website-media orphan GC.
 
 **Remaining planner side:** invoicing accepted proposals; deeper CRM; INV-06 (email delivery);
 **`viewer` invite (after WRITE-01)**; PRICE-02 (Stripe Price objects + checkout for pricing CTAs).
@@ -1862,6 +2140,8 @@ Dom INV-07 live checkpoint (collaborator `project_members.role` row).
   WRITE-01.
 - **`viewer` cannot edit PROJECTS** (0029) — but see WRITE-01 for every other table.
 - **`projects.account_id` is immutable** (trigger).
+- **`projects.archived_at` is written ONLY via `set_project_archived`** (ARCH-01) — owning-account
+  only; reversible; not a delete.
 - **`vendors.category` stores canonical ids.** Labels are a display concern, resolved via
   `vendorCategoryLabel` at the read site or call site — never stored.
 - **`vendors` is account-scoped; "remove vendor" always means remove the `project_vendors` link.**
@@ -1877,8 +2157,13 @@ Dom INV-07 live checkpoint (collaborator `project_members.role` row).
 - **Outreach lists in-flight statuses only** (`to_contact | contacted | replied`). Declined is an
   exit; booked lives in the Booked band.
 - **`timeline_events.owner` is free text at rest and a comma-separated SET at read (TL-04).**
-  `lib/timeline-owners.ts` is the sole parser.
-- **ONB-02 takes next-free migration at build time (0044+)** (`commitPlan` atomicity +
+  `lib/timeline-owners.ts` is the sole parser. Owner/section are deliberately free-text — do not
+  enum them.
+- **Every writer of `tasks` derives `phase` (never authors it) and floors computed `due_date` via
+  `clampDueDateToToday` (CHK-03).** The free-text `tasks.phase` column and any tool schema are NOT
+  authoring surfaces. Applies to onboarding plan, starter checklist, assistant, and any future
+  writer (e.g. Phase-4 lead conversion).
+- **ONB-02 takes next-free migration at build time (0045+)** (`commitPlan` atomicity +
   `vendor_targets.category` / `vendors.category` CHECK decision). **BUD-03** takes next-free after
   that (or concurrent if no schema conflict). Coordinate with **MEAL-03a** if both need a number.
 - **Registry price is display-only** — never feeds budget headlines or `lib/budget-aggregates.ts`.
@@ -1896,6 +2181,13 @@ Dom INV-07 live checkpoint (collaborator `project_members.role` row).
   last-name, not prefix.
 - **Marketing pricing copy is presentation-first (PRICE-01).** Live Stripe Prices / trial checkout
   are PRICE-02 — do not invent Price IDs in the marketing page.
+- **Marketing copy must not lead with "AI"** (LAND-03) — frame as the app / automatically / the
+  assistant.
+- **Pending-invite cookie is set in middleware**, never during InvitePage render (INV-08).
+- **A value with a canonical vocabulary/derivation is enforced at the write boundary on EVERY writer
+  (form, action, or assistant tool); a free-text column, a CHECK-less column, or a model-supplied
+  tool arg is not a license to author it. Where the app's column is deliberately free-text, the
+  assistant matching that is correct, not a gap** (§3 / §9 audit).
 
 ---
 
@@ -1907,8 +2199,8 @@ categories) + many budget lines per vendor (BUD-04) + an in-flight outreach pipe
 run sheets + seating dance floors (SEAT-11) + a **gift registry** (couple manage → public page →
 guest claims) + **meal-aware RSVP with guest-member reconciliation** + **guest-gated RSVP
 (RSVP-01 / 01a)** + a **photo-led wedding website** (hero / gallery / party / FAQ / structured
-travel) + marketing **`/pricing`**. Plan is **couples-first launch**. Bible is at **v26**. Schema
-through **0043**; next-free **0044**.
+travel) + marketing **`/pricing`** + planner **wedding archive**. Plan is **couples-first launch**.
+Bible is at **v27**. Schema through **0044**; next-free **0045**.
 
 **Do not resume a Modern romantic / VND-01 layout polish pass.** Vendors chrome is Soft-stacked.
 **Do not reintroduce category eyebrows or a `PACKAGE` label on Booked cards** (VND-07a). **Do not
@@ -1924,6 +2216,13 @@ suppress single-category chips** (VND-07b).
 **Do not offer `viewer` from Access until WRITE-01.** Collaborator invites are INV-07 — done.
 **Do not fork a second invitation mechanism** for roles — extend `createProjectInvitation` only.
 **Do not wire PRICE-01 CTAs to invented Stripe Price IDs** — that is PRICE-02.
+**Do not lead marketing copy with "AI."**
+**Do not write `archived_at` except via `set_project_archived`.**
+**Do not let any writer author free-text task phases or unclamped due dates** — derive phase, floor
+the date (§3 / CHK-03), on every `tasks` writer.
+**Do not harden `budget_items.category` or `timeline_events.owner`/`section` to enums** — free-text
+is deliberate.
+**Do not set the pending-invite cookie from InvitePage render** — middleware only (INV-08).
 
 **A. Dom Soft stack + LAND-01 / LAND-01a live visual checkpoint (still open).**
 Walk couple tabs (Overview, Checklist, Budget, Timeline, Vendors, Guests, **Registry**, Seating,
@@ -1934,7 +2233,11 @@ On Vendors, spot-check: package card (full name + chips), single-chip vendors, r
 wells, soft-dup connect. On Budget, spot-check multi-line package variance (BUD-04). On Guests,
 spot-check Catering card, member expand, match control, caterer tally, gated QR + full-name copy.
 On Website, spot-check LookStep, hero photo, gallery/party/FAQ, all five templates + palette switch.
-On Access, spot-check couple vs collaborator invite cards + role pills.
+On Access, spot-check couple vs collaborator invite cards + role pills; Remove drops Has access.
+On Checklist, spot-check row delete (CHK-02) and canonical phase bands (no duplicate lower/title-case
+bands; earliest tasks floored to today, tail spread — CHK-03).
+On Dashboard, spot-check archive / unarchive + Urgent excluding archived (ARCH-01/01a).
+On Landing, spot-check Couples/Planners toggle (LAND-03).
 
 **A2. Invite Jordyn for real.** The honest end-to-end test, and the first time the design
 collaborator sees her own view. Prefer an **INV-07 collaborator** invite on a planner project;
@@ -1943,21 +2246,23 @@ confirm `project_members.role = 'collaborator'` in SQL after accept.
 **A3 (optional). TL-04 live checkpoint** on Dom & Jordyn if not already run — DJ / Officiant sheets
 both include the shared event; `group by owner` proves strings unchanged at rest.
 
-**A4. Apply + checkpoint REG + MEAL + RSVP + WEB (0034–0043)** if not yet live. Without **0040**,
-Guests → Add person fails with `PGRST205`. Without **0042**, hero/gallery uploads fail. Without
-**0043**, gated full-name search still expects the old last-name RPC. Run Dom discriminators from
-the v25 header (plus v24 MEAL/RSVP discriminators for 0037–0041).
+**A4. Apply + checkpoint REG + MEAL + RSVP + WEB + ARCH (0034–0044)** if not yet live. Without
+**0040**, Guests → Add person fails with `PGRST205`. Without **0042**, hero/gallery uploads fail.
+Without **0043**, gated full-name search still expects the old last-name RPC. Without **0044**,
+archive UI will error on the RPC. Run Dom discriminators from the v25/v27 headers (plus v24
+MEAL/RSVP discriminators for 0037–0041).
 
-**A5. MEAL-03a — drop `guests.meal_choice`. Migration 0044+ (after A4 backfill verification).**
+**A5. MEAL-03a — drop `guests.meal_choice`. Migration 0045+ (after A4 backfill verification).**
 Confirm `count(guests where meal_choice is not null)` matched the backfill; grep confirms zero app
 reads/writes; then drop the column. Do not fold into 0040.
 
-**B. ONB-02 — `commitPlan` atomicity + category CHECKs. Migration next-free (0044+).**
+**B. ONB-02 — `commitPlan` atomicity + category CHECKs. Migration next-free (0045+).**
 Three sequential non-atomic inserts (tasks, budget_items, vendor_targets) with no transaction: a
 failure on insert #2 leaves tasks, no budget, and `onboarded_at` unstamped. v10 proved onboarding is
 where this product breaks. **Also owns the category-constraint decision** — apply it to
 `vendor_targets.category` and `vendors.category` together against one canonical list, or decide
-deliberately not to and record why.
+deliberately not to and record why. (After the v27 audit this is the only canonical value still
+lacking a DB-level CHECK.)
 
 **C. BUD-03 — budget payments + deadlines. DEFERRED BY CHOICE, BUT PRE-LAUNCH.**
 
@@ -1980,23 +2285,25 @@ truth). Report how many rows and every read site of `actual_amount`.
 **D. WRITE-01 — project-scoped write policy audit. DO THIS BEFORE ANY `viewer` INVITE SHIPS.**
 `can_edit_project` (0029) now gates projects UPDATE plus registry / meal_options / guest_members /
 **website-media** exemplars. Every other project-scoped table still gates writes on
-`can_access_project`, which a `viewer` passes — including `removeProjectVendor`, which cascades
-outreach history. Enumerate every project-scoped table, decide per table whether the gate should be
-`can_access_project` (read-alike) or `can_edit_project` (write), and migrate the ones that should
-change in one pass. **Collaborator invites (INV-07) are intentional editors** and already pass
-`can_edit_project`. Unreached `viewer` writes remain the hazard. **Sequence this before offering
-`viewer` from Access, and re-run it after Phase-4 conversion.**
+`can_access_project`, which a `viewer` passes — including `removeProjectVendor` (cascades outreach
+history) and `deleteTask` (hard-deletes a task). Enumerate every project-scoped table, decide per
+table whether the gate should be `can_access_project` (read-alike) or `can_edit_project` (write), and
+migrate the ones that should change in one pass. **Collaborator invites (INV-07) are intentional
+editors** and already pass `can_edit_project`. Unreached `viewer` writes remain the hazard.
+**Sequence this before offering `viewer` from Access, and re-run it after Phase-4 conversion.**
 
 **E. Launch (after ONB-02 + BUD-03 + visual QA).**
-Follow the **Launch Prep Runbook**: separate prod Supabase org on Pro + migrations **0001–0043**
-(+ 0044 if MEAL-03a shipped) by hand — **never `db push`** + storage (`project-files` +
+Follow the **Launch Prep Runbook**: separate prod Supabase org on Pro + migrations **0001–0044**
+(+ 0045 if MEAL-03a shipped) by hand — **never `db push`** + storage (`project-files` +
 `website-media`) + SMTP; Vercel + domain + env; Stripe live + webhook + Portal + Tax; prod Places
 key; Gmail stays testing mode; privacy + ToS; monitoring; **full prod smoke — including real
 signup, deliberate double-click, a real couple **and** collaborator invitation round trip, planner
-New wedding create (CREATE-01), a vendor add/remove + multi-slot package link cycle (VND-07),
-multi-line budget vendor links (BUD-04), a seating dance-floor place/move/delete (SEAT-11), a plated
-RSVP + match-to-guest cycle (MEAL), a gated QR + full-name RSVP cycle (RSVP-01/01a), a hero/gallery
-upload + five-template public render (WEB), and a registry claim.**
+New wedding create (CREATE-01), archive/unarchive (ARCH-01), a vendor add/remove + multi-slot
+package link cycle (VND-07), multi-line budget vendor links (BUD-04), a seating dance-floor
+place/move/delete (SEAT-11), a plated RSVP + match-to-guest cycle (MEAL), a gated QR + full-name
+RSVP cycle (RSVP-01/01a), a hero/gallery upload + five-template public render (WEB), checklist
+delete (CHK-02), an assistant-built checklist (canonical phases, no past dates — CHK-03), and a
+registry claim.**
 
 **F. Planner depth / revenue (after launch, or sooner if planner-led).**
 - Invoicing accepted proposals (recommended first post-launch).
@@ -2010,13 +2317,14 @@ upload + five-template public render (WEB), and a registry claim.**
 a separate future slice — do not sneak it into polish.
 
 **H (other rounding-out):** moodboard; assistant tools for leads/proposals/RSVP/seating/
-invitations; per-seat assignment UI; `projects` DELETE policy decision; personal-user-with-direct-
-project visibility; website caching; website-media orphan GC; checklist Other/Unscheduled bucket;
-orphaned-vendor handling / account vendor library; currency-helper consolidation; regenerate
-`reference.html` / delete `theme-direction.html` / retire CSS aliases; font-load scoping; optional
-empty-state copy on empty booked slots when no vendors exist to connect; countdown hydration harden.
+invitations (re-run the §9 write-tool canonical audit when any ship); per-seat assignment UI;
+`projects` DELETE policy decision; personal-user-with-direct-project visibility; website caching;
+website-media orphan GC; checklist Other/Unscheduled bucket polish; orphaned-vendor handling /
+account vendor library; currency-helper consolidation; regenerate `reference.html` / delete
+`theme-direction.html` / retire CSS aliases; font-load scoping; optional empty-state copy on empty
+booked slots when no vendors exist to connect; countdown hydration harden.
 
-**Recommended path:** **apply/checkpoint REG+MEAL+RSVP+WEB (A4)** → **visual checkpoint + invite
-Jordyn as collaborator (A/A2)** → **MEAL-03a (A5)** → **ONB-02 / 0044+ (B)** → **BUD-03 (C)** →
+**Recommended path:** **apply/checkpoint REG+MEAL+RSVP+WEB+ARCH (A4)** → **visual checkpoint + invite
+Jordyn as collaborator (A/A2)** → **MEAL-03a (A5)** → **ONB-02 / 0045+ (B)** → **BUD-03 (C)** →
 **Launch (E)** → WRITE-01 before `viewer` (D) → invoicing → INV-06 / PRICE-02 → conversion (F) →
 remaining H.

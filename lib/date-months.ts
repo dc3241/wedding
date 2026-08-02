@@ -39,3 +39,15 @@ export function wholeMonthsBetween(fromIso: string, toIso: string): number {
   }
   return months;
 }
+
+/**
+ * Sole owner of "no task is created with a due_date before today."
+ * Returns max(dueDate, todayIso); null passes through unchanged.
+ */
+export function clampDueDateToToday(
+  dueDate: string | null,
+  todayIso: string,
+): string | null {
+  if (dueDate === null) return null;
+  return dueDate < todayIso ? todayIso : dueDate;
+}

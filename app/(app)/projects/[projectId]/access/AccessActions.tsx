@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import {
   removeProjectMember,
@@ -12,6 +13,7 @@ export function RevokeInvitationButton({
 }: {
   invitationId: string;
 }) {
+  const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -23,6 +25,7 @@ export function RevokeInvitationButton({
         setError(result.error);
         return;
       }
+      router.refresh();
     });
   }
 
@@ -53,6 +56,7 @@ export function RemoveAccessButton({
   projectId: string;
   userId: string;
 }) {
+  const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -64,6 +68,7 @@ export function RemoveAccessButton({
         setError(result.error);
         return;
       }
+      router.refresh();
     });
   }
 

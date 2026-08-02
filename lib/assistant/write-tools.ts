@@ -15,7 +15,13 @@ import {
   setWeddingWebsiteSchedule,
   setWeddingWebsiteTravel,
 } from "@/app/(app)/projects/[projectId]/website/actions";
+import { phaseFromMonthsBefore } from "@/lib/checklist-phases";
+import {
+  clampDueDateToToday,
+  wholeMonthsBetween,
+} from "@/lib/date-months";
 import { VENDOR_CATEGORIES } from "@/lib/vendor-categories";
+import { createClient } from "@/utils/supabase/server";
 
 const TASK_STATUSES = ["todo", "in_progress", "done"] as const;
 const RSVP_STATUSES = ["pending", "attending", "declined"] as const;
@@ -28,15 +34,11 @@ export const WRITE_TOOL_DEFINITIONS = [
   {
     name: "add_task",
     description:
-      "Add a new checklist task. Use when the user clearly asks to add or create a task.",
+      "Add a new checklist task. Use when the user clearly asks to add or create a task. Optional due_date (YYYY-MM-DD); phase is derived from that date automatically — do not invent phase labels. Omit due_date for an undated ad-hoc task.",
     input_schema: {
       type: "object" as const,
       properties: {
         title: { type: "string", description: "Task title" },
-        phase: {
-          type: "string",
-          description: "Optional planning phase (e.g. 12 months out)",
-        },
         due_date: {
           type: "string",
           description: "Optional due date in YYYY-MM-DD format",
@@ -379,21 +381,47 @@ export async function executeWriteTool(
       const title = asString(input.title)?.trim();
       if (!title) return toolError("title is required");
 
-      const phaseRaw = asString(input.phase);
-      const phase = phaseRaw?.trim() ? phaseRaw.trim() : null;
-
-      const dueDateRaw = asString(input.due_date);
-      if (dueDateRaw !== undefined) {
-        const dueDate = dueDateRaw.trim();
-        if (dueDate && !isValidDate(dueDate)) {
-          return toolError("due_date must be in YYYY-MM-DD format");
-        }
-        await addTask(projectId, phase, title, dueDate || null);
-        return { success: true, action: "add_task", title, phase, due_date: dueDate || null };
+      const dueDateRaw = asString(input.due_date)?.trim() ?? "";
+      if (!dueDateRaw) {
+        await addTask(projectId, null, title, null);
+        return {
+          success: true,
+          action: "add_task",
+          title,
+          phase: null,
+          due_date: null,
+        };
       }
 
-      await addTask(projectId, phase, title);
-      return { success: true, action: "add_task", title, phase, due_date: null };
+      if (!isValidDate(dueDateRaw)) {
+        return toolError("due_date must be in YYYY-MM-DD format");
+      }
+
+      const today = new Date();
+      const todayIso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+      const dueDate = clampDueDateToToday(dueDateRaw, todayIso)!;
+
+      const supabase = await createClient();
+      const { data: project } = await supabase
+        .from("projects")
+        .select("wedding_date")
+        .eq("id", projectId)
+        .maybeSingle();
+
+      const weddingDate = project?.wedding_date ?? null;
+      const phase =
+        weddingDate !== null
+          ? phaseFromMonthsBefore(wholeMonthsBetween(dueDate, weddingDate))
+          : null;
+
+      await addTask(projectId, phase, title, dueDate);
+      return {
+        success: true,
+        action: "add_task",
+        title,
+        phase,
+        due_date: dueDate,
+      };
     }
 
     case "update_task_status": {

@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { getVendorCategoryById } from "@/lib/vendor-categories";
 import { createClient } from "@/utils/supabase/server";
 import {
   PROJECT_FILES_BUCKET,
@@ -12,6 +13,19 @@ function revalidatePathForKind(projectId: string, kind: string) {
   return `/projects/${projectId}/${segment}`;
 }
 
+function resolveCategory(
+  category: string | null | undefined,
+): { ok: true; category: string | null } | { ok: false; error: string } {
+  if (category === undefined || category === null || category.trim() === "") {
+    return { ok: true, category: null };
+  }
+  const resolved = getVendorCategoryById(category.trim());
+  if (!resolved) {
+    return { ok: false, error: "Choose a valid vendor category." };
+  }
+  return { ok: true, category: resolved.id };
+}
+
 export async function recordFile(
   projectId: string,
   meta: {
@@ -20,9 +34,18 @@ export async function recordFile(
     mimeType: string;
     sizeBytes: number;
     kind: FileKind;
+    category?: string | null;
   },
 ) {
   const supabase = await createClient();
+
+  const categoryResult =
+    meta.kind === "contract"
+      ? resolveCategory(meta.category)
+      : ({ ok: true, category: null } as const);
+  if (!categoryResult.ok) {
+    throw new Error(categoryResult.error);
+  }
 
   const { error } = await supabase.from("files").insert({
     project_id: projectId,
@@ -31,11 +54,17 @@ export async function recordFile(
     storage_path: meta.storagePath,
     mime_type: meta.mimeType,
     size_bytes: meta.sizeBytes,
+    ...(meta.kind === "contract"
+      ? { category: categoryResult.category }
+      : {}),
   });
 
   if (error) throw error;
 
   revalidatePath(revalidatePathForKind(projectId, meta.kind));
+  if (meta.kind === "contract") {
+    revalidatePath("/contracts");
+  }
 }
 
 export async function getDownloadUrl(
@@ -91,4 +120,7 @@ export async function deleteFile(fileId: string) {
   if (deleteError) throw deleteError;
 
   revalidatePath(revalidatePathForKind(file.project_id, file.kind));
+  if (file.kind === "contract") {
+    revalidatePath("/contracts");
+  }
 }

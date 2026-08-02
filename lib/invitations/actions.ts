@@ -155,6 +155,8 @@ export async function acceptProjectInvitation(
 /**
  * Remove a project member. Targets (project_id, user_id) — project_members
  * has no id column. RLS: can_manage_project_access.
+ * Also soft-revokes any accepted invitation for that user so invite history
+ * matches live membership (Has access reads project_members).
  */
 export async function removeProjectMember(
   projectId: string,
@@ -176,6 +178,15 @@ export async function removeProjectMember(
   if (!data || data.length === 0) {
     return { ok: false, error: "Member not found or not removable." };
   }
+
+  // Best-effort: membership delete is what revokes access. Invite soft-revoke
+  // keeps invitation history aligned; failure must not undo the remove.
+  await supabase
+    .from("project_invitations")
+    .update({ revoked_at: new Date().toISOString() })
+    .eq("project_id", projectId)
+    .eq("accepted_by", userId)
+    .is("revoked_at", null);
 
   revalidatePath(accessPath(projectId));
   revalidatePath(`/projects/${projectId}`, "layout");

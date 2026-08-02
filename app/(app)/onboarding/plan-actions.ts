@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import type { GeneratePlanResult, WeddingPlan } from "./plan-types";
 import { phaseFromMonthsBefore } from "@/lib/checklist-phases";
-import { wholeMonthsBetween } from "@/lib/date-months";
+import { clampDueDateToToday, wholeMonthsBetween } from "@/lib/date-months";
 import {
   callClaudeForWeddingPlan,
   dueDateFromMonthsBefore,
@@ -53,7 +53,10 @@ function toWeddingPlan(
       return {
         title: item.title,
         phase: phaseFromMonthsBefore(effective),
-        dueDate: dueDateFromMonthsBefore(weddingDate, effective),
+        dueDate: clampDueDateToToday(
+          dueDateFromMonthsBefore(weddingDate, effective),
+          todayIso,
+        ),
       };
     }),
     budget: raw.budget.map((item) => ({

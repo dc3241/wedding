@@ -5,6 +5,8 @@ export type ProjectFile = {
   size_bytes: number | null;
   created_at: string;
   status?: string | null;
+  /** Vendor-category id (VENDOR_CATEGORIES); meaningful for kind='contract'. */
+  category?: string | null;
 };
 
 export type FileKind = "file" | "contract";
