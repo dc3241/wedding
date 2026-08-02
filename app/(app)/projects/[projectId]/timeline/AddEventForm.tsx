@@ -2,16 +2,47 @@
 
 import { useRef, useState, useTransition } from "react";
 import { addEvent } from "./actions";
+import { timeInputValue } from "./types";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/cn";
 
-export function AddEventForm({ projectId }: { projectId: string }) {
+export type AddEventInitialValues = {
+  start_time?: string | null;
+  end_time?: string | null;
+  section?: string | null;
+};
+
+type AddEventFormProps = {
+  projectId: string;
+  /** Seed start / end / section (e.g. gap fill). Title stays empty. */
+  initialValues?: AddEventInitialValues;
+  /** Open the editor immediately (gap entry). */
+  defaultOpen?: boolean;
+  /** When false, only the editor card is shown (no "+ Add event" trigger). */
+  showTrigger?: boolean;
+  onOpen?: () => void;
+  onClose?: () => void;
+};
+
+export function AddEventForm({
+  projectId,
+  initialValues,
+  defaultOpen = false,
+  showTrigger = true,
+  onOpen,
+  onClose,
+}: AddEventFormProps) {
   const formRef = useRef<HTMLFormElement>(null);
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(defaultOpen);
   const [isPending, startTransition] = useTransition();
+
+  function close() {
+    setOpen(false);
+    onClose?.();
+  }
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -38,15 +69,19 @@ export function AddEventForm({ projectId }: { projectId: string }) {
       );
       form.reset();
       formRef.current?.reset();
-      setOpen(false);
+      close();
     });
   }
 
   if (!open) {
+    if (!showTrigger) return null;
     return (
       <button
         type="button"
-        onClick={() => setOpen(true)}
+        onClick={() => {
+          onOpen?.();
+          setOpen(true);
+        }}
         className={cn(
           "w-full rounded-[var(--radius-inner)] border border-dashed border-ring bg-transparent px-4 py-3.5 text-left text-[15px] font-medium text-muted transition-colors",
           "hover:border-accent hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
@@ -65,7 +100,7 @@ export function AddEventForm({ projectId }: { projectId: string }) {
         </h2>
         <button
           type="button"
-          onClick={() => setOpen(false)}
+          onClick={close}
           disabled={isPending}
           className="text-[14px] font-semibold text-muted hover:text-ink disabled:opacity-50"
         >
@@ -78,13 +113,23 @@ export function AddEventForm({ projectId }: { projectId: string }) {
             <span className="mb-1.5 block text-[12px] font-semibold uppercase tracking-[0.09em] text-muted">
               Start time
             </span>
-            <Input name="start_time" type="time" disabled={isPending} />
+            <Input
+              name="start_time"
+              type="time"
+              defaultValue={timeInputValue(initialValues?.start_time ?? null)}
+              disabled={isPending}
+            />
           </label>
           <label className="block">
             <span className="mb-1.5 block text-[12px] font-semibold uppercase tracking-[0.09em] text-muted">
               End time (optional)
             </span>
-            <Input name="end_time" type="time" disabled={isPending} />
+            <Input
+              name="end_time"
+              type="time"
+              defaultValue={timeInputValue(initialValues?.end_time ?? null)}
+              disabled={isPending}
+            />
           </label>
         </div>
 
@@ -98,6 +143,7 @@ export function AddEventForm({ projectId }: { projectId: string }) {
             placeholder="Ceremony, first dance, cake cutting…"
             required
             disabled={isPending}
+            autoFocus={Boolean(initialValues)}
           />
         </label>
 
@@ -122,6 +168,7 @@ export function AddEventForm({ projectId }: { projectId: string }) {
               name="section"
               type="text"
               placeholder="Ceremony, Reception…"
+              defaultValue={initialValues?.section?.trim() || ""}
               disabled={isPending}
             />
           </label>

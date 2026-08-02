@@ -20,6 +20,8 @@ export type TimelineOverlap = {
 export type TimelineAnnotatedEvent = TimelineEvent & {
   durationMinutes: number | null;
   gapAfterMinutes: number | null;
+  /** Following event's start_time when gapAfterMinutes is set — gap window end. */
+  gapAfterUntilStart: string | null;
   overlaps: TimelineOverlap[];
 };
 
@@ -77,8 +79,9 @@ export function timelineSortMinutes(
 }
 
 /**
- * [start, end] on the wedding-day timeline. When end is clock-before or equal
- * to start after cutoff adjustment, treat end as the next calendar morning.
+ * [start, end] on the wedding-day timeline. When end is strictly before start
+ * after cutoff adjustment, treat end as the next calendar morning.
+ * Equal start/end is a zero-length instant (0m), not a full-day wrap.
  */
 export function eventIntervalSortMinutes(
   start: string | null | undefined,
@@ -91,7 +94,7 @@ export function eventIntervalSortMinutes(
 
   let endM = timelineSortMinutes(end);
   if (endM == null) return null;
-  if (endM <= startM) {
+  if (endM < startM) {
     endM = endRaw + 24 * 60;
   }
   return { start: startM, end: endM };
@@ -176,7 +179,8 @@ export function computeTimelineAggregates(
     const interval = eventIntervalSortMinutes(event.start_time, event.end_time);
     let durationMinutes: number | null = null;
 
-    if (interval != null && interval.end > interval.start) {
+    if (interval != null) {
+      // Includes 0m when end === start (instant / marker events).
       durationMinutes = interval.end - interval.start;
       scheduledDurationMinutes += durationMinutes;
     }
@@ -197,6 +201,7 @@ export function computeTimelineAggregates(
       ...event,
       durationMinutes,
       gapAfterMinutes: null,
+      gapAfterUntilStart: null,
       overlaps: [],
     };
   });
@@ -214,9 +219,11 @@ export function computeTimelineAggregates(
     if (
       currInterval != null &&
       nextStart != null &&
-      nextStart > currInterval.end
+      nextStart > currInterval.end &&
+      next.start_time != null
     ) {
       curr.gapAfterMinutes = nextStart - currInterval.end;
+      curr.gapAfterUntilStart = next.start_time;
     }
   }
 

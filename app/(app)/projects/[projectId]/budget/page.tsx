@@ -1,5 +1,6 @@
 import { BudgetBoard } from "./BudgetBoard";
 import {
+  applyOverPlanDismissals,
   computeBudgetAggregates,
   type ProjectVendorOption,
 } from "@/lib/budget-aggregates";
@@ -17,27 +18,36 @@ export default async function BudgetPage({
   const account = await getAccountContext(supabase);
   const stackClass = sectionStackClass(account?.kind ?? "personal");
 
-  const [{ data: project }, { data: items }, { data: vendorRows }] =
-    await Promise.all([
-      supabase
-        .from("projects")
-        .select("name, wedding_date, total_budget")
-        .eq("id", projectId)
-        .single(),
-      supabase
-        .from("budget_items")
-        .select(
-          "id, category, label, planned_amount, actual_amount, notes, project_vendor_id",
-        )
-        .eq("project_id", projectId)
-        .order("category", { ascending: true, nullsFirst: false })
-        .order("label", { ascending: true }),
-      supabase
-        .from("project_vendors")
-        .select("id, quoted_price, status, vendors(name)")
-        .eq("project_id", projectId)
-        .order("created_at", { ascending: true }),
-    ]);
+  const [
+    { data: project },
+    { data: items },
+    { data: vendorRows },
+    { data: dismissalRows },
+  ] = await Promise.all([
+    supabase
+      .from("projects")
+      .select("name, wedding_date, total_budget")
+      .eq("id", projectId)
+      .single(),
+    supabase
+      .from("budget_items")
+      .select(
+        "id, category, label, planned_amount, actual_amount, notes, project_vendor_id",
+      )
+      .eq("project_id", projectId)
+      .order("category", { ascending: true, nullsFirst: false })
+      .order("label", { ascending: true }),
+    supabase
+      .from("project_vendors")
+      .select("id, quoted_price, status, vendors(name)")
+      .eq("project_id", projectId)
+      .order("created_at", { ascending: true }),
+    supabase
+      .from("budget_alert_dismissals")
+      .select("category, overage_at_dismiss")
+      .eq("project_id", projectId)
+      .eq("alert_kind", "over_plan"),
+  ]);
 
   // Existing coercion — do not "fix"; PostgREST numerics arrive as strings.
   const totalBudget =
@@ -80,6 +90,14 @@ export default async function BudgetPage({
     budgetItems,
     totalBudget,
     projectVendors,
+  );
+
+  aggregates.needsAttention.overCategories = applyOverPlanDismissals(
+    aggregates.needsAttention.overCategories,
+    (dismissalRows ?? []).map((row) => ({
+      category: row.category,
+      overage_at_dismiss: Number(row.overage_at_dismiss),
+    })),
   );
 
   return (

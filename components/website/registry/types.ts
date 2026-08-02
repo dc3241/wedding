@@ -1,14 +1,3 @@
-export type PublicRegistryItem = {
-  id: string;
-  name: string;
-  price: number | null;
-  imageUrl: string | null;
-  buyUrl: string | null;
-  quantityWanted: number;
-  note: string | null;
-  claimedQty: number;
-};
-
 export type ExternalRegistryLink = {
   label: string;
   url: string;

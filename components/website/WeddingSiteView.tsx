@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 import type { WeddingWebsiteContent } from "./types";
+import type { ExternalRegistryLink } from "./registry/types";
+import { ExternalRegistryLinks } from "./registry/ExternalRegistryLinks";
 import { resolveWeddingTemplate } from "./templates/registry";
 import { resolveWeddingTheme } from "./themes";
 import { SITE_GUTTER, Wrap } from "./layout";
@@ -10,9 +12,10 @@ type WeddingSiteViewProps = {
   template: string;
   theme: string;
   rsvpSlot?: ReactNode;
-  registryHref?: string | null;
   homeHref?: string | null;
   pageSlot?: ReactNode;
+  /** Outbound registry links from wedding_websites.external_registry_links. */
+  externalRegistryLinks?: ExternalRegistryLink[];
 };
 
 export function WeddingSiteView({
@@ -20,23 +23,38 @@ export function WeddingSiteView({
   template,
   theme,
   rsvpSlot,
-  registryHref,
   homeHref,
   pageSlot,
+  externalRegistryLinks = [],
 }: WeddingSiteViewProps) {
   const { Component } = resolveWeddingTemplate(template);
   const palette = resolveWeddingTheme(theme);
   const showRsvp = !pageSlot && content.rsvp.visible && rsvpSlot;
+  const showExternalLinks =
+    !pageSlot && externalRegistryLinks.length > 0;
 
   return (
     <div style={palette.cssVars}>
       <Component
         content={content}
         theme={theme}
-        registryHref={registryHref}
         homeHref={homeHref}
         pageSlot={pageSlot}
       />
+      {showExternalLinks ? (
+        <div
+          className="font-ws-sans"
+          style={{
+            background: "var(--ws-bg)",
+            color: "var(--ws-ink)",
+            padding: `clamp(48px, 7vw, 80px) ${SITE_GUTTER}`,
+          }}
+        >
+          <Wrap>
+            <ExternalRegistryLinks links={externalRegistryLinks} />
+          </Wrap>
+        </div>
+      ) : null}
       {showRsvp ? (
         <section
           id="rsvp"

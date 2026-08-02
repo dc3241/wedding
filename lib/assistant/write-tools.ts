@@ -120,11 +120,15 @@ export const WRITE_TOOL_DEFINITIONS = [
   {
     name: "add_budget_item",
     description:
-      "Add a budget line item. Use when the user clearly asks to add a budget entry.",
+      "Add a budget line item. Use when the user clearly asks to add a budget entry. Vendor name (label) is optional when no vendor is booked yet.",
     input_schema: {
       type: "object" as const,
       properties: {
-        label: { type: "string", description: "Line item label" },
+        label: {
+          type: "string",
+          description:
+            "Optional vendor name. Omit or leave blank when no vendor is known yet.",
+        },
         category: {
           type: "string",
           description: "Optional category (e.g. Catering, Flowers)",
@@ -134,7 +138,7 @@ export const WRITE_TOOL_DEFINITIONS = [
           description: "Planned amount in dollars",
         },
       },
-      required: ["label", "planned_amount"] as string[],
+      required: ["planned_amount"] as string[],
     },
   },
   {
@@ -478,9 +482,8 @@ export async function executeWriteTool(
     }
 
     case "add_budget_item": {
-      const label = asString(input.label)?.trim();
+      const label = asString(input.label)?.trim() || null;
       const plannedAmount = asNumber(input.planned_amount);
-      if (!label) return toolError("label is required");
       if (plannedAmount === undefined || plannedAmount < 0) {
         return toolError("planned_amount must be a non-negative number");
       }

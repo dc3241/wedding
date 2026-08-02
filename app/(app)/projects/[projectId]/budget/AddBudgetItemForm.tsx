@@ -24,8 +24,6 @@ export function AddBudgetItemForm({
     const plannedAmount = Number(plannedRaw);
     const actualAmount = actualRaw.trim() ? Number(actualRaw) : null;
 
-    if (!label.trim()) return;
-
     // Capture before the await — React nulls the synthetic event's currentTarget.
     const formEl = e.currentTarget;
 
@@ -64,14 +62,14 @@ export function AddBudgetItemForm({
         </div>
         <div className="space-y-1.5">
           <label htmlFor="budget-label" className="text-sm font-medium text-ink">
-            Label
+            Vendor Name{" "}
+            <span className="font-normal text-muted">(optional)</span>
           </label>
           <Input
             id="budget-label"
             name="label"
             type="text"
-            required
-            placeholder="Line item name"
+            placeholder="e.g. Bloom & Co"
             disabled={isPending}
           />
         </div>

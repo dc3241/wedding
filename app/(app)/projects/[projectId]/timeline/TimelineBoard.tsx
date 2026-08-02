@@ -38,60 +38,6 @@ function runSheetHref(projectId: string, owner: string | null) {
   return `${base}?owner=${encodeURIComponent(owner)}`;
 }
 
-function DaySummaryStrip({ aggregates }: { aggregates: TimelineAggregates }) {
-  const {
-    daySpanLabel,
-    total,
-    scheduledDurationLabel,
-    conflictCount,
-    gapCount,
-  } = aggregates;
-
-  return (
-    <Card className="p-[30px]">
-      <div className="mb-6 flex flex-wrap items-end justify-between gap-6">
-        <div>
-          <p className="font-display text-[40px] font-extrabold leading-none tracking-[-0.035em] tabular-nums text-ink md:text-[52px]">
-            {total}
-          </p>
-          <p className="mt-2 text-[14px] font-medium text-muted">
-            {total === 1 ? "event" : "events"}
-            {scheduledDurationLabel !== "—"
-              ? ` · ${scheduledDurationLabel} scheduled`
-              : ""}
-          </p>
-        </div>
-        <div className="text-left md:text-right">
-          <p className="font-display text-[22px] font-extrabold leading-none tracking-[-0.05em] tabular-nums text-muted">
-            {daySpanLabel ?? "—"}
-          </p>
-          <p className="mt-1 text-[14px] font-medium text-muted">day span</p>
-        </div>
-      </div>
-
-      {(conflictCount > 0 || gapCount > 0) && (
-        <ul className="flex flex-wrap gap-2.5">
-          {conflictCount > 0 ? (
-            <li>
-              <Pill variant="rosewood">
-                {conflictCount}{" "}
-                {conflictCount === 1 ? "overlap" : "overlaps"}
-              </Pill>
-            </li>
-          ) : null}
-          {gapCount > 0 ? (
-            <li>
-              <Pill variant="clay">
-                {gapCount} {gapCount === 1 ? "gap" : "gaps"}
-              </Pill>
-            </li>
-          ) : null}
-        </ul>
-      )}
-    </Card>
-  );
-}
-
 function ContextRail({
   projectId,
   aggregates,
@@ -222,12 +168,20 @@ function SectionGroup({
   onToggle,
   editingId,
   onEdit,
+  projectId,
+  gapAddAfterId,
+  onAddIntoGap,
+  onCloseGapAdd,
 }: {
   section: TimelineSectionGroup;
   open: boolean;
   onToggle: () => void;
   editingId: string | null;
   onEdit: (id: string | null) => void;
+  projectId: string;
+  gapAddAfterId: string | null;
+  onAddIntoGap: (event: TimelineAnnotatedEvent) => void;
+  onCloseGapAdd: () => void;
 }) {
   return (
     <details
@@ -256,9 +210,13 @@ function SectionGroup({
               <EventWithSignals
                 key={event.id}
                 event={event}
+                projectId={projectId}
                 isEditing={editingId === event.id}
                 onEdit={() => onEdit(event.id)}
                 onCloseEdit={() => onEdit(null)}
+                gapAddOpen={gapAddAfterId === event.id}
+                onAddIntoGap={() => onAddIntoGap(event)}
+                onCloseGapAdd={onCloseGapAdd}
               />
             ))}
           </ul>
@@ -270,15 +228,29 @@ function SectionGroup({
 
 function EventWithSignals({
   event,
+  projectId,
   isEditing,
   onEdit,
   onCloseEdit,
+  gapAddOpen,
+  onAddIntoGap,
+  onCloseGapAdd,
 }: {
   event: TimelineAnnotatedEvent;
+  projectId: string;
   isEditing: boolean;
   onEdit: () => void;
   onCloseEdit: () => void;
+  gapAddOpen: boolean;
+  onAddIntoGap: () => void;
+  onCloseGapAdd: () => void;
 }) {
+  const gapMinutes = event.gapAfterMinutes;
+  const gapUntilStart = event.gapAfterUntilStart;
+  const gapStart = event.end_time;
+  const canAddIntoGap =
+    gapMinutes != null && gapStart != null && gapUntilStart != null;
+
   return (
     <li className="mb-2 last:mb-0">
       <TimelineEventRow
@@ -289,12 +261,37 @@ function EventWithSignals({
         onEdit={onEdit}
         onCloseEdit={onCloseEdit}
       />
-      {event.gapAfterMinutes != null ? (
+      {gapAddOpen && canAddIntoGap ? (
+        <div className="px-1 py-2">
+          <AddEventForm
+            key={`gap-add-${event.id}`}
+            projectId={projectId}
+            defaultOpen
+            showTrigger={false}
+            initialValues={{
+              start_time: gapStart,
+              end_time: gapUntilStart,
+              section: event.section,
+            }}
+            onClose={onCloseGapAdd}
+          />
+        </div>
+      ) : canAddIntoGap ? (
         <div className="flex items-center gap-2 px-1 py-2">
           <span className="h-px flex-1 bg-hairline" aria-hidden />
-          <Pill variant="clay">
-            {formatDurationMinutes(event.gapAfterMinutes)} open
-          </Pill>
+          <div className="inline-flex items-center gap-1.5">
+            <Pill variant="clay">
+              {formatDurationMinutes(gapMinutes)} open
+            </Pill>
+            <button
+              type="button"
+              onClick={onAddIntoGap}
+              aria-label={`Add event into ${formatDurationMinutes(gapMinutes)} gap`}
+              className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[var(--radius-pill)] bg-well text-[15px] font-semibold leading-none text-muted transition-colors hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            >
+              +
+            </button>
+          </div>
           <span className="h-px flex-1 bg-hairline" aria-hidden />
         </div>
       ) : null}
@@ -318,9 +315,16 @@ export function TimelineBoard({
     },
   );
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [gapAddAfterId, setGapAddAfterId] = useState<string | null>(null);
 
   function toggleSection(key: string) {
     setOpenSections((prev) => ({ ...prev, [key]: !prev[key] }));
+  }
+
+  function handleAddIntoGap(event: TimelineAnnotatedEvent) {
+    if (event.end_time == null || event.gapAfterUntilStart == null) return;
+    setEditingId(null);
+    setGapAddAfterId(event.id);
   }
 
   const eyebrow =
@@ -336,12 +340,13 @@ export function TimelineBoard({
         description="The hour-by-hour schedule for the wedding day — distinct from your long-range planning checklist."
       />
 
-      <DaySummaryStrip aggregates={aggregates} />
-
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_300px] lg:items-start">
         <div className="min-w-0">
           <div className="mb-4">
-            <AddEventForm projectId={projectId} />
+            <AddEventForm
+              projectId={projectId}
+              onOpen={() => setGapAddAfterId(null)}
+            />
           </div>
 
           {aggregates.sections.length === 0 ? (
@@ -358,7 +363,14 @@ export function TimelineBoard({
                   open={openSections[section.key] ?? true}
                   onToggle={() => toggleSection(section.key)}
                   editingId={editingId}
-                  onEdit={setEditingId}
+                  onEdit={(id) => {
+                    setGapAddAfterId(null);
+                    setEditingId(id);
+                  }}
+                  projectId={projectId}
+                  gapAddAfterId={gapAddAfterId}
+                  onAddIntoGap={handleAddIntoGap}
+                  onCloseGapAdd={() => setGapAddAfterId(null)}
                 />
               ))}
             </div>

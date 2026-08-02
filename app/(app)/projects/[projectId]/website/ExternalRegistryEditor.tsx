@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { setExternalRegistryLinks } from "./actions";
+import { normalizeProductUrl } from "@/lib/registry";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -23,6 +24,7 @@ export function ExternalRegistryEditor({
   );
   const [isPending, startTransition] = useTransition();
   const [message, setMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   function updateRow(index: number, field: keyof ExternalLinkRow, value: string) {
     setRows((current) =>
@@ -40,12 +42,33 @@ export function ExternalRegistryEditor({
 
   function handleSave() {
     setMessage(null);
+    setError(null);
+
+    const incomplete = rows.some(
+      (row) => row.label.trim() && !row.url.trim(),
+    );
+    if (incomplete) {
+      setError("Each link needs both a label and a URL.");
+      return;
+    }
+
+    const invalidUrl = rows.some(
+      (row) => row.url.trim() && !normalizeProductUrl(row.url),
+    );
+    if (invalidUrl) {
+      setError("Use a valid http(s) URL for each link.");
+      return;
+    }
+
     startTransition(async () => {
       try {
         await setExternalRegistryLinks(projectId, rows);
         setMessage("Saved.");
       } catch {
-        setMessage("Could not save. Create a wedding website first, then retry.");
+        setMessage(null);
+        setError(
+          "Could not save. Create a wedding website first, then retry.",
+        );
       }
     });
   }
@@ -56,8 +79,8 @@ export function ExternalRegistryEditor({
         External registries
       </h2>
       <p className="mt-1 text-[13px] text-muted">
-        Link out to Amazon, Target, and other registries. Shown as branded
-        buttons on your public registry page.
+        Link out to Amazon, Zola, Target, and other registries. Shown on your
+        published wedding website.
       </p>
 
       <ul className="mt-4 space-y-3">
@@ -108,6 +131,9 @@ export function ExternalRegistryEditor({
         <Button type="button" variant="primary" onClick={handleSave} disabled={isPending}>
           {isPending ? "Saving…" : "Save links"}
         </Button>
+        {error ? (
+          <span className="text-[13px] font-medium text-rosewood">{error}</span>
+        ) : null}
         {message ? (
           <span className="text-[13px] font-medium text-muted">{message}</span>
         ) : null}

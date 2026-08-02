@@ -1,7 +1,7 @@
 export type BudgetItem = {
   id: string;
   category: string | null;
-  label: string;
+  label: string | null;
   planned_amount: number;
   actual_amount: number | null;
   notes: string | null;

@@ -23,12 +23,11 @@ export async function setBudgetTarget(projectId: string, amount: number | null) 
 export async function addBudgetItem(
   projectId: string,
   category: string,
-  label: string,
+  label: string | null,
   plannedAmount: number,
   actualAmount?: number | null,
 ) {
-  const trimmedLabel = label.trim();
-  if (!trimmedLabel) return;
+  const trimmedLabel = (label ?? "").trim() || null;
 
   const supabase = await createClient();
 
@@ -49,7 +48,7 @@ export async function updateBudgetItem(
   itemId: string,
   fields: {
     category?: string;
-    label?: string;
+    label?: string | null;
     planned_amount?: number;
     actual_amount?: number | null;
     notes?: string;
@@ -62,9 +61,7 @@ export async function updateBudgetItem(
   }
 
   if (fields.label !== undefined) {
-    const trimmed = fields.label.trim();
-    if (!trimmed) return;
-    updates.label = trimmed;
+    updates.label = (fields.label ?? "").trim() || null;
   }
 
   if (fields.planned_amount !== undefined) {
@@ -139,4 +136,26 @@ export async function setBudgetItemProjectVendor(
 
   revalidatePath(budgetPath(data.project_id));
   return { ok: true };
+}
+
+export async function dismissBudgetAlert(
+  projectId: string,
+  category: string,
+  overageNow: number,
+) {
+  const supabase = await createClient();
+
+  const { error } = await supabase.from("budget_alert_dismissals").upsert(
+    {
+      project_id: projectId,
+      category,
+      alert_kind: "over_plan",
+      overage_at_dismiss: overageNow,
+    },
+    { onConflict: "project_id,category,alert_kind" },
+  );
+
+  if (error) throw error;
+
+  revalidatePath(budgetPath(projectId));
 }

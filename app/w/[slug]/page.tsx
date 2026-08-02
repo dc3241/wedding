@@ -1,6 +1,10 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { WeddingSiteView } from "@/components/website/WeddingSiteView";
+import {
+  parseExternalRegistryLinks,
+  type ExternalRegistryLink,
+} from "@/components/website/registry/types";
 import { parseWeddingWebsiteContent } from "@/components/website/types";
 import { createAnonServerClient } from "@/utils/supabase/anon-server";
 import {
@@ -35,7 +39,7 @@ async function loadPublishedWebsite(slug: string) {
   const { data: row, error } = await supabase
     .from("wedding_websites")
     .select(
-      "content, template, theme, meal_service_style, rsvp_access_mode, project_id",
+      "content, template, theme, meal_service_style, rsvp_access_mode, project_id, external_registry_links",
     )
     .eq("slug", slug)
     .maybeSingle();
@@ -47,6 +51,8 @@ async function loadPublishedWebsite(slug: string) {
   const projectId = String(row.project_id);
   const mealServiceStyle = parseMealServiceStyle(row.meal_service_style);
   const rsvpAccessMode = parseRsvpAccessMode(row.rsvp_access_mode);
+  const externalRegistryLinks: ExternalRegistryLink[] =
+    parseExternalRegistryLinks(row.external_registry_links);
 
   const { data: optionRows } = await supabase
     .from("meal_options")
@@ -68,6 +74,7 @@ async function loadPublishedWebsite(slug: string) {
     mealServiceStyle,
     rsvpAccessMode,
     mealOptions,
+    externalRegistryLinks,
   };
 }
 
@@ -123,9 +130,7 @@ export default async function PublicWeddingPage({
       content={site.content}
       template={site.template}
       theme={site.theme}
-      registryHref={
-        site.content.registry.visible ? `/w/${slug}/registry` : null
-      }
+      externalRegistryLinks={site.externalRegistryLinks}
       rsvpSlot={
         <RsvpForm
           slug={slug}

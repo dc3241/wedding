@@ -20,6 +20,13 @@ function parseAmount(value: string) {
   return Number.isNaN(parsed) ? null : Math.max(0, parsed);
 }
 
+/** Null or zero → empty so typing doesn't lead with a stored "0". */
+function spentToInput(actualAmount: number | null) {
+  return actualAmount !== null && Number(actualAmount) !== 0
+    ? String(actualAmount)
+    : "";
+}
+
 function AmountField({
   id,
   value,
@@ -62,10 +69,12 @@ function AmountField({
 
 function lineDisplayName(item: {
   category: string | null;
-  label: string;
+  label: string | null;
 }): string {
   const category = item.category?.trim() ?? "";
-  return category !== "" ? category : item.label;
+  if (category !== "") return category;
+  const label = item.label?.trim() ?? "";
+  return label !== "" ? label : "No vendor yet";
 }
 
 function formatAlsoLinkedList(names: string[]): string {
@@ -142,11 +151,9 @@ export function BudgetItemRow({
   projectVendors: ProjectVendorOption[];
   allItems: BudgetItemForAggregate[];
 }) {
-  const [label, setLabel] = useState(item.label);
+  const [label, setLabel] = useState(item.label ?? "");
   const [planned, setPlanned] = useState(String(item.planned_amount));
-  const [actual, setActual] = useState(
-    item.actual_amount !== null ? String(item.actual_amount) : "",
-  );
+  const [actual, setActual] = useState(spentToInput(item.actual_amount));
   const [linkError, setLinkError] = useState<string | null>(null);
   // Immediate soft warning on select; cleared when server link catches up.
   const [optimisticWarning, setOptimisticWarning] = useState<string | null>(
@@ -155,7 +162,7 @@ export function BudgetItemRow({
   const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
-    setLabel(item.label);
+    setLabel(item.label ?? "");
   }, [item.label]);
 
   useEffect(() => {
@@ -163,7 +170,7 @@ export function BudgetItemRow({
   }, [item.planned_amount]);
 
   useEffect(() => {
-    setActual(item.actual_amount !== null ? String(item.actual_amount) : "");
+    setActual(spentToInput(item.actual_amount));
   }, [item.actual_amount]);
 
   useEffect(() => {
@@ -180,13 +187,12 @@ export function BudgetItemRow({
         )
       : null;
   const linkWarning = optimisticWarning ?? derivedWarning;
+  const rowName = lineDisplayName(item);
 
   function saveLabel() {
     const trimmed = label.trim();
-    if (!trimmed || trimmed === item.label) {
-      setLabel(item.label);
-      return;
-    }
+    const current = item.label ?? "";
+    if (trimmed === current) return;
     startTransition(async () => {
       await updateBudgetItem(item.id, { label: trimmed });
     });
@@ -206,8 +212,7 @@ export function BudgetItemRow({
 
   function saveActual() {
     const trimmed = actual.trim();
-    const current =
-      item.actual_amount !== null ? String(item.actual_amount) : "";
+    const current = spentToInput(item.actual_amount);
     if (trimmed === current) return;
 
     const parsed = trimmed ? parseAmount(trimmed) : null;
@@ -271,20 +276,21 @@ export function BudgetItemRow({
           onKeyDown={(e) => {
             if (e.key === "Enter") e.currentTarget.blur();
           }}
-          aria-label="Line item label"
-          className="min-w-0 truncate bg-transparent text-[15px] font-medium text-ink outline-none"
+          placeholder="No vendor yet"
+          aria-label="Vendor name"
+          className="min-w-0 truncate bg-transparent text-[15px] font-medium text-ink outline-none placeholder:text-muted"
         />
         <AmountField
           value={planned}
           onChange={setPlanned}
           onBlur={savePlanned}
-          ariaLabel={`Planned amount for ${item.label}`}
+          ariaLabel={`Planned amount for ${rowName}`}
         />
         <AmountField
           value={actual}
           onChange={setActual}
           onBlur={saveActual}
-          ariaLabel={`Actual amount for ${item.label}`}
+          ariaLabel={`Actual amount for ${rowName}`}
           placeholder="0"
           muted
         />

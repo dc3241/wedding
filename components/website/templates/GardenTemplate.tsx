@@ -3,7 +3,6 @@
 import type { WeddingTemplateProps } from "../template-props";
 import { HeroPhotoBackdrop } from "../HeroPhotoBackdrop";
 import { OverlayNav } from "../OverlayNav";
-import { RegistryCta } from "../RegistryCta";
 import { resolveWeddingTheme } from "../themes";
 import { formatWeddingDate } from "../template-utils";
 import { WeddingCountdown } from "../WeddingCountdown";
@@ -78,7 +77,6 @@ function BotanicalMotif({ className }: { className?: string }) {
 export function GardenTemplate({
   content,
   theme,
-  registryHref,
   homeHref,
   pageSlot,
 }: WeddingTemplateProps) {
@@ -105,7 +103,6 @@ export function GardenTemplate({
         <OverlayNav
           names={hero.names}
           anchors={sectionAnchors}
-          registryHref={registryHref}
           homeHref={homeHref}
           showRsvp={showRsvp}
         />
@@ -137,9 +134,6 @@ export function GardenTemplate({
         <SectionStack content={content} variant="garden" separator="monogram" />
       ) : null}
 
-      {!pageSlot && content.registry.visible && registryHref ? (
-        <RegistryCta href={registryHref} />
-      ) : null}
 
       {pageSlot ? (
         <div

@@ -113,9 +113,6 @@ export default async function PublicRsvpPage({
       content={content}
       template={site.template}
       theme={site.theme}
-      registryHref={
-        site.content.registry.visible ? `/w/${slug}/registry` : null
-      }
       rsvpSlot={
         <RsvpForm
           slug={slug}

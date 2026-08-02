@@ -13,7 +13,7 @@ export function ExternalRegistryLinks({
         className="font-serif-display text-[22px] tracking-[0.005em]"
         style={{ color: "var(--ws-ink)" }}
       >
-        Also registered at
+        Registry
       </h2>
       <ul className="flex flex-wrap gap-2.5">
         {links.map((link) => (

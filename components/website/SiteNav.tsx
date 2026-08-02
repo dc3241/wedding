@@ -6,19 +6,17 @@ export type SiteNavAnchor = {
 type SiteNavProps = {
   /** In-page section anchors (#id) — only visible+non-empty sections. */
   anchors?: SiteNavAnchor[];
-  registryHref?: string | null;
   homeHref?: string | null;
   className?: string;
 };
 
 export function SiteNav({
   anchors,
-  registryHref,
   homeHref,
   className,
 }: SiteNavProps) {
   const hasAnchors = Boolean(anchors && anchors.length > 0);
-  if (!hasAnchors && !registryHref && !homeHref) return null;
+  if (!hasAnchors && !homeHref) return null;
 
   return (
     <nav
@@ -47,15 +45,6 @@ export function SiteNav({
           {anchor.label}
         </a>
       ))}
-      {registryHref ? (
-        <a
-          href={registryHref}
-          className="text-[13px] font-medium tracking-[0.06em] uppercase underline-offset-4 hover:underline"
-          style={{ color: "var(--ws-accent)" }}
-        >
-          Registry
-        </a>
-      ) : null}
     </nav>
   );
 }

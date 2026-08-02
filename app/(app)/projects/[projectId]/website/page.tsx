@@ -32,17 +32,11 @@ export default async function WebsitePage({
   const account = await getAccountContext(supabase);
   const accountKind = account?.kind ?? "personal";
 
-  const [{ data: row }, { count: giftCount }] = await Promise.all([
-    supabase
-      .from("wedding_websites")
-      .select("*")
-      .eq("project_id", projectId)
-      .maybeSingle(),
-    supabase
-      .from("registry_items")
-      .select("id", { count: "exact", head: true })
-      .eq("project_id", projectId),
-  ]);
+  const { data: row } = await supabase
+    .from("wedding_websites")
+    .select("*")
+    .eq("project_id", projectId)
+    .maybeSingle();
 
   if (!row) {
     return <CreateWebsiteButton projectId={projectId} />;
@@ -57,7 +51,6 @@ export default async function WebsitePage({
       projectId={projectId}
       website={rowToWebsite(row)}
       accountKind={accountKind}
-      registryGiftCount={giftCount ?? 0}
       externalRegistryLinks={externalLinks}
     />
   );

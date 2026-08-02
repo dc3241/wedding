@@ -6,7 +6,7 @@ import {
   toggleTask,
   updateTaskTitle,
 } from "@/app/(app)/projects/[projectId]/checklist/actions";
-import { Pill } from "@/components/ui/pill";
+import { Select } from "@/components/ui/select";
 import { cn } from "@/lib/cn";
 
 export type ChecklistTask = {
@@ -16,14 +16,11 @@ export type ChecklistTask = {
   due_date: string | null;
 };
 
-const STATUS_CYCLE: Record<
-  ChecklistTask["status"],
-  ChecklistTask["status"]
-> = {
-  todo: "in_progress",
-  in_progress: "done",
-  done: "todo",
-};
+const TASK_STATUSES: ChecklistTask["status"][] = [
+  "todo",
+  "in_progress",
+  "done",
+];
 
 const STATUS_LABEL: Record<ChecklistTask["status"], string> = {
   todo: "To do",
@@ -42,19 +39,30 @@ function formatDueDate(date: string | null) {
 
 export function TaskRow({ task }: { task: ChecklistTask }) {
   const [title, setTitle] = useState(task.title);
+  const [status, setStatus] = useState(task.status);
   const [isPending, startTransition] = useTransition();
   const dueDate = formatDueDate(task.due_date);
-  const done = task.status === "done";
-  const inProgress = task.status === "in_progress";
+  const done = status === "done";
+  const inProgress = status === "in_progress";
 
   useEffect(() => {
     setTitle(task.title);
   }, [task.title]);
 
-  function handleStatusClick() {
-    const nextStatus = STATUS_CYCLE[task.status];
+  useEffect(() => {
+    setStatus(task.status);
+  }, [task.status]);
+
+  function handleStatusChange(nextStatus: ChecklistTask["status"]) {
+    if (nextStatus === status) return;
+    const previous = status;
+    setStatus(nextStatus);
     startTransition(async () => {
-      await toggleTask(task.id, nextStatus);
+      try {
+        await toggleTask(task.id, nextStatus);
+      } catch {
+        setStatus(previous);
+      }
     });
   }
 
@@ -82,17 +90,15 @@ export function TaskRow({ task }: { task: ChecklistTask }) {
         isPending && "opacity-60",
       )}
     >
-      <button
-        type="button"
-        onClick={handleStatusClick}
-        aria-label={`Status: ${STATUS_LABEL[task.status]}. Click to change.`}
+      <span
+        aria-hidden
         className={cn(
-          "mt-0.5 flex size-[19px] shrink-0 items-center justify-center rounded-full border-2 transition-colors",
+          "mt-0.5 flex size-[19px] shrink-0 items-center justify-center rounded-full border-2",
           done
             ? "border-sage bg-sage text-surface"
             : inProgress
               ? "border-clay bg-clay-wash"
-              : "border-ring bg-transparent hover:border-muted",
+              : "border-ring bg-transparent",
         )}
       >
         {done ? (
@@ -107,7 +113,7 @@ export function TaskRow({ task }: { task: ChecklistTask }) {
             <path d="M2.5 6l2.5 2.5 4.5-5" />
           </svg>
         ) : null}
-      </button>
+      </span>
 
       <div className="min-w-0 flex-1">
         <input
@@ -132,7 +138,21 @@ export function TaskRow({ task }: { task: ChecklistTask }) {
         ) : null}
       </div>
 
-      {inProgress ? <Pill variant="clay">In progress</Pill> : null}
+      <Select
+        value={status}
+        disabled={isPending}
+        aria-label="Task status"
+        className="mt-0.5 !w-auto min-w-[8.5rem] shrink-0 basis-auto py-1.5 text-[13px]"
+        onChange={(e) =>
+          handleStatusChange(e.target.value as ChecklistTask["status"])
+        }
+      >
+        {TASK_STATUSES.map((value) => (
+          <option key={value} value={value}>
+            {STATUS_LABEL[value]}
+          </option>
+        ))}
+      </Select>
 
       <button
         type="button"

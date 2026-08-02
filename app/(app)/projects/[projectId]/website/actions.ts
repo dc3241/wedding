@@ -14,10 +14,18 @@ import {
 import { isValidWeddingTheme } from "@/components/website/themes";
 import { isValidWeddingTemplate } from "@/components/website/templates/registry";
 import { formatTimeOfDay } from "@/lib/timeline-aggregates";
+import { normalizeProductUrl } from "@/lib/registry";
 import { createClient } from "@/utils/supabase/server";
 
 function websitePath(projectId: string) {
   return `/projects/${projectId}/website`;
+}
+
+function revalidateWebsiteSurfaces(projectId: string, slug?: string | null) {
+  revalidatePath(websitePath(projectId));
+  if (slug) {
+    revalidatePath(`/w/${slug}`);
+  }
 }
 
 const CLOCK_TIME_RE = /^\d{1,2}:\d{2}(:\d{2})?$/;
@@ -363,7 +371,6 @@ export async function updateWeddingWebsite(
       : null;
   if (slug) {
     revalidatePath(`/w/${slug}`);
-    revalidatePath(`/w/${slug}/registry`);
   }
   return { ok: true };
 }
@@ -471,4 +478,38 @@ export async function clearHeroImage(
 
   await revalidateWebsitePublic(projectId);
   return { ok: true };
+}
+
+/**
+ * Writes external_registry_links on wedding_websites.
+ * Single writer for this column (REG-05 / REG-06).
+ */
+export async function setExternalRegistryLinks(
+  projectId: string,
+  links: Array<{ label: string; url: string }>,
+) {
+  const cleaned = links
+    .map((link) => {
+      const label = link.label.trim();
+      const url = normalizeProductUrl(link.url);
+      if (!label || !url) return null;
+      return { label, url };
+    })
+    .filter((link): link is { label: string; url: string } => link !== null);
+
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("wedding_websites")
+    .update({
+      external_registry_links: cleaned,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("project_id", projectId)
+    .select("slug")
+    .maybeSingle();
+
+  if (error) throw error;
+
+  revalidateWebsiteSurfaces(projectId, data?.slug);
 }

@@ -6,10 +6,9 @@ import { cn } from "@/lib/cn";
 type OverlayNavProps = {
   names: string;
   anchors?: SiteNavAnchor[];
-  registryHref?: string | null;
   homeHref?: string | null;
   showRsvp?: boolean;
-  /** Light-on-dark for photo heroes; dark-on-light for registry sub-pages. */
+  /** Light-on-dark for photo heroes; dark-on-light for secondary pages. */
   tone?: "on-photo" | "on-light";
   align?: "center" | "left";
 };
@@ -17,7 +16,6 @@ type OverlayNavProps = {
 export function OverlayNav({
   names,
   anchors,
-  registryHref,
   homeHref,
   showRsvp,
   tone = "on-photo",
@@ -78,15 +76,6 @@ export function OverlayNav({
             {anchor.label}
           </a>
         ))}
-        {registryHref ? (
-          <a
-            href={registryHref}
-            className="text-[12px] tracking-[0.16em] uppercase no-underline"
-            style={{ color: muted }}
-          >
-            Registry
-          </a>
-        ) : null}
       </div>
 
       {showRsvp ? (

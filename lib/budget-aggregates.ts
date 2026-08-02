@@ -8,7 +8,7 @@ export type LinkedVendor = {
 export type BudgetItemForAggregate = {
   id: string;
   category: string | null;
-  label: string;
+  label: string | null;
   planned_amount: number;
   actual_amount: number | null;
   notes: string | null;
@@ -60,7 +60,8 @@ export type BudgetAggregates = {
   perCategory: BudgetCategoryGroup[];
   untrackedCategoryCount: number;
   needsAttention: {
-    overCategories: string[];
+    /** Over-plan alerts with dollar overage (actualTotal − plannedTotal). */
+    overCategories: { category: string; overage: number }[];
     untrackedCategoryCount: number;
     categoryCount: number;
   };
@@ -77,7 +78,7 @@ export function computeBudgetAggregates(
   items: {
     id: string;
     category: string | null;
-    label: string;
+    label: string | null;
     planned_amount: number;
     actual_amount: number | null;
     notes: string | null;
@@ -212,7 +213,10 @@ export function computeBudgetAggregates(
 
   const overCategories = perCategory
     .filter((group) => group.isOver)
-    .map((group) => group.category);
+    .map((group) => ({
+      category: group.category,
+      overage: group.actualTotal - group.plannedTotal,
+    }));
 
   const linkedIds = new Set(
     enriched
@@ -251,4 +255,25 @@ export function computeBudgetAggregates(
     },
     vendorPackages,
   };
+}
+
+/** Suppress over-plan alerts while current overage ≤ snapshot (dismiss-until-worse). */
+export function applyOverPlanDismissals(
+  overCategories: { category: string; overage: number }[],
+  dismissals: { category: string; overage_at_dismiss: number }[],
+): { category: string; overage: number }[] {
+  if (dismissals.length === 0) return overCategories;
+
+  const snapshotByCategory = new Map(
+    dismissals.map((row) => [
+      row.category,
+      Number(row.overage_at_dismiss),
+    ]),
+  );
+
+  return overCategories.filter((alert) => {
+    const snapshot = snapshotByCategory.get(alert.category);
+    if (snapshot === undefined) return true;
+    return alert.overage > snapshot;
+  });
 }

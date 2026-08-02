@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { AddBudgetItemForm } from "./AddBudgetItemForm";
 import { BudgetItemRow } from "./BudgetItemRow";
 import { TotalBudgetEditor } from "./TotalBudgetEditor";
+import { dismissBudgetAlert } from "./actions";
 import type {
   BudgetAggregates,
   BudgetCategoryGroup,
@@ -135,8 +136,6 @@ function AllocationBand({
         )}
       >
         <StatCell label="Allocated" value={formatCurrency(allocated)} />
-        <StatCell label="Spent" value={formatCurrency(spent)} />
-        <StatCell label="Committed" value={formatCurrency(committed)} />
         {unallocated !== null ? (
           <StatCell
             label="Unallocated"
@@ -148,6 +147,8 @@ function AllocationBand({
             tone={unallocated < 0 ? "rosewood" : "default"}
           />
         ) : null}
+        <StatCell label="Spent" value={formatCurrency(spent)} />
+        <StatCell label="Committed" value={formatCurrency(committed)} />
       </dl>
     </Card>
   );
@@ -282,7 +283,7 @@ function CategorySection({
           <div className="mb-2 grid grid-cols-[minmax(0,1fr)_96px_96px_52px] gap-x-2 px-4 text-[12px] font-semibold uppercase tracking-[0.09em] text-muted">
             <span>Item</span>
             <span className="text-right">Planned</span>
-            <span className="text-right">Spent</span>
+            <span className="text-right">Total Spent</span>
             <span />
           </div>
           <ul>
@@ -301,13 +302,26 @@ function CategorySection({
   );
 }
 
-function NeedsAttentionCard({ aggregates }: { aggregates: BudgetAggregates }) {
+function NeedsAttentionCard({
+  projectId,
+  aggregates,
+}: {
+  projectId: string;
+  aggregates: BudgetAggregates;
+}) {
   const { overCategories, untrackedCategoryCount, categoryCount } =
     aggregates.needsAttention;
+  const [isPending, startTransition] = useTransition();
 
   const hasSignal =
     overCategories.length > 0 ||
     (categoryCount > 0 && untrackedCategoryCount > 0);
+
+  function handleIgnore(category: string, overage: number) {
+    startTransition(async () => {
+      await dismissBudgetAlert(projectId, category, overage);
+    });
+  }
 
   return (
     <Card className="px-6 py-[22px]">
@@ -320,12 +334,22 @@ function NeedsAttentionCard({ aggregates }: { aggregates: BudgetAggregates }) {
         </p>
       ) : (
         <ul>
-          {overCategories.map((category) => (
+          {overCategories.map(({ category, overage }) => (
             <li
               key={category}
-              className="border-t border-hairline py-[11px] text-[15px] font-medium leading-snug text-rosewood first:border-t-0 first:pt-0"
+              className="flex items-start justify-between gap-3 border-t border-hairline py-[11px] first:border-t-0 first:pt-0"
             >
-              {category} is over plan
+              <span className="text-[15px] font-medium leading-snug text-rosewood">
+                {category} is over plan
+              </span>
+              <button
+                type="button"
+                onClick={() => handleIgnore(category, overage)}
+                disabled={isPending}
+                className="shrink-0 text-[13px] font-medium text-muted transition-colors hover:text-ink disabled:opacity-50"
+              >
+                Ignore
+              </button>
             </li>
           ))}
           {categoryCount > 0 && untrackedCategoryCount > 0 ? (
@@ -525,7 +549,9 @@ export function BudgetBoard({
             <div
               className="grid gap-4"
               style={{
-                gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+                // Cap at 4 cols: track min is at least ~1/4 of the row (3× gap-4).
+                gridTemplateColumns:
+                  "repeat(auto-fit, minmax(min(100%, max(180px, calc((100% - 3rem) / 4))), 1fr))",
               }}
             >
               {aggregates.perCategory.map((group) => (
@@ -543,7 +569,7 @@ export function BudgetBoard({
         </div>
 
         <aside className="min-w-0 space-y-4 lg:sticky lg:top-6 lg:self-start">
-          <NeedsAttentionCard aggregates={aggregates} />
+          <NeedsAttentionCard projectId={projectId} aggregates={aggregates} />
           <BookedVendorsCard aggregates={aggregates} />
           <PackageVarianceCard packages={aggregates.vendorPackages} />
         </aside>

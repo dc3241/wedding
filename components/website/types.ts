@@ -118,7 +118,7 @@ export type WeddingWebsiteContent = {
     heading?: string;
     items: FaqItem[];
   };
-  /** Visibility only — gifts + external links live on the Registry tab / public sub-page. */
+  /** Kept for content-jsonb parse compat; native registry sub-page removed (REG-06). */
   registry: {
     visible: boolean;
   };

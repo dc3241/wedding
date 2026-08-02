@@ -3,7 +3,6 @@
 import type { WeddingTemplateProps } from "../template-props";
 import { HeroPhotoBackdrop } from "../HeroPhotoBackdrop";
 import { OverlayNav } from "../OverlayNav";
-import { RegistryCta } from "../RegistryCta";
 import { resolveWeddingTheme } from "../themes";
 import { WeddingCountdown } from "../WeddingCountdown";
 import { buildSectionAnchors, SectionStack } from "../sections";
@@ -21,7 +20,6 @@ function monoDate(date: string) {
 export function MinimalistTemplate({
   content,
   theme,
-  registryHref,
   homeHref,
   pageSlot,
 }: WeddingTemplateProps) {
@@ -45,7 +43,6 @@ export function MinimalistTemplate({
         <OverlayNav
           names={hero.names}
           anchors={sectionAnchors}
-          registryHref={registryHref}
           homeHref={homeHref}
           showRsvp={showRsvp}
         />
@@ -80,9 +77,6 @@ export function MinimalistTemplate({
         />
       ) : null}
 
-      {!pageSlot && content.registry.visible && registryHref ? (
-        <RegistryCta href={registryHref} />
-      ) : null}
 
       {pageSlot ? (
         <div

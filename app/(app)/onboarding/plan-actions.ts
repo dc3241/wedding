@@ -177,7 +177,7 @@ export async function commitPlan(projectId: string, approvedPlan: WeddingPlan) {
       return {
         project_id: projectId,
         category,
-        label: category,
+        label: null,
         planned_amount: Math.max(0, item.plannedAmount || 0),
       };
     })

@@ -5,9 +5,7 @@ import type { WeddingWebsiteContent } from "./types";
 export type WeddingTemplateProps = {
   content: WeddingWebsiteContent;
   theme: string;
-  /** When set, show a Registry nav link to the public sub-page. */
-  registryHref?: string | null;
-  /** When set, show a Home nav link (registry sub-page). */
+  /** When set, show a Home nav link. */
   homeHref?: string | null;
   /**
    * When set, replace the home body sections with this slot

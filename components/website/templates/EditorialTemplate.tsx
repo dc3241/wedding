@@ -3,7 +3,6 @@
 import type { WeddingTemplateProps } from "../template-props";
 import { HeroPhotoBackdrop } from "../HeroPhotoBackdrop";
 import { OverlayNav } from "../OverlayNav";
-import { RegistryCta } from "../RegistryCta";
 import { resolveWeddingTheme } from "../themes";
 import { formatWeddingDate, splitCoupleNames } from "../template-utils";
 import { WeddingCountdown } from "../WeddingCountdown";
@@ -31,7 +30,6 @@ function EditorialNames({ names }: { names: string }) {
 export function EditorialTemplate({
   content,
   theme,
-  registryHref,
   homeHref,
   pageSlot,
 }: WeddingTemplateProps) {
@@ -58,7 +56,6 @@ export function EditorialTemplate({
         <OverlayNav
           names={hero.names}
           anchors={sectionAnchors}
-          registryHref={registryHref}
           homeHref={homeHref}
           showRsvp={showRsvp}
         />
@@ -88,9 +85,6 @@ export function EditorialTemplate({
         <SectionStack content={content} variant="editorial" separator="monogram" />
       ) : null}
 
-      {!pageSlot && content.registry.visible && registryHref ? (
-        <RegistryCta href={registryHref} />
-      ) : null}
 
       {pageSlot ? (
         <div

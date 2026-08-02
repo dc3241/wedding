@@ -13,13 +13,13 @@ import { FaqEditorFields } from "./FaqEditorFields";
 import { TravelEditorFields } from "./TravelEditorFields";
 import { LookStep } from "./LookStep";
 import { WebsiteRsvpShare } from "./WebsiteRsvpShare";
+import { ExternalRegistryEditor } from "./ExternalRegistryEditor";
 import type { ExternalRegistryLink } from "@/components/website/registry/types";
 import type { WeddingWebsiteContent, WeddingWebsiteRow } from "@/components/website/types";
 import { WeddingSiteView } from "@/components/website/WeddingSiteView";
-import { Button, ButtonLink } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
-import { Pill } from "@/components/ui/pill";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/cn";
@@ -29,7 +29,6 @@ type WebsiteEditorProps = {
   projectId: string;
   website: WeddingWebsiteRow;
   accountKind: AccountKind;
-  registryGiftCount: number;
   externalRegistryLinks: ExternalRegistryLink[];
 };
 
@@ -87,7 +86,6 @@ export function WebsiteEditor({
   projectId,
   website,
   accountKind,
-  registryGiftCount,
   externalRegistryLinks,
 }: WebsiteEditorProps) {
   const [content, setContent] = useState<WeddingWebsiteContent>(website.content);
@@ -189,10 +187,6 @@ export function WebsiteEditor({
 
   function setTravelVisible(visible: boolean) {
     updateTravel({ visible });
-  }
-
-  function setRegistryVisible(visible: boolean) {
-    persistContent({ ...content, registry: { ...content.registry, visible } });
   }
 
   function setRsvpVisible(visible: boolean) {
@@ -600,38 +594,10 @@ export function WebsiteEditor({
             />
           </EditorSection>
 
-          <EditorSection
-            title="Registry"
-            visible={content.registry.visible}
-            onVisibleChange={setRegistryVisible}
-          >
-            <p className="text-[13px] text-muted">
-              Guests see both your gifts and any external links.
-            </p>
-            <div className="space-y-3 rounded-[var(--radius-inner)] bg-well p-4 shadow-recessed">
-              <p className="text-[15px] font-medium text-ink">
-                {registryGiftCount === 0
-                  ? "No gifts yet"
-                  : registryGiftCount === 1
-                    ? "1 gift in your registry"
-                    : `${registryGiftCount} gifts in your registry`}
-              </p>
-              {externalRegistryLinks.length === 0 ? (
-                <p className="text-[13px] text-muted">No external links yet.</p>
-              ) : (
-                <ul className="flex flex-wrap gap-2">
-                  {externalRegistryLinks.map((link) => (
-                    <li key={`${link.label}-${link.url}`}>
-                      <Pill variant="accent">{link.label}</Pill>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-            <ButtonLink href={`/projects/${projectId}/registry`} variant="primary">
-              Manage registry
-            </ButtonLink>
-          </EditorSection>
+          <ExternalRegistryEditor
+            projectId={projectId}
+            initialLinks={externalRegistryLinks}
+          />
 
           <EditorSection
             title="RSVP"
@@ -653,13 +619,7 @@ export function WebsiteEditor({
                 content={content}
                 template={template}
                 theme={theme}
-                registryHref={
-                  content.registry.visible && savedSlug
-                    ? `/w/${savedSlug}/registry`
-                    : content.registry.visible
-                      ? "/w/your-link/registry"
-                      : null
-                }
+                externalRegistryLinks={externalRegistryLinks}
                 rsvpSlot={
                   <div
                     className="rounded-xl border px-5 py-6 text-center text-[14px]"
