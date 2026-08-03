@@ -2,9 +2,10 @@
 
 import { useTransition } from "react";
 import { updateRsvp } from "./actions";
-import { Pill, type PillVariant } from "@/components/ui/pill";
+import { Select } from "@/components/ui/select";
 import { cn } from "@/lib/cn";
 import type { RsvpStatus } from "./types";
+import { RSVP_STATUSES } from "./types";
 
 const RSVP_LABEL: Record<RsvpStatus, string> = {
   pending: "Pending",
@@ -12,26 +13,7 @@ const RSVP_LABEL: Record<RsvpStatus, string> = {
   declined: "Declined",
 };
 
-const RSVP_VARIANT: Record<RsvpStatus, PillVariant> = {
-  pending: "default",
-  attending: "sage",
-  declined: "rosewood",
-};
-
-const RSVP_CYCLE: Record<RsvpStatus, RsvpStatus> = {
-  pending: "attending",
-  attending: "declined",
-  declined: "pending",
-};
-
-export function rsvpPill(status: RsvpStatus) {
-  return {
-    variant: RSVP_VARIANT[status],
-    label: RSVP_LABEL[status],
-  };
-}
-
-export function RsvpPill({
+export function RsvpSelect({
   guestId,
   status,
   className,
@@ -41,27 +23,26 @@ export function RsvpPill({
   className?: string;
 }) {
   const [isPending, startTransition] = useTransition();
-  const { variant, label } = rsvpPill(status);
-
-  function handleClick() {
-    const nextStatus = RSVP_CYCLE[status];
-    startTransition(async () => {
-      await updateRsvp(guestId, nextStatus);
-    });
-  }
 
   return (
-    <button
-      type="button"
-      onClick={handleClick}
+    <Select
+      value={status}
       disabled={isPending}
-      aria-label={`RSVP: ${label}. Click to change.`}
-      className={cn(
-        "shrink-0 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50",
-        className,
-      )}
+      aria-label="RSVP status"
+      onChange={(e) => {
+        const next = e.target.value as RsvpStatus;
+        if (!RSVP_STATUSES.includes(next) || next === status) return;
+        startTransition(async () => {
+          await updateRsvp(guestId, next);
+        });
+      }}
+      className={cn("bg-surface py-2 text-[14px]", className)}
     >
-      <Pill variant={variant}>{label}</Pill>
-    </button>
+      {RSVP_STATUSES.map((value) => (
+        <option key={value} value={value}>
+          {RSVP_LABEL[value]}
+        </option>
+      ))}
+    </Select>
   );
 }

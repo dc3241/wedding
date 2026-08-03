@@ -6,8 +6,17 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
+import { GUEST_RELATIONSHIPS } from "@/lib/guest-relationships";
+import type { ResolvedPartnerSides } from "@/lib/partner-sides";
 
-export function AddGuestForms({ projectId }: { projectId: string }) {
+export function AddGuestForms({
+  projectId,
+  partnerSides,
+}: {
+  projectId: string;
+  partnerSides: ResolvedPartnerSides;
+}) {
   const [isAddPending, startAddTransition] = useTransition();
   const [partySize, setPartySize] = useState(1);
 
@@ -19,11 +28,25 @@ export function AddGuestForms({ projectId }: { projectId: string }) {
     const form = new FormData(formEl);
     const name = (form.get("name") as string) ?? "";
     const household = (form.get("household") as string) ?? "";
-    const email = (form.get("email") as string) ?? "";
+    const phone = (form.get("phone") as string) ?? "";
+    const address = (form.get("address") as string) ?? "";
     const size = Number(form.get("party_size") ?? 1);
-    const additionalNames: string[] = [];
+    const primarySide = (form.get("relationship_side") as string) ?? "";
+    const primaryRelationship = (form.get("relationship") as string) ?? "";
+
+    const additionalPeople: Array<{
+      name: string;
+      relationship_side: string;
+      relationship: string;
+    }> = [];
     for (let i = 0; i < Math.max(0, size - 1); i++) {
-      additionalNames.push((form.get(`additional_name_${i}`) as string) ?? "");
+      additionalPeople.push({
+        name: (form.get(`additional_name_${i}`) as string) ?? "",
+        relationship_side:
+          (form.get(`additional_relationship_side_${i}`) as string) ?? "",
+        relationship:
+          (form.get(`additional_relationship_${i}`) as string) ?? "",
+      });
     }
 
     if (!name.trim()) return;
@@ -33,9 +56,14 @@ export function AddGuestForms({ projectId }: { projectId: string }) {
         projectId,
         name,
         household,
-        email,
+        phone,
         size,
-        additionalNames,
+        additionalPeople,
+        address,
+        {
+          relationship_side: primarySide,
+          relationship: primaryRelationship,
+        },
       );
       formEl.reset();
       setPartySize(1);
@@ -68,21 +96,114 @@ export function AddGuestForms({ projectId }: { projectId: string }) {
               disabled={isAddPending}
             />
           </div>
-          {Array.from({ length: additionalSlots }, (_, index) => (
-            <div key={index} className="space-y-1.5 sm:col-span-2">
+          <div className="grid gap-3 sm:col-span-2 sm:grid-cols-2">
+            <div className="space-y-1.5">
               <label
-                htmlFor={`guest-additional-name-${index}`}
+                htmlFor="guest-relationship-side"
                 className="text-[14px] font-medium text-ink"
               >
-                Name
+                Relationship to
               </label>
-              <Input
-                id={`guest-additional-name-${index}`}
-                name={`additional_name_${index}`}
-                type="text"
-                placeholder="Name"
+              <Select
+                id="guest-relationship-side"
+                name="relationship_side"
+                defaultValue=""
                 disabled={isAddPending}
-              />
+              >
+                <option value="">Select…</option>
+                {partnerSides.options.map((side) => (
+                  <option key={side.token} value={side.token}>
+                    {side.label}
+                  </option>
+                ))}
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <label
+                htmlFor="guest-relationship"
+                className="text-[14px] font-medium text-ink"
+              >
+                Relationship
+              </label>
+              <Select
+                id="guest-relationship"
+                name="relationship"
+                defaultValue=""
+                disabled={isAddPending}
+              >
+                <option value="">Select…</option>
+                {GUEST_RELATIONSHIPS.map((value) => (
+                  <option key={value} value={value}>
+                    {value}
+                  </option>
+                ))}
+              </Select>
+            </div>
+          </div>
+          {Array.from({ length: additionalSlots }, (_, index) => (
+            <div
+              key={index}
+              className="space-y-3 rounded-[var(--radius-inner)] bg-well p-3 shadow-recessed sm:col-span-2"
+            >
+              <div className="space-y-1.5">
+                <label
+                  htmlFor={`guest-additional-name-${index}`}
+                  className="text-[14px] font-medium text-ink"
+                >
+                  Guest {index + 2}
+                </label>
+                <Input
+                  id={`guest-additional-name-${index}`}
+                  name={`additional_name_${index}`}
+                  type="text"
+                  placeholder={`Guest ${index + 2}`}
+                  disabled={isAddPending}
+                />
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <label
+                    htmlFor={`guest-additional-side-${index}`}
+                    className="text-[14px] font-medium text-ink"
+                  >
+                    Relationship to
+                  </label>
+                  <Select
+                    id={`guest-additional-side-${index}`}
+                    name={`additional_relationship_side_${index}`}
+                    defaultValue=""
+                    disabled={isAddPending}
+                  >
+                    <option value="">Select…</option>
+                    {partnerSides.options.map((side) => (
+                      <option key={side.token} value={side.token}>
+                        {side.label}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <label
+                    htmlFor={`guest-additional-relationship-${index}`}
+                    className="text-[14px] font-medium text-ink"
+                  >
+                    Relationship
+                  </label>
+                  <Select
+                    id={`guest-additional-relationship-${index}`}
+                    name={`additional_relationship_${index}`}
+                    defaultValue=""
+                    disabled={isAddPending}
+                  >
+                    <option value="">Select…</option>
+                    {GUEST_RELATIONSHIPS.map((value) => (
+                      <option key={value} value={value}>
+                        {value}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
+              </div>
             </div>
           ))}
           <div className="space-y-1.5">
@@ -102,16 +223,31 @@ export function AddGuestForms({ projectId }: { projectId: string }) {
           </div>
           <div className="space-y-1.5">
             <label
-              htmlFor="guest-email"
+              htmlFor="guest-phone"
               className="text-[14px] font-medium text-ink"
             >
-              Email
+              Phone
             </label>
             <Input
-              id="guest-email"
-              name="email"
-              type="email"
-              placeholder="guest@email.com"
+              id="guest-phone"
+              name="phone"
+              type="tel"
+              placeholder="(555) 555-5555"
+              disabled={isAddPending}
+            />
+          </div>
+          <div className="space-y-1.5 sm:col-span-2">
+            <label
+              htmlFor="guest-address"
+              className="text-[14px] font-medium text-ink"
+            >
+              Address
+            </label>
+            <Input
+              id="guest-address"
+              name="address"
+              type="text"
+              placeholder="Mailing address"
               disabled={isAddPending}
             />
           </div>

@@ -80,7 +80,11 @@ export const WRITE_TOOL_DEFINITIONS = [
           type: "number",
           description: "Number of people in the party (default 1)",
         },
-        email: { type: "string", description: "Optional email address" },
+        phone: { type: "string", description: "Optional phone number" },
+        address: {
+          type: "string",
+          description: "Optional household mailing address",
+        },
       },
       required: ["full_name"] as string[],
     },
@@ -445,16 +449,26 @@ export async function executeWriteTool(
       if (!fullName) return toolError("full_name is required");
 
       const household = asString(input.household) ?? "";
-      const email = asString(input.email) ?? "";
+      const phone = asString(input.phone) ?? "";
+      const address = asString(input.address) ?? "";
       const partySize = asNumber(input.party_size) ?? 1;
 
-      await addGuest(projectId, fullName, household, email, partySize);
+      await addGuest(
+        projectId,
+        fullName,
+        household,
+        phone,
+        partySize,
+        [],
+        address,
+      );
       return {
         success: true,
         action: "add_guest",
         full_name: fullName,
         household: household.trim() || null,
-        email: email.trim() || null,
+        phone: phone.trim() || null,
+        address: address.trim() || null,
         party_size: Math.max(1, partySize || 1),
       };
     }

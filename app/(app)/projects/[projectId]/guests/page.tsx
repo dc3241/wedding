@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { AddGuestForms } from "./AddGuestForms";
-import { GuestRow } from "./GuestRow";
+import { GuestPersonRow } from "./GuestRow";
 import { MealConfigCard } from "./MealConfigCard";
 import {
   isMealServiceStyle,
@@ -12,10 +12,10 @@ import { RsvpSubmissionsPanel } from "./RsvpSubmissionsPanel";
 import type { RsvpSubmission } from "./rsvp-submissions";
 import {
   RSVP_STATUSES,
-  sumInvitedCap,
-  sumRespondedHeadcount,
+  countPeopleByHouseholdStatus,
   type Guest,
   type GuestMember,
+  type GuestPersonLine,
   type RsvpStatus,
 } from "./types";
 import { Card } from "@/components/ui/card";
@@ -25,6 +25,7 @@ import { getAccountContext } from "@/lib/account-context";
 import { tallyAttendingMeals } from "@/lib/caterer-tally";
 import { cn } from "@/lib/cn";
 import { dataRowClass, sectionStackClass } from "@/lib/density";
+import { resolvePartnerSides } from "@/lib/partner-sides";
 import { createClient } from "@/utils/supabase/server";
 
 const FILTER_OPTIONS: { value?: RsvpStatus; label: string }[] = [
@@ -56,6 +57,35 @@ function mealNameFromJoin(
   return mealJoin.name ?? null;
 }
 
+function buildPersonLines(guests: Guest[]): GuestPersonLine[] {
+  const lines: GuestPersonLine[] = [];
+
+  for (const guest of guests) {
+    const members = [...guest.members].sort((a, b) => {
+      if (a.sort_order !== b.sort_order) return a.sort_order - b.sort_order;
+      return a.created_at.localeCompare(b.created_at);
+    });
+
+    members.forEach((member, index) => {
+      lines.push({
+        member,
+        guestId: guest.id,
+        householdFullName: guest.full_name,
+        householdLabel: guest.household,
+        email: guest.email,
+        phone: guest.phone,
+        address: guest.address,
+        rsvp_status: guest.rsvp_status,
+        rsvp_token: guest.rsvp_token,
+        householdMemberCount: members.length,
+        isFirstInHousehold: index === 0,
+      });
+    });
+  }
+
+  return lines;
+}
+
 export default async function GuestsPage({
   params,
   searchParams,
@@ -84,7 +114,7 @@ export default async function GuestsPage({
     supabase
       .from("guests")
       .select(
-        "id, full_name, email, phone, household, party_size, rsvp_status, rsvp_token, notes",
+        "id, full_name, email, phone, address, household, party_size, rsvp_status, rsvp_token, notes",
       )
       .eq("project_id", projectId)
       .order("household", { ascending: true, nullsFirst: false })
@@ -92,7 +122,7 @@ export default async function GuestsPage({
     supabase
       .from("guest_members")
       .select(
-        "id, project_id, guest_id, name, meal_option_id, dietary_note, attending, sort_order, created_at, meal_options(name)",
+        "id, project_id, guest_id, name, meal_option_id, dietary_note, attending, sort_order, relationship_side, relationship, created_at, meal_options(name)",
       )
       .eq("project_id", projectId)
       .order("sort_order", { ascending: true })
@@ -107,7 +137,7 @@ export default async function GuestsPage({
     supabase
       .from("rsvp_attendees")
       .select(
-        "id, submission_id, name, dietary_note, sort_order, meal_option_id, meal_options(name)",
+        "id, submission_id, name, dietary_note, song_request, sort_order, meal_option_id, meal_options(name)",
       )
       .eq("project_id", projectId)
       .order("sort_order", { ascending: true })
@@ -127,7 +157,7 @@ export default async function GuestsPage({
       .order("created_at", { ascending: true }),
     supabase
       .from("wedding_websites")
-      .select("meal_service_style, slug, published")
+      .select("meal_service_style, slug, published, song_requests_enabled")
       .eq("project_id", projectId)
       .maybeSingle(),
   ]);
@@ -151,6 +181,8 @@ export default async function GuestsPage({
       dietary_note: row.dietary_note ?? null,
       attending: Boolean(row.attending),
       sort_order: Number(row.sort_order) || 0,
+      relationship_side: row.relationship_side ?? null,
+      relationship: row.relationship ?? null,
       created_at: String(row.created_at),
     };
     const list = membersByGuest.get(member.guest_id) ?? [];
@@ -163,6 +195,7 @@ export default async function GuestsPage({
     full_name: String(row.full_name),
     email: row.email ?? null,
     phone: row.phone ?? null,
+    address: row.address ?? null,
     household: row.household ?? null,
     party_size: Number(row.party_size) || 1,
     rsvp_status: row.rsvp_status as RsvpStatus,
@@ -170,6 +203,8 @@ export default async function GuestsPage({
     notes: row.notes ?? null,
     members: membersByGuest.get(String(row.id)) ?? [],
   }));
+
+  const allPeople = buildPersonLines(allGuests);
 
   const guestNameById = new Map(
     allGuests.map((guest) => [guest.id, guest.full_name]),
@@ -186,6 +221,7 @@ export default async function GuestsPage({
       submission_id: String(row.submission_id),
       name: row.name ?? null,
       dietary_note: row.dietary_note ?? null,
+      song_request: row.song_request ?? null,
       sort_order: Number(row.sort_order) || 0,
       meal_option_id: row.meal_option_id ? String(row.meal_option_id) : null,
       meal_name: mealNameFromJoin(
@@ -222,7 +258,7 @@ export default async function GuestsPage({
   );
 
   const catererTally = tallyAttendingMeals(
-    allGuests.flatMap((guest) => guest.members),
+    allPeople.map((person) => person.member),
     optionNameById,
   );
 
@@ -233,6 +269,7 @@ export default async function GuestsPage({
       ? rawStyle
       : "none";
   const mealSelectionActive = mealServiceStyle === "plated";
+  const songRequestsEnabled = Boolean(websiteRow?.song_requests_enabled);
   const siteSlug =
     websiteRow?.published && websiteRow.slug
       ? String(websiteRow.slug)
@@ -241,14 +278,15 @@ export default async function GuestsPage({
   const statusFilter = RSVP_STATUSES.includes(statusParam as RsvpStatus)
     ? (statusParam as RsvpStatus)
     : undefined;
-  const filteredGuests = statusFilter
-    ? allGuests.filter((guest) => guest.rsvp_status === statusFilter)
-    : allGuests;
+  const filteredPeople = statusFilter
+    ? allPeople.filter((person) => person.rsvp_status === statusFilter)
+    : allPeople;
 
-  const invited = sumInvitedCap(allGuests);
-  const attending = sumRespondedHeadcount(allGuests, "attending");
-  const declined = sumRespondedHeadcount(allGuests, "declined");
-  const pending = sumRespondedHeadcount(allGuests, "pending");
+  // Person-grain summary: total people; status counts by household badge on each line.
+  const peopleCount = allPeople.length;
+  const attending = countPeopleByHouseholdStatus(allPeople, "attending");
+  const declined = countPeopleByHouseholdStatus(allPeople, "declined");
+  const pending = countPeopleByHouseholdStatus(allPeople, "pending");
 
   const projectName = project?.name ?? "Your wedding";
   const weddingDate = project?.wedding_date ?? null;
@@ -256,6 +294,10 @@ export default async function GuestsPage({
     weddingDate != null
       ? `${projectName} · ${formatEyebrowDate(weddingDate)}`
       : projectName;
+  // wedding_profile has no partner-name columns today; derive from project.name.
+  const partnerSides = resolvePartnerSides({
+    projectName: project?.name ?? null,
+  });
 
   return (
     <div className={stackClass}>
@@ -269,10 +311,10 @@ export default async function GuestsPage({
         <dl className="grid grid-cols-2 gap-5 sm:grid-cols-4">
           <div>
             <dt className="text-[12px] font-semibold uppercase tracking-[0.09em] text-muted">
-              Invited
+              People
             </dt>
             <dd className="mt-1.5 font-display text-[40px] font-extrabold leading-none tracking-[-0.035em] tabular-nums text-ink md:text-[52px]">
-              {invited}
+              {peopleCount}
             </dd>
           </div>
           <div>
@@ -331,13 +373,14 @@ export default async function GuestsPage({
         </Card>
       ) : null}
 
-      <AddGuestForms projectId={projectId} />
+      <AddGuestForms projectId={projectId} partnerSides={partnerSides} />
 
       <MealConfigCard
         projectId={projectId}
         mealServiceStyle={mealServiceStyle}
         mealSelectionActive={mealSelectionActive}
         mealOptions={mealOptions}
+        songRequestsEnabled={songRequestsEnabled}
       />
 
       <RsvpAccessCard
@@ -345,22 +388,14 @@ export default async function GuestsPage({
         websiteHref={`/projects/${projectId}/website`}
       />
 
-      <RsvpSubmissionsPanel
-        submissions={rsvpSubmissions}
-        guests={allGuests.map((guest) => ({
-          id: guest.id,
-          full_name: guest.full_name,
-          rsvp_status: guest.rsvp_status,
-          member_count: guest.members.length,
-        }))}
-      />
+      <RsvpSubmissionsPanel submissions={rsvpSubmissions} />
 
       <section className="space-y-4">
         <div className="flex flex-wrap items-baseline justify-between gap-4">
           <p className="text-[12px] font-semibold uppercase tracking-[0.09em] text-muted">
             {statusFilter
-              ? `${filteredGuests.length} guest${filteredGuests.length === 1 ? "" : "s"}`
-              : `${allGuests.length} guest${allGuests.length === 1 ? "" : "s"}`}
+              ? `${filteredPeople.length} ${filteredPeople.length === 1 ? "person" : "people"}`
+              : `${allPeople.length} ${allPeople.length === 1 ? "person" : "people"}`}
           </p>
           <nav
             className="flex flex-wrap gap-2"
@@ -387,37 +422,40 @@ export default async function GuestsPage({
           </nav>
         </div>
 
-        {allGuests.length === 0 ? (
-          <EmptyState>
-            No guests yet. Add one above.
-          </EmptyState>
-        ) : filteredGuests.length === 0 ? (
+        {allPeople.length === 0 ? (
+          <EmptyState>No guests yet. Add one above.</EmptyState>
+        ) : filteredPeople.length === 0 ? (
           <EmptyState>No guests match this filter.</EmptyState>
         ) : (
           <Card className="overflow-x-auto px-6 py-4">
-            <table className="w-full min-w-[36rem] border-collapse text-left">
+            <table className="w-full min-w-[40rem] border-collapse text-left">
               <thead>
                 <tr className="border-b border-hairline text-[12px] font-semibold uppercase tracking-[0.09em] text-muted">
                   <th className="pb-3 pr-4 font-semibold">Name</th>
                   <th className="pb-3 pr-4 font-semibold">Household</th>
-                  <th className="pb-3 pr-4 text-right font-semibold">Headcount</th>
+                  <th className="pb-3 pr-4 font-semibold">Relationship</th>
                   <th className="pb-3 pr-4 font-semibold">RSVP</th>
-                  <th className="pb-3 pr-4 font-semibold">People</th>
+                  {mealSelectionActive ? (
+                    <th className="pb-3 pr-4 font-semibold">Meal</th>
+                  ) : null}
+                  <th className="pb-3 pr-4 font-semibold">Dietary</th>
+                  <th className="pb-3 pr-4 font-semibold">Attending</th>
                   <th className="pb-3 text-right font-semibold">
                     <span className="sr-only">Actions</span>
                   </th>
                 </tr>
               </thead>
               <tbody>
-                {filteredGuests.map((guest) => (
-                  <GuestRow
-                    key={guest.id}
-                    guest={guest}
+                {filteredPeople.map((person) => (
+                  <GuestPersonRow
+                    key={person.member.id}
+                    person={person}
                     mealOptions={mealOptions}
                     mealSelectionActive={mealSelectionActive}
                     rowClass={rowClass}
                     siteSlug={siteSlug}
                     showRsvpQr={Boolean(siteSlug)}
+                    partnerSides={partnerSides}
                   />
                 ))}
               </tbody>

@@ -6,6 +6,7 @@ const NAME_MAX = 120;
 const EMAIL_MAX = 254;
 const MESSAGE_MAX = 1000;
 const DIETARY_MAX = 500;
+const SONG_MAX = 200;
 const FULL_NAME_MAX = 120;
 const THROTTLE_WINDOW_MS = 60_000;
 const THROTTLE_MAX = 10;
@@ -14,6 +15,7 @@ export type SubmitRsvpAttendeeInput = {
   name?: string;
   meal_option_id?: string | null;
   dietary_note?: string;
+  song_request?: string;
 };
 
 export type SubmitRsvpInput = {
@@ -44,6 +46,7 @@ function normalizeAttendees(
   name: string | null;
   meal_option_id: string | null;
   dietary_note: string | null;
+  song_request: string | null;
 }> {
   if (!attendees?.length) return [];
 
@@ -52,12 +55,15 @@ function normalizeAttendees(
     const name = rawName ? rawName.slice(0, NAME_MAX) : null;
     const rawDietary = row.dietary_note?.trim() ?? "";
     const dietary = rawDietary ? rawDietary.slice(0, DIETARY_MAX) : null;
+    const rawSong = row.song_request?.trim() ?? "";
+    const song = rawSong ? rawSong.slice(0, SONG_MAX) : null;
     const mealId = row.meal_option_id?.trim() || null;
 
     return {
       name,
       meal_option_id: mealId,
       dietary_note: dietary,
+      song_request: song,
     };
   });
 }

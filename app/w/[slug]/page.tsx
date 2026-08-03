@@ -34,7 +34,7 @@ async function loadPublishedWebsite(slug: string) {
   const { data: row, error } = await supabase
     .from("wedding_websites")
     .select(
-      "content, template, theme, meal_service_style, project_id, external_registry_links",
+      "content, template, theme, meal_service_style, song_requests_enabled, project_id, external_registry_links",
     )
     .eq("slug", slug)
     .maybeSingle();
@@ -45,6 +45,7 @@ async function loadPublishedWebsite(slug: string) {
 
   const projectId = String(row.project_id);
   const mealServiceStyle = parseMealServiceStyle(row.meal_service_style);
+  const songRequestsEnabled = Boolean(row.song_requests_enabled);
   const externalRegistryLinks: ExternalRegistryLink[] =
     parseExternalRegistryLinks(row.external_registry_links);
 
@@ -67,6 +68,7 @@ async function loadPublishedWebsite(slug: string) {
     theme: String(row.theme),
     mealServiceStyle,
     mealOptions,
+    songRequestsEnabled,
     externalRegistryLinks,
   };
 }
@@ -129,6 +131,7 @@ export default async function PublicWeddingPage({
           slug={slug}
           mealServiceStyle={site.mealServiceStyle}
           mealOptions={site.mealOptions}
+          songRequestsEnabled={site.songRequestsEnabled}
           initialGuestToken={guestToken ?? null}
           appearance="on-dark"
         />

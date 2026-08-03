@@ -1,6 +1,13 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import {
+  isGuestRelationship,
+} from "@/lib/guest-relationships";
+import {
+  isPartnerSideToken,
+  type PartnerSideToken,
+} from "@/lib/partner-sides";
 import { createClient } from "@/utils/supabase/server";
 import type { RsvpStatus } from "./types";
 
@@ -8,16 +15,63 @@ function guestsPath(projectId: string) {
   return `/projects/${projectId}/guests`;
 }
 
+export type GuestPersonWrite = {
+  name: string;
+  relationship_side?: string | null;
+  relationship?: string | null;
+};
+
+function normalizeRelationship(
+  value: string | null | undefined,
+): string | null {
+  if (value == null) return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  if (!isGuestRelationship(trimmed)) {
+    throw new Error(`Invalid relationship: ${trimmed}`);
+  }
+  return trimmed;
+}
+
+function normalizeRelationshipSide(
+  value: string | null | undefined,
+): PartnerSideToken | null {
+  if (value == null) return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  if (!isPartnerSideToken(trimmed)) {
+    throw new Error(`Invalid relationship_side: ${trimmed}`);
+  }
+  return trimmed;
+}
+
 export async function addGuest(
   projectId: string,
   fullName: string,
   household: string,
-  email: string,
+  phone: string,
   partySize: number,
-  additionalNames: string[] = [],
+  additionalPeople: GuestPersonWrite[] = [],
+  address = "",
+  primary: Omit<GuestPersonWrite, "name"> = {},
 ) {
   const trimmedName = fullName.trim();
   if (!trimmedName) return;
+
+  const people: GuestPersonWrite[] = [
+    {
+      name: trimmedName,
+      relationship_side: primary.relationship_side,
+      relationship: primary.relationship,
+    },
+    ...additionalPeople
+      .map((person) => ({
+        name: person.name.trim(),
+        relationship_side: person.relationship_side,
+        relationship: person.relationship,
+      }))
+      .filter((person) => Boolean(person.name)),
+  ];
 
   const supabase = await createClient();
 
@@ -27,7 +81,8 @@ export async function addGuest(
       project_id: projectId,
       full_name: trimmedName,
       household: household.trim() || null,
-      email: email.trim() || null,
+      phone: phone.trim() || null,
+      address: address.trim() || null,
       party_size: Math.max(1, partySize || 1),
     })
     .select("id")
@@ -35,20 +90,17 @@ export async function addGuest(
 
   if (error) throw error;
 
-  const memberNames = [
-    trimmedName,
-    ...additionalNames.map((n) => n.trim()).filter(Boolean),
-  ];
-
   const { error: membersError } = await supabase.from("guest_members").insert(
-    memberNames.map((name, index) => ({
+    people.map((person, index) => ({
       project_id: projectId,
       guest_id: guest.id,
-      name,
+      name: person.name,
       meal_option_id: null,
       dietary_note: null,
       attending: false,
       sort_order: index,
+      relationship_side: normalizeRelationshipSide(person.relationship_side),
+      relationship: normalizeRelationship(person.relationship),
     })),
   );
 
@@ -79,6 +131,7 @@ export async function updateGuest(
     household?: string;
     email?: string;
     phone?: string;
+    address?: string;
     party_size?: number;
     notes?: string;
   },
@@ -101,6 +154,10 @@ export async function updateGuest(
 
   if (fields.phone !== undefined) {
     updates.phone = fields.phone.trim() || null;
+  }
+
+  if (fields.address !== undefined) {
+    updates.address = fields.address.trim() || null;
   }
 
   if (fields.party_size !== undefined) {

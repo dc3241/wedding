@@ -10,6 +10,8 @@ export type GuestMember = {
   dietary_note: string | null;
   attending: boolean;
   sort_order: number;
+  relationship_side: string | null;
+  relationship: string | null;
   created_at: string;
 };
 
@@ -18,12 +20,28 @@ export type Guest = {
   full_name: string;
   email: string | null;
   phone: string | null;
+  address: string | null;
   household: string | null;
   party_size: number;
   rsvp_status: RsvpStatus;
   rsvp_token: string;
   notes: string | null;
   members: GuestMember[];
+};
+
+/** Person-grain Guests list row: one guest_members line + household context. */
+export type GuestPersonLine = {
+  member: GuestMember;
+  guestId: string;
+  householdFullName: string;
+  householdLabel: string | null;
+  email: string | null;
+  phone: string | null;
+  address: string | null;
+  rsvp_status: RsvpStatus;
+  rsvp_token: string;
+  householdMemberCount: number;
+  isFirstInHousehold: boolean;
 };
 
 export const RSVP_STATUSES: RsvpStatus[] = ["pending", "attending", "declined"];
@@ -69,15 +87,12 @@ export function sumRespondedHeadcount(
     }, 0);
 }
 
-/** Per-guest display headcount: attending members if any, else party_size. */
-export function guestDisplayHeadcount(
-  guest: Pick<Guest, "party_size"> & { members?: GuestMember[] },
+/** Person count whose household badge matches status (GST-06 summary band). */
+export function countPeopleByHouseholdStatus(
+  people: Array<{ rsvp_status: RsvpStatus }>,
+  status: RsvpStatus,
 ) {
-  const members = guest.members ?? [];
-  if (members.length > 0) {
-    return members.filter((m) => m.attending).length;
-  }
-  return guest.party_size;
+  return people.filter((person) => person.rsvp_status === status).length;
 }
 
 /** @deprecated Use sumInvitedCap — party_size is the invited cap. */

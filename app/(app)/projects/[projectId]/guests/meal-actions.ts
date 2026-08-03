@@ -60,6 +60,49 @@ export async function setMealServiceStyle(
   return { ok: true };
 }
 
+export type SetSongRequestsEnabledResult =
+  | { ok: true }
+  | { ok: false; reason: "error" };
+
+export async function setSongRequestsEnabled(
+  projectId: string,
+  enabled: boolean,
+): Promise<SetSongRequestsEnabledResult> {
+  const supabase = await createClient();
+
+  const { data: website, error: lookupError } = await supabase
+    .from("wedding_websites")
+    .select("project_id")
+    .eq("project_id", projectId)
+    .maybeSingle();
+
+  if (lookupError) {
+    return { ok: false, reason: "error" };
+  }
+
+  if (!website) {
+    const created = await createWeddingWebsite(projectId);
+    if (!created.ok) {
+      return { ok: false, reason: "error" };
+    }
+  }
+
+  const { error } = await supabase
+    .from("wedding_websites")
+    .update({
+      song_requests_enabled: Boolean(enabled),
+      updated_at: new Date().toISOString(),
+    })
+    .eq("project_id", projectId);
+
+  if (error) {
+    return { ok: false, reason: "error" };
+  }
+
+  revalidatePath(guestsPath(projectId));
+  return { ok: true };
+}
+
 export async function addMealOption(
   projectId: string,
   fields: {

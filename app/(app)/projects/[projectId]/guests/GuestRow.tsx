@@ -2,218 +2,169 @@
 
 import { useState, useTransition } from "react";
 import { removeGuest } from "./actions";
-import {
-  addGuestMember,
-  deleteGuestMember,
-  updateGuestMember,
-} from "./guest-member-actions";
+import { deleteGuestMember, updateGuestMember } from "./guest-member-actions";
 import { GuestRsvpQr } from "./GuestRsvpQr";
-import { RsvpPill } from "./guest-rsvp";
-import {
-  guestDisplayHeadcount,
-  type Guest,
-  type GuestMember,
-} from "./types";
+import { RsvpSelect } from "./guest-rsvp";
+import type { GuestPersonLine } from "./types";
 import type { MealOption } from "./meal-types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { cn } from "@/lib/cn";
+import { GUEST_RELATIONSHIPS } from "@/lib/guest-relationships";
+import type { ResolvedPartnerSides } from "@/lib/partner-sides";
 
-export function GuestRow({
-  guest,
+export function GuestPersonRow({
+  person,
   mealOptions,
   mealSelectionActive,
   rowClass,
   siteSlug,
   showRsvpQr,
+  partnerSides,
 }: {
-  guest: Guest;
+  person: GuestPersonLine;
   mealOptions: MealOption[];
   mealSelectionActive: boolean;
   rowClass: string;
   siteSlug: string | null;
   showRsvpQr: boolean;
+  partnerSides: ResolvedPartnerSides;
 }) {
-  const [expanded, setExpanded] = useState(guest.members.length > 0);
+  const member = person.member;
+  const [name, setName] = useState(member.name ?? "");
+  const [meal, setMeal] = useState(member.meal_option_id ?? "");
+  const [dietary, setDietary] = useState(member.dietary_note ?? "");
+  const [attending, setAttending] = useState(member.attending);
+  const [side, setSide] = useState(member.relationship_side ?? "");
+  const [relationship, setRelationship] = useState(member.relationship ?? "");
+  const [isPending, startTransition] = useTransition();
   const [isDeleting, startDeleteTransition] = useTransition();
-  const headcount = guestDisplayHeadcount(guest);
-  const overCap = guest.members.length > guest.party_size;
 
-  function handleDeleteHousehold() {
-    const peopleNote =
-      guest.members.length > 0
-        ? " People listed under it will be removed too."
-        : "";
-    if (
-      !window.confirm(
-        `Delete “${guest.full_name}” from the guest list?${peopleNote} This cannot be undone.`,
-      )
-    ) {
-      return;
-    }
+  const householdCue =
+    person.householdLabel?.trim() || person.householdFullName;
+  const addressCue = person.address?.trim() || null;
+
+  function save(fields: {
+    name?: string | null;
+    meal_option_id?: string | null;
+    dietary_note?: string | null;
+    attending?: boolean;
+    relationship_side?: string | null;
+    relationship?: string | null;
+  }) {
+    startTransition(async () => {
+      await updateGuestMember(member.id, fields);
+    });
+  }
+
+  function handleDeletePerson() {
+    const label = (member.name ?? "").trim() || "this person";
+    const lastInHousehold = person.householdMemberCount <= 1;
+    const confirmMsg = lastInHousehold
+      ? `Delete “${label}” and their household from the guest list? This cannot be undone.`
+      : `Remove “${label}” from the household? This cannot be undone.`;
+    if (!window.confirm(confirmMsg)) return;
+
     startDeleteTransition(async () => {
-      await removeGuest(guest.id);
+      if (lastInHousehold) {
+        await removeGuest(person.guestId);
+      } else {
+        await deleteGuestMember(member.id);
+      }
     });
   }
 
   return (
-    <>
-      <tr className={cn(rowClass, isDeleting && "opacity-60")}>
-        <td className="py-3 pr-4">
-          <button
-            type="button"
-            onClick={() => setExpanded((value) => !value)}
-            className="text-left"
-          >
-            <div className="text-[15px] font-medium text-ink">{guest.full_name}</div>
-            {guest.email ? (
-              <div className="mt-0.5 text-[13px] text-muted">{guest.email}</div>
-            ) : null}
-          </button>
-        </td>
-        <td className="py-3 pr-4 text-[14px] text-muted">
-          {guest.household ?? "—"}
-        </td>
-        <td className="py-3 pr-4 text-right">
-          <div className="text-[14px] tabular-nums font-medium text-ink">
-            {headcount}
-          </div>
-          <div className="mt-0.5 text-[12px] text-muted">
-            Invited: up to {guest.party_size}
-          </div>
-          {overCap ? (
-            <div className="mt-0.5 text-[12px] text-clay">
-              Members exceed invited cap
-            </div>
-          ) : null}
-        </td>
-        <td className="py-3 pr-4">
-          <RsvpPill guestId={guest.id} status={guest.rsvp_status} />
-        </td>
-        <td className="py-3 pr-4">
-          <button
-            type="button"
-            onClick={() => setExpanded((value) => !value)}
-            className="text-[13px] font-semibold text-accent hover:underline"
-          >
-            {expanded
-              ? "Hide people"
-              : guest.members.length > 0
-                ? `${guest.members.length} people`
-                : "Add people"}
-          </button>
-        </td>
-        <td className="py-3 text-right">
-          <button
-            type="button"
-            onClick={handleDeleteHousehold}
-            disabled={isDeleting}
-            className="text-[13px] font-medium text-muted transition-colors hover:text-rosewood disabled:opacity-50"
-          >
-            {isDeleting ? "Deleting…" : "Delete"}
-          </button>
-        </td>
-      </tr>
-      {expanded ? (
-        <tr>
-          <td colSpan={6} className="pb-4">
-            <div className="space-y-3">
-              <GuestMembersPanel
-                guest={guest}
-                mealOptions={mealOptions}
-                mealSelectionActive={mealSelectionActive}
-              />
-              {showRsvpQr ? (
-                <div className="rounded-[var(--radius-inner)] bg-well px-4 py-3 shadow-recessed">
-                  <GuestRsvpQr
-                    guestId={guest.id}
-                    guestName={guest.full_name}
-                    rsvpToken={guest.rsvp_token}
-                    siteSlug={siteSlug}
-                  />
-                </div>
-              ) : null}
-            </div>
-          </td>
-        </tr>
-      ) : null}
-    </>
-  );
-}
-
-function GuestMembersPanel({
-  guest,
-  mealOptions,
-  mealSelectionActive,
-}: {
-  guest: Guest;
-  mealOptions: MealOption[];
-  mealSelectionActive: boolean;
-}) {
-  const [isAddPending, startAddTransition] = useTransition();
-  const [newName, setNewName] = useState("");
-  const [newMeal, setNewMeal] = useState("");
-  const [newDietary, setNewDietary] = useState("");
-
-  function handleAdd(e: React.FormEvent) {
-    e.preventDefault();
-    startAddTransition(async () => {
-      await addGuestMember(guest.id, {
-        name: newName,
-        meal_option_id: mealSelectionActive ? newMeal || null : null,
-        dietary_note: newDietary,
-        attending: false,
-        sort_order: guest.members.length,
-      });
-      setNewName("");
-      setNewMeal("");
-      setNewDietary("");
-    });
-  }
-
-  return (
-    <div className="rounded-[var(--radius-inner)] bg-well px-4 py-3 shadow-recessed space-y-3">
-      {guest.members.length === 0 ? (
-        <p className="text-[13px] text-muted">
-          No people listed yet. Add each attending person for meal picks.
-        </p>
-      ) : (
-        <ul className="space-y-2">
-          {guest.members.map((member) => (
-            <MemberEditor
-              key={member.id}
-              member={member}
-              mealOptions={mealOptions}
-              mealSelectionActive={mealSelectionActive}
-            />
-          ))}
-        </ul>
-      )}
-
-      <form
-        onSubmit={handleAdd}
-        className={cn(
-          "grid gap-2 border-t border-hairline pt-3",
-          mealSelectionActive
-            ? "sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto]"
-            : "sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]",
-        )}
-      >
+    <tr className={cn(rowClass, (isPending || isDeleting) && "opacity-60")}>
+      <td className="py-3 pr-4 align-top">
         <Input
-          value={newName}
-          onChange={(e) => setNewName(e.target.value)}
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          onBlur={() => {
+            if ((member.name ?? "") !== name) {
+              save({ name });
+            }
+          }}
           placeholder="Name"
-          disabled={isAddPending}
-          className="bg-surface"
-          aria-label="New member name"
+          disabled={isPending || isDeleting}
+          aria-label="Guest name"
+          className="bg-surface text-[15px] font-medium"
         />
-        {mealSelectionActive ? (
+        {person.isFirstInHousehold && person.phone ? (
+          <div className="mt-1 text-[13px] text-muted">{person.phone}</div>
+        ) : null}
+        {showRsvpQr && person.isFirstInHousehold ? (
+          <div className="mt-2">
+            <GuestRsvpQr
+              guestId={person.guestId}
+              guestName={person.householdFullName}
+              rsvpToken={person.rsvp_token}
+              siteSlug={siteSlug}
+            />
+          </div>
+        ) : null}
+      </td>
+      <td className="py-3 pr-4 align-top">
+        <span className="text-[13px] text-muted">{householdCue}</span>
+        {person.isFirstInHousehold && addressCue ? (
+          <div className="mt-1 text-[13px] text-muted">{addressCue}</div>
+        ) : null}
+      </td>
+      <td className="py-3 pr-4 align-top">
+        <div className="flex min-w-[11rem] flex-col gap-2">
           <Select
-            value={newMeal}
-            onChange={(e) => setNewMeal(e.target.value)}
-            disabled={isAddPending}
-            aria-label="New member meal"
+            value={side}
+            onChange={(e) => {
+              const next = e.target.value;
+              setSide(next);
+              save({ relationship_side: next || null });
+            }}
+            disabled={isPending || isDeleting}
+            aria-label="Relationship to"
+            className="bg-surface py-2 text-[14px]"
+          >
+            <option value="">Side…</option>
+            {partnerSides.options.map((option) => (
+              <option key={option.token} value={option.token}>
+                {option.label}
+              </option>
+            ))}
+          </Select>
+          <Select
+            value={relationship}
+            onChange={(e) => {
+              const next = e.target.value;
+              setRelationship(next);
+              save({ relationship: next || null });
+            }}
+            disabled={isPending || isDeleting}
+            aria-label="Relationship"
+            className="bg-surface py-2 text-[14px]"
+          >
+            <option value="">Relationship…</option>
+            {GUEST_RELATIONSHIPS.map((value) => (
+              <option key={value} value={value}>
+                {value}
+              </option>
+            ))}
+          </Select>
+        </div>
+      </td>
+      <td className="py-3 pr-4 align-top">
+        <RsvpSelect guestId={person.guestId} status={person.rsvp_status} />
+      </td>
+      {mealSelectionActive ? (
+        <td className="py-3 pr-4 align-top">
+          <Select
+            value={meal}
+            onChange={(e) => {
+              const next = e.target.value;
+              setMeal(next);
+              save({ meal_option_id: next || null });
+            }}
+            disabled={isPending || isDeleting}
+            aria-label="Meal"
             className="bg-surface py-2 text-[14px]"
           >
             <option value="">No meal</option>
@@ -223,130 +174,50 @@ function GuestMembersPanel({
               </option>
             ))}
           </Select>
-        ) : null}
-        <Input
-          value={newDietary}
-          onChange={(e) => setNewDietary(e.target.value)}
-          placeholder="Dietary note"
-          disabled={isAddPending}
-          className="bg-surface"
-          aria-label="New member dietary note"
-        />
-        <Button type="submit" variant="primary" disabled={isAddPending}>
-          {isAddPending ? "Adding…" : "Add"}
-        </Button>
-      </form>
-    </div>
-  );
-}
-
-function MemberEditor({
-  member,
-  mealOptions,
-  mealSelectionActive,
-}: {
-  member: GuestMember;
-  mealOptions: MealOption[];
-  mealSelectionActive: boolean;
-}) {
-  const [name, setName] = useState(member.name ?? "");
-  const [meal, setMeal] = useState(member.meal_option_id ?? "");
-  const [dietary, setDietary] = useState(member.dietary_note ?? "");
-  const [attending, setAttending] = useState(member.attending);
-  const [isPending, startTransition] = useTransition();
-
-  function save(fields: {
-    name?: string | null;
-    meal_option_id?: string | null;
-    dietary_note?: string | null;
-    attending?: boolean;
-  }) {
-    startTransition(async () => {
-      await updateGuestMember(member.id, fields);
-    });
-  }
-
-  return (
-    <li
-      className={cn(
-        "grid gap-2 rounded-[var(--radius-inner)] bg-surface p-3",
-        mealSelectionActive
-          ? "sm:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,1fr)_auto_auto]"
-          : "sm:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_auto_auto]",
-        isPending && "opacity-60",
-      )}
-    >
-      <Input
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-        onBlur={() => {
-          if ((member.name ?? "") !== name) {
-            save({ name });
-          }
-        }}
-        placeholder="Name"
-        disabled={isPending}
-        aria-label="Member name"
-      />
-      {mealSelectionActive ? (
-        <Select
-          value={meal}
-          onChange={(e) => {
-            const next = e.target.value;
-            setMeal(next);
-            save({ meal_option_id: next || null });
-          }}
-          disabled={isPending}
-          aria-label="Member meal"
-          className="py-2 text-[14px]"
-        >
-          <option value="">No meal</option>
-          {mealOptions.map((option) => (
-            <option key={option.id} value={option.id}>
-              {option.is_kids ? `${option.name} (kids)` : option.name}
-            </option>
-          ))}
-        </Select>
+        </td>
       ) : null}
-      <Input
-        value={dietary}
-        onChange={(e) => setDietary(e.target.value)}
-        onBlur={() => {
-          if ((member.dietary_note ?? "") !== dietary) {
-            save({ dietary_note: dietary });
-          }
-        }}
-        placeholder="Dietary note"
-        disabled={isPending}
-        aria-label="Member dietary note"
-      />
-      <label className="flex items-center gap-2 text-[13px] font-medium text-ink">
-        <input
-          type="checkbox"
-          checked={attending}
-          onChange={(e) => {
-            const next = e.target.checked;
-            setAttending(next);
-            save({ attending: next });
+      <td className="py-3 pr-4 align-top">
+        <Input
+          value={dietary}
+          onChange={(e) => setDietary(e.target.value)}
+          onBlur={() => {
+            if ((member.dietary_note ?? "") !== dietary) {
+              save({ dietary_note: dietary });
+            }
           }}
-          disabled={isPending}
-          className="size-4 rounded border-ring text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          placeholder="Dietary note"
+          disabled={isPending || isDeleting}
+          aria-label="Dietary note"
+          className="bg-surface"
         />
-        Attending
-      </label>
-      <Button
-        type="button"
-        variant="ghost"
-        disabled={isPending}
-        onClick={() => {
-          startTransition(async () => {
-            await deleteGuestMember(member.id);
-          });
-        }}
-        className="text-muted hover:text-rosewood"
-      >
-        Delete
-      </Button>
-    </li>
+      </td>
+      <td className="py-3 pr-4 align-top">
+        <label className="flex items-center gap-2 text-[13px] font-medium text-ink">
+          <input
+            type="checkbox"
+            checked={attending}
+            onChange={(e) => {
+              const next = e.target.checked;
+              setAttending(next);
+              save({ attending: next });
+            }}
+            disabled={isPending || isDeleting}
+            className="size-4 rounded border-ring text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          />
+          Attending
+        </label>
+      </td>
+      <td className="py-3 text-right align-top">
+        <Button
+          type="button"
+          variant="ghost"
+          disabled={isDeleting}
+          onClick={handleDeletePerson}
+          className="text-muted hover:text-rosewood"
+        >
+          {isDeleting ? "Deleting…" : "Delete"}
+        </Button>
+      </td>
+    </tr>
   );
 }

@@ -25,12 +25,14 @@ type AttendeeDraft = {
   name: string;
   meal_option_id: string;
   dietary_note: string;
+  song_request: string;
 };
 
 type RsvpFormProps = {
   slug: string;
   mealServiceStyle: PublicMealServiceStyle;
   mealOptions: PublicMealOption[];
+  songRequestsEnabled?: boolean;
   initialGuestToken?: string | null;
   /** Light-on-dark controls for the mockup RSVP flood band. */
   appearance?: "default" | "on-dark";
@@ -40,7 +42,7 @@ type FormState = "idle" | "success" | "error";
 type GatePhase = "resolve" | "search" | "pick" | "form";
 
 function emptyAttendee(): AttendeeDraft {
-  return { name: "", meal_option_id: "", dietary_note: "" };
+  return { name: "", meal_option_id: "", dietary_note: "", song_request: "" };
 }
 
 function resizeAttendees(current: AttendeeDraft[], count: number): AttendeeDraft[] {
@@ -55,6 +57,7 @@ export function RsvpForm({
   slug,
   mealServiceStyle,
   mealOptions,
+  songRequestsEnabled = false,
   initialGuestToken = null,
   appearance = "default",
 }: RsvpFormProps) {
@@ -96,6 +99,12 @@ export function RsvpForm({
   const [formState, setFormState] = useState<FormState>("idle");
   const [isPending, startTransition] = useTransition();
 
+  // Buffet-like already has optional attendee rows; when songs are on, keep
+  // those rows open so a song box has somewhere to live. style=none has no
+  // attendee grain — no song UI there (avoid inventing a household field).
+  const showBuffetAttendeeRows =
+    buffetLike && (showDietaryDetails || songRequestsEnabled);
+
   const invitedCap = household?.partySize ?? null;
 
   useEffect(() => {
@@ -125,10 +134,10 @@ export function RsvpForm({
   }, []);
 
   useEffect(() => {
-    if (plated || (buffetLike && showDietaryDetails)) {
+    if (plated || showBuffetAttendeeRows) {
       setAttendees((current) => resizeAttendees(current, Math.max(1, partySize)));
     }
-  }, [plated, buffetLike, showDietaryDetails, partySize]);
+  }, [plated, showBuffetAttendeeRows, partySize]);
 
   function applyHousehold(match: RsvpHouseholdMatch) {
     setHousehold(match);
@@ -183,6 +192,7 @@ export function RsvpForm({
         name?: string;
         meal_option_id?: string | null;
         dietary_note?: string;
+        song_request?: string;
       }> = [];
 
       if (response === "yes" && plated) {
@@ -190,13 +200,24 @@ export function RsvpForm({
           name: row.name.trim(),
           meal_option_id: row.meal_option_id || null,
           dietary_note: row.dietary_note.trim() || undefined,
+          song_request: songRequestsEnabled
+            ? row.song_request.trim() || undefined
+            : undefined,
         }));
-      } else if (response === "yes" && buffetLike && showDietaryDetails) {
+      } else if (response === "yes" && showBuffetAttendeeRows) {
         payloadAttendees = attendees
-          .filter((row) => row.name.trim() || row.dietary_note.trim())
+          .filter(
+            (row) =>
+              row.name.trim() ||
+              row.dietary_note.trim() ||
+              (songRequestsEnabled && row.song_request.trim()),
+          )
           .map((row) => ({
             name: row.name.trim() || undefined,
             dietary_note: row.dietary_note.trim() || undefined,
+            song_request: songRequestsEnabled
+              ? row.song_request.trim() || undefined
+              : undefined,
             meal_option_id: null,
           }));
       }
@@ -587,6 +608,30 @@ export function RsvpForm({
                     ))}
                   </select>
                 </div>
+                {songRequestsEnabled ? (
+                  <div>
+                    <label
+                      htmlFor={`rsvp-attendee-song-${index}`}
+                      className="mb-1.5 block text-[13px] font-medium"
+                      style={{ color: "var(--ws-muted)" }}
+                    >
+                      Song request{" "}
+                      <span className="font-normal">(optional)</span>
+                    </label>
+                    <input
+                      id={`rsvp-attendee-song-${index}`}
+                      type="text"
+                      maxLength={200}
+                      value={row.song_request}
+                      onChange={(e) =>
+                        updateAttendee(index, "song_request", e.target.value)
+                      }
+                      placeholder="A song you'd love to hear"
+                      className={inputClass}
+                      style={inputStyle}
+                    />
+                  </div>
+                ) : null}
                 <div>
                   <label
                     htmlFor={`rsvp-attendee-dietary-${index}`}
@@ -615,28 +660,38 @@ export function RsvpForm({
 
       {showBuffetDietary ? (
         <div className="space-y-3">
-          <button
-            type="button"
-            onClick={() => {
-              setShowDietaryDetails((open) => {
-                const next = !open;
-                if (next) {
-                  setAttendees((current) =>
-                    resizeAttendees(current, Math.max(1, partySize)),
-                  );
-                }
-                return next;
-              });
-            }}
-            className="text-[14px] font-medium underline-offset-2 hover:underline"
-            style={{ color: "var(--ws-accent)" }}
-          >
-            {showDietaryDetails
-              ? "Hide names / dietary needs"
-              : "Add names / dietary needs (optional)"}
-          </button>
+          {!songRequestsEnabled ? (
+            <button
+              type="button"
+              onClick={() => {
+                setShowDietaryDetails((open) => {
+                  const next = !open;
+                  if (next) {
+                    setAttendees((current) =>
+                      resizeAttendees(current, Math.max(1, partySize)),
+                    );
+                  }
+                  return next;
+                });
+              }}
+              className="text-[14px] font-medium underline-offset-2 hover:underline"
+              style={{ color: "var(--ws-accent)" }}
+            >
+              {showDietaryDetails
+                ? "Hide names / dietary needs"
+                : "Add names / dietary needs (optional)"}
+            </button>
+          ) : (
+            <p
+              className="text-[13px] font-medium"
+              style={{ color: "var(--ws-muted)" }}
+            >
+              Guest details{" "}
+              <span className="font-normal">(names, dietary, songs)</span>
+            </p>
+          )}
 
-          {showDietaryDetails ? (
+          {showBuffetAttendeeRows ? (
             <ul className="space-y-3">
               {attendees.map((row, index) => (
                 <li
@@ -691,6 +746,30 @@ export function RsvpForm({
                       style={inputStyle}
                     />
                   </div>
+                  {songRequestsEnabled ? (
+                    <div>
+                      <label
+                        htmlFor={`rsvp-buffet-song-${index}`}
+                        className="mb-1.5 block text-[13px] font-medium"
+                        style={{ color: "var(--ws-muted)" }}
+                      >
+                        Song request{" "}
+                        <span className="font-normal">(optional)</span>
+                      </label>
+                      <input
+                        id={`rsvp-buffet-song-${index}`}
+                        type="text"
+                        maxLength={200}
+                        value={row.song_request}
+                        onChange={(e) =>
+                          updateAttendee(index, "song_request", e.target.value)
+                        }
+                        placeholder="A song you'd love to hear"
+                        className={inputClass}
+                        style={inputStyle}
+                      />
+                    </div>
+                  ) : null}
                 </li>
               ))}
             </ul>
