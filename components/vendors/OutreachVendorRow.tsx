@@ -6,19 +6,24 @@ import {
   updateProjectVendorStatus,
 } from "@/app/(app)/projects/[projectId]/vendors/actions";
 import {
+  IN_FLIGHT_STATUSES,
+  OUTREACH_ADVANCE_LABEL,
   OUTREACH_STATUS_CYCLE,
+  type InFlightStatus,
   type OutreachVendor,
 } from "@/components/vendors/outreach-vendor";
-import { VendorListRow } from "@/components/vendors/VendorListRow";
-import { VendorPipelineStepper } from "@/components/vendors/VendorPipelineStepper";
-import { VendorStatusPill } from "@/components/vendors/vendor-status";
 import { cn } from "@/lib/cn";
 import { vendorCategoryLabel } from "@/lib/vendor-categories";
+import Link from "next/link";
 
 export type { OutreachVendor };
 
 const destructiveControlClass =
   "rounded-[var(--radius-inner)] px-2.5 py-1.5 text-[13px] font-semibold text-muted transition-colors hover:bg-rosewood-wash hover:text-rosewood focus-visible:bg-rosewood-wash focus-visible:text-rosewood focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rosewood disabled:pointer-events-none disabled:opacity-50";
+
+function isInFlightStatus(status: OutreachVendor["status"]): status is InFlightStatus {
+  return (IN_FLIGHT_STATUSES as readonly string[]).includes(status);
+}
 
 export function OutreachShortlistRow({
   projectId,
@@ -37,17 +42,11 @@ export function OutreachShortlistRow({
 }) {
   const [isPending, startTransition] = useTransition();
 
-  function handleStatusClick() {
-    if (item.status === "declined") return;
+  function handleAdvance() {
+    if (!isInFlightStatus(item.status)) return;
     const nextStatus = OUTREACH_STATUS_CYCLE[item.status];
     startTransition(async () => {
       await updateProjectVendorStatus(item.id, nextStatus);
-    });
-  }
-
-  function handleDecline() {
-    startTransition(async () => {
-      await updateProjectVendorStatus(item.id, "declined");
     });
   }
 
@@ -62,65 +61,63 @@ export function OutreachShortlistRow({
     });
   }
 
+  const category = item.vendor.category
+    ? vendorCategoryLabel(item.vendor.category)
+    : "Uncategorized";
+
+  const advanceLabel = isInFlightStatus(item.status)
+    ? OUTREACH_ADVANCE_LABEL[item.status]
+    : null;
+
   return (
-    <VendorListRow
-      className={cn(isPending && "opacity-60", className)}
-      name={item.vendor.name}
-      category={
-        item.vendor.category
-          ? vendorCategoryLabel(item.vendor.category)
-          : "Uncategorized"
-      }
-      href={`/projects/${projectId}/vendors/${item.vendor.id}`}
-      meta={
-        item.vendor.contact_email && !selectable
-          ? item.vendor.contact_email
-          : undefined
-      }
-      leading={
-        selectable ? (
-          <input
-            type="checkbox"
-            checked={selected}
-            onChange={onToggleSelect}
-            className="size-4 rounded border-ring accent-accent"
-            aria-label={`Select ${item.vendor.name}`}
-          />
-        ) : undefined
-      }
-      trailing={
-        <div className="flex shrink-0 items-center gap-6">
-          <div className="flex items-center gap-1">
-            <button
-              type="button"
-              onClick={handleRemove}
-              disabled={isPending}
-              aria-label={`Remove ${item.vendor.name} from this project`}
-              className={destructiveControlClass}
-            >
-              Remove
-            </button>
-            <button
-              type="button"
-              onClick={handleDecline}
-              disabled={isPending}
-              aria-label={`Decline ${item.vendor.name}`}
-              className={destructiveControlClass}
-            >
-              Decline
-            </button>
-          </div>
-          <div className="border-l border-hairline pl-6">
-            <VendorStatusPill
-              status={item.status}
-              quotedPrice={item.quoted_price}
-              onClick={handleStatusClick}
-              disabled={isPending}
-            />
-          </div>
-        </div>
-      }
-      footer={<VendorPipelineStepper status={item.status} />}
-    />
+    <div
+      className={cn(
+        "flex items-center gap-3 rounded-[var(--radius-inner)] bg-well px-3.5 py-2.5 shadow-recessed",
+        isPending && "opacity-60",
+        className,
+      )}
+    >
+      {selectable ? (
+        <input
+          type="checkbox"
+          checked={selected}
+          onChange={onToggleSelect}
+          className="size-4 shrink-0 rounded border-ring accent-accent"
+          aria-label={`Select ${item.vendor.name}`}
+        />
+      ) : null}
+
+      <div className="min-w-0 flex-1">
+        <Link
+          href={`/projects/${projectId}/vendors/${item.vendor.id}`}
+          className="block truncate text-[15px] font-medium text-ink hover:text-accent"
+        >
+          {item.vendor.name}
+        </Link>
+        <p className="truncate text-[13px] text-muted">{category}</p>
+      </div>
+
+      <div className="flex shrink-0 items-center gap-1.5">
+        {advanceLabel ? (
+          <button
+            type="button"
+            onClick={handleAdvance}
+            disabled={isPending}
+            className="rounded-[var(--radius-inner)] px-2.5 py-1.5 text-[13px] font-semibold text-accent transition-colors hover:bg-accent-wash focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:pointer-events-none disabled:opacity-50"
+          >
+            {advanceLabel}
+          </button>
+        ) : null}
+        <button
+          type="button"
+          onClick={handleRemove}
+          disabled={isPending}
+          aria-label={`Remove ${item.vendor.name} from this project`}
+          className={destructiveControlClass}
+        >
+          Remove
+        </button>
+      </div>
+    </div>
   );
 }

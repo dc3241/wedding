@@ -1,34 +1,29 @@
-import Link from "next/link";
-import { AddVendorForm } from "@/components/vendors/AddVendorForm";
-import { AskAssistantLink } from "@/components/assistant/AskAssistantLink";
-import { ASSISTANT_PREFILLS } from "@/components/assistant/prefills";
+import { toLocalDateKey } from "@/app/(app)/calendar/calendar-source";
+import { getAddedPlaceIds } from "@/app/(app)/projects/[projectId]/vendors/actions";
 import {
   BookedVendorsSection,
-  type BookedPackage,
+  type BookedLinkableItem,
+  type BookedVendorObject,
   type EmptyBookedSlot,
-  type UnslottedBookedVendor,
 } from "@/components/vendors/BookedVendorsSection";
 import type { ConnectableBookedVendor } from "@/components/vendors/ConnectExistingVendorControl";
-import { DeclinedVendorsGroup } from "@/components/vendors/DeclinedVendorsGroup";
 import { GmailConnection } from "@/components/vendors/GmailConnection";
-import { OutreachToContactSection } from "@/components/vendors/OutreachToContactSection";
-import { OutreachShortlistRow } from "@/components/vendors/OutreachVendorRow";
-import { VendorAggregateStepper } from "@/components/vendors/VendorAggregateStepper";
+import { OutreachRegion } from "@/components/vendors/OutreachRegion";
+import { VendorSearchForm } from "@/components/vendors/VendorSearchForm";
+import type { NeededVendorTarget } from "@/components/vendors/VendorSearchRail";
 import {
   VendorsToBookSection,
   type VendorTargetRow,
 } from "@/components/vendors/VendorsToBookSection";
-import {
-  IN_FLIGHT_STATUSES,
-  type OutreachVendor,
-} from "@/components/vendors/outreach-vendor";
+import { IN_FLIGHT_STATUSES, type OutreachVendor } from "@/components/vendors/outreach-vendor";
 import { ButtonLink } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
 import { getAccountContext } from "@/lib/account-context";
+import { deriveBookedVendorMoney } from "@/lib/booked-vendor-money";
 import { sectionStackClass } from "@/lib/density";
-import { createClient } from "@/utils/supabase/server";
 import { getGmailConnectionEmail } from "@/lib/gmail-connection-status";
+import { VENDOR_CATEGORIES } from "@/lib/vendor-categories";
+import { createClient } from "@/utils/supabase/server";
 
 const PV_SELECT =
   "id, status, quoted_price, notes, vendors(id, name, category, contact_email, contact_phone, address, website, notes, ai_overview, last_enriched_at)";
@@ -48,6 +43,34 @@ function formatEyebrowDate(iso: string) {
     month: "long",
     year: "numeric",
   });
+}
+
+function buildOnListByCategoryId(
+  rows: {
+    vendors:
+      | { category: string | null }
+      | { category: string | null }[]
+      | null;
+  }[],
+): Record<string, number> {
+  const byLabel = new Map(
+    VENDOR_CATEGORIES.map((c) => [c.label, c.id] as const),
+  );
+  const counts: Record<string, number> = {};
+
+  for (const row of rows) {
+    const vendor = Array.isArray(row.vendors) ? row.vendors[0] : row.vendors;
+    const raw = vendor?.category?.trim();
+    if (!raw) continue;
+
+    const byId = VENDOR_CATEGORIES.find((c) => c.id === raw);
+    const id = byId?.id ?? byLabel.get(raw);
+    if (!id) continue;
+
+    counts[id] = (counts[id] ?? 0) + 1;
+  }
+
+  return counts;
 }
 
 type PvRow = {
@@ -142,6 +165,13 @@ export default async function VendorsPage({
     { data: bookedRows },
     { data: declinedRows },
     { data: targetRows },
+    addedPlaceIds,
+    profileResult,
+    { data: allProjectVendorCategories },
+    { data: budgetItemRows },
+    { data: paymentRows },
+    { data: scheduleRows },
+    { data: contractRows },
   ] = await Promise.all([
     supabase
       .from("projects")
@@ -171,6 +201,41 @@ export default async function VendorsPage({
       .select("id, category, note, status, project_vendor_id")
       .eq("project_id", projectId)
       .order("created_at", { ascending: true }),
+    getAddedPlaceIds(projectId),
+    supabase
+      .from("wedding_profile")
+      .select("location")
+      .eq("project_id", projectId)
+      .maybeSingle(),
+    supabase
+      .from("project_vendors")
+      .select("vendors(category)")
+      .eq("project_id", projectId),
+    supabase
+      .from("budget_items")
+      .select(
+        "id, category, label, planned_amount, actual_amount, notes, project_vendor_id",
+      )
+      .eq("project_id", projectId)
+      .order("category", { ascending: true, nullsFirst: false })
+      .order("label", { ascending: true }),
+    supabase
+      .from("budget_payments")
+      .select("id, budget_item_id, amount, paid_on, note")
+      .eq("project_id", projectId)
+      .order("paid_on", { ascending: true, nullsFirst: false }),
+    supabase
+      .from("payment_schedule")
+      .select("id, budget_item_id, amount, due_on, label")
+      .eq("project_id", projectId)
+      .order("due_on", { ascending: true }),
+    supabase
+      .from("files")
+      .select("id, name, size_bytes, created_at, project_vendor_id")
+      .eq("project_id", projectId)
+      .eq("kind", "contract")
+      .not("project_vendor_id", "is", null)
+      .order("created_at", { ascending: false }),
   ]);
 
   const defaultDate = formatDefaultDate(project?.wedding_date ?? null);
@@ -188,10 +253,6 @@ export default async function VendorsPage({
   const outreachList = inFlightPv.map(toOutreachVendor);
   const declinedList = declinedPv.map(toOutreachVendor);
 
-  const vendorByProjectVendorId = new Map(
-    bookedPv.map((row) => [row.id, row]),
-  );
-
   const vendorTargets: VendorTargetRow[] = (targetRows ?? []).map((row) => ({
     id: row.id,
     category: row.category,
@@ -200,48 +261,115 @@ export default async function VendorsPage({
     project_vendor_id: row.project_vendor_id ?? null,
   }));
 
-  const slottedProjectVendorIds = new Set(
-    vendorTargets
-      .map((t) => t.project_vendor_id)
-      .filter((id): id is string => id != null),
+  const neededTargets: NeededVendorTarget[] = vendorTargets
+    .filter((t) => t.status === "needed")
+    .map((t) => ({
+      id: t.id,
+      category: t.category,
+      note: t.note,
+    }));
+
+  const defaultLocation = profileResult.data?.location?.trim() ?? "";
+  const initialOnListByCategoryId = buildOnListByCategoryId(
+    allProjectVendorCategories ?? [],
   );
 
-  // One card per project_vendor that owns ≥1 booked slot (venue package = N slots).
-  const packageByPvId = new Map<string, BookedPackage>();
+  const todayKey = toLocalDateKey(new Date());
+
+  const budgetItems = (budgetItemRows ?? []).map((row) => ({
+    id: row.id,
+    category: row.category,
+    label: row.label,
+    actual_amount:
+      row.actual_amount === null || row.actual_amount === undefined
+        ? null
+        : Number(row.actual_amount),
+    notes: row.notes ?? null,
+    project_vendor_id: row.project_vendor_id ?? null,
+  }));
+
+  const payments = (paymentRows ?? []).map((row) => ({
+    id: row.id,
+    budget_item_id: row.budget_item_id,
+    amount: Number(row.amount),
+    paid_on: row.paid_on ?? null,
+    note: row.note ?? null,
+  }));
+
+  const schedule = (scheduleRows ?? []).map((row) => ({
+    id: row.id,
+    budget_item_id: row.budget_item_id,
+    amount: Number(row.amount),
+    due_on: row.due_on,
+    label: row.label ?? null,
+  }));
+
+  const contractsByPvId = new Map<
+    string,
+    { id: string; name: string; size_bytes: number | null; created_at: string }[]
+  >();
+  for (const row of contractRows ?? []) {
+    if (!row.project_vendor_id) continue;
+    const list = contractsByPvId.get(row.project_vendor_id) ?? [];
+    list.push({
+      id: row.id,
+      name: row.name,
+      size_bytes:
+        row.size_bytes === null || row.size_bytes === undefined
+          ? null
+          : Number(row.size_bytes),
+      created_at: row.created_at,
+    });
+    contractsByPvId.set(row.project_vendor_id, list);
+  }
+
+  const slotsByPvId = new Map<
+    string,
+    { id: string; category: string; note: string | null }[]
+  >();
   for (const t of vendorTargets) {
     if (t.status !== "booked" || t.project_vendor_id == null) continue;
-    const linked = vendorByProjectVendorId.get(t.project_vendor_id);
-    if (!linked) continue;
-
-    const existing = packageByPvId.get(t.project_vendor_id);
-    if (existing) {
-      existing.slots.push({
-        id: t.id,
-        category: t.category,
-        note: t.note,
-      });
-      continue;
-    }
-
-    packageByPvId.set(t.project_vendor_id, {
-      projectVendorId: t.project_vendor_id,
-      vendor: {
-        vendorId: linked.vendor.id,
-        name: linked.vendor.name,
-        contact_email: linked.vendor.contact_email,
-        contact_phone: linked.vendor.contact_phone,
-        address: linked.vendor.address,
-        website: linked.vendor.website,
-        notes: linked.vendor.notes ?? linked.notes,
-        quoted_price:
-          linked.quoted_price === null || linked.quoted_price === undefined
-            ? null
-            : Number(linked.quoted_price),
-      },
-      slots: [{ id: t.id, category: t.category, note: t.note }],
-    });
+    const list = slotsByPvId.get(t.project_vendor_id) ?? [];
+    list.push({ id: t.id, category: t.category, note: t.note });
+    slotsByPvId.set(t.project_vendor_id, list);
   }
-  const bookedPackages: BookedPackage[] = [...packageByPvId.values()];
+
+  const bookedVendors: BookedVendorObject[] = bookedPv.map((row) => {
+    const money = deriveBookedVendorMoney(
+      row.id,
+      budgetItems,
+      payments,
+      schedule,
+      todayKey,
+    );
+    return {
+      projectVendorId: row.id,
+      vendorId: row.vendor.id,
+      name: row.vendor.name,
+      category: row.vendor.category,
+      contact_phone: row.vendor.contact_phone,
+      contact_email: row.vendor.contact_email,
+      slots: slotsByPvId.get(row.id) ?? [],
+      linkedItems: money.linkedItems.map((item) => ({
+        id: item.id,
+        category: item.category,
+        label: item.label,
+        actual_amount: item.actual_amount,
+        notes: item.notes,
+        paid: item.paid,
+        payments: item.payments,
+        schedule: item.schedule,
+        nextDue: item.nextDue,
+        pastDue: item.pastDue,
+      })),
+      price: money.price,
+      paid: money.paid,
+      nextDue: money.nextDue,
+      pastDue: money.pastDue,
+      notes: money.notes,
+      contracts: contractsByPvId.get(row.id) ?? [],
+    };
+  });
 
   const emptyBookedSlots: EmptyBookedSlot[] = vendorTargets
     .filter((t) => t.status === "booked" && t.project_vendor_id == null)
@@ -251,15 +379,6 @@ export default async function VendorsPage({
       note: t.note,
     }));
 
-  const unslottedBooked: UnslottedBookedVendor[] = bookedPv
-    .filter((row) => !slottedProjectVendorIds.has(row.id))
-    .map((row) => ({
-      projectVendorId: row.id,
-      vendorId: row.vendor.id,
-      name: row.vendor.name,
-      category: row.vendor.category,
-    }));
-
   const connectableVendors: ConnectableBookedVendor[] = bookedPv.map((row) => ({
     projectVendorId: row.id,
     name: row.vendor.name,
@@ -267,13 +386,6 @@ export default async function VendorsPage({
       .filter((t) => t.project_vendor_id === row.id)
       .map((t) => t.category),
   }));
-
-  const toContactItems = outreachList.filter(
-    (item) => item.status === "to_contact",
-  );
-  const midFlightItems = outreachList.filter(
-    (item) => item.status === "contacted" || item.status === "replied",
-  );
 
   const nameByProjectVendorId = new Map(
     [...inFlightPv, ...bookedPv, ...declinedPv].map((row) => [
@@ -292,6 +404,16 @@ export default async function VendorsPage({
       : null,
   }));
 
+  const linkableItems: BookedLinkableItem[] = budgetItems.map((item) => ({
+    id: item.id,
+    category: item.category,
+    label: item.label,
+    project_vendor_id: item.project_vendor_id,
+    linkedVendorName: item.project_vendor_id
+      ? (nameByProjectVendorId.get(item.project_vendor_id) ?? null)
+      : null,
+  }));
+
   const existingVendors = [...inFlightPv, ...bookedPv, ...declinedPv].map(
     (row) => ({
       projectVendorId: row.id,
@@ -300,9 +422,6 @@ export default async function VendorsPage({
     }),
   );
 
-  const hasOutreachContent =
-    outreachList.length > 0 || declinedList.length > 0;
-
   return (
     <div className={stackClass}>
       <PageHeader
@@ -310,20 +429,12 @@ export default async function VendorsPage({
         eyebrow={eyebrow}
         description="Find local vendors, track outreach, and book your team."
         actions={
-          <div className="flex shrink-0 flex-wrap gap-2">
-            <ButtonLink
-              href={`/projects/${projectId}/vendors/outreach`}
-              variant="default"
-            >
-              Review drafts
-            </ButtonLink>
-            <ButtonLink
-              href={`/projects/${projectId}/vendors/search`}
-              variant="primary"
-            >
-              Search vendors
-            </ButtonLink>
-          </div>
+          <ButtonLink
+            href={`/projects/${projectId}/vendors/outreach`}
+            variant="default"
+          >
+            Review drafts
+          </ButtonLink>
         }
       />
 
@@ -334,94 +445,34 @@ export default async function VendorsPage({
         justConnected={gmailConnected === "1"}
       />
 
+      <VendorSearchForm
+        projectId={projectId}
+        defaultLocation={defaultLocation}
+        initialAddedPlaceIds={addedPlaceIds}
+        neededTargets={neededTargets}
+        initialOnListByCategoryId={initialOnListByCategoryId}
+      />
+
       <BookedVendorsSection
         projectId={projectId}
-        packages={bookedPackages}
+        vendors={bookedVendors}
         emptySlots={emptyBookedSlots}
-        unslotted={unslottedBooked}
         slotTargets={slotOptions}
         connectableVendors={connectableVendors}
+        linkableItems={linkableItems}
       />
 
       <VendorsToBookSection targets={vendorTargets} />
 
-      <AddVendorForm
+      <OutreachRegion
         projectId={projectId}
+        items={outreachList}
+        declinedItems={declinedList}
+        defaultDate={defaultDate}
         existingVendors={existingVendors}
         categoryTargets={slotOptions}
         defaultCategoryId={categoryPrefill ?? null}
       />
-
-      <section className="space-y-4">
-        <div className="flex items-baseline justify-between gap-3">
-          <p className="text-[12px] font-semibold uppercase tracking-[0.09em] text-muted">
-            Outreach
-          </p>
-          {hasOutreachContent ? (
-            <Link
-              href={`/projects/${projectId}/vendors/outreach`}
-              className="text-[14px] font-semibold text-accent hover:opacity-80"
-            >
-              Manage outreach
-            </Link>
-          ) : null}
-        </div>
-
-        {!hasOutreachContent ? (
-          <Card className="px-8 py-10 text-center">
-            <p className="text-[15px] font-medium text-muted">
-              No vendors in outreach yet. Search or add one manually.
-            </p>
-            <div className="mt-3">
-              <AskAssistantLink prefill={ASSISTANT_PREFILLS.vendors}>
-                Ask assistant to find vendors
-              </AskAssistantLink>
-            </div>
-          </Card>
-        ) : (
-          <div className="space-y-4">
-            {outreachList.length > 0 ? (
-              <Card className="px-6 py-5">
-                <VendorAggregateStepper vendors={outreachList} />
-              </Card>
-            ) : null}
-
-            {toContactItems.length > 0 ? (
-              <OutreachToContactSection
-                projectId={projectId}
-                items={toContactItems}
-                defaultDate={defaultDate}
-              />
-            ) : null}
-
-            {midFlightItems.length > 0 ? (
-              <Card className="overflow-hidden px-3.5 py-3.5">
-                <ul>
-                  {midFlightItems.map((item) => (
-                    <li key={item.id} className="mb-2 last:mb-0">
-                      <OutreachShortlistRow
-                        projectId={projectId}
-                        item={item}
-                        className="rounded-[var(--radius-inner)] bg-well px-4 py-3.5 shadow-recessed"
-                      />
-                    </li>
-                  ))}
-                </ul>
-              </Card>
-            ) : null}
-
-            {outreachList.length === 0 && declinedList.length > 0 ? (
-              <Card className="px-8 py-8 text-center">
-                <p className="text-[15px] font-medium text-muted">
-                  No vendors in flight. Declined vendors are below.
-                </p>
-              </Card>
-            ) : null}
-
-            <DeclinedVendorsGroup projectId={projectId} items={declinedList} />
-          </div>
-        )}
-      </section>
     </div>
   );
 }

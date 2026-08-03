@@ -10,6 +10,8 @@ function budgetPath(projectId: string) {
 function revalidateBudget(projectId: string) {
   revalidatePath(budgetPath(projectId));
   revalidatePath(`/projects/${projectId}`);
+  revalidatePath(`/projects/${projectId}/vendors`);
+  revalidatePath("/calendar");
 }
 
 /** YYYY-MM-DD only — rejects timestamps / empty. */
@@ -91,6 +93,7 @@ export async function addBudgetItem(
   }
 
   revalidateBudget(projectId);
+  return { id: item.id };
 }
 
 /** Quick-add bulk: one 0-planned row per category string. No dedupe. Free-text category. */

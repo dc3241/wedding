@@ -77,7 +77,7 @@ function TargetActions({
     });
   }
 
-  const searchHref = `/projects/${projectId}/vendors/search`;
+  const searchHref = `/projects/${projectId}/vendors#discover`;
 
   return (
     <div

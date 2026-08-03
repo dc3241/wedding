@@ -45,12 +45,6 @@ export function VendorDetailStatus({
     });
   }
 
-  function handleDecline() {
-    startTransition(async () => {
-      await updateProjectVendorStatus(projectVendorId, "declined");
-    });
-  }
-
   function handleRestore() {
     startTransition(async () => {
       await updateProjectVendorStatus(projectVendorId, "to_contact");
@@ -74,16 +68,7 @@ export function VendorDetailStatus({
         >
           Return to outreach
         </button>
-      ) : (
-        <button
-          type="button"
-          onClick={handleDecline}
-          disabled={isPending}
-          className="rounded-[var(--radius-inner)] px-2.5 py-1.5 text-[13px] font-semibold text-muted transition-colors hover:bg-rosewood-wash hover:text-rosewood focus-visible:bg-rosewood-wash focus-visible:text-rosewood focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rosewood disabled:opacity-50"
-        >
-          Decline
-        </button>
-      )}
+      ) : null}
       {status === "booked" && covered.length > 0 ? (
         <p className="max-w-[14rem] text-right text-[13px] text-muted">
           Covers {coversLabel}

@@ -11,7 +11,6 @@ import {
   RsvpForm,
   type PublicMealOption,
   type PublicMealServiceStyle,
-  type PublicRsvpAccessMode,
 } from "./RsvpForm";
 
 export const dynamic = "force-dynamic";
@@ -29,17 +28,13 @@ function parseMealServiceStyle(value: unknown): PublicMealServiceStyle {
   return "none";
 }
 
-function parseRsvpAccessMode(value: unknown): PublicRsvpAccessMode {
-  return value === "gated" ? "gated" : "open";
-}
-
 async function loadPublishedWebsite(slug: string) {
   const supabase = createAnonServerClient();
 
   const { data: row, error } = await supabase
     .from("wedding_websites")
     .select(
-      "content, template, theme, meal_service_style, rsvp_access_mode, project_id, external_registry_links",
+      "content, template, theme, meal_service_style, project_id, external_registry_links",
     )
     .eq("slug", slug)
     .maybeSingle();
@@ -50,7 +45,6 @@ async function loadPublishedWebsite(slug: string) {
 
   const projectId = String(row.project_id);
   const mealServiceStyle = parseMealServiceStyle(row.meal_service_style);
-  const rsvpAccessMode = parseRsvpAccessMode(row.rsvp_access_mode);
   const externalRegistryLinks: ExternalRegistryLink[] =
     parseExternalRegistryLinks(row.external_registry_links);
 
@@ -72,7 +66,6 @@ async function loadPublishedWebsite(slug: string) {
     template: String(row.template),
     theme: String(row.theme),
     mealServiceStyle,
-    rsvpAccessMode,
     mealOptions,
     externalRegistryLinks,
   };
@@ -136,7 +129,6 @@ export default async function PublicWeddingPage({
           slug={slug}
           mealServiceStyle={site.mealServiceStyle}
           mealOptions={site.mealOptions}
-          rsvpAccessMode={site.rsvpAccessMode}
           initialGuestToken={guestToken ?? null}
           appearance="on-dark"
         />

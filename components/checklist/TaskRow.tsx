@@ -85,8 +85,9 @@ export function TaskRow({ task }: { task: ChecklistTask }) {
 
   return (
     <li
+      id={`task-${task.id}`}
       className={cn(
-        "group mb-2 flex items-start gap-3 rounded-[var(--radius-inner)] bg-well px-4 py-3.5 shadow-recessed last:mb-0",
+        "group mb-2 flex items-start gap-3 rounded-[var(--radius-inner)] bg-well px-4 py-3.5 shadow-recessed last:mb-0 scroll-mt-6",
         isPending && "opacity-60",
       )}
     >

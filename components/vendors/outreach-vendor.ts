@@ -49,7 +49,7 @@ export const VENDOR_PIPELINE_STEPS = [
 ] as const;
 
 /**
- * Pill cycle — declined is not in the cycle; it is set via an explicit Decline control.
+ * Pill cycle — declined is an exit set only via legacy rows (UI write removed in VND-09).
  * Booked cycles back to to_contact (leave the slot / reopen outreach).
  */
 export const OUTREACH_STATUS_CYCLE: Record<
@@ -60,6 +60,13 @@ export const OUTREACH_STATUS_CYCLE: Record<
   contacted: "replied",
   replied: "booked",
   booked: "to_contact",
+};
+
+/** Advance-button labels for in-flight rows (VND-12). */
+export const OUTREACH_ADVANCE_LABEL: Record<InFlightStatus, string> = {
+  to_contact: "Mark contacted",
+  contacted: "Mark replied",
+  replied: "Mark booked",
 };
 
 export function pipelineStepState(

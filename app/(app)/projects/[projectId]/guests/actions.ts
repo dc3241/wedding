@@ -57,50 +57,6 @@ export async function addGuest(
   revalidatePath(guestsPath(projectId));
 }
 
-export async function bulkAddGuests(projectId: string, text: string) {
-  const names = text
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean);
-
-  if (names.length === 0) return;
-
-  const supabase = await createClient();
-
-  const rows = names.map((name) => ({
-    project_id: projectId,
-    full_name: name,
-    party_size: 1,
-  }));
-
-  const { data: guests, error } = await supabase
-    .from("guests")
-    .insert(rows)
-    .select("id, full_name");
-
-  if (error) throw error;
-
-  if (guests && guests.length > 0) {
-    const { error: membersError } = await supabase
-      .from("guest_members")
-      .insert(
-        guests.map((guest) => ({
-          project_id: projectId,
-          guest_id: guest.id,
-          name: guest.full_name,
-          meal_option_id: null,
-          dietary_note: null,
-          attending: false,
-          sort_order: 0,
-        })),
-      );
-
-    if (membersError) throw membersError;
-  }
-
-  revalidatePath(guestsPath(projectId));
-}
-
 export async function updateRsvp(guestId: string, status: RsvpStatus) {
   const supabase = await createClient();
 

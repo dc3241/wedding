@@ -8,23 +8,10 @@ function guestsPath(projectId: string) {
   return `/projects/${projectId}/guests`;
 }
 
-export type RsvpAccessMode = "open" | "gated";
-
-export type SetRsvpAccessModeResult =
-  | { ok: true }
-  | { ok: false; reason: "no_website" }
-  | { ok: false; reason: "invalid" }
-  | { ok: false; reason: "forbidden" }
-  | { ok: false; reason: "error" };
-
 export type RegenerateGuestRsvpTokenResult =
   | { ok: true; token: string }
   | { ok: false; reason: "forbidden" }
   | { ok: false; reason: "error" };
-
-function isRsvpAccessMode(value: string): value is RsvpAccessMode {
-  return value === "open" || value === "gated";
-}
 
 async function assertCanEditProject(
   supabase: Awaited<ReturnType<typeof createClient>>,
@@ -34,50 +21,6 @@ async function assertCanEditProject(
     p_project_id: projectId,
   });
   return !error && data === true;
-}
-
-export async function setRsvpAccessMode(
-  projectId: string,
-  mode: string,
-): Promise<SetRsvpAccessModeResult> {
-  if (!isRsvpAccessMode(mode)) {
-    return { ok: false, reason: "invalid" };
-  }
-
-  const supabase = await createClient();
-
-  if (!(await assertCanEditProject(supabase, projectId))) {
-    return { ok: false, reason: "forbidden" };
-  }
-
-  const { data: website, error: lookupError } = await supabase
-    .from("wedding_websites")
-    .select("project_id")
-    .eq("project_id", projectId)
-    .maybeSingle();
-
-  if (lookupError) {
-    return { ok: false, reason: "error" };
-  }
-
-  if (!website) {
-    return { ok: false, reason: "no_website" };
-  }
-
-  const { error } = await supabase
-    .from("wedding_websites")
-    .update({
-      rsvp_access_mode: mode,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("project_id", projectId);
-
-  if (error) {
-    return { ok: false, reason: "error" };
-  }
-
-  revalidatePath(guestsPath(projectId));
-  return { ok: true };
 }
 
 export async function regenerateGuestRsvpToken(

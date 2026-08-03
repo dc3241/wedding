@@ -134,6 +134,9 @@ export async function submitRsvp(
   }
 
   const householdToken = input.householdToken?.trim() || null;
+  if (!householdToken) {
+    return { ok: false };
+  }
 
   const attendees = normalizeAttendees(input.attendees);
 

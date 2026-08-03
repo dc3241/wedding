@@ -8,7 +8,6 @@ import {
   type MealServiceStyle,
 } from "./meal-types";
 import { RsvpAccessCard } from "./RsvpAccessCard";
-import type { RsvpAccessMode } from "./rsvp-access-actions";
 import { RsvpSubmissionsPanel } from "./RsvpSubmissionsPanel";
 import type { RsvpSubmission } from "./rsvp-submissions";
 import {
@@ -128,7 +127,7 @@ export default async function GuestsPage({
       .order("created_at", { ascending: true }),
     supabase
       .from("wedding_websites")
-      .select("meal_service_style, rsvp_access_mode, slug, published")
+      .select("meal_service_style, slug, published")
       .eq("project_id", projectId)
       .maybeSingle(),
   ]);
@@ -234,8 +233,6 @@ export default async function GuestsPage({
       ? rawStyle
       : "none";
   const mealSelectionActive = mealServiceStyle === "plated";
-  const rsvpAccessMode: RsvpAccessMode =
-    websiteRow?.rsvp_access_mode === "gated" ? "gated" : "open";
   const siteSlug =
     websiteRow?.published && websiteRow.slug
       ? String(websiteRow.slug)
@@ -344,9 +341,7 @@ export default async function GuestsPage({
       />
 
       <RsvpAccessCard
-        projectId={projectId}
         hasWebsite={hasWebsite}
-        rsvpAccessMode={rsvpAccessMode}
         websiteHref={`/projects/${projectId}/website`}
       />
 
@@ -394,7 +389,7 @@ export default async function GuestsPage({
 
         {allGuests.length === 0 ? (
           <EmptyState>
-            No guests yet. Add one individually or paste a list above.
+            No guests yet. Add one above.
           </EmptyState>
         ) : filteredGuests.length === 0 ? (
           <EmptyState>No guests match this filter.</EmptyState>
@@ -422,7 +417,7 @@ export default async function GuestsPage({
                     mealSelectionActive={mealSelectionActive}
                     rowClass={rowClass}
                     siteSlug={siteSlug}
-                    showRsvpQr={rsvpAccessMode === "gated"}
+                    showRsvpQr={Boolean(siteSlug)}
                   />
                 ))}
               </tbody>

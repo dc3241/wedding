@@ -3,6 +3,8 @@ import type {
   CalendarEventRow,
   CalendarItem,
   EventKind,
+  PaymentDueOverlay,
+  TaskDueOverlay,
 } from "./types";
 import { EVENT_KIND_LABELS } from "./types";
 
@@ -190,9 +192,48 @@ export function weddingToItem(project: ActiveWedding): CalendarItem | null {
   };
 }
 
+export function paymentToItem(row: PaymentDueOverlay): CalendarItem {
+  const localDate = row.due_on;
+  return {
+    id: `payment:${row.installmentId}`,
+    source: "payment",
+    title: row.label,
+    localDate,
+    timeLabel: null,
+    allDay: true,
+    sortKey: `${localDate}T00:00:01`,
+    projectId: row.projectId,
+    projectName: row.projectName,
+    kind: null,
+    pastDue: row.pastDue,
+    amount: row.amount,
+    href: `/projects/${row.projectId}/budget#budget-item-${row.budgetItemId}`,
+  };
+}
+
+export function taskToItem(row: TaskDueOverlay): CalendarItem {
+  const localDate = row.due_date;
+  return {
+    id: `task:${row.taskId}`,
+    source: "task",
+    title: row.title,
+    localDate,
+    timeLabel: null,
+    allDay: true,
+    sortKey: `${localDate}T00:00:02`,
+    projectId: row.projectId,
+    projectName: row.projectName,
+    kind: null,
+    pastDue: row.pastDue,
+    href: `/projects/${row.projectId}/checklist#task-${row.taskId}`,
+  };
+}
+
 export function buildCalendarItems(
   events: CalendarEventRow[],
   weddings: ActiveWedding[],
+  payments: PaymentDueOverlay[] = [],
+  tasks: TaskDueOverlay[] = [],
 ): CalendarItem[] {
   const projectNameById = new Map(weddings.map((w) => [w.id, w.name]));
   const items: CalendarItem[] = [
@@ -201,6 +242,12 @@ export function buildCalendarItems(
   for (const wedding of weddings) {
     const item = weddingToItem(wedding);
     if (item) items.push(item);
+  }
+  for (const payment of payments) {
+    items.push(paymentToItem(payment));
+  }
+  for (const task of tasks) {
+    items.push(taskToItem(task));
   }
   items.sort((a, b) => {
     if (a.sortKey < b.sortKey) return -1;

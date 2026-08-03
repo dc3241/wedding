@@ -106,7 +106,7 @@ export function VendorSearchForm({
     neededTargets.length > 0 || (onListCount > 0 && Boolean(categoryId));
 
   const main = (
-    <div className="min-w-0 space-y-8">
+    <div id="discover" className="min-w-0 scroll-mt-6 space-y-6">
       <Card className="px-6 py-5">
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
@@ -198,7 +198,7 @@ export function VendorSearchForm({
       ) : null}
 
       {hasSearched && !error && !isPending ? (
-        <section className="max-w-[600px] space-y-2" aria-live="polite">
+        <section className="space-y-2.5" aria-live="polite">
           {results && results.length > 0 ? (
             <>
               <div className="flex items-baseline justify-between gap-3">
@@ -218,7 +218,7 @@ export function VendorSearchForm({
                 ) : null}
               </div>
 
-              <div className="space-y-2">
+              <div className="space-y-2.5">
                 {results.map((place) => (
                   <PlaceResultCard
                     key={place.id}
@@ -260,7 +260,7 @@ export function VendorSearchForm({
   );
 
   if (!showRail) {
-    return <div className="space-y-8">{main}</div>;
+    return main;
   }
 
   return (

@@ -110,6 +110,7 @@ export function FileManager({
   label = "Files",
   emptyState = "No files yet. Upload a PDF, image, or document to get started.",
   trailingSlots = {},
+  projectVendorId = null,
 }: {
   projectId: string;
   kind?: FileKind;
@@ -117,6 +118,8 @@ export function FileManager({
   label?: string;
   emptyState?: string;
   trailingSlots?: Record<string, ReactNode>;
+  /** When set, stamped onto uploaded files (VND-10 contract ↔ vendor link). */
+  projectVendorId?: string | null;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -167,6 +170,7 @@ export function FileManager({
           ...(isContract
             ? { category: uploadCategory === "" ? null : uploadCategory }
             : {}),
+          ...(projectVendorId ? { projectVendorId } : {}),
         });
       } catch (recordErr) {
         await supabase.storage.from(PROJECT_FILES_BUCKET).remove([storagePath]);

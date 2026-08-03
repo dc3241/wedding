@@ -76,11 +76,11 @@ export function PlaceResultCard({
   }
 
   return (
-    <div className="rounded-[var(--radius-inner)] bg-well px-4 py-3.5 shadow-recessed">
-      <div className="flex items-center gap-3">
-        <div className="min-w-0 flex-1">
-          <div className="flex min-w-0 items-center gap-2">
-            <span className="min-w-0 truncate text-[15px] font-medium text-ink">
+    <div className="rounded-[var(--radius-inner)] bg-well px-4 py-4 shadow-recessed">
+      <div className="flex items-start gap-4">
+        <div className="min-w-0 flex-1 space-y-1.5">
+          <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+            <span className="min-w-0 text-[15px] font-semibold text-ink">
               {place.displayName}
             </span>
             {typeLabel ? (
@@ -91,7 +91,7 @@ export function PlaceResultCard({
           </div>
 
           {hasRating ? (
-            <p className="mt-0.5 truncate text-[13px]">
+            <p className="text-[13px]">
               <span className="tabnum font-medium text-ink">
                 {place.rating!.toFixed(1)}
               </span>
@@ -108,26 +108,25 @@ export function PlaceResultCard({
             </p>
           ) : null}
 
-          <p className="mt-0.5 truncate text-[13px] text-muted">
-            {address ? address : "Travels to your venue"}
-            {host ? (
-              <>
-                {" "}
-                ·{" "}
-                <a
-                  href={place.websiteUri}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-muted hover:text-ink"
-                >
-                  {host}
-                </a>
-              </>
-            ) : null}
-          </p>
+          {address ? (
+            <p className="text-[13px] leading-snug text-muted">{address}</p>
+          ) : (
+            <p className="text-[13px] text-muted">Travels to your venue</p>
+          )}
+
+          {host ? (
+            <a
+              href={place.websiteUri}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-block text-[13px] font-medium text-muted hover:text-ink"
+            >
+              {host}
+            </a>
+          ) : null}
         </div>
 
-        <div className="shrink-0">
+        <div className="shrink-0 self-center">
           {isAdded ? (
             <span className="text-[13px] font-medium text-sage">
               On your list

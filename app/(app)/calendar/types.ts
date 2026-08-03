@@ -43,8 +43,33 @@ export type ActiveWedding = {
   wedding_date: string | null;
 };
 
-/** Extensible source model — CAL-01a will add a task-due source. */
-export type CalendarItemSource = "authored" | "wedding" | (string & {});
+/** Read-only installment overlay (VND-11) — never stored as calendar_events. */
+export type PaymentDueOverlay = {
+  installmentId: string;
+  projectId: string;
+  projectName: string;
+  budgetItemId: string;
+  label: string;
+  amount: number;
+  due_on: string;
+  pastDue: boolean;
+};
+
+/** Read-only incomplete-task overlay (VND-11 / CAL-01a). */
+export type TaskDueOverlay = {
+  taskId: string;
+  projectId: string;
+  projectName: string;
+  title: string;
+  due_date: string;
+  pastDue: boolean;
+};
+
+export type CalendarItemSource =
+  | "authored"
+  | "wedding"
+  | "payment"
+  | "task";
 
 export type CalendarItem = {
   id: string;
@@ -61,4 +86,10 @@ export type CalendarItem = {
   kind: EventKind | null;
   /** Present when source === "authored". */
   authored?: CalendarEventRow;
+  /** Uncovered installment past-due (payment source only). */
+  pastDue?: boolean;
+  /** Display amount for payment markers. */
+  amount?: number | null;
+  /** Deep-link for read-only overlays (payment → budget, task → checklist). */
+  href?: string | null;
 };

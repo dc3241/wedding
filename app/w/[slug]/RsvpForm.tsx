@@ -21,8 +21,6 @@ export type PublicMealServiceStyle =
   | "family_style"
   | "stations";
 
-export type PublicRsvpAccessMode = "open" | "gated";
-
 type AttendeeDraft = {
   name: string;
   meal_option_id: string;
@@ -33,7 +31,6 @@ type RsvpFormProps = {
   slug: string;
   mealServiceStyle: PublicMealServiceStyle;
   mealOptions: PublicMealOption[];
-  rsvpAccessMode?: PublicRsvpAccessMode;
   initialGuestToken?: string | null;
   /** Light-on-dark controls for the mockup RSVP flood band. */
   appearance?: "default" | "on-dark";
@@ -58,7 +55,6 @@ export function RsvpForm({
   slug,
   mealServiceStyle,
   mealOptions,
-  rsvpAccessMode = "open",
   initialGuestToken = null,
   appearance = "default",
 }: RsvpFormProps) {
@@ -73,7 +69,6 @@ export function RsvpForm({
         "--ws-accent": "rgba(255,255,255,0.95)",
       } as CSSProperties)
     : undefined;
-  const gated = rsvpAccessMode === "gated";
   const plated = mealServiceStyle === "plated" && mealOptions.length > 0;
   const buffetLike =
     mealServiceStyle === "buffet" ||
@@ -81,7 +76,6 @@ export function RsvpForm({
     mealServiceStyle === "stations";
 
   const [gatePhase, setGatePhase] = useState<GatePhase>(() => {
-    if (!gated) return "form";
     if (initialGuestToken?.trim()) return "resolve";
     return "search";
   });
@@ -105,7 +99,7 @@ export function RsvpForm({
   const invitedCap = household?.partySize ?? null;
 
   useEffect(() => {
-    if (!gated || !initialGuestToken?.trim()) return;
+    if (!initialGuestToken?.trim()) return;
 
     let cancelled = false;
     startLookupTransition(async () => {
@@ -216,7 +210,7 @@ export function RsvpForm({
         message: message || undefined,
         honeypot,
         attendees: payloadAttendees,
-        householdToken: gated ? household?.householdToken ?? null : null,
+        householdToken: household?.householdToken ?? null,
       });
 
       if (result.ok) {
@@ -282,7 +276,7 @@ export function RsvpForm({
     );
   }
 
-  if (gated && gatePhase === "resolve") {
+  if (gatePhase === "resolve") {
     return (
       <p
         className="text-[15px]"
@@ -294,7 +288,7 @@ export function RsvpForm({
     );
   }
 
-  if (gated && (gatePhase === "search" || gatePhase === "pick")) {
+  if (gatePhase === "search" || gatePhase === "pick") {
     return (
       <div className="space-y-5" style={darkVars}>
         {gatePhase === "search" ? (
@@ -398,7 +392,7 @@ export function RsvpForm({
 
   return (
     <div className="space-y-5" style={darkVars}>
-      {gated && household ? (
+      {household ? (
         <p className="text-[14px]" style={{ color: "var(--ws-muted)" }}>
           Responding for{" "}
           <span className="font-medium" style={{ color: "var(--ws-ink)" }}>
@@ -761,7 +755,7 @@ export function RsvpForm({
           !name.trim() ||
           !response ||
           !platedReady ||
-          (gated && !household)
+          !household
         }
         className="rounded-full px-5 py-3.5 text-[13px] font-semibold tracking-[0.14em] uppercase transition-opacity disabled:cursor-not-allowed disabled:opacity-50"
         style={submitStyle}

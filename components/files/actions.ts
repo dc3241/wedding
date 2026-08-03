@@ -35,6 +35,7 @@ export async function recordFile(
     sizeBytes: number;
     kind: FileKind;
     category?: string | null;
+    projectVendorId?: string | null;
   },
 ) {
   const supabase = await createClient();
@@ -57,6 +58,9 @@ export async function recordFile(
     ...(meta.kind === "contract"
       ? { category: categoryResult.category }
       : {}),
+    ...(meta.projectVendorId
+      ? { project_vendor_id: meta.projectVendorId }
+      : {}),
   });
 
   if (error) throw error;
@@ -64,6 +68,9 @@ export async function recordFile(
   revalidatePath(revalidatePathForKind(projectId, meta.kind));
   if (meta.kind === "contract") {
     revalidatePath("/contracts");
+  }
+  if (meta.projectVendorId) {
+    revalidatePath(`/projects/${projectId}/vendors`);
   }
 }
 
@@ -100,7 +107,7 @@ export async function deleteFile(fileId: string) {
 
   const { data: file, error } = await supabase
     .from("files")
-    .select("storage_path, project_id, kind")
+    .select("storage_path, project_id, kind, project_vendor_id")
     .eq("id", fileId)
     .single();
 
@@ -122,5 +129,8 @@ export async function deleteFile(fileId: string) {
   revalidatePath(revalidatePathForKind(file.project_id, file.kind));
   if (file.kind === "contract") {
     revalidatePath("/contracts");
+  }
+  if (file.project_vendor_id) {
+    revalidatePath(`/projects/${file.project_id}/vendors`);
   }
 }

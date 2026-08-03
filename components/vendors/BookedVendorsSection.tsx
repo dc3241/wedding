@@ -1,11 +1,20 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
+import {
+  addBudgetItem,
+  setBudgetItemProjectVendor,
+  updateBudgetItem,
+} from "@/app/(app)/projects/[projectId]/budget/actions";
 import {
   unlinkVendorFromTarget,
   removeProjectVendor,
 } from "@/app/(app)/projects/[projectId]/vendors/actions";
+import {
+  PaymentLedgerWell,
+  PaymentScheduleWell,
+} from "@/components/budget/BudgetMoneyWells";
 import {
   ConnectExistingVendorControl,
   type ConnectableBookedVendor,
@@ -14,26 +23,79 @@ import {
   LinkVendorToTargetControl,
   type SlotTargetOption,
 } from "@/components/vendors/LinkVendorToTargetControl";
+import {
+  deleteFile,
+  getDownloadUrl,
+  recordFile,
+} from "@/components/files/actions";
+import {
+  buildStoragePath,
+  FILE_INPUT_ACCEPT,
+  formatFileSize,
+  PROJECT_FILES_BUCKET,
+  resolveMimeType,
+  validateFile,
+} from "@/components/files/types";
+import { Button } from "@/components/ui/button";
 import { Pill } from "@/components/ui/pill";
-import { vendorCategoryLabel } from "@/lib/vendor-categories";
+import { Select } from "@/components/ui/select";
+import { budgetItemDisplayName } from "@/lib/booked-vendor-money";
 import { cn } from "@/lib/cn";
+import { formatCurrency } from "@/lib/format-currency";
+import {
+  vendorCategoryLabel,
+} from "@/lib/vendor-categories";
+import { createClient } from "@/utils/supabase/client";
+import type {
+  BudgetPaymentForAggregate,
+  NextDueInstallment,
+  ScheduleInstallmentForAggregate,
+} from "@/lib/budget-aggregates";
 
-export type BookedSlotVendor = {
-  vendorId: string;
-  name: string;
-  contact_email: string | null;
-  contact_phone: string | null;
-  address: string | null;
-  website: string | null;
-  notes: string | null;
-  quoted_price: number | null;
+export type BookedLinkableItem = {
+  id: string;
+  category: string | null;
+  label: string | null;
+  project_vendor_id: string | null;
+  linkedVendorName?: string | null;
 };
 
-/** One raised card per linked project_vendor — may cover many category slots. */
-export type BookedPackage = {
+export type BookedContractFile = {
+  id: string;
+  name: string;
+  size_bytes: number | null;
+  created_at: string;
+};
+
+export type BookedLinkedItemSummary = {
+  id: string;
+  category: string | null;
+  label: string | null;
+  actual_amount: number | null;
+  notes: string | null;
+  paid: number;
+  payments: BudgetPaymentForAggregate[];
+  schedule: ScheduleInstallmentForAggregate[];
+  nextDue: NextDueInstallment | null;
+  pastDue: boolean;
+};
+
+/** One raised card per booked project_vendor — may cover many category slots. */
+export type BookedVendorObject = {
   projectVendorId: string;
-  vendor: BookedSlotVendor;
+  vendorId: string;
+  name: string;
+  category: string | null;
+  contact_phone: string | null;
+  contact_email: string | null;
   slots: { id: string; category: string; note: string | null }[];
+  linkedItems: BookedLinkedItemSummary[];
+  price: number | null;
+  paid: number | null;
+  nextDue: NextDueInstallment | null;
+  pastDue: boolean | null;
+  notes: string | null;
+  contracts: BookedContractFile[];
 };
 
 /** Booked category with no vendor recorded yet. */
@@ -43,19 +105,15 @@ export type EmptyBookedSlot = {
   note: string | null;
 };
 
-export type UnslottedBookedVendor = {
-  projectVendorId: string;
-  vendorId: string;
-  name: string;
-  category: string | null;
-};
+const destructiveControlClass =
+  "rounded-[var(--radius-inner)] px-2.5 py-1.5 text-[13px] font-semibold text-muted transition-colors hover:bg-rosewood-wash hover:text-rosewood focus-visible:bg-rosewood-wash focus-visible:text-rosewood focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rosewood disabled:pointer-events-none disabled:opacity-50";
 
-function formatMoney(amount: number) {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    maximumFractionDigits: 0,
-  }).format(amount);
+function formatLocalDate(iso: string) {
+  return new Date(iso + "T00:00:00").toLocaleDateString("en-US", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
 }
 
 function CategoryChips({ categories }: { categories: string[] }) {
@@ -71,32 +129,513 @@ function CategoryChips({ categories }: { categories: string[] }) {
   );
 }
 
-function BookedPackageCard({
+function MoneySummary({
+  price,
+  paid,
+  nextDue,
+  pastDue,
+}: {
+  price: number | null;
+  paid: number | null;
+  nextDue: NextDueInstallment | null;
+  pastDue: boolean | null;
+}) {
+  if (paid === null) {
+    return (
+      <p className="text-[13px] text-muted">Not linked to a budget item</p>
+    );
+  }
+
+  return (
+    <dl className="grid grid-cols-3 gap-3 text-[13px]">
+      <div>
+        <dt className="text-muted">Actual</dt>
+        <dd className="mt-0.5 tabnum font-medium text-ink">
+          {price == null ? "—" : formatCurrency(price)}
+        </dd>
+      </div>
+      <div>
+        <dt className="text-muted">Paid</dt>
+        <dd className="mt-0.5 tabnum font-medium text-ink">
+          {formatCurrency(paid)}
+        </dd>
+      </div>
+      <div>
+        <dt className="text-muted">Next due</dt>
+        <dd
+          className={cn(
+            "mt-0.5 tabnum font-medium",
+            pastDue ? "text-rosewood" : nextDue ? "text-sage" : "text-ink",
+          )}
+        >
+          {nextDue == null ? (
+            "—"
+          ) : (
+            <>
+              {formatCurrency(nextDue.amount)}
+              <span className="mt-0.5 block text-[12px] font-normal text-muted">
+                {formatLocalDate(nextDue.due_on)}
+                {pastDue ? " · past due" : ""}
+              </span>
+            </>
+          )}
+        </dd>
+      </div>
+    </dl>
+  );
+}
+
+function LinkBudgetItemControl({
   projectId,
-  pkg,
+  projectVendorId,
+  vendorName,
+  vendorCategory,
+  linkableItems,
 }: {
   projectId: string;
-  pkg: BookedPackage;
+  projectVendorId: string;
+  vendorName: string;
+  vendorCategory: string | null;
+  linkableItems: BookedLinkableItem[];
 }) {
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
-  const vendor = pkg.vendor;
-  const detailHref = `/projects/${projectId}/vendors/${vendor.vendorId}`;
-  const categoryIds = pkg.slots.map((s) => s.category);
+  const [error, setError] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState("");
 
-  const hasContactBits = Boolean(
-    vendor.contact_email ||
-      vendor.contact_phone ||
-      vendor.address ||
-      vendor.website ||
-      vendor.quoted_price != null ||
-      vendor.notes,
+  const vendorCatLabel = vendorCategory
+    ? vendorCategoryLabel(vendorCategory)
+    : null;
+
+  const matching = linkableItems.filter(
+    (i) =>
+      vendorCatLabel &&
+      i.category?.trim().toLowerCase() === vendorCatLabel.toLowerCase(),
   );
-  const thinRecord = !hasContactBits;
+  const others = linkableItems.filter(
+    (i) => !matching.some((m) => m.id === i.id),
+  );
+  const ordered = [...matching, ...others];
+
+  function handleLink() {
+    if (!selectedId) {
+      setError("Choose a budget item.");
+      return;
+    }
+    const target = linkableItems.find((i) => i.id === selectedId);
+    if (
+      target?.project_vendor_id != null &&
+      target.project_vendor_id !== projectVendorId
+    ) {
+      const ok = window.confirm(
+        `That item is linked to ${target.linkedVendorName ?? "another vendor"}. Replace the link?`,
+      );
+      if (!ok) return;
+    }
+
+    startTransition(async () => {
+      setError(null);
+      const result = await setBudgetItemProjectVendor(
+        selectedId,
+        projectVendorId,
+      );
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      setOpen(false);
+      setSelectedId("");
+    });
+  }
+
+  function handleCreateAndLink() {
+    const category =
+      vendorCatLabel?.trim() ||
+      (vendorCategory ? vendorCategoryLabel(vendorCategory) : "Vendor");
+    startTransition(async () => {
+      setError(null);
+      try {
+        const created = await addBudgetItem(
+          projectId,
+          category,
+          vendorName,
+          0,
+        );
+        const result = await setBudgetItemProjectVendor(
+          created.id,
+          projectVendorId,
+        );
+        if (!result.ok) {
+          setError(result.error);
+          return;
+        }
+        setOpen(false);
+      } catch (err) {
+        setError(
+          err instanceof Error ? err.message : "Could not create budget item.",
+        );
+      }
+    });
+  }
+
+  if (!open) {
+    return (
+      <Button
+        type="button"
+        variant="primary"
+        className="text-[13px]"
+        onClick={() => setOpen(true)}
+      >
+        Link to budget item
+      </Button>
+    );
+  }
+
+  return (
+    <div className="space-y-3 rounded-[var(--radius-inner)] bg-well px-4 py-3.5 shadow-recessed">
+      <p className="text-[13px] font-medium text-ink">Link to a budget item</p>
+      <Select
+        value={selectedId}
+        onChange={(e) => setSelectedId(e.target.value)}
+        disabled={isPending}
+        aria-label="Budget item"
+      >
+        <option value="">Choose item…</option>
+        {ordered.map((item) => (
+          <option key={item.id} value={item.id}>
+            {budgetItemDisplayName(item)}
+            {item.project_vendor_id &&
+            item.project_vendor_id !== projectVendorId
+              ? ` · linked to ${item.linkedVendorName ?? "vendor"}`
+              : ""}
+          </option>
+        ))}
+      </Select>
+      <div className="flex flex-wrap gap-2">
+        <Button
+          type="button"
+          variant="primary"
+          disabled={isPending || !selectedId}
+          onClick={handleLink}
+          className="text-[13px]"
+        >
+          {isPending ? "Linking…" : "Link"}
+        </Button>
+        <Button
+          type="button"
+          variant="secondary"
+          disabled={isPending}
+          onClick={handleCreateAndLink}
+          className="text-[13px]"
+        >
+          Create + link new item
+        </Button>
+        <button
+          type="button"
+          disabled={isPending}
+          onClick={() => {
+            setOpen(false);
+            setError(null);
+          }}
+          className="px-2 text-[13px] font-medium text-muted hover:text-ink"
+        >
+          Cancel
+        </button>
+      </div>
+      {error ? (
+        <p className="text-[13px] font-medium text-rosewood">{error}</p>
+      ) : null}
+    </div>
+  );
+}
+
+function LinkedItemsPanel({
+  projectId,
+  items,
+}: {
+  projectId: string;
+  items: BookedLinkedItemSummary[];
+}) {
+  const [isPending, startTransition] = useTransition();
+  const [priceDrafts, setPriceDrafts] = useState<Record<string, string>>({});
+  const multi = items.length > 1;
+
+  function handleUnlink(itemId: string) {
+    startTransition(async () => {
+      await setBudgetItemProjectVendor(itemId, null);
+    });
+  }
+
+  function handleSavePrice(itemId: string, current: number | null) {
+    const raw = priceDrafts[itemId];
+    if (raw === undefined) return;
+    const trimmed = raw.trim();
+    const next =
+      trimmed === "" ? null : Math.max(0, Number(trimmed));
+    if (trimmed !== "" && Number.isNaN(next as number)) return;
+    if (next === current) return;
+    startTransition(async () => {
+      await updateBudgetItem(itemId, { actual_amount: next });
+      setPriceDrafts((prev) => {
+        const copy = { ...prev };
+        delete copy[itemId];
+        return copy;
+      });
+    });
+  }
+
+  return (
+    <ul className="space-y-2">
+      {items.map((item) => {
+        const draft =
+          priceDrafts[item.id] ??
+          (item.actual_amount != null && item.actual_amount !== 0
+            ? String(item.actual_amount)
+            : "");
+        const wellItem = {
+          id: item.id,
+          schedule: item.schedule,
+          payments: item.payments,
+        };
+        return (
+          <li
+            key={item.id}
+            className="rounded-[var(--radius-inner)] bg-well px-4 py-3 shadow-recessed"
+          >
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-[14px] font-medium text-ink">
+                  {budgetItemDisplayName(item)}
+                </p>
+                {multi ? (
+                  <p className="mt-0.5 text-[13px] tabular-nums text-muted">
+                    Actual{" "}
+                    {item.actual_amount == null
+                      ? "—"
+                      : formatCurrency(item.actual_amount)}
+                    {" · "}
+                    Paid {formatCurrency(item.paid)}
+                  </p>
+                ) : null}
+                {item.notes?.trim() ? (
+                  <p className="mt-1 text-[13px] text-muted">{item.notes}</p>
+                ) : null}
+              </div>
+              <button
+                type="button"
+                disabled={isPending}
+                onClick={() => handleUnlink(item.id)}
+                className={destructiveControlClass}
+              >
+                Unlink
+              </button>
+            </div>
+            <label className="mt-3 flex items-center gap-2 text-[13px] text-muted">
+              <span className="shrink-0">Actual</span>
+              <div className="flex h-8 min-w-0 flex-1 items-center gap-1 rounded-[var(--radius-inner)] border border-ring bg-surface px-2">
+                <span aria-hidden>$</span>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={draft}
+                  disabled={isPending}
+                  onChange={(e) =>
+                    setPriceDrafts((prev) => ({
+                      ...prev,
+                      [item.id]: e.target.value,
+                    }))
+                  }
+                  onBlur={() => handleSavePrice(item.id, item.actual_amount)}
+                  aria-label={`Actual for ${budgetItemDisplayName(item)}`}
+                  className="min-w-0 w-full flex-1 border-0 bg-transparent text-right text-[14px] font-medium tabular-nums text-ink outline-none"
+                />
+              </div>
+            </label>
+
+            <PaymentScheduleWell projectId={projectId} item={wellItem} />
+            <PaymentLedgerWell projectId={projectId} item={wellItem} />
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+function ContractPanel({
+  projectId,
+  projectVendorId,
+  contracts,
+  defaultCategory,
+}: {
+  projectId: string;
+  projectVendorId: string;
+  contracts: BookedContractFile[];
+  defaultCategory: string | null;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [isPending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+
+  function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+
+    const validationError = validateFile(file);
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+
+    const mimeType = resolveMimeType(file)!;
+    const storagePath = buildStoragePath(projectId, file.name);
+
+    startTransition(async () => {
+      setError(null);
+      const supabase = createClient();
+      const { error: uploadError } = await supabase.storage
+        .from(PROJECT_FILES_BUCKET)
+        .upload(storagePath, file, {
+          contentType: mimeType,
+          upsert: false,
+        });
+      if (uploadError) {
+        setError(uploadError.message);
+        return;
+      }
+      try {
+        await recordFile(projectId, {
+          name: file.name,
+          storagePath,
+          mimeType,
+          sizeBytes: file.size,
+          kind: "contract",
+          category: defaultCategory,
+          projectVendorId,
+        });
+      } catch (err) {
+        await supabase.storage.from(PROJECT_FILES_BUCKET).remove([storagePath]);
+        setError(err instanceof Error ? err.message : "Upload failed.");
+      }
+    });
+  }
+
+  function handleDownload(fileId: string) {
+    startTransition(async () => {
+      setError(null);
+      const result = await getDownloadUrl(fileId);
+      if ("error" in result) {
+        setError(result.error);
+        return;
+      }
+      window.open(result.url, "_blank", "noopener,noreferrer");
+    });
+  }
+
+  function handleDelete(fileId: string, name: string) {
+    if (!window.confirm(`Delete "${name}"? This cannot be undone.`)) return;
+    startTransition(async () => {
+      setError(null);
+      try {
+        await deleteFile(fileId);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Could not delete.");
+      }
+    });
+  }
+
+  return (
+    <div className="space-y-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-[12px] font-semibold uppercase tracking-[0.09em] text-muted">
+          Contract
+        </p>
+        <div>
+          <input
+            ref={inputRef}
+            type="file"
+            accept={FILE_INPUT_ACCEPT}
+            className="sr-only"
+            onChange={handleUpload}
+            disabled={isPending}
+          />
+          <Button
+            type="button"
+            variant="secondary"
+            className="text-[13px]"
+            disabled={isPending}
+            onClick={() => inputRef.current?.click()}
+          >
+            {isPending ? "Working…" : "Upload"}
+          </Button>
+        </div>
+      </div>
+      {contracts.length === 0 ? (
+        <p className="text-[13px] text-muted">No contract uploaded yet.</p>
+      ) : (
+        <ul className="space-y-2">
+          {contracts.map((file) => (
+            <li
+              key={file.id}
+              className="flex flex-wrap items-center justify-between gap-2 rounded-[var(--radius-inner)] bg-well px-3 py-2.5 shadow-recessed"
+            >
+              <div className="min-w-0">
+                <p className="truncate text-[13px] font-medium text-ink">
+                  {file.name}
+                </p>
+                <p className="text-[12px] text-muted">
+                  {formatFileSize(file.size_bytes)}
+                </p>
+              </div>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  disabled={isPending}
+                  onClick={() => handleDownload(file.id)}
+                  className="rounded-[var(--radius-inner)] px-2 py-1 text-[13px] font-semibold text-accent hover:opacity-80 disabled:opacity-50"
+                >
+                  View
+                </button>
+                <button
+                  type="button"
+                  disabled={isPending}
+                  onClick={() => handleDelete(file.id, file.name)}
+                  className={destructiveControlClass}
+                >
+                  Remove
+                </button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+      {error ? (
+        <p className="text-[13px] font-medium text-rosewood">{error}</p>
+      ) : null}
+    </div>
+  );
+}
+
+function BookedVendorCard({
+  projectId,
+  vendor,
+  linkableItems,
+  slotTargets,
+}: {
+  projectId: string;
+  vendor: BookedVendorObject;
+  linkableItems: BookedLinkableItem[];
+  slotTargets: SlotTargetOption[];
+}) {
+  const [open, setOpen] = useState(false);
+  const [isPending, startTransition] = useTransition();
+  const detailHref = `/projects/${projectId}/vendors/${vendor.vendorId}`;
+  const categoryIds = vendor.slots.map((s) => s.category);
+  const linked = vendor.linkedItems.length > 0;
 
   function handleUnbook() {
     startTransition(async () => {
-      for (const slot of pkg.slots) {
+      for (const slot of vendor.slots) {
         await unlinkVendorFromTarget(slot.id);
       }
     });
@@ -107,9 +646,8 @@ function BookedPackageCard({
       `Remove ${vendor.name} from this project?\n\nThis removes them from this project and clears every category slot they cover.`,
     );
     if (!confirmed) return;
-
     startTransition(async () => {
-      await removeProjectVendor(pkg.projectVendorId);
+      await removeProjectVendor(vendor.projectVendorId);
     });
   }
 
@@ -118,6 +656,7 @@ function BookedPackageCard({
       className={cn(
         "overflow-hidden rounded-[var(--radius-card)] bg-surface shadow-raised",
         open && "sm:col-span-full",
+        isPending && "opacity-60",
       )}
     >
       <button
@@ -126,11 +665,20 @@ function BookedPackageCard({
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
       >
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0 flex-1 space-y-2">
           <p className="text-[15px] font-medium leading-snug text-ink break-words">
             {vendor.name}
           </p>
+          {vendor.contact_phone ? (
+            <p className="text-[13px] text-muted">{vendor.contact_phone}</p>
+          ) : null}
           <CategoryChips categories={categoryIds} />
+          <MoneySummary
+            price={vendor.price}
+            paid={vendor.paid}
+            nextDue={vendor.nextDue}
+            pastDue={vendor.pastDue}
+          />
         </div>
         <Pill variant="sage" className="shrink-0">
           Booked
@@ -138,95 +686,75 @@ function BookedPackageCard({
       </button>
 
       {open ? (
-        <div className="space-y-3 px-5 pb-5">
-          <div className="rounded-[var(--radius-inner)] bg-well px-4 py-3.5 shadow-recessed">
-            {hasContactBits ? (
-              <dl className="space-y-2.5 text-[14px]">
-                {vendor.contact_email ? (
-                  <div>
-                    <dt className="sr-only">Email</dt>
-                    <dd>
-                      <a
-                        href={`mailto:${vendor.contact_email}`}
-                        className="font-medium text-accent hover:opacity-80"
-                      >
-                        {vendor.contact_email}
-                      </a>
-                    </dd>
-                  </div>
-                ) : null}
-                {vendor.contact_phone ? (
-                  <div>
-                    <dt className="sr-only">Phone</dt>
-                    <dd>
-                      <a
-                        href={`tel:${vendor.contact_phone}`}
-                        className="font-medium text-accent hover:opacity-80"
-                      >
-                        {vendor.contact_phone}
-                      </a>
-                    </dd>
-                  </div>
-                ) : null}
-                {vendor.address ? (
-                  <div>
-                    <dt className="sr-only">Address</dt>
-                    <dd className="font-medium text-ink">{vendor.address}</dd>
-                  </div>
-                ) : null}
-                {vendor.website ? (
-                  <div>
-                    <dt className="sr-only">Website</dt>
-                    <dd>
-                      <a
-                        href={vendor.website}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="font-medium text-accent hover:opacity-80"
-                      >
-                        Website
-                      </a>
-                    </dd>
-                  </div>
-                ) : null}
-                {vendor.quoted_price != null ? (
-                  <div>
-                    <dt className="sr-only">Quoted price</dt>
-                    <dd className="font-medium tabular-nums text-ink">
-                      {formatMoney(vendor.quoted_price)}
-                    </dd>
-                  </div>
-                ) : null}
-                {vendor.notes ? (
-                  <div>
-                    <dt className="sr-only">Notes</dt>
-                    <dd className="line-clamp-1 text-[13px] text-muted">
-                      {vendor.notes}
-                    </dd>
-                  </div>
-                ) : null}
-              </dl>
-            ) : null}
-
-            {thinRecord ? (
-              <p className="text-[13px] text-muted">
-                <Link
-                  href={detailHref}
-                  className="font-medium text-accent hover:opacity-80"
-                >
-                  Add phone or address
-                </Link>
+        <div className="space-y-4 px-5 pb-5">
+          {!linked ? (
+            <div className="space-y-3 rounded-[var(--radius-inner)] bg-well px-4 py-3.5 shadow-recessed">
+              <p className="text-[14px] font-medium text-ink">
+                Not linked to a budget item
               </p>
-            ) : null}
-
-            {pkg.slots
-              .filter((s) => s.note)
-              .map((s) => (
-                <p key={s.id} className="mt-2 text-[13px] text-muted">
-                  {vendorCategoryLabel(s.category)}: {s.note}
+              <p className="text-[13px] text-muted">
+                Link an existing line — or create one — so Actual, Paid, and due
+                dates read through from the budget.
+              </p>
+              <LinkBudgetItemControl
+                projectId={projectId}
+                projectVendorId={vendor.projectVendorId}
+                vendorName={vendor.name}
+                vendorCategory={vendor.category}
+                linkableItems={linkableItems}
+              />
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-[12px] font-semibold uppercase tracking-[0.09em] text-muted">
+                  Budget
                 </p>
-              ))}
-          </div>
+                <LinkBudgetItemControl
+                  projectId={projectId}
+                  projectVendorId={vendor.projectVendorId}
+                  vendorName={vendor.name}
+                  vendorCategory={vendor.category}
+                  linkableItems={linkableItems}
+                />
+              </div>
+              <LinkedItemsPanel
+                projectId={projectId}
+                items={vendor.linkedItems}
+              />
+              {vendor.notes ? (
+                <p className="text-[13px] text-muted">{vendor.notes}</p>
+              ) : null}
+            </div>
+          )}
+
+          <ContractPanel
+            projectId={projectId}
+            projectVendorId={vendor.projectVendorId}
+            contracts={vendor.contracts}
+            defaultCategory={vendor.category}
+          />
+
+          {vendor.slots.length === 0 ? (
+            <div className="rounded-[var(--radius-inner)] bg-well px-4 py-3 shadow-recessed">
+              <p className="mb-2 text-[13px] text-muted">
+                Not linked to a category slot
+              </p>
+              <LinkVendorToTargetControl
+                projectVendorId={vendor.projectVendorId}
+                vendorCategory={vendor.category}
+                targets={slotTargets}
+              />
+            </div>
+          ) : null}
+
+          {vendor.slots
+            .filter((s) => s.note)
+            .map((s) => (
+              <p key={s.id} className="text-[13px] text-muted">
+                {vendorCategoryLabel(s.category)}: {s.note}
+              </p>
+            ))}
 
           <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
             <Link
@@ -236,19 +764,21 @@ function BookedPackageCard({
               View details
             </Link>
             <div className="flex flex-wrap items-center gap-1">
-              <button
-                type="button"
-                disabled={isPending}
-                onClick={handleUnbook}
-                className="rounded-[var(--radius-inner)] px-2.5 py-1.5 text-[13px] font-semibold text-muted transition-colors hover:bg-rosewood-wash hover:text-rosewood focus-visible:bg-rosewood-wash focus-visible:text-rosewood focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rosewood disabled:pointer-events-none disabled:opacity-50"
-              >
-                {isPending ? "Unbooking…" : "Unbook"}
-              </button>
+              {vendor.slots.length > 0 ? (
+                <button
+                  type="button"
+                  disabled={isPending}
+                  onClick={handleUnbook}
+                  className={destructiveControlClass}
+                >
+                  Unbook
+                </button>
+              ) : null}
               <button
                 type="button"
                 disabled={isPending}
                 onClick={handleRemove}
-                className="rounded-[var(--radius-inner)] px-2.5 py-1.5 text-[13px] font-semibold text-muted transition-colors hover:bg-rosewood-wash hover:text-rosewood focus-visible:bg-rosewood-wash focus-visible:text-rosewood focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rosewood disabled:pointer-events-none disabled:opacity-50"
+                className={destructiveControlClass}
               >
                 Remove
               </button>
@@ -260,7 +790,6 @@ function BookedPackageCard({
   );
 }
 
-/** Recessed slot well — not a vendor card. */
 function EmptyBookedSlotCard({
   projectId,
   slot,
@@ -303,68 +832,24 @@ function EmptyBookedSlotCard({
   );
 }
 
-function UnslottedBookedCard({
-  projectId,
-  item,
-  slotTargets,
-}: {
-  projectId: string;
-  item: UnslottedBookedVendor;
-  slotTargets: SlotTargetOption[];
-}) {
-  const detailHref = `/projects/${projectId}/vendors/${item.vendorId}`;
-
-  return (
-    <article className="overflow-hidden rounded-[var(--radius-card)] bg-surface px-5 py-4 shadow-raised">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          <Link
-            href={detailHref}
-            className="block text-[15px] font-medium leading-snug text-ink break-words hover:text-accent"
-          >
-            {item.name}
-          </Link>
-          <p className="mt-2 text-[13px] text-muted">Not linked to a category</p>
-        </div>
-        <Pill variant="sage" className="shrink-0">
-          Booked
-        </Pill>
-      </div>
-      <div className="mt-3">
-        <LinkVendorToTargetControl
-          projectVendorId={item.projectVendorId}
-          vendorCategory={item.category}
-          targets={slotTargets}
-        />
-      </div>
-    </article>
-  );
-}
-
 export function BookedVendorsSection({
   projectId,
-  packages = [],
+  vendors = [],
   emptySlots = [],
-  unslotted = [],
   slotTargets = [],
   connectableVendors = [],
+  linkableItems = [],
 }: {
   projectId: string;
-  packages?: BookedPackage[];
+  vendors?: BookedVendorObject[];
   emptySlots?: EmptyBookedSlot[];
-  unslotted?: UnslottedBookedVendor[];
   slotTargets?: SlotTargetOption[];
   connectableVendors?: ConnectableBookedVendor[];
+  linkableItems?: BookedLinkableItem[];
 }) {
-  if (
-    packages.length === 0 &&
-    emptySlots.length === 0 &&
-    unslotted.length === 0
-  ) {
+  if (vendors.length === 0 && emptySlots.length === 0) {
     return null;
   }
-
-  const hasVendorCards = packages.length > 0 || unslotted.length > 0;
 
   return (
     <section className="space-y-4">
@@ -372,25 +857,19 @@ export function BookedVendorsSection({
         Booked
       </p>
 
-      {hasVendorCards ? (
+      {vendors.length > 0 ? (
         <div
           className="grid gap-4"
           style={{
-            gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+            gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
           }}
         >
-          {packages.map((pkg) => (
-            <BookedPackageCard
-              key={pkg.projectVendorId}
+          {vendors.map((vendor) => (
+            <BookedVendorCard
+              key={vendor.projectVendorId}
               projectId={projectId}
-              pkg={pkg}
-            />
-          ))}
-          {unslotted.map((item) => (
-            <UnslottedBookedCard
-              key={item.projectVendorId}
-              projectId={projectId}
-              item={item}
+              vendor={vendor}
+              linkableItems={linkableItems}
               slotTargets={slotTargets}
             />
           ))}

@@ -20,10 +20,6 @@ function vendorDetailPath(projectId: string, vendorId: string) {
   return `/projects/${projectId}/vendors/${vendorId}`;
 }
 
-function searchPath(projectId: string) {
-  return `/projects/${projectId}/vendors/search`;
-}
-
 async function revalidateVendorProjects(vendorId: string) {
   const supabase = await createClient();
   const { data: links } = await supabase
@@ -170,7 +166,6 @@ export async function addDiscoveredVendor(
   }
 
   revalidatePath(vendorsPath(projectId));
-  revalidatePath(searchPath(projectId));
 
   scheduleVendorEnrichment(vendorId);
 
@@ -185,6 +180,7 @@ export async function addVendor(
   categoryId: string,
   contactEmail: string,
   status: AddVendorStatus = "to_contact",
+  contactPhone = "",
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const trimmedName = name.trim();
   if (!trimmedName) {
@@ -220,6 +216,7 @@ export async function addVendor(
       name: trimmedName,
       category: category.id,
       contact_email: contactEmail.trim() || null,
+      contact_phone: contactPhone.trim() || null,
     })
     .select("id")
     .single();

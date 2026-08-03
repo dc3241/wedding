@@ -15,6 +15,7 @@ import {
   VENDOR_CATEGORIES,
   vendorCategoryLabel,
 } from "@/lib/vendor-categories";
+import { cn } from "@/lib/cn";
 
 export type ExistingProjectVendor = {
   projectVendorId: string;
@@ -57,11 +58,14 @@ export function AddVendorForm({
   existingVendors,
   categoryTargets = [],
   defaultCategoryId = null,
+  embedded = false,
 }: {
   projectId: string;
   existingVendors: ExistingProjectVendor[];
   categoryTargets?: ConnectableCategoryTarget[];
   defaultCategoryId?: string | null;
+  /** When true, omit Card + eyebrow — parent owns chrome (VND-12). */
+  embedded?: boolean;
 }) {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -80,11 +84,13 @@ export function AddVendorForm({
       name,
       categoryId,
       contactEmail,
+      contactPhone,
       nextStatus,
     }: {
       name: string;
       categoryId: string;
       contactEmail: string;
+      contactPhone: string;
       nextStatus: AddVendorStatus;
     },
   ) {
@@ -96,6 +102,7 @@ export function AddVendorForm({
         categoryId,
         contactEmail,
         nextStatus,
+        contactPhone,
       );
       if (!result.ok) {
         setError(result.error);
@@ -107,39 +114,36 @@ export function AddVendorForm({
     });
   }
 
+  function readFields(form: FormData) {
+    return {
+      name: ((form.get("name") as string) ?? "").trim(),
+      categoryId: ((form.get("category") as string) ?? "").trim(),
+      contactEmail: ((form.get("contact_email") as string) ?? "").trim(),
+      contactPhone: ((form.get("contact_phone") as string) ?? "").trim(),
+    };
+  }
+
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    const form = new FormData(e.currentTarget);
-    const name = ((form.get("name") as string) ?? "").trim();
-    const categoryId = ((form.get("category") as string) ?? "").trim();
-    const contactEmail = ((form.get("contact_email") as string) ?? "").trim();
-
-    if (!name || !categoryId) return;
+    const fields = readFields(new FormData(e.currentTarget));
+    if (!fields.name || !fields.categoryId) return;
 
     const formEl = e.currentTarget;
-    const match = findSoftDuplicate(existingVendors, name);
+    const match = findSoftDuplicate(existingVendors, fields.name);
     if (match && !duplicateMatch) {
       setDuplicateMatch(match);
       setError(null);
       return;
     }
 
-    submit(formEl, { name, categoryId, contactEmail, nextStatus: status });
+    submit(formEl, { ...fields, nextStatus: status });
   }
 
   function handleAddAnyway(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    const form = new FormData(e.currentTarget);
-    const name = ((form.get("name") as string) ?? "").trim();
-    const categoryId = ((form.get("category") as string) ?? "").trim();
-    const contactEmail = ((form.get("contact_email") as string) ?? "").trim();
-    if (!name || !categoryId) return;
-    submit(e.currentTarget, {
-      name,
-      categoryId,
-      contactEmail,
-      nextStatus: status,
-    });
+    const fields = readFields(new FormData(e.currentTarget));
+    if (!fields.name || !fields.categoryId) return;
+    submit(e.currentTarget, { ...fields, nextStatus: status });
   }
 
   function handleConnectExisting(e: React.MouseEvent<HTMLButtonElement>) {
@@ -190,146 +194,181 @@ export function AddVendorForm({
     });
   }
 
-  return (
-    <Card id="add-vendor" className="px-6 py-5 scroll-mt-6">
-      <form
-        onSubmit={duplicateMatch ? handleAddAnyway : handleSubmit}
-        className="space-y-4"
-      >
-        <div>
+  const form = (
+    <form
+      onSubmit={duplicateMatch ? handleAddAnyway : handleSubmit}
+      className="space-y-3"
+    >
+      {!embedded ? (
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
           <Eyebrow>Add manually</Eyebrow>
-          <h2 className="mt-1.5 font-display text-[19px] font-extrabold tracking-[-0.02em] text-ink">
-            Add vendor
-          </h2>
+          <p className="text-[13px] text-muted">
+            Fallback when search doesn’t find them
+          </p>
         </div>
-        <div className="grid gap-4 sm:grid-cols-3">
-          <div className="space-y-1.5">
-            <label htmlFor="vendor-name" className="text-sm font-medium text-ink">
-              Name
-            </label>
-            <Input
-              id="vendor-name"
-              name="name"
-              type="text"
-              required
-              placeholder="Vendor name"
-              disabled={isPending}
-              onChange={() => setDuplicateMatch(null)}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <label
-              htmlFor="vendor-category"
-              className="text-sm font-medium text-ink"
-            >
-              Category
-            </label>
-            <Select
-              id="vendor-category"
-              name="category"
-              required
-              defaultValue={categoryDefault}
-              disabled={isPending}
-              onChange={() => setDuplicateMatch(null)}
-            >
-              <option value="" disabled>
-                Choose category
-              </option>
-              {VENDOR_CATEGORIES.map((cat) => (
-                <option key={cat.id} value={cat.id}>
-                  {cat.label}
-                </option>
-              ))}
-            </Select>
-          </div>
-          <div className="space-y-1.5">
-            <label
-              htmlFor="vendor-email"
-              className="text-sm font-medium text-ink"
-            >
-              Contact email
-            </label>
-            <Input
-              id="vendor-email"
-              name="contact_email"
-              type="email"
-              placeholder="hello@vendor.com"
-              disabled={isPending}
-            />
-          </div>
-        </div>
+      ) : null}
 
-        <fieldset className="space-y-2">
-          <legend className="text-sm font-medium text-ink">Status</legend>
-          <div className="flex flex-wrap gap-4">
-            <label className="flex items-center gap-2 text-[14px] font-medium text-ink">
-              <input
-                type="radio"
-                name="add_status"
-                value="to_contact"
-                checked={status === "to_contact"}
-                onChange={() => setStatus("to_contact")}
-                disabled={isPending}
-                className="size-4 border-ring accent-accent"
-              />
-              Still to contact
-            </label>
-            <label className="flex items-center gap-2 text-[14px] font-medium text-ink">
-              <input
-                type="radio"
-                name="add_status"
-                value="booked"
-                checked={status === "booked"}
-                onChange={() => setStatus("booked")}
-                disabled={isPending}
-                className="size-4 border-ring accent-accent"
-              />
-              Already booked
-            </label>
-          </div>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="space-y-1">
+          <label htmlFor="vendor-name" className="text-[13px] font-medium text-ink">
+            Name
+          </label>
+          <Input
+            id="vendor-name"
+            name="name"
+            type="text"
+            required
+            placeholder="Vendor name"
+            disabled={isPending}
+            onChange={() => setDuplicateMatch(null)}
+          />
+        </div>
+        <div className="space-y-1">
+          <label
+            htmlFor="vendor-category"
+            className="text-[13px] font-medium text-ink"
+          >
+            Category
+          </label>
+          <Select
+            id="vendor-category"
+            name="category"
+            required
+            defaultValue={categoryDefault}
+            disabled={isPending}
+            onChange={() => setDuplicateMatch(null)}
+          >
+            <option value="" disabled>
+              Choose category
+            </option>
+            {VENDOR_CATEGORIES.map((cat) => (
+              <option key={cat.id} value={cat.id}>
+                {cat.label}
+              </option>
+            ))}
+          </Select>
+        </div>
+        <div className="space-y-1">
+          <label
+            htmlFor="vendor-email"
+            className="text-[13px] font-medium text-ink"
+          >
+            Email
+          </label>
+          <Input
+            id="vendor-email"
+            name="contact_email"
+            type="email"
+            placeholder="hello@vendor.com"
+            disabled={isPending}
+          />
+        </div>
+        <div className="space-y-1">
+          <label
+            htmlFor="vendor-phone"
+            className="text-[13px] font-medium text-ink"
+          >
+            Phone
+          </label>
+          <Input
+            id="vendor-phone"
+            name="contact_phone"
+            type="tel"
+            placeholder="(555) 555-5555"
+            disabled={isPending}
+          />
+        </div>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+        <fieldset className="flex flex-wrap items-center gap-3">
+          <legend className="sr-only">Status</legend>
+          <label className="flex items-center gap-2 text-[13px] font-medium text-ink">
+            <input
+              type="radio"
+              name="add_status"
+              value="to_contact"
+              checked={status === "to_contact"}
+              onChange={() => setStatus("to_contact")}
+              disabled={isPending}
+              className="size-3.5 border-ring accent-accent"
+            />
+            Still to contact
+          </label>
+          <label className="flex items-center gap-2 text-[13px] font-medium text-ink">
+            <input
+              type="radio"
+              name="add_status"
+              value="booked"
+              checked={status === "booked"}
+              onChange={() => setStatus("booked")}
+              disabled={isPending}
+              className="size-3.5 border-ring accent-accent"
+            />
+            Already booked
+          </label>
         </fieldset>
 
-        {duplicateMatch ? (
-          <div className="space-y-3 rounded-[var(--radius-inner)] bg-clay-wash px-4 py-3 text-[14px] text-ink">
-            <p>
-              You already have{" "}
-              <span className="font-semibold">{duplicateMatch.name}</span> on
-              this project. Connect them to this category instead?
-            </p>
-            <div className="flex flex-wrap items-center gap-2">
-              <Button
-                type="button"
-                variant="primary"
-                disabled={isPending}
-                onClick={handleConnectExisting}
-                className="text-[13px]"
-              >
-                {isPending
-                  ? "Connecting…"
-                  : "Connect the existing vendor to this category instead"}
-              </Button>
-              <Button
-                type="submit"
-                variant="secondary"
-                disabled={isPending}
-                className="text-[13px]"
-              >
-                Add anyway
-              </Button>
-            </div>
-          </div>
-        ) : null}
-
-        {error ? (
-          <p className="text-[14px] font-medium text-rosewood">{error}</p>
-        ) : null}
-
         {!duplicateMatch ? (
-          <Button type="submit" variant="primary" disabled={isPending}>
+          <Button
+            type="submit"
+            variant="secondary"
+            disabled={isPending}
+            className="ml-auto text-[13px]"
+          >
             {isPending ? "Adding…" : "Add vendor"}
           </Button>
         ) : null}
-      </form>
+      </div>
+
+      {duplicateMatch ? (
+        <div className="space-y-3 rounded-[var(--radius-inner)] bg-clay-wash px-4 py-3 text-[14px] text-ink">
+          <p>
+            You already have{" "}
+            <span className="font-semibold">{duplicateMatch.name}</span> on
+            this project. Connect them to this category instead?
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              variant="primary"
+              disabled={isPending}
+              onClick={handleConnectExisting}
+              className="text-[13px]"
+            >
+              {isPending
+                ? "Connecting…"
+                : "Connect the existing vendor to this category instead"}
+            </Button>
+            <Button
+              type="submit"
+              variant="secondary"
+              disabled={isPending}
+              className="text-[13px]"
+            >
+              Add anyway
+            </Button>
+          </div>
+        </div>
+      ) : null}
+
+      {error ? (
+        <p className="text-[14px] font-medium text-rosewood">{error}</p>
+      ) : null}
+    </form>
+  );
+
+  if (embedded) {
+    return (
+      <div id="add-vendor" className="scroll-mt-6">
+        {form}
+      </div>
+    );
+  }
+
+  return (
+    <Card id="add-vendor" className={cn("px-5 py-4 scroll-mt-6")}>
+      {form}
     </Card>
   );
 }

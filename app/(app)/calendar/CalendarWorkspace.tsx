@@ -18,11 +18,14 @@ import type {
   ActiveWedding,
   CalendarEventRow,
   CalendarItem,
+  PaymentDueOverlay,
+  TaskDueOverlay,
 } from "./types";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Pill } from "@/components/ui/pill";
 import { cn } from "@/lib/cn";
+import { formatCurrency } from "@/lib/format-currency";
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const CHIP_LIMIT = 3;
@@ -33,6 +36,37 @@ type PanelState =
   | { type: "edit"; event: CalendarEventRow }
   | { type: "day"; date: string };
 
+function OverlayIcon({
+  source,
+  pastDue,
+}: {
+  source: "wedding" | "payment" | "task";
+  pastDue?: boolean;
+}) {
+  const tone = pastDue ? "text-rosewood" : "text-muted";
+  if (source === "wedding") {
+    return (
+      <span
+        className="size-1.5 shrink-0 rounded-full bg-sage"
+        aria-hidden
+        title="Wedding day"
+      />
+    );
+  }
+  if (source === "payment") {
+    return (
+      <span className={cn("shrink-0 text-[10px] font-bold", tone)} aria-hidden>
+        $
+      </span>
+    );
+  }
+  return (
+    <span className={cn("shrink-0 text-[10px] font-bold", tone)} aria-hidden>
+      ✓
+    </span>
+  );
+}
+
 function EventChip({
   item,
   onClick,
@@ -40,8 +74,58 @@ function EventChip({
   item: CalendarItem;
   onClick?: () => void;
 }) {
-  const isWedding = item.source === "wedding";
   const interactive = item.source === "authored" && onClick;
+  const pastDue = Boolean(item.pastDue);
+
+  const title =
+    item.source === "payment" && item.amount != null
+      ? `${formatCurrency(item.amount)} · ${item.title}`
+      : item.title;
+
+  if (item.source === "wedding") {
+    return (
+      <div
+        className="flex items-center gap-1 truncate rounded-[var(--radius-pill)] bg-well px-1.5 py-0.5 text-[11px] font-semibold text-sage"
+        title={`${item.title} — wedding day`}
+      >
+        <OverlayIcon source="wedding" />
+        <span className="truncate">{title}</span>
+        {item.timeLabel ? (
+          <span className="shrink-0 tabular-nums opacity-80">{item.timeLabel}</span>
+        ) : null}
+      </div>
+    );
+  }
+
+  if (item.source === "payment" || item.source === "task") {
+    const className = cn(
+      "flex w-full items-center gap-1 truncate rounded-[var(--radius-pill)] bg-well px-1.5 py-0.5 text-left text-[11px] font-semibold",
+      pastDue ? "text-rosewood" : "text-muted",
+    );
+    const overlayContent = (
+      <>
+        <OverlayIcon source={item.source} pastDue={pastDue} />
+        <span className="truncate">{title}</span>
+      </>
+    );
+    if (item.href) {
+      return (
+        <Link
+          href={item.href}
+          onClick={(e) => e.stopPropagation()}
+          className={className}
+          title={title}
+        >
+          {overlayContent}
+        </Link>
+      );
+    }
+    return (
+      <div className={className} title={title}>
+        {overlayContent}
+      </div>
+    );
+  }
 
   const content = (
     <>
@@ -51,21 +135,6 @@ function EventChip({
       ) : null}
     </>
   );
-
-  if (isWedding) {
-    return (
-      <div
-        className="flex items-center gap-1 truncate rounded-[var(--radius-pill)] bg-well px-1.5 py-0.5 text-[11px] font-semibold text-sage"
-        title={`${item.title} — wedding day`}
-      >
-        <span
-          className="size-1.5 shrink-0 rounded-full bg-sage"
-          aria-hidden
-        />
-        {content}
-      </div>
-    );
-  }
 
   if (interactive) {
     return (
@@ -98,6 +167,78 @@ function ItemRow({
   onEdit: (event: CalendarEventRow) => void;
 }) {
   const isWedding = item.source === "wedding";
+  const isPayment = item.source === "payment";
+  const isTask = item.source === "task";
+  const isOverlay = isWedding || isPayment || isTask;
+  const pastDue = Boolean(item.pastDue);
+
+  const title =
+    isPayment && item.amount != null
+      ? `${formatCurrency(item.amount)} · ${item.title}`
+      : item.title;
+
+  const body = (
+    <div className="flex items-start justify-between gap-2">
+      <div className="min-w-0">
+        <div className="flex flex-wrap items-center gap-1.5">
+          {isOverlay ? (
+            <OverlayIcon
+              source={item.source as "wedding" | "payment" | "task"}
+              pastDue={pastDue}
+            />
+          ) : null}
+          <span
+            className={cn(
+              "truncate text-[15px] font-semibold",
+              pastDue ? "text-rosewood" : "text-ink",
+            )}
+          >
+            {title}
+          </span>
+        </div>
+        <div className="mt-1.5 flex flex-wrap gap-1.5">
+          {item.kind ? (
+            <Pill variant="default">{formatKindLabel(item.kind)}</Pill>
+          ) : null}
+          {isWedding ? <Pill variant="sage">Wedding day</Pill> : null}
+          {isPayment ? (
+            <Pill variant={pastDue ? "rosewood" : "default"}>Payment due</Pill>
+          ) : null}
+          {isTask ? (
+            <Pill variant={pastDue ? "rosewood" : "default"}>Task due</Pill>
+          ) : null}
+          {!isWedding && item.projectName ? (
+            <Pill variant="default">{item.projectName}</Pill>
+          ) : null}
+          {item.timeLabel ? (
+            <span className="text-[13px] tabular-nums text-muted">
+              {item.timeLabel}
+            </span>
+          ) : item.allDay && !isOverlay ? (
+            <span className="text-[13px] text-muted">All day</span>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  );
+
+  if (isPayment || isTask) {
+    if (item.href) {
+      return (
+        <Link
+          href={item.href}
+          className="block rounded-[var(--radius-inner)] bg-well px-3.5 py-3 shadow-recessed hover:bg-accent-wash/40"
+        >
+          {body}
+        </Link>
+      );
+    }
+    return (
+      <div className="rounded-[var(--radius-inner)] bg-well px-3.5 py-3 shadow-recessed">
+        {body}
+      </div>
+    );
+  }
 
   return (
     <div
@@ -123,35 +264,34 @@ function ItemRow({
             }
       }
     >
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-1.5">
-            {isWedding ? (
-              <span className="size-2 shrink-0 rounded-full bg-sage" aria-hidden />
-            ) : null}
-            <span className="truncate text-[15px] font-semibold text-ink">
-              {item.title}
-            </span>
-          </div>
-          <div className="mt-1.5 flex flex-wrap gap-1.5">
-            {item.kind ? (
-              <Pill variant="default">{formatKindLabel(item.kind)}</Pill>
-            ) : null}
-            {isWedding ? <Pill variant="sage">Wedding day</Pill> : null}
-            {!isWedding && item.projectName ? (
-              <Pill variant="default">{item.projectName}</Pill>
-            ) : null}
-            {item.timeLabel ? (
-              <span className="text-[13px] tabular-nums text-muted">
-                {item.timeLabel}
-              </span>
-            ) : item.allDay && !isWedding ? (
-              <span className="text-[13px] text-muted">All day</span>
-            ) : null}
-          </div>
-        </div>
-      </div>
+      {body}
     </div>
+  );
+}
+
+function OverlayToggle({
+  label,
+  pressed,
+  onPressedChange,
+}: {
+  label: string;
+  pressed: boolean;
+  onPressedChange: (next: boolean) => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={pressed}
+      onClick={() => onPressedChange(!pressed)}
+      className={cn(
+        "rounded-[var(--radius-pill)] px-3 py-1.5 text-[13px] font-semibold transition-colors",
+        pressed
+          ? "bg-accent-wash text-accent"
+          : "bg-well text-muted hover:text-ink",
+      )}
+    >
+      {label}
+    </button>
   );
 }
 
@@ -160,19 +300,37 @@ export function CalendarWorkspace({
   month,
   events,
   weddings,
+  payments = [],
+  tasks = [],
 }: {
   year: number;
   month: number;
   events: CalendarEventRow[];
   weddings: ActiveWedding[];
+  payments?: PaymentDueOverlay[];
+  tasks?: TaskDueOverlay[];
 }) {
   const [panel, setPanel] = useState<PanelState>(null);
   // Client-only "today" avoids SSR/client day-boundary mismatch.
   const [todayKey] = useState(() => toLocalDateKey(new Date()));
+  const [showWeddings, setShowWeddings] = useState(true);
+  const [showPayments, setShowPayments] = useState(true);
+  const [showTasks, setShowTasks] = useState(true);
+
+  const allItems = useMemo(
+    () => buildCalendarItems(events, weddings, payments, tasks),
+    [events, weddings, payments, tasks],
+  );
 
   const items = useMemo(
-    () => buildCalendarItems(events, weddings),
-    [events, weddings],
+    () =>
+      allItems.filter((item) => {
+        if (item.source === "wedding") return showWeddings;
+        if (item.source === "payment") return showPayments;
+        if (item.source === "task") return showTasks;
+        return true;
+      }),
+    [allItems, showWeddings, showPayments, showTasks],
   );
 
   const cells = useMemo(() => buildMonthGrid(year, month), [year, month]);
@@ -232,6 +390,24 @@ export function CalendarWorkspace({
               Add event
             </Button>
           </div>
+        </div>
+
+        <div className="mb-4 flex flex-wrap gap-2">
+          <OverlayToggle
+            label="Weddings"
+            pressed={showWeddings}
+            onPressedChange={setShowWeddings}
+          />
+          <OverlayToggle
+            label="Payments due"
+            pressed={showPayments}
+            onPressedChange={setShowPayments}
+          />
+          <OverlayToggle
+            label="Tasks due"
+            pressed={showTasks}
+            onPressedChange={setShowTasks}
+          />
         </div>
 
         <div className="mb-2 grid grid-cols-7 gap-1.5">
