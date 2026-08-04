@@ -1,36 +1,63 @@
 "use client";
 
 import Link from "next/link";
-import type { RosterGuest, SeatingAssignment } from "./types";
-import { formatGuestName } from "@/app/(app)/projects/[projectId]/guests/types";
+import type { RosterPerson, SeatingAssignment } from "./types";
+import { formatPersonName, isAssignableRsvpStatus } from "./types";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/cn";
 
 type GuestRosterProps = {
   projectId: string;
-  guests: RosterGuest[];
-  assignmentByGuestId: Map<string, SeatingAssignment>;
+  people: RosterPerson[];
+  assignmentByMemberId: Map<string, SeatingAssignment>;
   tableLabelById: Map<string, string>;
-  selectedGuestId: string | null;
+  selectedMemberId: string | null;
+  pendingSeatLabel: string | null;
   hasTables: boolean;
   isPending: boolean;
-  onSelectGuest: (guestId: string) => void;
-  onUnassign: (assignmentId: string) => void;
+  onSelectMember: (memberId: string) => void;
+  onUnseat: (assignmentId: string) => void;
 };
+
+function RsvpDot({ status }: { status: RosterPerson["rsvp_status"] }) {
+  const color =
+    status === "attending"
+      ? "bg-sage"
+      : status === "declined"
+        ? "bg-rosewood"
+        : "bg-clay";
+
+  return (
+    <span
+      className={cn("mt-1 size-2 shrink-0 rounded-[var(--radius-pill)]", color)}
+      aria-label={status}
+      title={status}
+    />
+  );
+}
 
 export function GuestRoster({
   projectId,
-  guests,
-  assignmentByGuestId,
+  people,
+  assignmentByMemberId,
   tableLabelById,
-  selectedGuestId,
+  selectedMemberId,
+  pendingSeatLabel,
   hasTables,
   isPending,
-  onSelectGuest,
-  onUnassign,
+  onSelectMember,
+  onUnseat,
 }: GuestRosterProps) {
-  const unassigned = guests.filter((guest) => !assignmentByGuestId.has(guest.id));
-  const assigned = guests.filter((guest) => assignmentByGuestId.has(guest.id));
+  // Unseated declined households are filtered out (SEAT-14). Seated declined
+  // stay visible below with a rosewood flag + Unseat.
+  const unassigned = people.filter(
+    (person) =>
+      !assignmentByMemberId.has(person.id) &&
+      isAssignableRsvpStatus(person.rsvp_status),
+  );
+  const assigned = people.filter((person) =>
+    assignmentByMemberId.has(person.id),
+  );
 
   return (
     <Card className="w-full px-5 py-5">
@@ -38,7 +65,13 @@ export function GuestRoster({
         Guests
       </p>
 
-      {guests.length === 0 ? (
+      {pendingSeatLabel ? (
+        <p className="mb-3 text-[13px] font-medium text-accent">
+          Seat {pendingSeatLabel} — pick a person below
+        </p>
+      ) : null}
+
+      {people.length === 0 ? (
         <p className="text-[13px] leading-relaxed text-muted">
           No guests yet. Add them in the{" "}
           <Link
@@ -58,8 +91,8 @@ export function GuestRoster({
 
             {!hasTables ? (
               <p className="mb-2 text-[12px] text-muted">
-                Place a table on the floor plan first, then select a guest to
-                seat them.
+                Place a table on the floor plan first, then click a seat to
+                place someone.
               </p>
             ) : null}
 
@@ -67,24 +100,44 @@ export function GuestRoster({
               <p className="text-[13px] text-muted">Everyone has a seat.</p>
             ) : (
               <ul className="space-y-1.5">
-                {unassigned.map((guest) => {
-                  const selected = selectedGuestId === guest.id;
+                {unassigned.map((person) => {
+                  const selected = selectedMemberId === person.id;
+                  const householdCue =
+                    person.household_label?.trim() ||
+                    person.household_name?.trim() ||
+                    null;
+
                   return (
-                    <li key={guest.id}>
+                    <li key={person.id}>
                       <button
                         type="button"
-                        onClick={() => onSelectGuest(guest.id)}
+                        onClick={() => onSelectMember(person.id)}
                         disabled={isPending || !hasTables}
                         aria-pressed={selected}
                         className={cn(
-                          "w-full rounded-[var(--radius-inner)] px-3 py-2.5 text-left text-[14px] font-medium transition-colors",
+                          "flex w-full items-start gap-2 rounded-[var(--radius-inner)] px-3 py-2.5 text-left transition-colors",
                           selected
                             ? "bg-accent text-surface"
                             : "bg-well text-ink shadow-recessed hover:opacity-90",
                           (isPending || !hasTables) && "opacity-60",
                         )}
                       >
-                        {formatGuestName(guest)}
+                        <RsvpDot status={person.rsvp_status} />
+                        <span className="min-w-0">
+                          <span className="block text-[14px] font-medium">
+                            {formatPersonName(person)}
+                          </span>
+                          {householdCue ? (
+                            <span
+                              className={cn(
+                                "block truncate text-[12px]",
+                                selected ? "text-surface/80" : "text-muted",
+                              )}
+                            >
+                              {householdCue}
+                            </span>
+                          ) : null}
+                        </span>
                       </button>
                     </li>
                   );
@@ -99,31 +152,53 @@ export function GuestRoster({
                 Seated · {assigned.length}
               </p>
               <ul className="space-y-1.5">
-                {assigned.map((guest) => {
-                  const assignment = assignmentByGuestId.get(guest.id)!;
+                {assigned.map((person) => {
+                  const assignment = assignmentByMemberId.get(person.id)!;
+                  const declined = person.rsvp_status === "declined";
                   const tableLabel =
                     tableLabelById.get(assignment.table_id) ?? "—";
+                  const seatLabel =
+                    assignment.seat_index != null
+                      ? ` · Seat ${assignment.seat_index}`
+                      : " · needs a seat";
+                  const householdCue =
+                    person.household_label?.trim() ||
+                    person.household_name?.trim() ||
+                    null;
+
                   return (
                     <li
-                      key={guest.id}
-                      className="flex items-center justify-between gap-2 rounded-[var(--radius-inner)] bg-well px-3 py-2.5 shadow-recessed"
+                      key={person.id}
+                      className="flex items-start justify-between gap-2 rounded-[var(--radius-inner)] bg-well px-3 py-2.5 shadow-recessed"
                     >
-                      <span className="min-w-0 flex-1 truncate text-[14px] font-medium text-ink">
-                        {formatGuestName(guest)}
-                        <span className="ml-1.5 text-[12px] font-normal text-muted">
-                          {tableLabel}
+                      <div className="flex min-w-0 flex-1 items-start gap-2">
+                        <RsvpDot status={person.rsvp_status} />
+                        <span className="min-w-0">
+                          <span className="block truncate text-[14px] font-medium text-ink">
+                            {formatPersonName(person)}
+                            {declined ? (
+                              <span className="ml-1.5 text-[12px] font-semibold text-rosewood">
+                                declined
+                              </span>
+                            ) : null}
+                          </span>
+                          <span className="block truncate text-[12px] text-muted">
+                            {tableLabel}
+                            {seatLabel}
+                            {householdCue ? ` · ${householdCue}` : ""}
+                          </span>
                         </span>
-                      </span>
+                      </div>
                       <button
                         type="button"
-                        onClick={() => onUnassign(assignment.id)}
+                        onClick={() => onUnseat(assignment.id)}
                         disabled={isPending}
                         className={cn(
-                          "shrink-0 rounded-[var(--radius-pill)] px-2 py-1 text-[12px] font-semibold text-muted transition-colors hover:bg-surface hover:text-ink",
+                          "shrink-0 rounded-[var(--radius-pill)] px-2 py-1 text-[12px] font-semibold text-rosewood transition-colors hover:bg-rosewood-wash",
                           isPending && "opacity-60",
                         )}
                       >
-                        Unassign
+                        Unseat
                       </button>
                     </li>
                   );

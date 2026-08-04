@@ -118,6 +118,81 @@ export async function setWeddingWebsiteSchedule(
   };
 }
 
+/**
+ * WEB-SCHED-01: one-time fill-if-empty from day-of timeline_events.
+ * Copies all events (no guest-facing flag on timeline); couple prunes via Remove.
+ * Never overwrites a non-empty schedule. Null start_time → blank time string.
+ */
+export async function fillWebsiteScheduleFromTimeline(
+  projectId: string,
+): Promise<
+  | { ok: true; filled: false }
+  | { ok: true; filled: true; items: ScheduleItem[]; count: number }
+  | { ok: false; error: string }
+> {
+  const supabase = await createClient();
+
+  const { data: current, error: readError } = await supabase
+    .from("wedding_websites")
+    .select("content")
+    .eq("project_id", projectId)
+    .maybeSingle();
+
+  if (readError) {
+    return { ok: false, error: readError.message };
+  }
+  if (!current) {
+    return { ok: true, filled: false };
+  }
+
+  const content = parseWeddingWebsiteContent(current.content);
+  if (content.schedule.items.length > 0) {
+    return { ok: true, filled: false };
+  }
+
+  const { data: rows, error: timelineError } = await supabase
+    .from("timeline_events")
+    .select("title, description, start_time, position")
+    .eq("project_id", projectId)
+    .order("start_time", { ascending: true, nullsFirst: false })
+    .order("position", { ascending: true });
+
+  if (timelineError) {
+    return { ok: false, error: timelineError.message };
+  }
+
+  const events = rows ?? [];
+  if (events.length === 0) {
+    return { ok: true, filled: false };
+  }
+
+  const items: ScheduleItem[] = events.slice(0, SCHEDULE_ITEMS_MAX).map((row) => {
+    const startTime =
+      typeof row.start_time === "string" ? row.start_time.trim() : "";
+    // Do not call formatTimeOfDay(null) — that returns "—"; blank is required.
+    const time = startTime ? formatTimeOfDay(startTime) : "";
+    const title = typeof row.title === "string" ? row.title.trim() : "";
+    const description =
+      typeof row.description === "string" ? row.description.trim() : "";
+    return { time, title, description };
+  }).filter((item) => item.title.length > 0);
+
+  if (items.length === 0) {
+    return { ok: true, filled: false };
+  }
+
+  const result = await setWeddingWebsiteSchedule(projectId, items);
+  if (!result.ok) {
+    // Non-empty race (another writer filled first) → treat as no-op success.
+    if (result.error.includes("already has items")) {
+      return { ok: true, filled: false };
+    }
+    return result;
+  }
+
+  return { ok: true, filled: true, items, count: result.count };
+}
+
 export type TravelFillInput = {
   /** Intro blurb. */
   intro?: string;

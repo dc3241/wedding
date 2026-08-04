@@ -1,5 +1,9 @@
 import type { ReactNode } from "react";
-import type { WeddingWebsiteContent } from "../types";
+import {
+  resolveSectionOrder,
+  type WebsiteSectionId,
+  type WeddingWebsiteContent,
+} from "../types";
 import { DetailsSection } from "./DetailsSection";
 import { FaqSection } from "./FaqSection";
 import { GallerySection } from "./GallerySection";
@@ -21,7 +25,7 @@ import { WeddingPartySection } from "./WeddingPartySection";
 
 type SeparatorKind = "monogram" | "none";
 
-/** Shared body stack — mockup order; tint bands alternate. */
+/** Shared body stack — order from content.sectionOrder; tint bands alternate. */
 export function SectionStack({
   content,
   variant,
@@ -32,64 +36,67 @@ export function SectionStack({
   separator?: SeparatorKind;
 }) {
   type Block = {
-    key: string;
+    key: WebsiteSectionId;
     show: boolean;
     node: (tint: boolean) => ReactNode;
   };
 
-  const blocks: Block[] = [
-    {
+  const byId: Record<WebsiteSectionId, Block> = {
+    story: {
       key: "story",
       show: showStory(content),
       node: (tint) => (
         <StorySection content={content} variant={variant} tint={tint} />
       ),
     },
-    {
+    details: {
       key: "details",
       show: showDetails(content),
       node: (tint) => (
         <DetailsSection content={content} variant={variant} tint={tint} />
       ),
     },
-    {
+    schedule: {
       key: "schedule",
       show: showSchedule(content),
       node: (tint) => (
         <ScheduleSection content={content} variant={variant} tint={tint} />
       ),
     },
-    {
+    gallery: {
       key: "gallery",
       show: showGallery(content),
       node: (tint) => (
         <GallerySection content={content} variant={variant} tint={tint} />
       ),
     },
-    {
+    party: {
       key: "party",
       show: showParty(content),
       node: (tint) => (
         <WeddingPartySection content={content} variant={variant} tint={tint} />
       ),
     },
-    {
+    travel: {
       key: "travel",
       show: showTravel(content),
       node: (tint) => (
         <TravelSection content={content} variant={variant} tint={tint} />
       ),
     },
-    {
+    faq: {
       key: "faq",
       show: showFaq(content),
       node: (tint) => (
         <FaqSection content={content} variant={variant} tint={tint} />
       ),
     },
-  ];
+  };
 
-  const visible = blocks.filter((block) => block.show);
+  const visible = resolveSectionOrder(content)
+    .map((id) => byId[id])
+    .filter((block) => block.show);
+
   if (visible.length === 0) return null;
 
   return (

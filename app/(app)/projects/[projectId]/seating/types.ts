@@ -1,3 +1,5 @@
+import type { RsvpStatus } from "@/app/(app)/projects/[projectId]/guests/types";
+
 export const SEATING_TABLE_SHAPES = ["round", "square", "rectangle"] as const;
 
 export type SeatingTableShape = (typeof SEATING_TABLE_SHAPES)[number];
@@ -30,20 +32,29 @@ export type SeatingTable = {
   rotation: number;
 };
 
+/** Member-grain seating row. guest_id is write-dead and not selected. */
 export type SeatingAssignment = {
   id: string;
   table_id: string;
-  guest_id: string;
+  guest_member_id: string;
   seat_index: number | null;
 };
 
-export type RosterGuest = {
+/** One guest_members person + household cue for the seating roster. */
+export type RosterPerson = {
   id: string;
-  full_name: string | null;
+  name: string | null;
+  guest_id: string;
+  household_name: string | null;
+  household_label: string | null;
+  relationship: string | null;
+  rsvp_status: RsvpStatus;
 };
 
 export const CANVAS_WIDTH = 1200;
-export const CANVAS_HEIGHT = 1100;
+// Provisional work-area height — re-tuned once seats render as numbered
+// positions in the later per-seat rework. Width and table geometry stay put.
+export const CANVAS_HEIGHT = 800;
 
 export const NUDGE_STEP = 15;
 export const NUDGE_FINE_STEP = 3;
@@ -73,4 +84,19 @@ export function seatingShapeLabel(shape: SeatingTableShape) {
     case "rectangle":
       return "Rectangle";
   }
+}
+
+export function formatPersonName(person: {
+  name: string | null;
+  household_name: string | null;
+}): string {
+  const name = person.name?.trim();
+  if (name) return name;
+  const household = person.household_name?.trim();
+  return household ? household : "Unnamed guest";
+}
+
+/** Assignable = household badge not declined (pending + attending). */
+export function isAssignableRsvpStatus(status: RsvpStatus) {
+  return status !== "declined";
 }

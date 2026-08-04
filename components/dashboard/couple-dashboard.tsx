@@ -51,6 +51,17 @@ type GuestStats = {
   householdCount: number;
 };
 
+export type ComingUpItem = {
+  id: string;
+  source: "authored" | "payment" | "task" | "wedding";
+  title: string;
+  localDate: string;
+  timeLabel: string | null;
+  pastDue?: boolean;
+  amount?: number | null;
+  href?: string | null;
+};
+
 type CoupleDashboardProps = {
   projectId: string;
   coupleNames: string;
@@ -62,6 +73,7 @@ type CoupleDashboardProps = {
   budgetPayments?: BudgetPaymentInput[];
   guestStats: GuestStats;
   website: { published: boolean } | null;
+  comingUp?: ComingUpItem[];
 };
 
 const DUE_SOON_DAYS = 14;
@@ -207,6 +219,111 @@ function NextUpSection({
                 </Pill>
               </li>
             );
+          })}
+        </ul>
+      )}
+    </Card>
+  );
+}
+
+function comingUpMeta(item: ComingUpItem) {
+  const dateLabel = formatDueDate(item.localDate);
+  if (item.source === "payment") {
+    const amount =
+      item.amount != null ? `${formatCurrency(item.amount)} · ` : "";
+    return item.pastDue
+      ? `${amount}Was due ${dateLabel}`
+      : `${amount}Due ${dateLabel}`;
+  }
+  if (item.source === "task") {
+    return item.pastDue ? `Was due ${dateLabel}` : `Due ${dateLabel}`;
+  }
+  if (item.source === "wedding") {
+    return dateLabel;
+  }
+  if (item.timeLabel) {
+    return `${dateLabel} · ${item.timeLabel}`;
+  }
+  return dateLabel;
+}
+
+function comingUpPill(
+  item: ComingUpItem,
+): { variant: PillVariant; label: string } {
+  if (item.pastDue) {
+    return { variant: "rosewood", label: "Overdue" };
+  }
+  if (item.source === "payment") {
+    return { variant: "clay", label: "Payment" };
+  }
+  if (item.source === "task") {
+    return { variant: "clay", label: "Task" };
+  }
+  if (item.source === "wedding") {
+    return { variant: "sage", label: "Wedding day" };
+  }
+  return { variant: "default", label: "Appointment" };
+}
+
+function ComingUpSection({
+  projectId,
+  items,
+}: {
+  projectId: string;
+  items: ComingUpItem[];
+}) {
+  const preview = items.slice(0, 5);
+
+  return (
+    <Card className="overflow-hidden">
+      <div className="px-6 pt-[22px]">
+        <BlockHead
+          title="Coming up"
+          href={`/projects/${projectId}/calendar`}
+          linkLabel="Open calendar"
+        />
+      </div>
+
+      {preview.length === 0 ? (
+        <div className="px-6 pb-[22px]">
+          <p className="text-[15px] font-medium text-muted">
+            Nothing coming up — add appointments on your calendar.
+          </p>
+        </div>
+      ) : (
+        <ul className="space-y-2 px-3.5 pb-3.5">
+          {preview.map((item) => {
+            const pill = comingUpPill(item);
+            const row = (
+              <div className="flex items-start justify-between gap-3 rounded-[var(--radius-inner)] bg-well px-4 py-3.5 shadow-recessed">
+                <div className="min-w-0">
+                  <p className="text-[15px] font-medium leading-snug text-ink">
+                    {item.title}
+                  </p>
+                  <p className="mt-1 text-[13px] text-muted">
+                    {comingUpMeta(item)}
+                  </p>
+                </div>
+                <Pill variant={pill.variant} className="shrink-0">
+                  {pill.label}
+                </Pill>
+              </div>
+            );
+
+            if (item.href) {
+              return (
+                <li key={item.id}>
+                  <Link
+                    href={item.href}
+                    className="block no-underline transition-opacity hover:opacity-90"
+                  >
+                    {row}
+                  </Link>
+                </li>
+              );
+            }
+
+            return <li key={item.id}>{row}</li>;
           })}
         </ul>
       )}
@@ -547,6 +664,7 @@ export function CoupleDashboard({
   budgetPayments = [],
   guestStats,
   website,
+  comingUp = [],
 }: CoupleDashboardProps) {
   return (
     <div className="space-y-6">
@@ -558,6 +676,7 @@ export function CoupleDashboard({
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_300px] lg:items-start">
         <div className="min-w-0 space-y-4">
+          <ComingUpSection projectId={projectId} items={comingUp} />
           <NextUpSection projectId={projectId} tasks={tasks} />
           <YourPhasesSection
             projectId={projectId}

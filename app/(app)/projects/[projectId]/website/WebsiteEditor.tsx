@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useId, useRef, useState, useTransition } from "react";
 import {
+  fillWebsiteScheduleFromTimeline,
   setWeddingWebsitePublished,
   updateWeddingWebsite,
   updateWeddingWebsiteSlug,
@@ -14,13 +15,21 @@ import { TravelEditorFields } from "./TravelEditorFields";
 import { LookStep } from "./LookStep";
 import { WebsiteRsvpShare } from "./WebsiteRsvpShare";
 import { ExternalRegistryEditor } from "./ExternalRegistryEditor";
+import { moveArrayItem, ReorderButtons } from "./ReorderButtons";
 import type { ExternalRegistryLink } from "@/components/website/registry/types";
-import type { WeddingWebsiteContent, WeddingWebsiteRow } from "@/components/website/types";
+import type {
+  ScheduleLayout,
+  WebsiteSectionId,
+  WeddingWebsiteContent,
+  WeddingWebsiteRow,
+} from "@/components/website/types";
+import { resolveSectionOrder } from "@/components/website/types";
 import { WeddingSiteView } from "@/components/website/WeddingSiteView";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/cn";
 import type { AccountKind } from "@/lib/account-context";
@@ -30,6 +39,16 @@ type WebsiteEditorProps = {
   website: WeddingWebsiteRow;
   accountKind: AccountKind;
   externalRegistryLinks: ExternalRegistryLink[];
+};
+
+const SECTION_EDITOR_TITLE: Record<WebsiteSectionId, string> = {
+  story: "Our story",
+  details: "Wedding details",
+  schedule: "Schedule",
+  gallery: "Gallery",
+  party: "Wedding party",
+  travel: "Travel & stay",
+  faq: "FAQ",
 };
 
 function VisibilityToggle({
@@ -42,7 +61,10 @@ function VisibilityToggle({
   label: string;
 }) {
   return (
-    <label className="flex cursor-pointer items-center gap-2 text-[13px] text-muted">
+    <label
+      className="flex cursor-pointer items-center gap-2 text-[13px] text-muted"
+      onClick={(e) => e.stopPropagation()}
+    >
       <input
         type="checkbox"
         checked={checked}
@@ -59,16 +81,56 @@ function EditorSection({
   visible,
   onVisibleChange,
   children,
+  defaultOpen = false,
+  reorder,
 }: {
   title: string;
   visible?: boolean;
   onVisibleChange?: (next: boolean) => void;
   children: React.ReactNode;
+  defaultOpen?: boolean;
+  reorder?: {
+    index: number;
+    total: number;
+    onMove: (from: number, to: number) => void;
+    label: string;
+  };
 }) {
+  const [open, setOpen] = useState(defaultOpen);
+  const panelId = useId();
+
   return (
     <Card className="space-y-4 px-6 py-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="font-display text-[19px] font-extrabold tracking-[-0.02em] text-ink">{title}</h2>
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+          <button
+            type="button"
+            aria-expanded={open}
+            aria-controls={panelId}
+            onClick={() => setOpen((current) => !current)}
+            className="flex min-w-0 items-center gap-2 text-left"
+          >
+            <span
+              className="text-[12px] font-medium text-muted tabular-nums"
+              aria-hidden
+            >
+              {open ? "▾" : "▸"}
+            </span>
+            <h2 className="font-display text-[19px] font-extrabold tracking-[-0.02em] text-ink">
+              {title}
+            </h2>
+          </button>
+          {reorder ? (
+            <div onClick={(e) => e.stopPropagation()}>
+              <ReorderButtons
+                index={reorder.index}
+                total={reorder.total}
+                onMove={reorder.onMove}
+                label={reorder.label}
+              />
+            </div>
+          ) : null}
+        </div>
         {onVisibleChange !== undefined && visible !== undefined ? (
           <VisibilityToggle
             checked={visible}
@@ -77,7 +139,11 @@ function EditorSection({
           />
         ) : null}
       </div>
-      {children}
+      {open ? (
+        <div id={panelId} className="space-y-4">
+          {children}
+        </div>
+      ) : null}
     </Card>
   );
 }
@@ -97,6 +163,7 @@ export function WebsiteEditor({
   const [slugError, setSlugError] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const scheduleFillForProject = useRef<string | null>(null);
 
   const isPlanner = accountKind === "business";
 
@@ -108,6 +175,30 @@ export function WebsiteEditor({
     setSavedSlug(website.slug);
     setPublished(website.published);
   }, [website]);
+
+  // WEB-SCHED-01: one-time fill-if-empty from day-of timeline (no button).
+  useEffect(() => {
+    if (scheduleFillForProject.current === projectId) return;
+    if (website.content.schedule.items.length > 0) {
+      scheduleFillForProject.current = projectId;
+      return;
+    }
+    scheduleFillForProject.current = projectId;
+
+    let cancelled = false;
+    startTransition(async () => {
+      const result = await fillWebsiteScheduleFromTimeline(projectId);
+      if (cancelled || !result.ok || !result.filled) return;
+      setContent((prev) => ({
+        ...prev,
+        schedule: { ...prev.schedule, items: result.items },
+      }));
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [projectId, website.content.schedule.items.length, startTransition]);
 
   function persistContent(next: WeddingWebsiteContent) {
     setContent(next);
@@ -245,6 +336,335 @@ export function WebsiteEditor({
     });
   }
 
+  const sectionOrder = resolveSectionOrder(content);
+
+  function moveSection(from: number, to: number) {
+    persistContent({
+      ...content,
+      sectionOrder: moveArrayItem(sectionOrder, from, to),
+    });
+  }
+
+  function renderReorderableSection(id: WebsiteSectionId, index: number) {
+    const reorder = {
+      index,
+      total: sectionOrder.length,
+      onMove: moveSection,
+      label: SECTION_EDITOR_TITLE[id],
+    };
+
+    switch (id) {
+      case "story":
+        return (
+          <EditorSection
+            key={id}
+            title={SECTION_EDITOR_TITLE.story}
+            visible={content.story.visible}
+            onVisibleChange={(next) => updateStory("visible", next)}
+            reorder={reorder}
+          >
+            <div className="space-y-3">
+              <div>
+                <label className="mb-1.5 block text-[13px] text-muted">Heading</label>
+                <Input
+                  value={content.story.heading}
+                  onChange={(e) => updateStory("heading", e.target.value)}
+                  placeholder="How It All Began"
+                />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-[13px] text-muted">Body</label>
+                <Textarea
+                  rows={5}
+                  value={content.story.body}
+                  onChange={(e) => updateStory("body", e.target.value)}
+                  placeholder="How you met, the proposal, what you are excited for…"
+                />
+              </div>
+            </div>
+          </EditorSection>
+        );
+      case "details":
+        return (
+          <EditorSection
+            key={id}
+            title={SECTION_EDITOR_TITLE.details}
+            visible={content.details.visible}
+            onVisibleChange={(next) => updateDetails("visible", next)}
+            reorder={reorder}
+          >
+            <div className="space-y-4">
+              <div className="space-y-3">
+                <p className="text-[13px] font-medium text-ink">Ceremony</p>
+                <Input
+                  value={content.details.ceremonyVenue}
+                  onChange={(e) => updateDetails("ceremonyVenue", e.target.value)}
+                  placeholder="Venue name"
+                />
+                <Textarea
+                  rows={2}
+                  value={content.details.ceremonyAddress}
+                  onChange={(e) => updateDetails("ceremonyAddress", e.target.value)}
+                  placeholder="Address"
+                />
+                <Input
+                  value={content.details.ceremonyTime}
+                  onChange={(e) => updateDetails("ceremonyTime", e.target.value)}
+                  placeholder="Time, e.g. 4:00 PM"
+                />
+              </div>
+              <div className="space-y-3 border-t border-hairline pt-4">
+                <p className="text-[13px] font-medium text-ink">Reception</p>
+                <Input
+                  value={content.details.receptionVenue}
+                  onChange={(e) => updateDetails("receptionVenue", e.target.value)}
+                  placeholder="Venue name"
+                />
+                <Textarea
+                  rows={2}
+                  value={content.details.receptionAddress}
+                  onChange={(e) =>
+                    updateDetails("receptionAddress", e.target.value)
+                  }
+                  placeholder="Address"
+                />
+                <Input
+                  value={content.details.receptionTime}
+                  onChange={(e) => updateDetails("receptionTime", e.target.value)}
+                  placeholder="Time, e.g. 6:00 PM"
+                />
+              </div>
+            </div>
+          </EditorSection>
+        );
+      case "schedule":
+        return (
+          <EditorSection
+            key={id}
+            title={SECTION_EDITOR_TITLE.schedule}
+            visible={content.schedule.visible}
+            onVisibleChange={(next) =>
+              persistContent({
+                ...content,
+                schedule: { ...content.schedule, visible: next },
+              })
+            }
+            reorder={reorder}
+          >
+            <div>
+              <label
+                htmlFor="schedule-layout"
+                className="mb-1.5 block text-[13px] text-muted"
+              >
+                Timeline layout
+              </label>
+              <Select
+                id="schedule-layout"
+                value={content.schedule.layout ?? "centered"}
+                onChange={(e) =>
+                  persistContent({
+                    ...content,
+                    schedule: {
+                      ...content.schedule,
+                      layout: e.target.value as ScheduleLayout,
+                    },
+                  })
+                }
+              >
+                <option value="centered">Centered</option>
+                <option value="alternating">Alternating</option>
+                <option value="rail">Left rail</option>
+              </Select>
+            </div>
+            <ul className="space-y-4">
+              {content.schedule.items.map((item, itemIndex) => (
+                <li
+                  key={itemIndex}
+                  className="space-y-2 rounded-[var(--radius-inner)] bg-well p-3 shadow-recessed"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[13px] text-muted">
+                      Item {itemIndex + 1}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => removeScheduleItem(itemIndex)}
+                      className="text-[13px] text-muted hover:text-rosewood"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                  <Input
+                    value={item.time}
+                    onChange={(e) =>
+                      updateScheduleItem(itemIndex, "time", e.target.value)
+                    }
+                    placeholder="Time"
+                  />
+                  <Input
+                    value={item.title}
+                    onChange={(e) =>
+                      updateScheduleItem(itemIndex, "title", e.target.value)
+                    }
+                    placeholder="Title"
+                  />
+                  <Input
+                    value={item.description}
+                    onChange={(e) =>
+                      updateScheduleItem(itemIndex, "description", e.target.value)
+                    }
+                    placeholder="Description (optional)"
+                  />
+                </li>
+              ))}
+            </ul>
+            <Button type="button" variant="default" onClick={addScheduleItem}>
+              Add schedule item
+            </Button>
+          </EditorSection>
+        );
+      case "gallery":
+        return (
+          <EditorSection
+            key={id}
+            title={SECTION_EDITOR_TITLE.gallery}
+            visible={content.gallery.visible}
+            onVisibleChange={setGalleryVisible}
+            reorder={reorder}
+          >
+            <p className="text-[13px] text-muted">
+              Photos appear on your site only when this section is shown and has at
+              least one image. Removing a photo clears it from the site; storage
+              cleanup is deferred.
+            </p>
+            <GalleryEditorFields
+              projectId={projectId}
+              images={content.gallery.images}
+              imageShape={content.gallery.imageShape}
+              onChange={(images) =>
+                persistContent({
+                  ...content,
+                  gallery: { ...content.gallery, images },
+                })
+              }
+              onImageShapeChange={(imageShape) =>
+                persistContent({
+                  ...content,
+                  gallery: {
+                    ...content.gallery,
+                    imageShape: imageShape ?? (null as unknown as undefined),
+                  },
+                })
+              }
+            />
+          </EditorSection>
+        );
+      case "party":
+        return (
+          <EditorSection
+            key={id}
+            title={SECTION_EDITOR_TITLE.party}
+            visible={content.party.visible}
+            onVisibleChange={setPartyVisible}
+            reorder={reorder}
+          >
+            <p className="text-[13px] text-muted">
+              Members appear when this section is shown and has at least one person
+              with a name.
+            </p>
+            <PartyEditorFields
+              projectId={projectId}
+              heading={content.party.heading}
+              layout={content.party.layout}
+              imageShape={content.party.imageShape}
+              members={content.party.members}
+              onHeadingChange={(heading) =>
+                persistContent({
+                  ...content,
+                  party: {
+                    ...content.party,
+                    heading: heading.trim() || undefined,
+                  },
+                })
+              }
+              onLayoutChange={(layout) =>
+                persistContent({
+                  ...content,
+                  party: { ...content.party, layout },
+                })
+              }
+              onImageShapeChange={(imageShape) =>
+                persistContent({
+                  ...content,
+                  party: {
+                    ...content.party,
+                    imageShape: imageShape ?? (null as unknown as undefined),
+                  },
+                })
+              }
+              onChange={(members) =>
+                persistContent({
+                  ...content,
+                  party: { ...content.party, members },
+                })
+              }
+            />
+          </EditorSection>
+        );
+      case "travel":
+        return (
+          <EditorSection
+            key={id}
+            title={SECTION_EDITOR_TITLE.travel}
+            visible={content.travel.visible}
+            onVisibleChange={setTravelVisible}
+            reorder={reorder}
+          >
+            <TravelEditorFields
+              body={content.travel.body}
+              places={content.travel.places}
+              onBodyChange={(body) => updateTravel({ body })}
+              onPlacesChange={(places) => updateTravel({ places })}
+            />
+          </EditorSection>
+        );
+      case "faq":
+        return (
+          <EditorSection
+            key={id}
+            title={SECTION_EDITOR_TITLE.faq}
+            visible={content.faq.visible}
+            onVisibleChange={setFaqVisible}
+            reorder={reorder}
+          >
+            <p className="text-[13px] text-muted">
+              Questions appear when this section is shown and has at least one
+              complete Q&amp;A.
+            </p>
+            <FaqEditorFields
+              heading={content.faq.heading}
+              items={content.faq.items}
+              onHeadingChange={(heading) =>
+                persistContent({
+                  ...content,
+                  faq: {
+                    ...content.faq,
+                    heading: heading.trim() || undefined,
+                  },
+                })
+              }
+              onChange={(items) =>
+                persistContent({
+                  ...content,
+                  faq: { ...content.faq, items },
+                })
+              }
+            />
+          </EditorSection>
+        );
+    }
+  }
+
   return (
     <div className={cn("space-y-6", isPending && "opacity-90")}>
       <PageHeader
@@ -341,13 +761,14 @@ export function WebsiteEditor({
         )}
       >
         <div className="space-y-4">
-          <EditorSection title="Hero">
+          <EditorSection title="Hero" defaultOpen>
             <div className="space-y-3">
               <div>
                 <label className="mb-1.5 block text-[13px] text-muted">Names</label>
                 <Input
                   value={content.hero.names}
                   onChange={(e) => updateHero("names", e.target.value)}
+                  placeholder="Sarah & James"
                 />
               </div>
               <div>
@@ -363,7 +784,7 @@ export function WebsiteEditor({
                 <Input
                   value={content.hero.tagline}
                   onChange={(e) => updateHero("tagline", e.target.value)}
-                  placeholder="Optional welcome line"
+                  placeholder="Together with our families, we invite you"
                 />
               </div>
               <VisibilityToggle
@@ -386,213 +807,7 @@ export function WebsiteEditor({
             </div>
           </EditorSection>
 
-          <EditorSection
-            title="Our story"
-            visible={content.story.visible}
-            onVisibleChange={(next) => updateStory("visible", next)}
-          >
-            <div className="space-y-3">
-              <div>
-                <label className="mb-1.5 block text-[13px] text-muted">Heading</label>
-                <Input
-                  value={content.story.heading}
-                  onChange={(e) => updateStory("heading", e.target.value)}
-                />
-              </div>
-              <div>
-                <label className="mb-1.5 block text-[13px] text-muted">Body</label>
-                <Textarea
-                  rows={5}
-                  value={content.story.body}
-                  onChange={(e) => updateStory("body", e.target.value)}
-                  placeholder="How you met, the proposal, what you are excited for…"
-                />
-              </div>
-            </div>
-          </EditorSection>
-
-          <EditorSection
-            title="Wedding details"
-            visible={content.details.visible}
-            onVisibleChange={(next) => updateDetails("visible", next)}
-          >
-            <div className="space-y-4">
-              <div className="space-y-3">
-                <p className="text-[13px] font-medium text-ink">Ceremony</p>
-                <Input
-                  value={content.details.ceremonyVenue}
-                  onChange={(e) => updateDetails("ceremonyVenue", e.target.value)}
-                  placeholder="Venue name"
-                />
-                <Textarea
-                  rows={2}
-                  value={content.details.ceremonyAddress}
-                  onChange={(e) => updateDetails("ceremonyAddress", e.target.value)}
-                  placeholder="Address"
-                />
-                <Input
-                  value={content.details.ceremonyTime}
-                  onChange={(e) => updateDetails("ceremonyTime", e.target.value)}
-                  placeholder="Time, e.g. 4:00 PM"
-                />
-              </div>
-              <div className="space-y-3 border-t border-hairline pt-4">
-                <p className="text-[13px] font-medium text-ink">Reception</p>
-                <Input
-                  value={content.details.receptionVenue}
-                  onChange={(e) => updateDetails("receptionVenue", e.target.value)}
-                  placeholder="Venue name"
-                />
-                <Textarea
-                  rows={2}
-                  value={content.details.receptionAddress}
-                  onChange={(e) => updateDetails("receptionAddress", e.target.value)}
-                  placeholder="Address"
-                />
-                <Input
-                  value={content.details.receptionTime}
-                  onChange={(e) => updateDetails("receptionTime", e.target.value)}
-                  placeholder="Time, e.g. 6:00 PM"
-                />
-              </div>
-            </div>
-          </EditorSection>
-
-          <EditorSection
-            title="Schedule"
-            visible={content.schedule.visible}
-            onVisibleChange={(next) =>
-              persistContent({ ...content, schedule: { ...content.schedule, visible: next } })
-            }
-          >
-            <ul className="space-y-4">
-              {content.schedule.items.map((item, index) => (
-                <li key={index} className="space-y-2 rounded-[var(--radius-inner)] bg-well p-3 shadow-recessed">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-[13px] text-muted">Item {index + 1}</span>
-                    <button
-                      type="button"
-                      onClick={() => removeScheduleItem(index)}
-                      className="text-[13px] text-muted hover:text-rosewood"
-                    >
-                      Remove
-                    </button>
-                  </div>
-                  <Input
-                    value={item.time}
-                    onChange={(e) => updateScheduleItem(index, "time", e.target.value)}
-                    placeholder="Time"
-                  />
-                  <Input
-                    value={item.title}
-                    onChange={(e) => updateScheduleItem(index, "title", e.target.value)}
-                    placeholder="Title"
-                  />
-                  <Input
-                    value={item.description}
-                    onChange={(e) => updateScheduleItem(index, "description", e.target.value)}
-                    placeholder="Description (optional)"
-                  />
-                </li>
-              ))}
-            </ul>
-            <Button type="button" variant="default" onClick={addScheduleItem}>
-              Add schedule item
-            </Button>
-          </EditorSection>
-
-          <EditorSection
-            title="Gallery"
-            visible={content.gallery.visible}
-            onVisibleChange={setGalleryVisible}
-          >
-            <p className="text-[13px] text-muted">
-              Photos appear on your site only when this section is shown and has at least one image.
-              Removing a photo clears it from the site; storage cleanup is deferred.
-            </p>
-            <GalleryEditorFields
-              projectId={projectId}
-              images={content.gallery.images}
-              onChange={(images) =>
-                persistContent({
-                  ...content,
-                  gallery: { ...content.gallery, images },
-                })
-              }
-            />
-          </EditorSection>
-
-          <EditorSection
-            title="Wedding party"
-            visible={content.party.visible}
-            onVisibleChange={setPartyVisible}
-          >
-            <p className="text-[13px] text-muted">
-              Members appear when this section is shown and has at least one person with a name.
-            </p>
-            <PartyEditorFields
-              projectId={projectId}
-              heading={content.party.heading}
-              members={content.party.members}
-              onHeadingChange={(heading) =>
-                persistContent({
-                  ...content,
-                  party: {
-                    ...content.party,
-                    heading: heading.trim() || undefined,
-                  },
-                })
-              }
-              onChange={(members) =>
-                persistContent({
-                  ...content,
-                  party: { ...content.party, members },
-                })
-              }
-            />
-          </EditorSection>
-
-          <EditorSection
-            title="Travel & stay"
-            visible={content.travel.visible}
-            onVisibleChange={setTravelVisible}
-          >
-            <TravelEditorFields
-              body={content.travel.body}
-              places={content.travel.places}
-              onBodyChange={(body) => updateTravel({ body })}
-              onPlacesChange={(places) => updateTravel({ places })}
-            />
-          </EditorSection>
-
-          <EditorSection
-            title="FAQ"
-            visible={content.faq.visible}
-            onVisibleChange={setFaqVisible}
-          >
-            <p className="text-[13px] text-muted">
-              Questions appear when this section is shown and has at least one complete Q&amp;A.
-            </p>
-            <FaqEditorFields
-              heading={content.faq.heading}
-              items={content.faq.items}
-              onHeadingChange={(heading) =>
-                persistContent({
-                  ...content,
-                  faq: {
-                    ...content.faq,
-                    heading: heading.trim() || undefined,
-                  },
-                })
-              }
-              onChange={(items) =>
-                persistContent({
-                  ...content,
-                  faq: { ...content.faq, items },
-                })
-              }
-            />
-          </EditorSection>
+          {sectionOrder.map((id, index) => renderReorderableSection(id, index))}
 
           <ExternalRegistryEditor
             projectId={projectId}
@@ -611,10 +826,20 @@ export function WebsiteEditor({
           </EditorSection>
         </div>
 
-        <div className="min-w-0">
+        <div
+          className={cn(
+            "min-w-0",
+            isPlanner && "xl:sticky xl:top-6 xl:self-start",
+          )}
+        >
           <p className="mb-2 text-[13px] font-medium text-ink">Live preview</p>
           <Card className="overflow-hidden p-0">
-            <div className="max-h-[min(80vh,900px)] overflow-y-auto">
+            <div
+              className={cn(
+                "max-h-[min(80vh,900px)] overflow-y-auto",
+                isPlanner && "xl:max-h-[calc(100vh-6rem)]",
+              )}
+            >
               <WeddingSiteView
                 content={content}
                 template={template}

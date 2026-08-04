@@ -9,6 +9,7 @@ import {
 } from "./meal-types";
 import { RsvpAccessCard } from "./RsvpAccessCard";
 import { RsvpSubmissionsPanel } from "./RsvpSubmissionsPanel";
+import { SongRequestsCard } from "./SongRequestsCard";
 import type { RsvpSubmission } from "./rsvp-submissions";
 import {
   RSVP_STATUSES,
@@ -380,6 +381,10 @@ export default async function GuestsPage({
         mealServiceStyle={mealServiceStyle}
         mealSelectionActive={mealSelectionActive}
         mealOptions={mealOptions}
+      />
+
+      <SongRequestsCard
+        projectId={projectId}
         songRequestsEnabled={songRequestsEnabled}
       />
 

@@ -1,4 +1,9 @@
-import { travelHasContent, type WeddingWebsiteContent } from "../types";
+import {
+  resolveSectionOrder,
+  travelHasContent,
+  type WebsiteSectionId,
+  type WeddingWebsiteContent,
+} from "../types";
 
 export type SectionVariant =
   | "classic"
@@ -10,6 +15,16 @@ export type SectionVariant =
 export type SectionAnchor = {
   id: string;
   label: string;
+};
+
+const ANCHOR_LABEL: Record<WebsiteSectionId, string> = {
+  story: "Our story",
+  details: "Details",
+  schedule: "Schedule",
+  gallery: "Gallery",
+  party: "Party",
+  travel: "Travel",
+  faq: "FAQ",
 };
 
 export function showStory(content: WeddingWebsiteContent): boolean {
@@ -51,17 +66,33 @@ export function showFaq(content: WeddingWebsiteContent): boolean {
   );
 }
 
+function sectionIsShown(
+  id: WebsiteSectionId,
+  content: WeddingWebsiteContent,
+): boolean {
+  switch (id) {
+    case "story":
+      return showStory(content);
+    case "details":
+      return showDetails(content);
+    case "schedule":
+      return showSchedule(content);
+    case "gallery":
+      return showGallery(content);
+    case "party":
+      return showParty(content);
+    case "travel":
+      return showTravel(content);
+    case "faq":
+      return showFaq(content);
+  }
+}
+
 /** In-page anchors for SiteNav — only sections that will actually render. */
 export function buildSectionAnchors(
   content: WeddingWebsiteContent,
 ): SectionAnchor[] {
-  const anchors: SectionAnchor[] = [];
-  if (showStory(content)) anchors.push({ id: "story", label: "Our story" });
-  if (showDetails(content)) anchors.push({ id: "details", label: "Details" });
-  if (showSchedule(content)) anchors.push({ id: "schedule", label: "Schedule" });
-  if (showGallery(content)) anchors.push({ id: "gallery", label: "Gallery" });
-  if (showParty(content)) anchors.push({ id: "party", label: "Party" });
-  if (showTravel(content)) anchors.push({ id: "travel", label: "Travel" });
-  if (showFaq(content)) anchors.push({ id: "faq", label: "FAQ" });
-  return anchors;
+  return resolveSectionOrder(content)
+    .filter((id) => sectionIsShown(id, content))
+    .map((id) => ({ id, label: ANCHOR_LABEL[id] }));
 }

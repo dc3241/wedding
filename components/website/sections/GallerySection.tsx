@@ -1,4 +1,4 @@
-import type { WeddingWebsiteContent } from "../types";
+import type { PhotoShape, WeddingWebsiteContent } from "../types";
 import { Band, Wrap } from "../layout";
 import { PhotoTile } from "./PhotoTile";
 import { SectionHead } from "./SectionHead";
@@ -11,10 +11,20 @@ type GallerySectionProps = {
   tint?: boolean;
 };
 
+function templateGalleryShape(variant: SectionVariant): PhotoShape | undefined {
+  if (variant === "minimalist" || variant === "garden") return "square";
+  if (variant === "romance") return "arch";
+  return undefined;
+}
+
 export function GallerySection({ content, variant, tint }: GallerySectionProps) {
   if (!showGallery(content)) return null;
 
-  const { images } = content.gallery;
+  const { images, imageShape } = content.gallery;
+  const shape = imageShape ?? templateGalleryShape(variant);
+  // Explicit couple-chosen shape → uniform grid so circle/arch read correctly.
+  // Template default on classic/editorial keeps the masonry layouts.
+  const useUniformGrid = imageShape != null;
 
   return (
     <Band id="gallery" tint={tint}>
@@ -37,7 +47,19 @@ export function GallerySection({ content, variant, tint }: GallerySectionProps) 
           Gallery
         </SectionHead>
 
-        {variant === "editorial" ? (
+        {useUniformGrid ? (
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+            {images.map((image, index) => (
+              <PhotoTile
+                key={`${image.url}-${index}`}
+                variant={variant}
+                url={image.url}
+                caption={image.caption}
+                shape={shape}
+              />
+            ))}
+          </div>
+        ) : variant === "editorial" ? (
           <div
             className="grid gap-3.5 md:grid-cols-[1.6fr_1fr] md:grid-rows-2"
             style={{ minHeight: 0 }}

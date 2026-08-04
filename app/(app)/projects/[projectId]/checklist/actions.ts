@@ -12,6 +12,13 @@ function checklistPath(projectId: string) {
   return `/projects/${projectId}/checklist`;
 }
 
+function revalidateChecklist(projectId: string) {
+  revalidatePath(checklistPath(projectId));
+  revalidatePath(`/projects/${projectId}`);
+  revalidatePath(`/projects/${projectId}/calendar`);
+  revalidatePath("/calendar");
+}
+
 async function maxPosition(projectId: string, phase: string | null) {
   const supabase = await createClient();
 
@@ -50,7 +57,7 @@ export async function addTask(
 
   if (error) throw error;
 
-  revalidatePath(checklistPath(projectId));
+  revalidateChecklist(projectId);
 }
 
 export async function toggleTask(taskId: string, nextStatus: string) {
@@ -65,7 +72,7 @@ export async function toggleTask(taskId: string, nextStatus: string) {
 
   if (error) throw error;
 
-  revalidatePath(checklistPath(data.project_id));
+  revalidateChecklist(data.project_id);
 }
 
 export async function deleteTask(taskId: string) {
@@ -80,7 +87,7 @@ export async function deleteTask(taskId: string) {
 
   if (error) throw error;
 
-  revalidatePath(checklistPath(data.project_id));
+  revalidateChecklist(data.project_id);
 }
 
 export async function updateTaskTitle(taskId: string, title: string) {
@@ -98,7 +105,7 @@ export async function updateTaskTitle(taskId: string, title: string) {
 
   if (error) throw error;
 
-  revalidatePath(checklistPath(data.project_id));
+  revalidateChecklist(data.project_id);
 }
 
 export async function generateStarterChecklist(projectId: string) {
@@ -145,5 +152,5 @@ export async function generateStarterChecklist(projectId: string) {
 
   if (error) throw error;
 
-  revalidatePath(checklistPath(projectId));
+  revalidateChecklist(projectId);
 }

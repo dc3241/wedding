@@ -15,6 +15,63 @@ export type PartyMember = {
   imageUrl?: string;
 };
 
+/** Party section arrangement. Undefined === stacked (today's default). */
+export type PartyLayout = "stacked" | "horizontal" | "vertical";
+
+/**
+ * Schedule / timeline arrangement on the public site.
+ * Undefined resolves to centered (fixes the old left-rail bias).
+ */
+export type ScheduleLayout = "centered" | "rail" | "alternating";
+
+/** Photo frame shape for gallery / party tiles. Undefined === template default. */
+export type PhotoShape = "rect" | "square" | "circle" | "arch";
+
+/**
+ * Reorderable body sections on the public site (hero / RSVP / registry stay fixed).
+ * Undefined `sectionOrder` resolves to DEFAULT_SECTION_ORDER.
+ */
+export type WebsiteSectionId =
+  | "story"
+  | "details"
+  | "schedule"
+  | "gallery"
+  | "party"
+  | "travel"
+  | "faq";
+
+export const DEFAULT_SECTION_ORDER: readonly WebsiteSectionId[] = [
+  "story",
+  "details",
+  "schedule",
+  "gallery",
+  "party",
+  "travel",
+  "faq",
+] as const;
+
+export function isWebsiteSectionId(value: string): value is WebsiteSectionId {
+  return (DEFAULT_SECTION_ORDER as readonly string[]).includes(value);
+}
+
+/** Drop unknowns, de-dupe, append any missing defaults. */
+export function normalizeSectionOrder(
+  order: readonly string[] | undefined | null,
+): WebsiteSectionId[] {
+  const seen = new Set<WebsiteSectionId>();
+  const out: WebsiteSectionId[] = [];
+  for (const id of order ?? []) {
+    if (isWebsiteSectionId(id) && !seen.has(id)) {
+      seen.add(id);
+      out.push(id);
+    }
+  }
+  for (const id of DEFAULT_SECTION_ORDER) {
+    if (!seen.has(id)) out.push(id);
+  }
+  return out;
+}
+
 export type FaqItem = {
   question: string;
   answer: string;
@@ -97,6 +154,8 @@ export type WeddingWebsiteContent = {
   schedule: {
     items: ScheduleItem[];
     visible: boolean;
+    /** Undefined === centered. */
+    layout?: ScheduleLayout;
   };
   travel: {
     /** Intro blurb; also the legacy freeform field. */
@@ -107,10 +166,16 @@ export type WeddingWebsiteContent = {
   gallery: {
     visible: boolean;
     images: GalleryImage[];
+    /** Undefined === template-chosen shape. */
+    imageShape?: PhotoShape;
   };
   party: {
     visible: boolean;
     heading?: string;
+    /** Undefined === stacked (today's full-width blocks). */
+    layout?: PartyLayout;
+    /** Undefined === template-chosen shape. */
+    imageShape?: PhotoShape;
     members: PartyMember[];
   };
   faq: {
@@ -125,7 +190,18 @@ export type WeddingWebsiteContent = {
   rsvp: {
     visible: boolean;
   };
+  /**
+   * Order of body sections on the public site.
+   * Undefined === DEFAULT_SECTION_ORDER. Hero / RSVP / registry stay fixed.
+   */
+  sectionOrder?: WebsiteSectionId[];
 };
+
+export function resolveSectionOrder(
+  content: Pick<WeddingWebsiteContent, "sectionOrder">,
+): WebsiteSectionId[] {
+  return normalizeSectionOrder(content.sectionOrder);
+}
 
 export type WeddingWebsiteRow = {
   id: string;
@@ -210,6 +286,59 @@ function parseOptionalHeading(
   const trimmed = value.trim();
   return trimmed || undefined;
 }
+
+function parsePartyLayout(
+  value: unknown,
+  fallback: PartyLayout | undefined,
+): PartyLayout | undefined {
+  if (value === undefined) return fallback;
+  if (value === "stacked" || value === "horizontal" || value === "vertical") {
+    return value;
+  }
+  return fallback;
+}
+
+function parseScheduleLayout(
+  value: unknown,
+  fallback: ScheduleLayout | undefined,
+): ScheduleLayout | undefined {
+  if (value === undefined) return fallback;
+  if (value === "centered" || value === "rail" || value === "alternating") {
+    return value;
+  }
+  return fallback;
+}
+
+function parsePhotoShape(
+  value: unknown,
+  fallback: PhotoShape | undefined,
+): PhotoShape | undefined {
+  // null / "" = explicit clear (do not keep the previously saved shape).
+  if (value === null || value === "") return undefined;
+  if (value === undefined) return fallback;
+  if (
+    value === "rect" ||
+    value === "square" ||
+    value === "circle" ||
+    value === "arch"
+  ) {
+    return value;
+  }
+  return fallback;
+}
+
+function parseSectionOrder(
+  value: unknown,
+  fallback: WebsiteSectionId[] | undefined,
+): WebsiteSectionId[] | undefined {
+  if (value === undefined) return fallback;
+  if (!Array.isArray(value)) return fallback;
+  const ids = value.filter(
+    (item): item is string => typeof item === "string",
+  );
+  return normalizeSectionOrder(ids);
+}
+
 
 function parseScheduleItems(value: unknown): ScheduleItem[] {
   if (!Array.isArray(value)) return [];
@@ -375,6 +504,7 @@ export function parseWeddingWebsiteContent(
           ? base.schedule.items
           : parseScheduleItems(schedule.items),
       visible: asBoolean(schedule.visible, base.schedule.visible),
+      layout: parseScheduleLayout(schedule.layout, base.schedule.layout),
     },
     travel: {
       body: asString(travel.body, base.travel.body),
@@ -390,10 +520,13 @@ export function parseWeddingWebsiteContent(
         gallery.images === undefined
           ? base.gallery.images
           : parseGalleryImages(gallery.images),
+      imageShape: parsePhotoShape(gallery.imageShape, base.gallery.imageShape),
     },
     party: {
       visible: asBoolean(party.visible, base.party.visible),
       heading: parseOptionalHeading(party.heading, base.party.heading),
+      layout: parsePartyLayout(party.layout, base.party.layout),
+      imageShape: parsePhotoShape(party.imageShape, base.party.imageShape),
       members:
         party.members === undefined
           ? base.party.members
@@ -411,5 +544,6 @@ export function parseWeddingWebsiteContent(
     rsvp: {
       visible: asBoolean(rsvp.visible, base.rsvp.visible),
     },
+    sectionOrder: parseSectionOrder(input.sectionOrder, base.sectionOrder),
   };
 }

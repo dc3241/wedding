@@ -52,7 +52,7 @@ export function FaqEditorFields({
         <Input
           value={heading ?? ""}
           onChange={(e) => onHeadingChange(e.target.value)}
-          placeholder="FAQ"
+          placeholder="Questions & Answers"
         />
       </div>
 

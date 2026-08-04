@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import type { PhotoShape } from "../types";
 import type { SectionVariant } from "./section-meta";
 import { cn } from "@/lib/cn";
 
@@ -10,10 +11,47 @@ type PhotoTileProps = {
   caption?: string;
   alt?: string;
   className?: string;
-  shape?: "rect" | "square" | "circle" | "arch";
+  shape?: PhotoShape;
   /** Fill parent grid cell height (masonry). */
   fill?: boolean;
 };
+
+function templateDefaultShape(variant: SectionVariant): PhotoShape {
+  if (variant === "minimalist") return "square";
+  if (variant === "romance") return "arch";
+  return "rect";
+}
+
+function shapeFrameClass(
+  shape: PhotoShape,
+  variant: SectionVariant,
+  fill: boolean | undefined,
+): string {
+  const radius =
+    shape === "circle"
+      ? "rounded-full"
+      : shape === "arch"
+        ? "rounded-t-[999px] rounded-b-[10px]"
+        : shape === "square"
+          ? variant === "garden"
+            ? "rounded-lg"
+            : "rounded-none"
+          : variant === "garden"
+            ? "rounded-lg"
+            : "rounded";
+
+  if (fill) {
+    return cn("size-full", radius);
+  }
+
+  if (shape === "circle") return cn("aspect-square", radius);
+  if (shape === "square") return cn("aspect-square", radius);
+  if (shape === "arch") return cn("aspect-[3/4]", radius);
+  return cn(
+    variant === "garden" ? "aspect-square" : "aspect-[4/5]",
+    radius,
+  );
+}
 
 export function PhotoTile({
   variant,
@@ -27,27 +65,8 @@ export function PhotoTile({
   const [failed, setFailed] = useState(false);
   const showImage = Boolean(url) && !failed;
 
-  const resolvedShape =
-    shape ??
-    (variant === "minimalist"
-      ? "square"
-      : variant === "romance"
-        ? "arch"
-        : "rect");
-
-  const frameClass = fill
-    ? "size-full"
-    : resolvedShape === "circle"
-      ? "aspect-square rounded-full"
-      : resolvedShape === "square"
-        ? variant === "garden"
-          ? "aspect-square rounded-lg"
-          : "aspect-square rounded-none"
-        : resolvedShape === "arch"
-          ? "aspect-[3/4] rounded-t-[999px] rounded-b-[10px]"
-          : variant === "garden"
-            ? "aspect-square rounded-lg"
-            : "aspect-[4/5] rounded";
+  const resolvedShape = shape ?? templateDefaultShape(variant);
+  const frameClass = shapeFrameClass(resolvedShape, variant, fill);
 
   return (
     <figure className={cn("min-w-0", fill && "h-full", className)}>

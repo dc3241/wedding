@@ -1,31 +1,29 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { resolveBusinessAccountId } from "@/lib/billing/resolve-account";
-import { createClient } from "@/utils/supabase/server";
 import {
   allDayStartsAt,
   timedStartsAt,
-} from "./calendar-source";
-import { isEventKind, type EventKind } from "./types";
+} from "@/app/(app)/calendar/calendar-source";
+import {
+  isEventKind,
+  type EventKind,
+} from "@/app/(app)/calendar/types";
+import { createClient } from "@/utils/supabase/server";
 
-const CALENDAR_PATH = "/calendar";
-
-export type CreateCalendarEventInput = {
+export type CreateProjectCalendarEventInput = {
   title: string;
   kind: string;
   /** YYYY-MM-DD */
   date: string;
   allDay: boolean;
-  /** HH:MM local, required when !allDay */
   startTime?: string | null;
   endTime?: string | null;
   location?: string | null;
   notes?: string | null;
-  projectId?: string | null;
 };
 
-export type UpdateCalendarEventFields = {
+export type UpdateProjectCalendarEventFields = {
   title?: string;
   kind?: string;
   date?: string;
@@ -34,8 +32,17 @@ export type UpdateCalendarEventFields = {
   endTime?: string | null;
   location?: string | null;
   notes?: string | null;
-  projectId?: string | null;
 };
+
+function calendarPath(projectId: string) {
+  return `/projects/${projectId}/calendar`;
+}
+
+function revalidateProjectCalendar(projectId: string) {
+  revalidatePath(calendarPath(projectId));
+  revalidatePath(`/projects/${projectId}`);
+  revalidatePath("/calendar");
+}
 
 function trimOrNull(value: string | undefined | null) {
   const trimmed = value?.trim();
@@ -89,8 +96,31 @@ function resolveTimes(input: {
   return { ok: true, startsAt, endsAt };
 }
 
-export async function createCalendarEvent(
-  input: CreateCalendarEventInput,
+async function loadAccessibleProject(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  projectId: string,
+): Promise<
+  | { ok: true; accountId: string }
+  | { ok: false; error: string }
+> {
+  const { data, error } = await supabase
+    .from("projects")
+    .select("id, account_id")
+    .eq("id", projectId)
+    .maybeSingle();
+
+  if (error) {
+    return { ok: false, error: error.message };
+  }
+  if (!data) {
+    return { ok: false, error: "Project not found." };
+  }
+  return { ok: true, accountId: data.account_id as string };
+}
+
+export async function createProjectCalendarEvent(
+  projectId: string,
+  input: CreateProjectCalendarEventInput,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const title = input.title.trim();
   if (!title) {
@@ -109,20 +139,12 @@ export async function createCalendarEvent(
   if (!times.ok) return times;
 
   const supabase = await createClient();
-
-  let accountId: string;
-  try {
-    accountId = await resolveBusinessAccountId(supabase);
-  } catch (err) {
-    return {
-      ok: false,
-      error: err instanceof Error ? err.message : "No business account found.",
-    };
-  }
+  const project = await loadAccessibleProject(supabase, projectId);
+  if (!project.ok) return project;
 
   const { error } = await supabase.from("calendar_events").insert({
-    account_id: accountId,
-    project_id: trimOrNull(input.projectId),
+    account_id: project.accountId,
+    project_id: projectId,
     title,
     event_kind: kindResult.kind,
     starts_at: times.startsAt,
@@ -136,33 +158,22 @@ export async function createCalendarEvent(
     return { ok: false, error: error.message };
   }
 
-  revalidatePath(CALENDAR_PATH);
-  const linkedProjectId = trimOrNull(input.projectId);
-  if (linkedProjectId) {
-    revalidatePath(`/projects/${linkedProjectId}/calendar`);
-    revalidatePath(`/projects/${linkedProjectId}`);
-  }
+  revalidateProjectCalendar(projectId);
   return { ok: true };
 }
 
-export async function updateCalendarEvent(
+export async function updateProjectCalendarEvent(
+  projectId: string,
   id: string,
-  fields: UpdateCalendarEventFields,
+  fields: UpdateProjectCalendarEventFields,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   if (!id) {
     return { ok: false, error: "Event id is required." };
   }
 
   const supabase = await createClient();
-
-  try {
-    await resolveBusinessAccountId(supabase);
-  } catch (err) {
-    return {
-      ok: false,
-      error: err instanceof Error ? err.message : "No business account found.",
-    };
-  }
+  const project = await loadAccessibleProject(supabase, projectId);
+  if (!project.ok) return project;
 
   const payload: Record<string, unknown> = {};
 
@@ -186,9 +197,9 @@ export async function updateCalendarEvent(
   if (fields.notes !== undefined) {
     payload.notes = trimOrNull(fields.notes);
   }
-  if (fields.projectId !== undefined) {
-    payload.project_id = trimOrNull(fields.projectId);
-  }
+
+  // Keep events locked to this project on the couple calendar.
+  payload.project_id = projectId;
 
   const touchingSchedule =
     fields.date !== undefined ||
@@ -197,11 +208,11 @@ export async function updateCalendarEvent(
     fields.endTime !== undefined;
 
   if (touchingSchedule) {
-    // Need current row to fill missing schedule fields.
     const { data: current, error: readError } = await supabase
       .from("calendar_events")
       .select("starts_at, ends_at, all_day")
       .eq("id", id)
+      .eq("project_id", projectId)
       .maybeSingle();
 
     if (readError) {
@@ -258,31 +269,22 @@ export async function updateCalendarEvent(
     return { ok: true };
   }
 
-  const { data, error } = await supabase
+  const { error } = await supabase
     .from("calendar_events")
     .update(payload)
     .eq("id", id)
-    .select("project_id")
-    .maybeSingle();
+    .eq("project_id", projectId);
 
   if (error) {
     return { ok: false, error: error.message };
   }
 
-  revalidatePath(CALENDAR_PATH);
-  const linkedProjectId =
-    fields.projectId !== undefined
-      ? trimOrNull(fields.projectId)
-      : (data?.project_id ?? null);
-  if (linkedProjectId) {
-    revalidatePath(`/projects/${linkedProjectId}/calendar`);
-    revalidatePath(`/projects/${linkedProjectId}`);
-  }
-
+  revalidateProjectCalendar(projectId);
   return { ok: true };
 }
 
-export async function deleteCalendarEvent(
+export async function deleteProjectCalendarEvent(
+  projectId: string,
   id: string,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   if (!id) {
@@ -290,31 +292,19 @@ export async function deleteCalendarEvent(
   }
 
   const supabase = await createClient();
+  const project = await loadAccessibleProject(supabase, projectId);
+  if (!project.ok) return project;
 
-  try {
-    await resolveBusinessAccountId(supabase);
-  } catch (err) {
-    return {
-      ok: false,
-      error: err instanceof Error ? err.message : "No business account found.",
-    };
-  }
-
-  const { data, error } = await supabase
+  const { error } = await supabase
     .from("calendar_events")
     .delete()
     .eq("id", id)
-    .select("project_id")
-    .maybeSingle();
+    .eq("project_id", projectId);
 
   if (error) {
     return { ok: false, error: error.message };
   }
 
-  revalidatePath(CALENDAR_PATH);
-  if (data?.project_id) {
-    revalidatePath(`/projects/${data.project_id}/calendar`);
-    revalidatePath(`/projects/${data.project_id}`);
-  }
+  revalidateProjectCalendar(projectId);
   return { ok: true };
 }

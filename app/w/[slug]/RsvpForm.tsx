@@ -90,8 +90,9 @@ export function RsvpForm({
 
   const [name, setName] = useState("");
   const [response, setResponse] = useState<"yes" | "no" | "">("");
-  const [partySize, setPartySize] = useState(1);
-  const [email, setEmail] = useState("");
+  // One toggle per invited seat: index 0 is the invited person, the rest are
+  // their guests. Headcount is derived from these — never typed.
+  const [attendingSeats, setAttendingSeats] = useState<boolean[]>([true]);
   const [message, setMessage] = useState("");
   const [honeypot, setHoneypot] = useState("");
   const [attendees, setAttendees] = useState<AttendeeDraft[]>([emptyAttendee()]);
@@ -105,7 +106,10 @@ export function RsvpForm({
   const showBuffetAttendeeRows =
     buffetLike && (showDietaryDetails || songRequestsEnabled);
 
-  const invitedCap = household?.partySize ?? null;
+  const attendingCount = attendingSeats.reduce(
+    (total, seat) => (seat ? total + 1 : total),
+    0,
+  );
 
   useEffect(() => {
     if (!initialGuestToken?.trim()) return;
@@ -135,17 +139,22 @@ export function RsvpForm({
 
   useEffect(() => {
     if (plated || showBuffetAttendeeRows) {
-      setAttendees((current) => resizeAttendees(current, Math.max(1, partySize)));
+      setAttendees((current) =>
+        resizeAttendees(current, Math.max(1, attendingCount)),
+      );
     }
-  }, [plated, showBuffetAttendeeRows, partySize]);
+  }, [plated, showBuffetAttendeeRows, attendingCount]);
 
   function applyHousehold(match: RsvpHouseholdMatch) {
     setHousehold(match);
     setCandidates([]);
     setLookupMessage(null);
     setName(match.partyLabel);
-    // Start at 1 so parties of 2+ must choose how many are coming (invited cap is a soft max).
-    setPartySize(1);
+    // Only the invited person starts checked, so parties of 2+ pick who is coming.
+    setAttendingSeats([
+      true,
+      ...Array<boolean>(Math.max(0, match.partySize - 1)).fill(false),
+    ]);
     setGatePhase("form");
   }
 
@@ -180,9 +189,10 @@ export function RsvpForm({
     );
   }
 
-  function handlePartySizeChange(value: number) {
-    const next = Math.min(20, Math.max(1, Math.floor(Number(value)) || 1));
-    setPartySize(next);
+  function toggleSeat(index: number, attending: boolean) {
+    setAttendingSeats((current) =>
+      current.map((seat, i) => (i === index ? attending : seat)),
+    );
   }
 
   function handleSubmit() {
@@ -226,8 +236,10 @@ export function RsvpForm({
         slug,
         name,
         response,
-        partySize: plated && response === "yes" ? attendees.length : partySize,
-        email: email || undefined,
+        partySize:
+          plated && response === "yes"
+            ? attendees.length
+            : Math.max(1, attendingCount),
         message: message || undefined,
         honeypot,
         attendees: payloadAttendees,
@@ -238,8 +250,7 @@ export function RsvpForm({
         setFormState("success");
         setName(household?.partyLabel ?? "");
         setResponse("");
-        setPartySize(1);
-        setEmail("");
+        setAttendingSeats((current) => current.map((_, i) => i === 0));
         setMessage("");
         setAttendees([emptyAttendee()]);
         setShowDietaryDetails(false);
@@ -255,10 +266,7 @@ export function RsvpForm({
     (attendees.length >= 1 &&
       attendees.every((row) => row.name.trim() && row.meal_option_id));
 
-  const overCap =
-    invitedCap != null &&
-    ((plated && response === "yes" && attendees.length > invitedCap) ||
-      (!plated && partySize > invitedCap));
+  const attendingReady = response !== "yes" || attendingCount >= 1;
 
   const inputClass =
     "w-full rounded-lg border px-3 py-2.5 text-[15px] outline-none focus-visible:ring-2 focus-visible:ring-offset-1";
@@ -267,6 +275,24 @@ export function RsvpForm({
     background: "var(--ws-surface)",
     color: "var(--ws-ink)",
   } as const;
+  // Native <option> popups inherit the on-dark --ws-ink→white remap and paint
+  // illegibly on the OS light list. Rebind ink/surface to non-remapped theme
+  // tokens so both the closed control and open options stay dark-on-light.
+  const mealSelectStyle: CSSProperties = {
+    borderColor: "var(--ws-border)",
+    color: "var(--ws-ink)",
+    backgroundColor: "var(--ws-surface)",
+    ...(onDark
+      ? ({
+          "--ws-ink": "var(--ws-accent-deep)",
+          "--ws-surface": "var(--ws-bg)",
+        } as CSSProperties)
+      : null),
+  };
+  const mealOptionStyle: CSSProperties = {
+    color: "var(--ws-ink)",
+    backgroundColor: "var(--ws-surface)",
+  };
   const submitStyle = onDark
     ? {
         background: "#ffffff",
@@ -401,15 +427,12 @@ export function RsvpForm({
     );
   }
 
-  // style=none or plated-with-zero-options: classic headcount (unchanged / misconfig fallback).
-  // Buffet-like: headcount only after Yes.
-  const showClassicPartySize =
-    mealServiceStyle === "none" ||
-    (mealServiceStyle === "plated" && mealOptions.length === 0) ||
-    (response === "yes" && buffetLike);
+  // Households of one have nothing to pick — their headcount is themselves.
+  const showAttendingPicker = response === "yes" && attendingSeats.length > 1;
 
-  const showPlatedRows = response === "yes" && plated;
-  const showBuffetDietary = response === "yes" && buffetLike;
+  const showPlatedRows = response === "yes" && plated && attendingCount > 0;
+  const showBuffetDietary =
+    response === "yes" && buffetLike && attendingCount > 0;
 
   return (
     <div className="space-y-5" style={darkVars}>
@@ -492,64 +515,54 @@ export function RsvpForm({
         </div>
       </fieldset>
 
-      {showClassicPartySize ? (
-        <div>
-          <label
-            htmlFor="rsvp-party-size"
-            className="mb-1.5 block text-[13px] font-medium"
+      {showAttendingPicker ? (
+        <fieldset>
+          <legend
+            className="mb-2 block text-[13px] font-medium"
             style={{ color: "var(--ws-muted)" }}
           >
-            {buffetLike || plated
-              ? "How many attending? (including you)"
-              : "Party size (including you)"}
-          </label>
-          <input
-            id="rsvp-party-size"
-            type="number"
-            min={1}
-            max={20}
-            value={partySize}
-            onChange={(e) => handlePartySizeChange(Number(e.target.value))}
-            className={cn(inputClass, "max-w-[8rem] tabular-nums")}
-            style={inputStyle}
-          />
-          {overCap ? (
+            Who&apos;s coming?
+          </legend>
+          <ul className="space-y-2">
+            {attendingSeats.map((attending, index) => (
+              <li key={index}>
+                <label
+                  className="flex cursor-pointer items-center gap-3 rounded-lg border px-4 py-3 text-[15px] font-medium transition-colors"
+                  style={{
+                    borderColor: attending
+                      ? "var(--ws-accent)"
+                      : "var(--ws-border)",
+                    background: attending
+                      ? "var(--ws-tint)"
+                      : "var(--ws-surface)",
+                    color: "var(--ws-ink)",
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={attending}
+                    onChange={(e) => toggleSeat(index, e.target.checked)}
+                    className="size-4"
+                    style={{ accentColor: "var(--ws-accent)" }}
+                  />
+                  {index === 0
+                    ? household?.partyLabel || "You"
+                    : `Guest ${index + 1}`}
+                </label>
+              </li>
+            ))}
+          </ul>
+          {attendingCount === 0 ? (
             <p className="mt-1.5 text-[13px]" style={{ color: "var(--ws-muted)" }}>
-              That&apos;s more than your invited count ({invitedCap}) — the couple
-              will review.
+              Pick at least one person, or choose &ldquo;Regretfully
+              declines&rdquo;.
             </p>
           ) : null}
-        </div>
+        </fieldset>
       ) : null}
 
       {showPlatedRows ? (
         <div className="space-y-4">
-          <div>
-            <label
-              htmlFor="rsvp-attending-count"
-              className="mb-1.5 block text-[13px] font-medium"
-              style={{ color: "var(--ws-muted)" }}
-            >
-              How many attending? (including you)
-            </label>
-            <input
-              id="rsvp-attending-count"
-              type="number"
-              min={1}
-              max={20}
-              value={partySize}
-              onChange={(e) => handlePartySizeChange(Number(e.target.value))}
-              className={cn(inputClass, "max-w-[8rem] tabular-nums")}
-              style={inputStyle}
-            />
-            {overCap ? (
-              <p className="mt-1.5 text-[13px]" style={{ color: "var(--ws-muted)" }}>
-                That&apos;s more than your invited count ({invitedCap}) — the couple
-                will review.
-              </p>
-            ) : null}
-          </div>
-
           <ul className="space-y-3">
             {attendees.map((row, index) => (
               <li
@@ -598,11 +611,17 @@ export function RsvpForm({
                       updateAttendee(index, "meal_option_id", e.target.value)
                     }
                     className={inputClass}
-                    style={inputStyle}
+                    style={mealSelectStyle}
                   >
-                    <option value="">Select a meal</option>
+                    <option value="" style={mealOptionStyle}>
+                      Select a meal
+                    </option>
                     {mealOptions.map((option) => (
-                      <option key={option.id} value={option.id}>
+                      <option
+                        key={option.id}
+                        value={option.id}
+                        style={mealOptionStyle}
+                      >
                         {option.is_kids ? `${option.name} (kids)` : option.name}
                       </option>
                     ))}
@@ -668,7 +687,7 @@ export function RsvpForm({
                   const next = !open;
                   if (next) {
                     setAttendees((current) =>
-                      resizeAttendees(current, Math.max(1, partySize)),
+                      resizeAttendees(current, Math.max(1, attendingCount)),
                     );
                   }
                   return next;
@@ -779,26 +798,6 @@ export function RsvpForm({
 
       <div>
         <label
-          htmlFor="rsvp-email"
-          className="mb-1.5 block text-[13px] font-medium"
-          style={{ color: "var(--ws-muted)" }}
-        >
-          Email <span className="font-normal">(optional)</span>
-        </label>
-        <input
-          id="rsvp-email"
-          type="email"
-          maxLength={254}
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className={inputClass}
-          style={inputStyle}
-          autoComplete="email"
-        />
-      </div>
-
-      <div>
-        <label
           htmlFor="rsvp-message"
           className="mb-1.5 block text-[13px] font-medium"
           style={{ color: "var(--ws-muted)" }}
@@ -833,6 +832,7 @@ export function RsvpForm({
           isPending ||
           !name.trim() ||
           !response ||
+          !attendingReady ||
           !platedReady ||
           !household
         }

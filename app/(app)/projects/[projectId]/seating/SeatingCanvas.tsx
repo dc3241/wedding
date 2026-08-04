@@ -5,11 +5,19 @@ import { seatPositionsForTable, tableBodyForElement, SEAT_RADIUS } from "./seat-
 import {
   CANVAS_HEIGHT,
   CANVAS_WIDTH,
+  formatPersonName,
   isDancefloor,
+  type RosterPerson,
+  type SeatingAssignment,
   type SeatingTable,
   type SeatingTableShape,
 } from "./types";
 import { cn } from "@/lib/cn";
+
+type SeatOccupant = {
+  assignment: SeatingAssignment;
+  person: RosterPerson;
+};
 
 type SeatingCanvasProps = {
   tables: SeatingTable[];
@@ -17,11 +25,18 @@ type SeatingCanvasProps = {
   armedDancefloor: boolean;
   selectedId: string | null;
   occupancyByTable: Record<string, number>;
+  assignmentsByTable: Record<string, SeatingAssignment[]>;
+  peopleById: Map<string, RosterPerson>;
+  pendingSeat: { tableId: string; seatIndex: number } | null;
+  moveMode: boolean;
   assignMode: boolean;
   onPlace: (posX: number, posY: number) => void;
   onTableClick: (id: string) => void;
   onEmptyCanvasClick: (posX: number, posY: number) => void;
   onTableMove: (id: string, posX: number, posY: number) => void;
+  onEmptySeatClick: (tableId: string, seatIndex: number) => void;
+  onOccupiedSeatClick: (occupant: SeatOccupant) => void;
+  onNeedsSeatClick: (occupant: SeatOccupant) => void;
 };
 
 type ViewportState = {
@@ -49,33 +64,73 @@ type DragVisual = {
 
 const MIN_SCALE = 1;
 const MAX_SCALE = 2.5;
-
 const DRAG_THRESHOLD_PX = 4;
+
+function rsvpLabel(status: RosterPerson["rsvp_status"]) {
+  return status.charAt(0).toUpperCase() + status.slice(1);
+}
+
+function seatTooltip(person: RosterPerson) {
+  const household =
+    person.household_label?.trim() || person.household_name?.trim() || "—";
+  const relationship = person.relationship?.trim() || "—";
+  return `${formatPersonName(person)} · ${relationship} · ${household} · ${rsvpLabel(person.rsvp_status)}`;
+}
 
 function SeatingTableGraphic({
   table,
   selected,
   interactive,
   occupied,
+  assignments,
+  peopleById,
+  pendingSeatIndex,
   livePosX,
   livePosY,
   onPointerDown,
+  onEmptySeatClick,
+  onOccupiedSeatClick,
+  onNeedsSeatClick,
 }: {
   table: SeatingTable;
   selected: boolean;
   interactive: boolean;
   occupied: number;
+  assignments: SeatingAssignment[];
+  peopleById: Map<string, RosterPerson>;
+  pendingSeatIndex: number | null;
   livePosX: number;
   livePosY: number;
   onPointerDown: (event: React.PointerEvent<SVGGElement>) => void;
+  onEmptySeatClick: (seatIndex: number) => void;
+  onOccupiedSeatClick: (occupant: SeatOccupant) => void;
+  onNeedsSeatClick: (occupant: SeatOccupant) => void;
 }) {
   const dancefloor = isDancefloor(table.kind);
   const body = tableBodyForElement(table.shape, table.kind);
   const seats = seatPositionsForTable(table.shape, table.seat_count, table.kind);
   const stroke = selected ? "var(--accent)" : "var(--ring)";
   const strokeWidth = selected ? 2 : 1.5;
+  const over = !dancefloor && occupied > table.seat_count;
   const full = !dancefloor && occupied >= table.seat_count;
-  const countColor = full ? "var(--sage)" : "var(--muted)";
+  const countColor = over
+    ? "var(--rosewood)"
+    : full
+      ? "var(--sage)"
+      : "var(--muted)";
+
+  const bySeat = new Map<number, SeatOccupant>();
+  const needsSeat: SeatOccupant[] = [];
+  for (const assignment of assignments) {
+    const person = peopleById.get(assignment.guest_member_id);
+    if (!person) continue;
+    const occupant = { assignment, person };
+    if (assignment.seat_index == null) {
+      needsSeat.push(occupant);
+    } else {
+      bySeat.set(assignment.seat_index, occupant);
+    }
+  }
 
   return (
     <g
@@ -83,19 +138,23 @@ function SeatingTableGraphic({
       aria-label={
         dancefloor
           ? table.label
-          : `${table.label}, ${occupied} of ${table.seat_count} seats filled`
+          : over
+            ? `${table.label}, ${occupied} of ${table.seat_count} seats — over capacity`
+            : `${table.label}, ${occupied} of ${table.seat_count} seats filled`
       }
-      style={{
-        pointerEvents: interactive ? "auto" : "none",
-        cursor: interactive ? "grab" : undefined,
-      }}
-      onPointerDown={onPointerDown}
-      onClick={(event) => {
-        // Selection is handled on pointerup (capture retargets click to <svg>).
-        event.stopPropagation();
-      }}
     >
-      <g transform={`rotate(${table.rotation})`}>
+      <g
+        transform={`rotate(${table.rotation})`}
+        style={{
+          pointerEvents: interactive ? "auto" : "none",
+          cursor: interactive ? "grab" : undefined,
+        }}
+        onPointerDown={onPointerDown}
+        onClick={(event) => {
+          // Selection is handled on pointerup (capture retargets click to <svg>).
+          event.stopPropagation();
+        }}
+      >
         {dancefloor ? (
           <rect
             x={-body.halfWidth}
@@ -130,18 +189,75 @@ function SeatingTableGraphic({
           />
         )}
 
-        {seats.map((seat, index) => (
-          <circle
-            key={`${table.id}-seat-${index}`}
-            cx={seat.x}
-            cy={seat.y}
-            r={SEAT_RADIUS}
-            fill={index < occupied ? "var(--sage)" : "var(--surface)"}
-            stroke={index < occupied ? "var(--sage)" : "var(--ring)"}
-            strokeWidth={index < occupied ? 1 : 1.75}
-            style={{ pointerEvents: "none" }}
-          />
-        ))}
+        {seats.map((seat, zeroIndex) => {
+          const seatIndex = zeroIndex + 1;
+          const occupant = bySeat.get(seatIndex) ?? null;
+          const filled = occupant != null;
+          const pending = pendingSeatIndex === seatIndex;
+          const declined = occupant?.person.rsvp_status === "declined";
+
+          return (
+            <g
+              key={`${table.id}-seat-${seatIndex}`}
+              transform={`translate(${seat.x} ${seat.y})`}
+              style={{
+                pointerEvents: interactive ? "auto" : "none",
+                cursor: interactive ? "pointer" : undefined,
+              }}
+              onPointerDown={(event) => {
+                event.stopPropagation();
+              }}
+              onClick={(event) => {
+                event.stopPropagation();
+                if (!interactive) return;
+                if (occupant) {
+                  onOccupiedSeatClick(occupant);
+                } else {
+                  onEmptySeatClick(seatIndex);
+                }
+              }}
+            >
+              {occupant ? <title>{seatTooltip(occupant.person)}</title> : null}
+              <circle
+                cx={0}
+                cy={0}
+                r={SEAT_RADIUS}
+                fill={
+                  declined
+                    ? "var(--rosewood)"
+                    : filled
+                      ? "var(--sage)"
+                      : pending
+                        ? "var(--accent-wash)"
+                        : "var(--surface)"
+                }
+                stroke={
+                  declined
+                    ? "var(--rosewood)"
+                    : filled
+                      ? "var(--sage)"
+                      : pending
+                        ? "var(--accent)"
+                        : "var(--ring)"
+                }
+                strokeWidth={pending || filled ? 2 : 1.75}
+              />
+              <text
+                x={0}
+                y={0.5}
+                textAnchor="middle"
+                dominantBaseline="middle"
+                fill={filled ? "var(--surface)" : "var(--ink)"}
+                fontSize={9}
+                fontFamily="var(--font-sans)"
+                fontWeight={600}
+                style={{ pointerEvents: "none" }}
+              >
+                {seatIndex}
+              </text>
+            </g>
+          );
+        })}
       </g>
 
       <text
@@ -170,8 +286,48 @@ function SeatingTableGraphic({
           fontWeight={500}
           style={{ pointerEvents: "none" }}
         >
-          {occupied}/{table.seat_count}
+          {over
+            ? `${occupied}/${table.seat_count} — over capacity`
+            : `${occupied}/${table.seat_count}`}
         </text>
+      ) : null}
+
+      {!dancefloor && needsSeat.length > 0 ? (
+        <g transform={`translate(0 ${body.halfHeight + 28})`}>
+          {needsSeat.map((occupant, index) => (
+            <g
+              key={occupant.assignment.id}
+              transform={`translate(0 ${index * 16})`}
+              style={{
+                pointerEvents: interactive ? "auto" : "none",
+                cursor: interactive ? "pointer" : undefined,
+              }}
+              onPointerDown={(event) => event.stopPropagation()}
+              onClick={(event) => {
+                event.stopPropagation();
+                if (!interactive) return;
+                onNeedsSeatClick(occupant);
+              }}
+            >
+              <title>{seatTooltip(occupant.person)}</title>
+              <text
+                x={0}
+                y={0}
+                textAnchor="middle"
+                dominantBaseline="middle"
+                fill="var(--rosewood)"
+                fontSize={11}
+                fontFamily="var(--font-sans)"
+                fontWeight={500}
+              >
+                {formatPersonName(occupant.person)} — needs a seat
+                {occupant.person.rsvp_status === "declined"
+                  ? " · declined"
+                  : ""}
+              </text>
+            </g>
+          ))}
+        </g>
       ) : null}
     </g>
   );
@@ -197,11 +353,18 @@ export function SeatingCanvas({
   armedDancefloor,
   selectedId,
   occupancyByTable,
+  assignmentsByTable,
+  peopleById,
+  pendingSeat,
+  moveMode,
   assignMode,
   onPlace,
   onTableClick,
   onEmptyCanvasClick,
   onTableMove,
+  onEmptySeatClick,
+  onOccupiedSeatClick,
+  onNeedsSeatClick,
 }: SeatingCanvasProps) {
   const viewportRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
@@ -468,7 +631,9 @@ export function SeatingCanvas({
       ref={viewportRef}
       className={cn(
         "relative overflow-hidden rounded-[var(--radius-card)] bg-canvas shadow-raised",
-        placing || assignMode || selectedId ? "cursor-crosshair" : "cursor-default",
+        placing || assignMode || moveMode || pendingSeat || selectedId
+          ? "cursor-crosshair"
+          : "cursor-default",
         viewportGesturesEnabled && "touch-pan-x touch-pan-y",
       )}
       style={{ aspectRatio: `${CANVAS_WIDTH} / ${CANVAS_HEIGHT}` }}
@@ -541,9 +706,19 @@ export function SeatingCanvas({
               selected={selectedId === table.id}
               interactive={!placing}
               occupied={occupancyByTable[table.id] ?? 0}
+              assignments={assignmentsByTable[table.id] ?? []}
+              peopleById={peopleById}
+              pendingSeatIndex={
+                pendingSeat?.tableId === table.id ? pendingSeat.seatIndex : null
+              }
               livePosX={live.posX}
               livePosY={live.posY}
               onPointerDown={(event) => handleTablePointerDown(table, event)}
+              onEmptySeatClick={(seatIndex) =>
+                onEmptySeatClick(table.id, seatIndex)
+              }
+              onOccupiedSeatClick={onOccupiedSeatClick}
+              onNeedsSeatClick={onNeedsSeatClick}
             />
           );
         })}

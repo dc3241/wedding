@@ -5,7 +5,6 @@ import {
   addMealOption,
   deleteMealOption,
   setMealServiceStyle,
-  setSongRequestsEnabled,
   updateMealOption,
 } from "./meal-actions";
 import {
@@ -25,21 +24,15 @@ export function MealConfigCard({
   mealServiceStyle,
   mealSelectionActive,
   mealOptions,
-  songRequestsEnabled,
 }: {
   projectId: string;
   mealServiceStyle: MealServiceStyle;
   mealSelectionActive: boolean;
   mealOptions: MealOption[];
-  songRequestsEnabled: boolean;
 }) {
   const [style, setStyle] = useState<MealServiceStyle>(mealServiceStyle);
   const [styleMessage, setStyleMessage] = useState<string | null>(null);
   const [isStylePending, startStyleTransition] = useTransition();
-
-  const [songsOn, setSongsOn] = useState(songRequestsEnabled);
-  const [songsMessage, setSongsMessage] = useState<string | null>(null);
-  const [isSongsPending, startSongsTransition] = useTransition();
 
   const [newName, setNewName] = useState("");
   const [newDescription, setNewDescription] = useState("");
@@ -57,17 +50,6 @@ export function MealConfigCard({
       if (result.ok) return;
       setStyleMessage("Could not save service style.");
       setStyle(mealServiceStyle);
-    });
-  }
-
-  function handleSongsToggle(next: boolean) {
-    setSongsOn(next);
-    setSongsMessage(null);
-    startSongsTransition(async () => {
-      const result = await setSongRequestsEnabled(projectId, next);
-      if (result.ok) return;
-      setSongsMessage("Could not save song requests.");
-      setSongsOn(songRequestsEnabled);
     });
   }
 
@@ -122,31 +104,6 @@ export function MealConfigCard({
         {styleMessage ? (
           <p className="text-[13px] font-medium text-rosewood" role="status">
             {styleMessage}
-          </p>
-        ) : null}
-      </div>
-
-      <div className="mt-5 space-y-2">
-        <label
-          htmlFor="song-requests-enabled"
-          className="text-[14px] font-medium text-ink"
-        >
-          Song requests
-        </label>
-        <label className="flex items-center gap-3 text-[14px] font-medium text-ink">
-          <input
-            id="song-requests-enabled"
-            type="checkbox"
-            checked={songsOn}
-            onChange={(e) => handleSongsToggle(e.target.checked)}
-            disabled={isSongsPending}
-            className="size-4 rounded border-ring text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-          />
-          Ask guests for a song request on the RSVP form
-        </label>
-        {songsMessage ? (
-          <p className="text-[13px] font-medium text-rosewood" role="status">
-            {songsMessage}
           </p>
         ) : null}
       </div>

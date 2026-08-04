@@ -6,20 +6,25 @@ import {
   uploadWebsiteImage,
   WEBSITE_IMAGE_ACCEPT,
 } from "./website-media";
-import type { GalleryImage } from "@/components/website/types";
+import type { GalleryImage, PhotoShape } from "@/components/website/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 
 type GalleryEditorFieldsProps = {
   projectId: string;
   images: GalleryImage[];
+  imageShape?: PhotoShape;
   onChange: (images: GalleryImage[]) => void;
+  onImageShapeChange: (shape: PhotoShape | undefined) => void;
 };
 
 export function GalleryEditorFields({
   projectId,
   images,
+  imageShape,
   onChange,
+  onImageShapeChange,
 }: GalleryEditorFieldsProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
@@ -74,6 +79,31 @@ export function GalleryEditorFields({
 
   return (
     <div className="space-y-4">
+      <div>
+        <label
+          htmlFor="gallery-image-shape"
+          className="mb-1.5 block text-[13px] text-muted"
+        >
+          Photo shape
+        </label>
+        <Select
+          id="gallery-image-shape"
+          value={imageShape ?? "default"}
+          onChange={(e) => {
+            const value = e.target.value;
+            onImageShapeChange(
+              value === "default" ? undefined : (value as PhotoShape),
+            );
+          }}
+        >
+          <option value="default">Template default</option>
+          <option value="rect">Rounded rectangle</option>
+          <option value="square">Square</option>
+          <option value="circle">Circle</option>
+          <option value="arch">Arch</option>
+        </Select>
+      </div>
+
       <input
         ref={inputRef}
         type="file"

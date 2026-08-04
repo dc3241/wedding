@@ -5,6 +5,8 @@ import {
   createCalendarEvent,
   deleteCalendarEvent,
   updateCalendarEvent,
+  type CreateCalendarEventInput,
+  type UpdateCalendarEventFields,
 } from "./actions";
 import { eventLocalDate, localTimeHm } from "./calendar-source";
 import {
@@ -24,17 +26,42 @@ type Mode =
   | { type: "create"; date: string }
   | { type: "edit"; event: CalendarEventRow };
 
+export type CalendarEventMutations = {
+  create: (
+    input: CreateCalendarEventInput,
+  ) => Promise<{ ok: true } | { ok: false; error: string }>;
+  update: (
+    id: string,
+    fields: UpdateCalendarEventFields,
+  ) => Promise<{ ok: true } | { ok: false; error: string }>;
+  delete: (
+    id: string,
+  ) => Promise<{ ok: true } | { ok: false; error: string }>;
+};
+
+const defaultMutations: CalendarEventMutations = {
+  create: createCalendarEvent,
+  update: updateCalendarEvent,
+  delete: deleteCalendarEvent,
+};
+
 export function CalendarEventPanel({
   mode,
   weddings,
   onClose,
+  lockedProjectId,
+  mutations = defaultMutations,
 }: {
   mode: Mode;
   weddings: ActiveWedding[];
   onClose: () => void;
+  /** When set, events are always linked to this wedding (no picker). */
+  lockedProjectId?: string;
+  mutations?: CalendarEventMutations;
 }) {
   const editing = mode.type === "edit";
   const event = editing ? mode.event : null;
+  const fixedProjectId = lockedProjectId ?? null;
 
   const [title, setTitle] = useState(event?.title ?? "");
   const [kind, setKind] = useState<EventKind>(event?.event_kind ?? "meeting");
@@ -48,7 +75,9 @@ export function CalendarEventPanel({
   const [endTime, setEndTime] = useState(
     event?.ends_at && !event.all_day ? localTimeHm(event.ends_at) : "",
   );
-  const [projectId, setProjectId] = useState(event?.project_id ?? "");
+  const [projectId, setProjectId] = useState(
+    fixedProjectId ?? event?.project_id ?? "",
+  );
   const [location, setLocation] = useState(event?.location ?? "");
   const [notes, setNotes] = useState(event?.notes ?? "");
   const [error, setError] = useState<string | null>(null);
@@ -62,7 +91,7 @@ export function CalendarEventPanel({
       setAllDay(true);
       setStartTime("09:00");
       setEndTime("");
-      setProjectId("");
+      setProjectId(fixedProjectId ?? "");
       setLocation("");
       setNotes("");
       setError(null);
@@ -80,11 +109,11 @@ export function CalendarEventPanel({
         ? localTimeHm(mode.event.ends_at)
         : "",
     );
-    setProjectId(mode.event.project_id ?? "");
+    setProjectId(fixedProjectId ?? mode.event.project_id ?? "");
     setLocation(mode.event.location ?? "");
     setNotes(mode.event.notes ?? "");
     setError(null);
-  }, [mode]);
+  }, [mode, fixedProjectId]);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -100,12 +129,12 @@ export function CalendarEventPanel({
         endTime: allDay ? null : endTime || null,
         location,
         notes,
-        projectId: projectId || null,
+        projectId: fixedProjectId ?? (projectId || null),
       };
 
       const result = editing
-        ? await updateCalendarEvent(mode.event.id, payload)
-        : await createCalendarEvent(payload);
+        ? await mutations.update(mode.event.id, payload)
+        : await mutations.create(payload);
 
       if (!result.ok) {
         setError(result.error);
@@ -120,7 +149,7 @@ export function CalendarEventPanel({
     if (!window.confirm(`Delete “${mode.event.title}”?`)) return;
     setError(null);
     startTransition(async () => {
-      const result = await deleteCalendarEvent(mode.event.id);
+      const result = await mutations.delete(mode.event.id);
       if (!result.ok) {
         setError(result.error);
         return;
@@ -228,23 +257,25 @@ export function CalendarEventPanel({
           </Select>
         </label>
 
-        <label className="block">
-          <span className="mb-1.5 block text-[12px] font-semibold uppercase tracking-[0.09em] text-muted">
-            Wedding (optional)
-          </span>
-          <Select
-            value={projectId}
-            onChange={(e) => setProjectId(e.target.value)}
-            disabled={isPending}
-          >
-            <option value="">None</option>
-            {weddings.map((w) => (
-              <option key={w.id} value={w.id}>
-                {w.name}
-              </option>
-            ))}
-          </Select>
-        </label>
+        {!fixedProjectId ? (
+          <label className="block">
+            <span className="mb-1.5 block text-[12px] font-semibold uppercase tracking-[0.09em] text-muted">
+              Wedding (optional)
+            </span>
+            <Select
+              value={projectId}
+              onChange={(e) => setProjectId(e.target.value)}
+              disabled={isPending}
+            >
+              <option value="">None</option>
+              {weddings.map((w) => (
+                <option key={w.id} value={w.id}>
+                  {w.name}
+                </option>
+              ))}
+            </Select>
+          </label>
+        ) : null}
 
         <label className="block">
           <span className="mb-1.5 block text-[12px] font-semibold uppercase tracking-[0.09em] text-muted">

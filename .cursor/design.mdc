@@ -262,8 +262,8 @@ Both couple surface classes sit inside **Tier 1 — App chrome** and share its v
 the distinction below is density and container width only — not typography or decorative
 permission.
 
-- **Couple working surface** — the 9 project workspace tabs (Overview, Checklist,
-  Day-of timeline, Budget, Vendors, Guests, Seating, Website, Notes & files).
+- **Couple working surface** — the 10 project workspace tabs (Overview, Checklist,
+  Calendar, Day-of timeline, Budget, Vendors, Guests, Seating, Website, Notes & files).
   Container `max-w-6xl` (1152px), centered, gutters `px-6` base / `md:px-8`.
   May be single-column or two-column (main + sticky context rail). The sanctioned
   two-column split is `lg:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)]` with a

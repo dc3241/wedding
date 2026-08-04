@@ -2,7 +2,10 @@
 
 import Link from "next/link";
 import { useMemo, useState, type ReactNode } from "react";
-import { CalendarEventPanel } from "./CalendarEventPanel";
+import {
+  CalendarEventPanel,
+  type CalendarEventMutations,
+} from "./CalendarEventPanel";
 import {
   buildCalendarItems,
   buildMonthGrid,
@@ -162,9 +165,11 @@ function EventChip({
 function ItemRow({
   item,
   onEdit,
+  hideProjectName,
 }: {
   item: CalendarItem;
   onEdit: (event: CalendarEventRow) => void;
+  hideProjectName?: boolean;
 }) {
   const isWedding = item.source === "wedding";
   const isPayment = item.source === "payment";
@@ -207,7 +212,7 @@ function ItemRow({
           {isTask ? (
             <Pill variant={pastDue ? "rosewood" : "default"}>Task due</Pill>
           ) : null}
-          {!isWedding && item.projectName ? (
+          {!hideProjectName && !isWedding && item.projectName ? (
             <Pill variant="default">{item.projectName}</Pill>
           ) : null}
           {item.timeLabel ? (
@@ -302,6 +307,11 @@ export function CalendarWorkspace({
   weddings,
   payments = [],
   tasks = [],
+  basePath = "/calendar",
+  lockedProjectId,
+  mutations,
+  weddingOverlayLabel = "Weddings",
+  hideProjectName = false,
 }: {
   year: number;
   month: number;
@@ -309,6 +319,12 @@ export function CalendarWorkspace({
   weddings: ActiveWedding[];
   payments?: PaymentDueOverlay[];
   tasks?: TaskDueOverlay[];
+  /** Month nav + deep-link base (planner `/calendar` or project calendar). */
+  basePath?: string;
+  lockedProjectId?: string;
+  mutations?: CalendarEventMutations;
+  weddingOverlayLabel?: string;
+  hideProjectName?: boolean;
 }) {
   const [panel, setPanel] = useState<PanelState>(null);
   // Client-only "today" avoids SSR/client day-boundary mismatch.
@@ -316,6 +332,11 @@ export function CalendarWorkspace({
   const [showWeddings, setShowWeddings] = useState(true);
   const [showPayments, setShowPayments] = useState(true);
   const [showTasks, setShowTasks] = useState(true);
+
+  function monthHref(y: number, m: number) {
+    const ym = `${y}-${String(m).padStart(2, "0")}`;
+    return `${basePath}?ym=${ym}`;
+  }
 
   const allItems = useMemo(
     () => buildCalendarItems(events, weddings, payments, tasks),
@@ -352,7 +373,6 @@ export function CalendarWorkspace({
   const prev = shiftMonth(year, month, -1);
   const next = shiftMonth(year, month, 1);
   const today = new Date();
-  const todayYm = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
 
   const dayDetailDate =
     panel?.type === "day"
@@ -372,13 +392,13 @@ export function CalendarWorkspace({
             {formatMonthHeading(year, month)}
           </h2>
           <div className="flex flex-wrap items-center gap-2">
-            <ButtonLinkLike href={`/calendar?ym=${prev.year}-${String(prev.month).padStart(2, "0")}`}>
+            <ButtonLinkLike href={monthHref(prev.year, prev.month)}>
               Prev
             </ButtonLinkLike>
-            <ButtonLinkLike href={`/calendar?ym=${todayYm}`}>
+            <ButtonLinkLike href={monthHref(today.getFullYear(), today.getMonth() + 1)}>
               Today
             </ButtonLinkLike>
-            <ButtonLinkLike href={`/calendar?ym=${next.year}-${String(next.month).padStart(2, "0")}`}>
+            <ButtonLinkLike href={monthHref(next.year, next.month)}>
               Next
             </ButtonLinkLike>
             <Button
@@ -394,7 +414,7 @@ export function CalendarWorkspace({
 
         <div className="mb-4 flex flex-wrap gap-2">
           <OverlayToggle
-            label="Weddings"
+            label={weddingOverlayLabel}
             pressed={showWeddings}
             onPressedChange={setShowWeddings}
           />
@@ -483,6 +503,8 @@ export function CalendarWorkspace({
           <CalendarEventPanel
             mode={panel}
             weddings={weddings}
+            lockedProjectId={lockedProjectId}
+            mutations={mutations}
             onClose={() => setPanel(null)}
           />
         ) : null}
@@ -511,6 +533,7 @@ export function CalendarWorkspace({
                   <ItemRow
                     key={item.id}
                     item={item}
+                    hideProjectName={hideProjectName}
                     onEdit={(event) => setPanel({ type: "edit", event })}
                   />
                 ))
@@ -548,6 +571,7 @@ export function CalendarWorkspace({
                     <ItemRow
                       key={item.id}
                       item={item}
+                      hideProjectName={hideProjectName}
                       onEdit={(event) => setPanel({ type: "edit", event })}
                     />
                   ))}

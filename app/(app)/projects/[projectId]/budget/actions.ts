@@ -11,6 +11,7 @@ function revalidateBudget(projectId: string) {
   revalidatePath(budgetPath(projectId));
   revalidatePath(`/projects/${projectId}`);
   revalidatePath(`/projects/${projectId}/vendors`);
+  revalidatePath(`/projects/${projectId}/calendar`);
   revalidatePath("/calendar");
 }
 

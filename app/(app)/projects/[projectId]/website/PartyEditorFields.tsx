@@ -6,23 +6,32 @@ import {
   uploadWebsiteImage,
   WEBSITE_IMAGE_ACCEPT,
 } from "./website-media";
-import type { PartyMember } from "@/components/website/types";
+import type { PartyLayout, PartyMember, PhotoShape } from "@/components/website/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 
 type PartyEditorFieldsProps = {
   projectId: string;
   heading?: string;
+  layout?: PartyLayout;
+  imageShape?: PhotoShape;
   members: PartyMember[];
   onHeadingChange: (heading: string) => void;
+  onLayoutChange: (layout: PartyLayout) => void;
+  onImageShapeChange: (shape: PhotoShape | undefined) => void;
   onChange: (members: PartyMember[]) => void;
 };
 
 export function PartyEditorFields({
   projectId,
   heading,
+  layout,
+  imageShape,
   members,
   onHeadingChange,
+  onLayoutChange,
+  onImageShapeChange,
   onChange,
 }: PartyEditorFieldsProps) {
   const fileRefs = useRef<Record<number, HTMLInputElement | null>>({});
@@ -100,8 +109,51 @@ export function PartyEditorFields({
         <Input
           value={heading ?? ""}
           onChange={(e) => onHeadingChange(e.target.value)}
-          placeholder="Wedding party"
+          placeholder="Meet the Wedding Party"
         />
+      </div>
+
+      <div>
+        <label
+          htmlFor="party-layout"
+          className="mb-1.5 block text-[13px] text-muted"
+        >
+          Party layout
+        </label>
+        <Select
+          id="party-layout"
+          value={layout ?? "stacked"}
+          onChange={(e) => onLayoutChange(e.target.value as PartyLayout)}
+        >
+          <option value="stacked">Stacked</option>
+          <option value="horizontal">Side by side</option>
+          <option value="vertical">Columns</option>
+        </Select>
+      </div>
+
+      <div>
+        <label
+          htmlFor="party-image-shape"
+          className="mb-1.5 block text-[13px] text-muted"
+        >
+          Photo shape
+        </label>
+        <Select
+          id="party-image-shape"
+          value={imageShape ?? "default"}
+          onChange={(e) => {
+            const value = e.target.value;
+            onImageShapeChange(
+              value === "default" ? undefined : (value as PhotoShape),
+            );
+          }}
+        >
+          <option value="default">Template default</option>
+          <option value="circle">Circle</option>
+          <option value="arch">Arch</option>
+          <option value="square">Square</option>
+          <option value="rect">Rounded rectangle</option>
+        </Select>
       </div>
 
       {members.length === 0 ? (
