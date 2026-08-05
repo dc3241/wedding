@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { AccountDensityProvider } from "@/components/account-density-provider";
 import { CoupleShell } from "@/components/couple/couple-shell";
 import { PlannerShell } from "@/components/planner/planner-shell";
+import { VendorSearchCacheProvider } from "@/components/vendors/VendorSearchCacheProvider";
 import { getAccountContext } from "@/lib/account-context";
 import { createClient } from "@/utils/supabase/server";
 
@@ -33,14 +34,18 @@ export default async function AppLayout({
 
     return (
       <AccountDensityProvider kind={accountKind}>
-        <PlannerShell projects={projects ?? []}>{children}</PlannerShell>
+        <VendorSearchCacheProvider>
+          <PlannerShell projects={projects ?? []}>{children}</PlannerShell>
+        </VendorSearchCacheProvider>
       </AccountDensityProvider>
     );
   }
 
   return (
     <AccountDensityProvider kind={accountKind}>
-      <CoupleShell>{children}</CoupleShell>
+      <VendorSearchCacheProvider>
+        <CoupleShell>{children}</CoupleShell>
+      </VendorSearchCacheProvider>
     </AccountDensityProvider>
   );
 }

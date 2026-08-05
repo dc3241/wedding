@@ -1,11 +1,22 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { enrichVendor } from "@/app/(app)/projects/[projectId]/vendors/actions";
+import { VENDOR_MEDIA_BUCKET } from "@/app/(app)/vendors/vendor-media-shared";
 import { resolveBusinessAccountId } from "@/lib/billing/resolve-account";
 import { getVendorCategoryById } from "@/lib/vendor-categories";
 import { createClient } from "@/utils/supabase/server";
 
 const VENDORS_PATH = "/vendors";
+
+function vendorDetailPath(vendorId: string) {
+  return `/vendors/${vendorId}`;
+}
+
+function revalidateVendorLibrary(vendorId: string) {
+  revalidatePath(VENDORS_PATH);
+  revalidatePath(vendorDetailPath(vendorId));
+}
 
 export type CreateAccountVendorInput = {
   name: string;
@@ -30,6 +41,9 @@ export type UpdateAccountVendorFields = {
   serviceArea?: string | null;
   address?: string | null;
   notes?: string | null;
+  isPreferred?: boolean;
+  aiOverview?: string | null;
+  instagram?: string | null;
 };
 
 function trimOrNull(value: string | undefined | null) {
@@ -139,6 +153,15 @@ export async function updateAccountVendor(
   if (fields.notes !== undefined) {
     payload.notes = trimOrNull(fields.notes);
   }
+  if (fields.isPreferred !== undefined) {
+    payload.is_preferred = Boolean(fields.isPreferred);
+  }
+  if (fields.aiOverview !== undefined) {
+    payload.ai_overview = trimOrNull(fields.aiOverview);
+  }
+  if (fields.instagram !== undefined) {
+    payload.instagram = trimOrNull(fields.instagram);
+  }
 
   if (Object.keys(payload).length === 0) {
     return { ok: true };
@@ -155,7 +178,57 @@ export async function updateAccountVendor(
     return { ok: false, error: error.message };
   }
 
-  revalidatePath(VENDORS_PATH);
+  revalidateVendorLibrary(vendorId);
+  return { ok: true };
+}
+
+/** Manual refresh — wires existing enrichVendor; no new enrichment logic. */
+export async function refreshVendorFromWebsite(
+  vendorId: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const result = await enrichVendor(vendorId);
+  if (result.ok) {
+    revalidateVendorLibrary(vendorId);
+  }
+  return result;
+}
+
+/** Remove a portfolio object. Folder listing is the gallery source of truth. */
+export async function removeVendorPhoto(
+  accountId: string,
+  vendorId: string,
+  objectPath: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const expectedPrefix = `${accountId}/${vendorId}/`;
+  if (
+    !objectPath.startsWith(expectedPrefix) ||
+    objectPath.includes("..") ||
+    objectPath.split("/").length !== 3
+  ) {
+    return { ok: false, error: "Invalid photo path." };
+  }
+
+  const supabase = await createClient();
+
+  const { data: vendor, error: vendorError } = await supabase
+    .from("vendors")
+    .select("id, account_id")
+    .eq("id", vendorId)
+    .maybeSingle();
+
+  if (vendorError || !vendor || vendor.account_id !== accountId) {
+    return { ok: false, error: "Vendor not found." };
+  }
+
+  const { error } = await supabase.storage
+    .from(VENDOR_MEDIA_BUCKET)
+    .remove([objectPath]);
+
+  if (error) {
+    return { ok: false, error: error.message };
+  }
+
+  revalidateVendorLibrary(vendorId);
   return { ok: true };
 }
 
@@ -174,7 +247,7 @@ export async function setVendorPreferred(
     return { ok: false, error: error.message };
   }
 
-  revalidatePath(VENDORS_PATH);
+  revalidateVendorLibrary(vendorId);
   return { ok: true };
 }
 

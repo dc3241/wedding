@@ -10,6 +10,8 @@ type SlimHeroProps = {
   /** When set, enables the inline wedding-date editor (SET-01). */
   projectId?: string;
   dateLabel?: string | null;
+  /** When false, hide the right-side countdown (e.g. Overview stats own it). */
+  showCountdown?: boolean;
   className?: string;
 };
 
@@ -53,6 +55,7 @@ export function SlimHero({
   weddingDate,
   projectId,
   dateLabel,
+  showCountdown = true,
   className,
 }: SlimHeroProps) {
   const displayDate =
@@ -84,7 +87,9 @@ export function SlimHero({
           />
         ) : null}
       </div>
-      {weddingDate ? <SlimCountdown weddingDate={weddingDate} /> : null}
+      {showCountdown && weddingDate ? (
+        <SlimCountdown weddingDate={weddingDate} />
+      ) : null}
     </div>
   );
 }

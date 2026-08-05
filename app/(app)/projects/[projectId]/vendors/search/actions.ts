@@ -4,7 +4,10 @@ import {
   composeVendorTextQuery,
   getVendorCategoryById,
 } from "@/lib/vendor-categories";
-import { placesTextSearch } from "@/lib/places-text-search";
+import {
+  placesTextSearch,
+  type PlacesPriceLevel,
+} from "@/lib/places-text-search";
 import { createClient } from "@/utils/supabase/server";
 
 export type PlaceResult = {
@@ -16,6 +19,9 @@ export type PlaceResult = {
   websiteUri?: string;
   primaryType?: string;
   types?: string[];
+  photoName?: string;
+  priceLevel?: PlacesPriceLevel;
+  openNow?: boolean;
 };
 
 export type SearchPlacesResponse =
@@ -94,6 +100,9 @@ export async function searchPlaces(
     websiteUri: place.websiteUri,
     primaryType: place.primaryType,
     types: place.types,
+    photoName: place.photoName,
+    priceLevel: place.priceLevel,
+    openNow: place.openNow,
   }));
 
   let results = mapped;

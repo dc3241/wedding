@@ -129,7 +129,7 @@ export default function StyleguidePage() {
             <div className="grid grid-cols-1 gap-[18px] md:grid-cols-3">
               <StatCard value={7} label="Tasks due this week" />
               <StatCard value="3 / 8" label="Vendors booked" />
-              <StatCard value="58%" label="Budget committed" />
+              <StatCard value="$12,400" label="Budget paid" />
             </div>
           </section>
 

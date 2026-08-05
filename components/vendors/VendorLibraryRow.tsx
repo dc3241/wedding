@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState, useTransition } from "react";
 import {
   deleteAccountVendor,
@@ -104,7 +105,12 @@ export function VendorLibraryRow({ vendor }: { vendor: LibraryVendor }) {
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <p className="text-[15px] font-medium text-ink">{vendor.name}</p>
+            <Link
+              href={`/vendors/${vendor.id}`}
+              className="text-[15px] font-medium text-ink no-underline hover:text-accent"
+            >
+              {vendor.name}
+            </Link>
             {vendor.is_preferred ? (
               <span className="rounded-[var(--radius-pill)] bg-surface px-2.5 py-0.5 text-[12px] font-semibold text-sage">
                 Preferred
@@ -152,6 +158,12 @@ export function VendorLibraryRow({ vendor }: { vendor: LibraryVendor }) {
           >
             {vendor.is_preferred ? "★ Preferred" : "☆ Prefer"}
           </button>
+          <Link
+            href={`/vendors/${vendor.id}`}
+            className="rounded-[var(--radius-inner)] px-2.5 py-1.5 text-[13px] font-semibold text-muted no-underline transition-colors hover:bg-surface hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          >
+            Details
+          </Link>
           <button
             type="button"
             onClick={() => {

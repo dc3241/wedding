@@ -1,3 +1,10 @@
+export type PlacesPriceLevel =
+  | "PRICE_LEVEL_FREE"
+  | "PRICE_LEVEL_INEXPENSIVE"
+  | "PRICE_LEVEL_MODERATE"
+  | "PRICE_LEVEL_EXPENSIVE"
+  | "PRICE_LEVEL_VERY_EXPENSIVE";
+
 export type PlacesTextSearchPlace = {
   id: string;
   name: string;
@@ -7,11 +14,19 @@ export type PlacesTextSearchPlace = {
   websiteUri?: string;
   primaryType?: string;
   types?: string[];
+  /** First photo resource name (`places/.../photos/...`), if any. */
+  photoName?: string;
+  priceLevel?: PlacesPriceLevel;
+  openNow?: boolean;
 };
 
 export type PlacesTextSearchResponse =
   | { ok: true; places: PlacesTextSearchPlace[] }
   | { ok: false; error: string };
+
+type GooglePlacePhoto = {
+  name?: string;
+};
 
 type GooglePlace = {
   id?: string;
@@ -22,6 +37,9 @@ type GooglePlace = {
   websiteUri?: string;
   primaryType?: string;
   types?: string[];
+  photos?: GooglePlacePhoto[];
+  priceLevel?: PlacesPriceLevel | "PRICE_LEVEL_UNSPECIFIED";
+  regularOpeningHours?: { openNow?: boolean };
 };
 
 type GoogleSearchResponse = {
@@ -30,7 +48,22 @@ type GoogleSearchResponse = {
 };
 
 const FIELD_MASK =
-  "places.id,places.displayName,places.formattedAddress,places.rating,places.userRatingCount,places.websiteUri,places.primaryType,places.types";
+  "places.id,places.displayName,places.formattedAddress,places.rating,places.userRatingCount,places.websiteUri,places.primaryType,places.types,places.photos,places.priceLevel,places.regularOpeningHours";
+
+function mapPriceLevel(
+  value: GooglePlace["priceLevel"],
+): PlacesPriceLevel | undefined {
+  if (
+    value === "PRICE_LEVEL_FREE" ||
+    value === "PRICE_LEVEL_INEXPENSIVE" ||
+    value === "PRICE_LEVEL_MODERATE" ||
+    value === "PRICE_LEVEL_EXPENSIVE" ||
+    value === "PRICE_LEVEL_VERY_EXPENSIVE"
+  ) {
+    return value;
+  }
+  return undefined;
+}
 
 export async function placesTextSearch(options: {
   textQuery: string;
@@ -108,16 +141,23 @@ export async function placesTextSearch(options: {
 
   const places: PlacesTextSearchPlace[] = (data.places ?? [])
     .filter((place) => place.id && place.displayName?.text)
-    .map((place) => ({
-      id: place.id!,
-      name: place.displayName!.text!,
-      formattedAddress: place.formattedAddress,
-      rating: place.rating,
-      userRatingCount: place.userRatingCount,
-      websiteUri: place.websiteUri,
-      primaryType: place.primaryType,
-      types: place.types,
-    }));
+    .map((place) => {
+      const photoName = place.photos?.find((photo) => photo.name?.trim())?.name;
+
+      return {
+        id: place.id!,
+        name: place.displayName!.text!,
+        formattedAddress: place.formattedAddress,
+        rating: place.rating,
+        userRatingCount: place.userRatingCount,
+        websiteUri: place.websiteUri,
+        primaryType: place.primaryType,
+        types: place.types,
+        photoName: photoName?.trim() || undefined,
+        priceLevel: mapPriceLevel(place.priceLevel),
+        openNow: place.regularOpeningHours?.openNow,
+      };
+    });
 
   return { ok: true, places };
 }

@@ -1,5 +1,6 @@
 export { Button, ButtonLink } from "./button";
 export { Card } from "./card";
+export { CollapseSection } from "./collapse-section";
 export { DisplayHeading } from "./display-heading";
 export { EmptyState } from "./empty-state";
 export { Eyebrow } from "./eyebrow";
