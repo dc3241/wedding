@@ -21,6 +21,8 @@ import type {
   VendorPackageStats,
 } from "@/lib/budget-aggregates";
 import { formatCurrency } from "@/lib/format-currency";
+import { AskAssistantPrompt } from "@/components/assistant/AskAssistantPrompt";
+import { ASSISTANT_PREFILLS } from "@/components/assistant/prefills";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
@@ -617,7 +619,16 @@ export function BudgetBoard({
           ) : null}
 
           {empty ? (
-            <EmptyState>
+            <EmptyState
+              action={
+                <AskAssistantPrompt
+                  prefill={ASSISTANT_PREFILLS.budget}
+                  title="Estimate a starting budget"
+                  description="Break it down by category from your guest count and priorities."
+                  cta="Estimate budget"
+                />
+              }
+            >
               Add your first budget item to start tracking categories.
             </EmptyState>
           ) : (

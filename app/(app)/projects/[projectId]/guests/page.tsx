@@ -19,6 +19,8 @@ import {
   type GuestPersonLine,
   type RsvpStatus,
 } from "./types";
+import { AskAssistantPrompt } from "@/components/assistant/AskAssistantPrompt";
+import { ASSISTANT_PREFILLS } from "@/components/assistant/prefills";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
@@ -428,7 +430,18 @@ export default async function GuestsPage({
         </div>
 
         {allPeople.length === 0 ? (
-          <EmptyState>No guests yet. Add one above.</EmptyState>
+          <EmptyState
+            action={
+              <AskAssistantPrompt
+                prefill={ASSISTANT_PREFILLS.guests}
+                title="Get help organizing your list"
+                description="Households, RSVP tracking, and what details to capture."
+                cta="Organize guests"
+              />
+            }
+          >
+            No guests yet. Add one above.
+          </EmptyState>
         ) : filteredPeople.length === 0 ? (
           <EmptyState>No guests match this filter.</EmptyState>
         ) : (

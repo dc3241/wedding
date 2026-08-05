@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useState } from "react";
 import { AddEventForm } from "./AddEventForm";
 import { TimelineEventRow } from "./TimelineEventRow";
+import { AskAssistantPrompt } from "@/components/assistant/AskAssistantPrompt";
+import { ASSISTANT_PREFILLS } from "@/components/assistant/prefills";
 import { ButtonLink } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -350,7 +352,16 @@ export function TimelineBoard({
           </div>
 
           {aggregates.sections.length === 0 ? (
-            <EmptyState>
+            <EmptyState
+              action={
+                <AskAssistantPrompt
+                  prefill={ASSISTANT_PREFILLS.timeline}
+                  title="Build a day-of run sheet"
+                  description="Key moments, start times, and who owns each one."
+                  cta="Build timeline"
+                />
+              }
+            >
               No events yet. Add the first moment — ceremony, cocktail hour,
               first dance, and so on.
             </EmptyState>

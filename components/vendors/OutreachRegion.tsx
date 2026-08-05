@@ -17,7 +17,7 @@ import {
   type InFlightStatus,
   type OutreachVendor,
 } from "@/components/vendors/outreach-vendor";
-import { AskAssistantLink } from "@/components/assistant/AskAssistantLink";
+import { AskAssistantPrompt } from "@/components/assistant/AskAssistantPrompt";
 import { ASSISTANT_PREFILLS } from "@/components/assistant/prefills";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -412,11 +412,13 @@ export function OutreachRegion({
                 : "No vendors in outreach yet. Search or add one manually."}
             </p>
             {declinedItems.length === 0 ? (
-              <div className="mt-3">
-                <AskAssistantLink prefill={ASSISTANT_PREFILLS.vendors}>
-                  Ask assistant to find vendors
-                </AskAssistantLink>
-              </div>
+              <AskAssistantPrompt
+                className="mx-auto mt-4 max-w-md"
+                prefill={ASSISTANT_PREFILLS.vendors}
+                title="Not sure which vendors to chase first?"
+                description="Ask for priority categories and what to look for when shortlisting."
+                cta="Find vendors"
+              />
             ) : null}
           </div>
         )}

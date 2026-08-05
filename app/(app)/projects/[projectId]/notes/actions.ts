@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import type { NoteActionStatus } from "./types";
 import { createClient } from "@/utils/supabase/server";
 
 function notesPath(projectId: string) {
@@ -25,7 +26,11 @@ export async function addNote(projectId: string) {
 
 export async function updateNote(
   noteId: string,
-  fields: { title?: string; body?: string },
+  fields: {
+    title?: string;
+    body?: string;
+    action_status?: NoteActionStatus;
+  },
 ) {
   const updates: Record<string, string | null> = {};
 
@@ -37,6 +42,10 @@ export async function updateNote(
 
   if (fields.body !== undefined) {
     updates.body = fields.body.trim() || null;
+  }
+
+  if (fields.action_status !== undefined) {
+    updates.action_status = fields.action_status;
   }
 
   if (Object.keys(updates).length === 0) return;

@@ -2,7 +2,7 @@
 
 import { useTransition } from "react";
 import { generateStarterChecklist } from "@/app/(app)/projects/[projectId]/checklist/actions";
-import { AskAssistantLink } from "@/components/assistant/AskAssistantLink";
+import { AskAssistantPrompt } from "@/components/assistant/AskAssistantPrompt";
 import { ASSISTANT_PREFILLS } from "@/components/assistant/prefills";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -36,13 +36,17 @@ export function GenerateStarterChecklist({
         No tasks yet
       </p>
       <p className="mt-2 text-[15px] font-medium text-muted">
-        Generate a starter timeline or ask the assistant to build one.
+        Generate a starter timeline, or ask the assistant to build one tailored
+        to your date.
       </p>
-      <div className="mt-5 flex flex-col items-center gap-3">
+      <div className="mx-auto mt-5 flex max-w-md flex-col items-stretch gap-4">
         <div className="flex justify-center">{button}</div>
-        <AskAssistantLink prefill={ASSISTANT_PREFILLS.checklist}>
-          Ask assistant to build your checklist
-        </AskAssistantLink>
+        <AskAssistantPrompt
+          prefill={ASSISTANT_PREFILLS.checklist}
+          title="Or ask the assistant to build one"
+          description="Phases, due dates, and the tasks you shouldn't miss."
+          cta="Build my checklist"
+        />
       </div>
     </Card>
   );

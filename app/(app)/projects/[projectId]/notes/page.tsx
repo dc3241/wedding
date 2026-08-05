@@ -1,6 +1,12 @@
 import { AddNoteButton } from "./AddNoteButton";
-import { NoteCard } from "./NoteCard";
-import type { Note } from "./types";
+import { NotesBoard } from "./NotesBoard";
+import {
+  parseActionStatus,
+  sortNotes,
+  type Note,
+} from "./types";
+import { AskAssistantPrompt } from "@/components/assistant/AskAssistantPrompt";
+import { ASSISTANT_PREFILLS } from "@/components/assistant/prefills";
 import { FileManager } from "@/components/files/FileManager";
 import type { ProjectFile } from "@/components/files/types";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -27,27 +33,72 @@ export default async function NotesPage({
   const account = await getAccountContext(supabase);
   const stackClass = sectionStackClass(account?.kind ?? "personal");
 
-  const [{ data: notes }, { data: fileRows }, { data: project }] =
-    await Promise.all([
-      supabase
-        .from("notes")
-        .select("id, title, body, updated_at")
-        .eq("project_id", projectId)
-        .order("updated_at", { ascending: false }),
-      supabase
-        .from("files")
-        .select("id, name, mime_type, size_bytes, created_at")
-        .eq("project_id", projectId)
-        .eq("kind", "file")
-        .order("created_at", { ascending: false }),
-      supabase
-        .from("projects")
-        .select("name, wedding_date")
-        .eq("id", projectId)
-        .maybeSingle(),
-    ]);
+  const [
+    { data: notes },
+    { data: fileRows },
+    { data: project },
+    {
+      data: { user },
+    },
+    { data: acceptedInviteRows },
+  ] = await Promise.all([
+    supabase
+      .from("notes")
+      .select("id, title, body, updated_at, created_by, action_status")
+      .eq("project_id", projectId)
+      .order("updated_at", { ascending: false }),
+    supabase
+      .from("files")
+      .select("id, name, mime_type, size_bytes, created_at")
+      .eq("project_id", projectId)
+      .eq("kind", "file")
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("projects")
+      .select("name, wedding_date")
+      .eq("id", projectId)
+      .maybeSingle(),
+    supabase.auth.getUser(),
+    supabase
+      .from("project_invitations")
+      .select("email, accepted_by")
+      .eq("project_id", projectId)
+      .not("accepted_at", "is", null)
+      .not("accepted_by", "is", null),
+  ]);
 
-  const noteList = (notes ?? []) as Note[];
+  const emailByUserId = new Map<string, string>();
+  for (const row of acceptedInviteRows ?? []) {
+    if (row.accepted_by && row.email && !emailByUserId.has(row.accepted_by)) {
+      emailByUserId.set(row.accepted_by, row.email);
+    }
+  }
+  if (user?.id && user.email) {
+    emailByUserId.set(user.id, user.email);
+  }
+
+  const noteList = sortNotes(
+    ((notes ?? []) as Array<{
+      id: string;
+      title: string;
+      body: string | null;
+      updated_at: string;
+      created_by: string | null;
+      action_status: unknown;
+    }>).map(
+      (row): Note => ({
+        id: row.id,
+        title: row.title,
+        body: row.body,
+        updated_at: row.updated_at,
+        created_by: row.created_by,
+        action_status: parseActionStatus(row.action_status),
+        author_email:
+          (row.created_by && emailByUserId.get(row.created_by)) || "Member",
+      }),
+    ),
+  );
+
   const fileList: ProjectFile[] = (fileRows ?? []).map((row) => ({
     id: row.id,
     name: row.name,
@@ -80,19 +131,29 @@ export default async function NotesPage({
           Notes
         </p>
         {noteList.length === 0 ? (
-          <EmptyState>No notes yet. Add one to capture ideas.</EmptyState>
+          <EmptyState
+            action={
+              <AskAssistantPrompt
+                prefill={ASSISTANT_PREFILLS.notes}
+                title="Draft a planning note"
+                description="I'll suggest a clear title and body with the key details."
+                cta="Draft a note"
+              />
+            }
+          >
+            No notes yet. Add one to capture ideas.
+          </EmptyState>
         ) : (
-          <ul className="space-y-4">
-            {noteList.map((note) => (
-              <li key={note.id}>
-                <NoteCard note={note} />
-              </li>
-            ))}
-          </ul>
+          <NotesBoard notes={noteList} />
         )}
       </section>
 
-      <FileManager projectId={projectId} kind="file" files={fileList} />
+      <FileManager
+        projectId={projectId}
+        kind="file"
+        files={fileList}
+        label="Misc. Files"
+      />
     </div>
   );
 }

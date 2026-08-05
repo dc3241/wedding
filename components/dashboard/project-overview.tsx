@@ -1,8 +1,9 @@
 import Link from "next/link";
+import { AskAssistantPrompt } from "@/components/assistant/AskAssistantPrompt";
+import { ASSISTANT_PREFILLS } from "@/components/assistant/prefills";
 import { WeddingDateEditor } from "@/components/ui/wedding-date-editor";
 import { ButtonLink } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { EmptyState } from "@/components/ui/empty-state";
 import { Pill } from "@/components/ui/pill";
 import { vendorStatusPill } from "@/components/vendors/vendor-status";
 import {
@@ -316,6 +317,15 @@ export function ProjectOverview({
         </OverviewStatCard>
       </div>
 
+      <Card className="px-5 py-4 sm:px-6 sm:py-[18px]">
+        <AskAssistantPrompt
+          prefill={ASSISTANT_PREFILLS.overview}
+          title="What should I tackle next?"
+          description="I'll look at what's already set up and suggest the highest-leverage next step."
+          cta="Ask assistant"
+        />
+      </Card>
+
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Card className="px-6 py-[22px]">
           <h2 className="font-display text-[19px] font-extrabold tracking-[-0.02em] text-ink">
@@ -465,10 +475,17 @@ export function ProjectOverview({
           </div>
         ) : vendorRows.length === 0 ? (
           <div className="pb-5">
-            <EmptyState>
+            <p className="text-[15px] font-medium text-muted">
               No vendors on this wedding yet. Search or add vendors to start
               outreach.
-            </EmptyState>
+            </p>
+            <AskAssistantPrompt
+              className="mt-4 max-w-md"
+              prefill={ASSISTANT_PREFILLS.vendors}
+              title="Ask what to book first"
+              description="Priority categories and what to look for when shortlisting."
+              cta="Find vendors"
+            />
           </div>
         ) : (
           <div className="overflow-x-auto">

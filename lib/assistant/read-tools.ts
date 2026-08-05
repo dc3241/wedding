@@ -492,25 +492,34 @@ async function getVendorTargets(supabase: SupabaseClient, projectId: string) {
 async function getNotes(supabase: SupabaseClient, projectId: string) {
   const { data: notes, error } = await supabase
     .from("notes")
-    .select("id, title, body, updated_at")
+    .select("id, title, body, updated_at, action_status")
     .eq("project_id", projectId)
     .order("updated_at", { ascending: false });
 
   if (error) throw error;
 
-  const list = notes ?? [];
+  const list = [...(notes ?? [])].sort((a, b) => {
+    const aPin = a.action_status === "needs_action" ? 0 : 1;
+    const bPin = b.action_status === "needs_action" ? 0 : 1;
+    if (aPin !== bPin) return aPin - bPin;
+    return String(b.updated_at).localeCompare(String(a.updated_at));
+  });
   const total = list.length;
+  const needsActionCount = list.filter(
+    (note) => note.action_status === "needs_action",
+  ).length;
   const trimmed = list.map((note) => ({
     id: note.id,
     title: note.title,
     updated_at: note.updated_at,
+    action_status: note.action_status ?? null,
     excerpt: excerpt(note.body),
   }));
 
   const { items, truncated: capped } = capItems(trimmed, NOTES_ITEMS_CAP);
 
   return {
-    summary: { total },
+    summary: { total, needs_action: needsActionCount },
     items,
     total,
     returned: items.length,
@@ -584,7 +593,7 @@ async function getNote(
 ) {
   const { data: note, error } = await supabase
     .from("notes")
-    .select("id, title, body, updated_at")
+    .select("id, title, body, updated_at, action_status")
     .eq("project_id", projectId)
     .eq("id", noteId)
     .maybeSingle();
@@ -599,6 +608,7 @@ async function getNote(
     title: note.title,
     body: note.body,
     updated_at: note.updated_at,
+    action_status: note.action_status ?? null,
   };
 }
 
