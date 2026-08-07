@@ -24,14 +24,42 @@ import type {
   PaymentDueOverlay,
   TaskDueOverlay,
 } from "./types";
+import {
+  CalendarEventChip,
+  type CalendarChipStatus,
+} from "@/components/calendar/CalendarEventChip";
+import { CalendarLegend } from "@/components/calendar/CalendarLegend";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Pill } from "@/components/ui/pill";
+import { kindGlyph, kindHue, weddingHue } from "@/lib/calendar-hues";
 import { cn } from "@/lib/cn";
 import { formatCurrency } from "@/lib/format-currency";
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const CHIP_LIMIT = 3;
+
+/** Map a calendar cell item to the CAL-03 kind key (0045 or synthetic). */
+function itemKindKey(item: CalendarItem): string {
+  if (item.source === "wedding") return "wedding";
+  if (item.source === "payment") return "payment";
+  if (item.source === "task") return "task";
+  return item.kind ?? "other";
+}
+
+function itemChipStatus(item: CalendarItem): CalendarChipStatus | undefined {
+  // Best-effort from data the cell already carries — no new past-due math.
+  // Task overlays exclude status=done at query time, so "done" never appears today.
+  if (item.pastDue) return "overdue";
+  return undefined;
+}
+
+function itemChipTitle(item: CalendarItem): string {
+  if (item.source === "payment" && item.amount != null) {
+    return `${formatCurrency(item.amount)} · ${item.title}`;
+  }
+  return item.title;
+}
 
 type PanelState =
   | null
@@ -72,93 +100,31 @@ function OverlayIcon({
 
 function EventChip({
   item,
+  audience,
   onClick,
 }: {
   item: CalendarItem;
+  audience: "planner" | "couple";
   onClick?: () => void;
 }) {
-  const interactive = item.source === "authored" && onClick;
-  const pastDue = Boolean(item.pastDue);
-
-  const title =
-    item.source === "payment" && item.amount != null
-      ? `${formatCurrency(item.amount)} · ${item.title}`
-      : item.title;
-
-  if (item.source === "wedding") {
-    return (
-      <div
-        className="flex items-center gap-1 truncate rounded-[var(--radius-pill)] bg-well px-1.5 py-0.5 text-[11px] font-semibold text-sage"
-        title={`${item.title} — wedding day`}
-      >
-        <OverlayIcon source="wedding" />
-        <span className="truncate">{title}</span>
-        {item.timeLabel ? (
-          <span className="shrink-0 tabular-nums opacity-80">{item.timeLabel}</span>
-        ) : null}
-      </div>
-    );
-  }
-
-  if (item.source === "payment" || item.source === "task") {
-    const className = cn(
-      "flex w-full items-center gap-1 truncate rounded-[var(--radius-pill)] bg-well px-1.5 py-0.5 text-left text-[11px] font-semibold",
-      pastDue ? "text-rosewood" : "text-muted",
-    );
-    const overlayContent = (
-      <>
-        <OverlayIcon source={item.source} pastDue={pastDue} />
-        <span className="truncate">{title}</span>
-      </>
-    );
-    if (item.href) {
-      return (
-        <Link
-          href={item.href}
-          onClick={(e) => e.stopPropagation()}
-          className={className}
-          title={title}
-        >
-          {overlayContent}
-        </Link>
-      );
-    }
-    return (
-      <div className={className} title={title}>
-        {overlayContent}
-      </div>
-    );
-  }
-
-  const content = (
-    <>
-      <span className="truncate">{item.title}</span>
-      {item.timeLabel ? (
-        <span className="shrink-0 tabular-nums opacity-80">{item.timeLabel}</span>
-      ) : null}
-    </>
-  );
-
-  if (interactive) {
-    return (
-      <button
-        type="button"
-        onClick={(e) => {
-          e.stopPropagation();
-          onClick();
-        }}
-        className="flex w-full items-center gap-1 truncate rounded-[var(--radius-pill)] bg-surface px-1.5 py-0.5 text-left text-[11px] font-semibold text-ink shadow-raised hover:bg-accent-wash hover:text-accent"
-        title={item.title}
-      >
-        {content}
-      </button>
-    );
-  }
+  const kindKey = itemKindKey(item);
+  const hueVar =
+    audience === "planner" && item.projectId
+      ? weddingHue(item.projectId)
+      : kindHue(kindKey);
 
   return (
-    <div className="flex items-center gap-1 truncate rounded-[var(--radius-pill)] bg-surface px-1.5 py-0.5 text-[11px] font-semibold text-ink shadow-raised">
-      {content}
-    </div>
+    <CalendarEventChip
+      title={itemChipTitle(item)}
+      glyph={kindGlyph(kindKey)}
+      hueVar={hueVar}
+      timeLabel={item.timeLabel}
+      status={itemChipStatus(item)}
+      href={item.href}
+      onClick={
+        item.source === "authored" && onClick ? onClick : undefined
+      }
+    />
   );
 }
 
@@ -332,6 +298,10 @@ export function CalendarWorkspace({
   const [showWeddings, setShowWeddings] = useState(true);
   const [showPayments, setShowPayments] = useState(true);
   const [showTasks, setShowTasks] = useState(true);
+  // Couple project calendar locks to one project; planner account calendar does not.
+  const audience: "planner" | "couple" = lockedProjectId
+    ? "couple"
+    : "planner";
 
   function monthHref(y: number, m: number) {
     const ym = `${y}-${String(m).padStart(2, "0")}`;
@@ -475,6 +445,7 @@ export function CalendarWorkspace({
                     <EventChip
                       key={item.id}
                       item={item}
+                      audience={audience}
                       onClick={
                         item.source === "authored" && item.authored
                           ? () =>
@@ -496,6 +467,8 @@ export function CalendarWorkspace({
             );
           })}
         </div>
+
+        <CalendarLegend audience={audience} weddings={weddings} />
       </Card>
 
       <div className="flex flex-col gap-4 lg:sticky lg:top-6 lg:self-start">

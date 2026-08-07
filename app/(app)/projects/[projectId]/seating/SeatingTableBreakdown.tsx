@@ -11,6 +11,14 @@ type SeatedPerson = RosterPerson & {
   assignment: SeatingAssignment;
 };
 
+type SeatChoice = number | "auto";
+
+type OnAddMember = (
+  tableId: string,
+  memberId: string,
+  seat: SeatChoice,
+) => Promise<string | null>;
+
 type SeatingTableBreakdownProps = {
   tables: SeatingTable[];
   peopleByTable: Record<string, SeatedPerson[]>;
@@ -18,9 +26,33 @@ type SeatingTableBreakdownProps = {
   assignablePeople: RosterPerson[];
   isPending: boolean;
   sectionRef?: RefObject<HTMLElement | null>;
-  onAddMember: (tableId: string, memberId: string) => Promise<string | null>;
+  onAddMember: OnAddMember;
   onUnseat: (assignmentId: string) => void;
 };
+
+function openSeatsForTable(
+  seatCount: number,
+  seated: SeatedPerson[],
+): number[] {
+  const occupied = new Set<number>();
+  for (const person of seated) {
+    const seat = person.assignment.seat_index;
+    if (seat != null) occupied.add(seat);
+  }
+
+  const open: number[] = [];
+  for (let seat = 1; seat <= seatCount; seat += 1) {
+    if (!occupied.has(seat)) open.push(seat);
+  }
+  return open;
+}
+
+function parseSeatChoice(value: string): SeatChoice {
+  if (value === "auto") return "auto";
+  const seat = Number(value);
+  if (Number.isInteger(seat) && seat >= 1) return seat;
+  return "auto";
+}
 
 export function SeatingTableBreakdown({
   tables,
@@ -75,15 +107,22 @@ function BreakdownTableCard({
   occupied: number;
   assignablePeople: RosterPerson[];
   isPending: boolean;
-  onAddMember: (tableId: string, memberId: string) => Promise<string | null>;
+  onAddMember: OnAddMember;
   onUnseat: (assignmentId: string) => void;
 }) {
   const [picked, setPicked] = useState("");
+  const [seatPicked, setSeatPicked] = useState("auto");
   const [localError, setLocalError] = useState<string | null>(null);
   const [adding, startAdd] = useTransition();
   const over = occupied > table.seat_count;
   const full = occupied >= table.seat_count;
   const busy = isPending || adding;
+  const openSeats = openSeatsForTable(table.seat_count, seated);
+  const seatValue =
+    seatPicked === "auto" || openSeats.some((seat) => String(seat) === seatPicked)
+      ? seatPicked
+      : "auto";
+  const addDisabled = busy || assignablePeople.length === 0 || full;
 
   return (
     <article className="rounded-[var(--radius-card)] bg-surface px-4 py-4 shadow-raised">
@@ -150,43 +189,76 @@ function BreakdownTableCard({
         </ul>
       )}
 
-      <div>
-        <label
-          htmlFor={`breakdown-add-${table.id}`}
-          className="mb-1.5 block text-[12px] font-semibold uppercase tracking-[0.09em] text-muted"
-        >
+      <div className="rounded-[var(--radius-inner)] bg-well px-3 py-3 shadow-recessed">
+        <p className="mb-2 text-[12px] font-semibold uppercase tracking-[0.09em] text-muted">
           ＋ Add guest
-        </label>
-        <Select
-          id={`breakdown-add-${table.id}`}
-          value={picked}
-          disabled={busy || assignablePeople.length === 0 || full}
-          onChange={(event) => {
-            const memberId = event.target.value;
-            setPicked("");
-            setLocalError(null);
-            if (!memberId) return;
-            startAdd(async () => {
-              const error = await onAddMember(table.id, memberId);
-              if (error) setLocalError(error);
-            });
-          }}
-        >
-          <option value="">
-            {full
-              ? "Table is full"
-              : assignablePeople.length === 0
-                ? "No one to add"
-                : "Choose a person"}
-          </option>
-          {assignablePeople.map((person) => (
-            <option key={person.id} value={person.id}>
-              {formatPersonName(person)}
-            </option>
-          ))}
-        </Select>
+        </p>
+        <div className="flex flex-col gap-2">
+          <div>
+            <label
+              htmlFor={`breakdown-seat-${table.id}`}
+              className="mb-1 block text-[13px] font-medium text-muted"
+            >
+              Seat
+            </label>
+            <Select
+              id={`breakdown-seat-${table.id}`}
+              value={seatValue}
+              disabled={addDisabled}
+              onChange={(event) => {
+                setSeatPicked(event.target.value);
+                setLocalError(null);
+              }}
+            >
+              <option value="auto">Auto (lowest open)</option>
+              {openSeats.map((seat) => (
+                <option key={seat} value={String(seat)}>
+                  Seat {seat}
+                </option>
+              ))}
+            </Select>
+          </div>
+          <div>
+            <label
+              htmlFor={`breakdown-add-${table.id}`}
+              className="mb-1 block text-[13px] font-medium text-muted"
+            >
+              Person
+            </label>
+            <Select
+              id={`breakdown-add-${table.id}`}
+              value={picked}
+              disabled={addDisabled}
+              onChange={(event) => {
+                const memberId = event.target.value;
+                const seat = parseSeatChoice(seatValue);
+                setPicked("");
+                setSeatPicked("auto");
+                setLocalError(null);
+                if (!memberId) return;
+                startAdd(async () => {
+                  const error = await onAddMember(table.id, memberId, seat);
+                  if (error) setLocalError(error);
+                });
+              }}
+            >
+              <option value="">
+                {full
+                  ? "Table is full"
+                  : assignablePeople.length === 0
+                    ? "No one to add"
+                    : "Choose a person"}
+              </option>
+              {assignablePeople.map((person) => (
+                <option key={person.id} value={person.id}>
+                  {formatPersonName(person)}
+                </option>
+              ))}
+            </Select>
+          </div>
+        </div>
         {localError ? (
-          <p className="mt-1.5 text-[13px] text-rosewood">{localError}</p>
+          <p className="mt-2 text-[13px] text-rosewood">{localError}</p>
         ) : null}
       </div>
     </article>

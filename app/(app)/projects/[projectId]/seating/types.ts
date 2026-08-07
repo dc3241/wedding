@@ -86,6 +86,17 @@ export function seatingShapeLabel(shape: SeatingTableShape) {
   }
 }
 
+export function seatingKindLabel(kind: SeatingSeatableKind) {
+  switch (kind) {
+    case "standard":
+      return "Standard";
+    case "sweetheart":
+      return "Sweetheart";
+    case "head":
+      return "Head";
+  }
+}
+
 export function formatPersonName(person: {
   name: string | null;
   household_name: string | null;

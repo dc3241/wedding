@@ -38,9 +38,13 @@ export function SendAllDraftsButton({
       if (result.failures.length === 0) {
         setSummary(`Sent ${result.sent} email${result.sent === 1 ? "" : "s"}.`);
       } else {
+        const uniqueErrors = [
+          ...new Set(result.failures.map((f) => f.error)),
+        ];
         setSummary(
-          `Sent ${result.sent}. ${result.failures.length} failed — see errors below.`,
+          `Sent ${result.sent}. ${result.failures.length} failed — ${uniqueErrors.join(" · ")}`,
         );
+        setError(uniqueErrors[0] ?? null);
       }
 
       router.refresh();
@@ -56,10 +60,12 @@ export function SendAllDraftsButton({
       ) : (
         <ButtonLink href={connectHref}>Connect Gmail to send all</ButtonLink>
       )}
-      {summary ? (
+      {summary && !error ? (
         <span className="text-sm text-sage">{summary}</span>
       ) : null}
-      {error ? <span className="text-sm text-rosewood">{error}</span> : null}
+      {error ? (
+        <span className="max-w-xl text-sm text-rosewood">{summary ?? error}</span>
+      ) : null}
     </div>
   );
 }

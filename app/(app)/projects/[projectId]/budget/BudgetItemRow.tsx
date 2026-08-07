@@ -222,6 +222,23 @@ export function BudgetItemRow({
   const nextDuePast =
     item.nextDue != null && item.nextDue.due_on < todayKey;
 
+  // Paid / Actual ramp — display only; Actual null → neutral empty bar.
+  // Actual === 0 → sage full (avoid /0 → NaN). Else clamp(paid/Actual).
+  let paidFillPct = 0;
+  let paidFillTone: "rosewood" | "clay" | "sage" | null = null;
+  if (hasActual) {
+    const actual = item.actual_amount as number;
+    if (actual === 0) {
+      paidFillPct = 100;
+      paidFillTone = "sage";
+    } else {
+      const fraction = Math.min(1, Math.max(0, item.paid / actual));
+      paidFillPct = fraction * 100;
+      paidFillTone =
+        fraction < 0.5 ? "rosewood" : fraction < 1 ? "clay" : "sage";
+    }
+  }
+
   function saveLabel() {
     const trimmed = label.trim();
     const current = item.label ?? "";
@@ -310,6 +327,7 @@ export function BudgetItemRow({
         isPending && "opacity-60",
       )}
     >
+      {/* (a) Label · Actual · Delete */}
       <div className="flex items-center gap-2">
         <input
           type="text"
@@ -323,32 +341,7 @@ export function BudgetItemRow({
           aria-label="Vendor name"
           className="min-w-0 flex-1 truncate bg-transparent text-[15px] font-medium text-ink outline-none placeholder:text-muted"
         />
-        <button
-          type="button"
-          onClick={handleDelete}
-          disabled={isPending}
-          className="shrink-0 text-[13px] font-medium text-muted transition-colors hover:text-rosewood disabled:opacity-50"
-        >
-          Delete
-        </button>
-      </div>
-
-      <div className="grid grid-cols-2 gap-4 items-start lg:grid-cols-4">
-        <div className="min-w-0 space-y-1">
-          <label className="text-[12px] font-semibold uppercase tracking-[0.09em] text-muted">
-            Estimate
-          </label>
-          <AmountField
-            value={planned}
-            onChange={setPlanned}
-            onBlur={savePlanned}
-            ariaLabel={`Estimate for ${rowName}`}
-          />
-        </div>
-        <div className="min-w-0 space-y-1">
-          <label className="text-[12px] font-semibold uppercase tracking-[0.09em] text-muted">
-            Actual
-          </label>
+        <div className="w-[7.25rem] shrink-0">
           <AmountField
             value={actual}
             onChange={setActual}
@@ -358,35 +351,63 @@ export function BudgetItemRow({
             muted
           />
         </div>
-        <div className="min-w-0 space-y-1">
-          <label className="text-[12px] font-semibold uppercase tracking-[0.09em] text-muted">
-            Difference
-          </label>
-          {/* Gate on actual_amount: Estimate − 0 is nonsense when unpriced.
-              Once Actual exists (incl. 0), ±Difference is real — matches over-plan alerts. */}
-          <div
-            className={cn(
-              "h-9 text-left text-[14px] font-medium tabular-nums leading-9",
-              hasActual ? differenceTone : "text-muted",
-            )}
-            aria-label={`Difference for ${rowName}`}
+        <button
+          type="button"
+          onClick={handleDelete}
+          disabled={isPending}
+          aria-label={`Delete ${rowName}`}
+          className="shrink-0 rounded-[var(--radius-inner)] p-1.5 text-muted transition-colors hover:bg-rosewood-wash hover:text-rosewood focus-visible:bg-rosewood-wash focus-visible:text-rosewood focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rosewood disabled:opacity-50"
+        >
+          <svg
+            viewBox="0 0 16 16"
+            className="size-4"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            aria-hidden
           >
-            {hasActual ? formatSignedCurrency(item.difference) : "—"}
-          </div>
-        </div>
-        <div className="min-w-0 space-y-1">
-          <label className="text-[12px] font-semibold uppercase tracking-[0.09em] text-muted">
-            Paid
-          </label>
-          <div
-            className="h-9 text-left text-[14px] font-medium tabular-nums leading-9 text-ink"
-            aria-label={`Paid for ${rowName}`}
-          >
-            {formatCurrency(item.paid)}
-          </div>
-        </div>
+            <path d="M3.5 4.5h9M6.5 4.5V3.25a.75.75 0 0 1 .75-.75h1.5a.75.75 0 0 1 .75.75V4.5m1.5 0V12.5a1 1 0 0 1-1 1h-5a1 1 0 0 1-1-1V4.5" />
+            <path d="M7 7v4.5M9 7v4.5" />
+          </svg>
+        </button>
       </div>
 
+      {/* (b) Paid / Actual progress ramp */}
+      <div
+        className="h-2 overflow-hidden rounded-[var(--radius-pill)] bg-surface shadow-recessed"
+        role="progressbar"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={Math.round(paidFillPct)}
+        aria-label={
+          !hasActual
+            ? `Payment progress for ${rowName} · no actual set`
+            : `Payment progress for ${rowName} · ${Math.round(paidFillPct)}% paid`
+        }
+      >
+        {paidFillTone != null && paidFillPct > 0 ? (
+          <div
+            className={cn(
+              "h-full rounded-[var(--radius-pill)] transition-[width] duration-300",
+              paidFillTone === "rosewood" && "bg-rosewood",
+              paidFillTone === "clay" && "bg-clay",
+              paidFillTone === "sage" && "bg-sage",
+            )}
+            style={{ width: `${paidFillPct}%` }}
+          />
+        ) : null}
+      </div>
+
+      {/* (c) Total paid — ledger sum (was grid Paid) */}
+      <p
+        className="text-[13px] font-medium tabular-nums text-ink"
+        aria-label={`Total paid for ${rowName}`}
+      >
+        Total paid{"  "}
+        {formatCurrency(item.paid)}
+      </p>
+
+      {/* (d) Next due — earliest unpaid installment; hidden when fully covered */}
       {item.nextDue ? (
         <p
           className={cn(
@@ -400,6 +421,37 @@ export function BudgetItemRow({
           {nextDuePast ? " · past due" : ""}
         </p>
       ) : null}
+
+      {/* (e)+(f) Hairline · Budget (Estimate) + Difference delta */}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-hairline pt-3">
+        <label
+          htmlFor={`budget-estimate-${item.id}`}
+          className="shrink-0 text-[13px] font-medium text-muted"
+        >
+          Budget
+        </label>
+        <div className="w-[7.25rem] shrink-0">
+          <AmountField
+            id={`budget-estimate-${item.id}`}
+            value={planned}
+            onChange={setPlanned}
+            onBlur={savePlanned}
+            ariaLabel={`Budget for ${rowName}`}
+          />
+        </div>
+        {/* Difference only when Actual is set — rosewood over / sage under */}
+        {hasActual ? (
+          <span
+            className={cn(
+              "text-[13px] font-medium tabular-nums",
+              differenceTone,
+            )}
+            aria-label={`Difference for ${rowName}`}
+          >
+            {formatSignedCurrency(item.difference)}
+          </span>
+        ) : null}
+      </div>
 
       <PaymentScheduleWell projectId={projectId} item={item} />
 

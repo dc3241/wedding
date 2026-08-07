@@ -4,37 +4,32 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { setProjectArchived } from "@/app/(app)/dashboard/actions";
+import { WeddingCards } from "@/components/dashboard/wedding-cards";
 import { EmptyState } from "@/components/ui/empty-state";
-import { Pill } from "@/components/ui/pill";
 import { SectionHeader } from "@/components/ui/section-header";
 import { cn } from "@/lib/cn";
-import type { PlannerProjectSummary } from "@/lib/dashboard-aggregates";
+import {
+  parseLocalDateKey,
+} from "@/app/(app)/calendar/calendar-source";
+import type {
+  PlannerProjectSummary,
+  WeddingCardModel,
+} from "@/lib/dashboard-aggregates";
 
-function formatWeddingDate(date: string | null) {
+function formatArchivedDate(date: string | null) {
   if (!date) return "No date set";
-  return new Date(date + "T00:00:00").toLocaleDateString("en-US", {
+  return parseLocalDateKey(date).toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
     year: "numeric",
   });
 }
 
-function daysUntil(date: string | null) {
-  if (!date) return null;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const wedding = new Date(date + "T00:00:00");
-  return Math.max(
-    0,
-    Math.ceil((wedding.getTime() - today.getTime()) / 86_400_000),
-  );
-}
-
 export function DashboardWeddingList({
-  activeProjects,
+  activeWeddingCards,
   archivedProjects,
 }: {
-  activeProjects: PlannerProjectSummary[];
+  activeWeddingCards: WeddingCardModel[];
   archivedProjects: PlannerProjectSummary[];
 }) {
   const router = useRouter();
@@ -42,9 +37,7 @@ export function DashboardWeddingList({
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
-  const projects = view === "active" ? activeProjects : archivedProjects;
-
-  function handleArchive(project: PlannerProjectSummary) {
+  function handleArchive(project: { id: string; name: string }) {
     if (
       !window.confirm(
         `Archive ${project.name}? You can unarchive anytime from the Archived view.`,
@@ -75,6 +68,10 @@ export function DashboardWeddingList({
       router.refresh();
     });
   }
+
+  const activeEmpty = activeWeddingCards.length === 0;
+  const archivedEmpty = archivedProjects.length === 0;
+  const isEmpty = view === "active" ? activeEmpty : archivedEmpty;
 
   return (
     <section>
@@ -119,78 +116,51 @@ export function DashboardWeddingList({
         <p className="mb-3 text-[13px] text-rosewood">{error}</p>
       ) : null}
 
-      {projects.length === 0 ? (
+      {isEmpty ? (
         <EmptyState>
           {view === "archived"
             ? "No archived weddings yet."
             : "No weddings yet. Create your first client wedding to get started."}
         </EmptyState>
+      ) : view === "active" ? (
+        <WeddingCards
+          cards={activeWeddingCards}
+          archiveDisabled={isPending}
+          onArchive={(card) =>
+            handleArchive({ id: card.id, name: card.name })
+          }
+        />
       ) : (
-        <div className="overflow-hidden rounded-[var(--radius-card)] bg-surface shadow-[var(--shadow-raised)]">
+        <div className="overflow-hidden rounded-[var(--radius-card)] bg-surface shadow-raised">
           <div className="divide-y divide-hairline">
-            {projects.map((project) => {
-              const days = daysUntil(project.wedding_date);
-              const statusActive = project.status === "active";
-              const muted = view === "archived";
-
-              return (
-                <div
-                  key={project.id}
-                  className={cn(
-                    "flex items-center justify-between gap-4 px-5 py-4",
-                    muted && "bg-well",
-                  )}
+            {archivedProjects.map((project) => (
+              <div
+                key={project.id}
+                className="flex items-center justify-between gap-4 bg-well px-5 py-4"
+              >
+                <Link
+                  href={`/projects/${project.id}`}
+                  className="min-w-0 flex-1 no-underline transition-opacity hover:opacity-90"
                 >
-                  <Link
-                    href={`/projects/${project.id}`}
-                    className="min-w-0 flex-1 no-underline transition-opacity hover:opacity-90"
-                  >
-                    <div
-                      className={cn(
-                        "truncate text-[19px] font-extrabold tracking-[-0.02em]",
-                        muted ? "text-muted" : "text-ink",
-                      )}
-                    >
-                      {project.name}
-                    </div>
-                    <div className="mt-0.5 text-[13px] tabular-nums text-muted">
-                      {formatWeddingDate(project.wedding_date)}
-                    </div>
-                  </Link>
-                  <div className="flex shrink-0 items-center gap-3">
-                    {view === "active" && days !== null ? (
-                      <span className="text-[13px] tabular-nums text-muted">
-                        {days}d
-                      </span>
-                    ) : null}
-                    {view === "active" ? (
-                      <>
-                        <Pill variant={statusActive ? "sage" : undefined}>
-                          {statusActive ? "Active" : project.status}
-                        </Pill>
-                        <button
-                          type="button"
-                          disabled={isPending}
-                          onClick={() => handleArchive(project)}
-                          className="cursor-pointer border-none bg-transparent text-[13px] font-medium text-muted transition-colors hover:text-ink disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                          Archive
-                        </button>
-                      </>
-                    ) : (
-                      <button
-                        type="button"
-                        disabled={isPending}
-                        onClick={() => handleUnarchive(project)}
-                        className="cursor-pointer border-none bg-transparent text-[13px] font-medium text-muted transition-colors hover:text-ink disabled:cursor-not-allowed disabled:opacity-50"
-                      >
-                        Unarchive
-                      </button>
-                    )}
+                  <div className="truncate text-[19px] font-extrabold tracking-[-0.02em] text-muted">
+                    {project.name}
                   </div>
+                  <div className="mt-0.5 text-[13px] tabular-nums text-muted">
+                    {formatArchivedDate(project.wedding_date)}
+                  </div>
+                </Link>
+                <div className="flex shrink-0 items-center gap-3">
+                  <button
+                    type="button"
+                    disabled={isPending}
+                    onClick={() => handleUnarchive(project)}
+                    className="cursor-pointer border-none bg-transparent text-[13px] font-medium text-muted transition-colors hover:text-ink disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    Unarchive
+                  </button>
                 </div>
-              );
-            })}
+              </div>
+            ))}
           </div>
         </div>
       )}

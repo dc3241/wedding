@@ -214,5 +214,12 @@ export default async function ProjectPage({
     return <PlannerDashboard overview={overview} />;
   }
 
-  return <CoupleDashboard overview={overview} />;
+  // Dashboard routing stays business-vs-not. Suggested-path well is personal
+  // owners only — collaborators (account === null) must not get it.
+  return (
+    <CoupleDashboard
+      overview={overview}
+      isPersonalOwner={account?.kind === "personal"}
+    />
+  );
 }

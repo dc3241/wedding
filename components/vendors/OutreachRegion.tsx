@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { draftOutreach } from "@/app/(app)/projects/[projectId]/vendors/outreach/actions";
@@ -19,7 +18,7 @@ import {
 } from "@/components/vendors/outreach-vendor";
 import { AskAssistantPrompt } from "@/components/assistant/AskAssistantPrompt";
 import { ASSISTANT_PREFILLS } from "@/components/assistant/prefills";
-import { Button } from "@/components/ui/button";
+import { Button, ButtonLink } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { Input } from "@/components/ui/input";
@@ -65,8 +64,6 @@ export function OutreachRegion({
   const toContactCount = items.filter(
     (item) => item.status === "to_contact",
   ).length;
-
-  const hasOutreachContent = items.length > 0 || declinedItems.length > 0;
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -184,14 +181,13 @@ export function OutreachRegion({
             >
               {showAdd ? "Hide add" : "+ Add manually"}
             </button>
-            {hasOutreachContent ? (
-              <Link
-                href={`/projects/${projectId}/vendors/outreach`}
-                className="text-[14px] font-semibold text-accent hover:opacity-80"
-              >
-                Manage outreach
-              </Link>
-            ) : null}
+            <ButtonLink
+              href={`/projects/${projectId}/vendors/outreach`}
+              variant="default"
+              className="text-[13px]"
+            >
+              Review drafts
+            </ButtonLink>
             <Button
               type="button"
               variant="primary"

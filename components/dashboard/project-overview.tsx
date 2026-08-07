@@ -13,9 +13,22 @@ import {
   type OverviewPaidTone,
 } from "@/components/dashboard/overview-data";
 import { formatCurrency } from "@/lib/format-currency";
+import { projectTabHref } from "@/lib/project-tabs";
 import { vendorCategoryLabel } from "@/lib/vendor-categories";
 import { cn } from "@/lib/cn";
 import type { ReactNode } from "react";
+
+/** Work-step launcher for personal owners — excludes Overview + Calendar. */
+const SUGGESTED_PATH_STEPS = [
+  { label: "Checklist", segment: "checklist" },
+  { label: "Budget", segment: "budget" },
+  { label: "Vendors", segment: "vendors" },
+  { label: "Guests", segment: "guests" },
+  { label: "Website", segment: "website" },
+  { label: "Seating", segment: "seating" },
+  { label: "Day-of timeline", segment: "timeline" },
+  { label: "Notes & files", segment: "notes" },
+] as const;
 
 function formatShortDate(iso: string) {
   return new Date(iso + "T00:00:00").toLocaleDateString("en-US", {
@@ -159,10 +172,13 @@ function paidClass(tone: OverviewPaidTone) {
 export function ProjectOverview({
   data,
   showLastContact = false,
+  isPersonalOwner = false,
 }: {
   data: OverviewData;
   /** Planner outreach table keeps Last contact. */
   showLastContact?: boolean;
+  /** Personal account owner only — not business, not no-account collaborators. */
+  isPersonalOwner?: boolean;
 }) {
   const {
     projectId,
@@ -324,6 +340,39 @@ export function ProjectOverview({
           description="I'll look at what's already set up and suggest the highest-leverage next step."
           cta="Ask assistant"
         />
+        {isPersonalOwner ? (
+          <div className="mt-4 rounded-[var(--radius-inner)] bg-well px-4 py-4 shadow-recessed">
+            <p className="text-[15px] font-semibold text-ink">
+              New here? We suggest working through in this order.
+            </p>
+            <p className="mt-0.5 text-[13px] font-medium text-muted">
+              A recommended path — jump in wherever you are.
+            </p>
+            <ol className="mt-3 flex list-none flex-col gap-1.5 p-0 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-1 sm:gap-y-2">
+              {SUGGESTED_PATH_STEPS.map((step, index) => (
+                <li
+                  key={step.segment}
+                  className="flex items-center gap-1.5 text-[14px] font-medium"
+                >
+                  {index > 0 ? (
+                    <span
+                      className="hidden text-muted sm:inline"
+                      aria-hidden
+                    >
+                      →
+                    </span>
+                  ) : null}
+                  <Link
+                    href={projectTabHref(projectId, step.segment)}
+                    className="rounded-[var(--radius-pill)] px-2.5 py-1 text-accent no-underline transition-opacity hover:bg-accent-wash hover:opacity-90"
+                  >
+                    {step.label}
+                  </Link>
+                </li>
+              ))}
+            </ol>
+          </div>
+        ) : null}
       </Card>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">

@@ -1,3 +1,4 @@
+import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { exchangeGmailCode } from "@/lib/gmail-oauth";
@@ -105,12 +106,21 @@ export async function GET(request: Request) {
     .maybeSingle();
 
   if (existing) {
+    const nextRefresh = row.refresh_token ?? existing.refresh_token;
+    if (!nextRefresh) {
+      return NextResponse.redirect(
+        `${origin}${returnTo}?gmail_error=${encodeURIComponent(
+          "Google did not grant offline access. Try Reconnect and approve sending email."
+        )}`
+      );
+    }
+
     const { error } = await supabase
       .from("email_credentials")
       .update({
         email: row.email,
         access_token: row.access_token,
-        refresh_token: row.refresh_token ?? existing.refresh_token,
+        refresh_token: nextRefresh,
         token_expiry: row.token_expiry,
         updated_at: row.updated_at,
       })
@@ -122,9 +132,17 @@ export async function GET(request: Request) {
       );
     }
   } else {
+    if (!row.refresh_token) {
+      return NextResponse.redirect(
+        `${origin}${returnTo}?gmail_error=${encodeURIComponent(
+          "Google did not grant offline access. Try Connect again and approve sending email."
+        )}`
+      );
+    }
+
     const { error } = await supabase.from("email_credentials").insert({
       ...row,
-      refresh_token: row.refresh_token ?? null,
+      refresh_token: row.refresh_token,
     });
 
     if (error) {
@@ -133,6 +151,10 @@ export async function GET(request: Request) {
       );
     }
   }
+
+  // Drop stale RSC/router payloads that still show "Connect Gmail".
+  revalidatePath(returnTo);
+  revalidatePath("/projects", "layout");
 
   return NextResponse.redirect(`${origin}${returnTo}?gmail_connected=1`);
 }

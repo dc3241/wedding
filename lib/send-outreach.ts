@@ -94,7 +94,8 @@ export async function sendOutreachMessage(
 
   if (!sendResult.ok) {
     await markSendFailed(supabase, messageId, sendResult.error);
-    return sendResult;
+    const needsConnect = /Reconnect|send permission/i.test(sendResult.error);
+    return { ...sendResult, needsConnect };
   }
 
   const { error: updateError } = await supabase
@@ -114,6 +115,13 @@ export async function sendOutreachMessage(
         "Email was sent but we could not update the record. Check your Gmail Sent folder.",
     };
   }
+
+  // Advance to_contact → contacted on successful send; never downgrade later statuses.
+  await supabase
+    .from("project_vendors")
+    .update({ status: "contacted" })
+    .eq("id", row.project_vendor_id)
+    .eq("status", "to_contact");
 
   return { ok: true };
 }

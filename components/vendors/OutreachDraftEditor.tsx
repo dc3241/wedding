@@ -1,14 +1,13 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import {
   sendOutreach,
   updateOutreachDraft,
 } from "@/app/(app)/projects/[projectId]/vendors/outreach/actions";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Eyebrow } from "@/components/ui/eyebrow";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/cn";
@@ -39,6 +38,10 @@ export function OutreachDraftEditor({
   const [error, setError] = useState<string | null>(draft.sendError);
   const [saved, setSaved] = useState(false);
   const [isPending, startTransition] = useTransition();
+
+  useEffect(() => {
+    setError(draft.sendError);
+  }, [draft.sendError, draft.status]);
 
   const isDirty =
     subject !== (draft.subject ?? "") || body !== draft.body;

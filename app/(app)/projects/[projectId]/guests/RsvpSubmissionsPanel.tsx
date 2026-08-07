@@ -11,6 +11,7 @@ import type {
   RsvpSubmissionStatus,
 } from "./rsvp-submissions";
 import { Card } from "@/components/ui/card";
+import { CollapseSection } from "@/components/ui";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Pill } from "@/components/ui/pill";
 import { cn } from "@/lib/cn";
@@ -149,34 +150,40 @@ export function RsvpSubmissionsPanel({
   submissions: RsvpSubmission[];
 }) {
   return (
-    <section className="space-y-4">
-      <div>
-        <p className="text-[12px] font-semibold uppercase tracking-[0.09em] text-muted">
-          Website responses
-        </p>
-        <h2 className="mt-1.5 font-display text-[19px] font-extrabold tracking-[-0.02em] text-ink">
-          RSVP responses
-        </h2>
-        <p className="mt-1 text-[13px] text-muted">
-          What guests submitted from your site — meals, dietary notes, and
-          songs. Household RSVP status updates automatically.
-        </p>
-      </div>
-
-      {submissions.length === 0 ? (
-        <EmptyState>
-          When guests RSVP from your published wedding site, their responses
-          will appear here.
-        </EmptyState>
-      ) : (
-        <Card className="overflow-hidden px-3.5 py-3.5">
-          <ul>
-            {submissions.map((submission) => (
-              <SubmissionRow key={submission.id} submission={submission} />
-            ))}
-          </ul>
-        </Card>
-      )}
+    <section>
+      <CollapseSection
+        defaultOpen={false}
+        title={
+          <div>
+            <p className="text-[12px] font-semibold uppercase tracking-[0.09em] text-muted">
+              Website responses
+            </p>
+            <h2 className="mt-1.5 font-display text-[19px] font-extrabold tracking-[-0.02em] text-ink">
+              RSVP responses
+            </h2>
+            <p className="mt-1 text-[13px] text-muted">
+              What guests submitted from your site — meals, dietary notes, and
+              songs. Household RSVP status updates automatically.
+            </p>
+          </div>
+        }
+        bodyClassName="mt-4"
+      >
+        {submissions.length === 0 ? (
+          <EmptyState>
+            When guests RSVP from your published wedding site, their responses
+            will appear here.
+          </EmptyState>
+        ) : (
+          <Card className="overflow-hidden px-3.5 py-3.5">
+            <ul>
+              {submissions.map((submission) => (
+                <SubmissionRow key={submission.id} submission={submission} />
+              ))}
+            </ul>
+          </Card>
+        )}
+      </CollapseSection>
     </section>
   );
 }

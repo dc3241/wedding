@@ -20,6 +20,14 @@
   --deep: #3D2430;
   --deep-eyebrow: #E8B4C4;
 
+  /* Calendar categorical hues — identity / kind tint ONLY (CAL-03).
+     Deliberately separate from status tokens (--sage / --clay / --rosewood). */
+  --cal-w-1: #5661a8;
+  --cal-w-2: #2f8a86;
+  --cal-w-3: #8a54a6;
+  --cal-w-4: #52739a;
+  --cal-w-5: #b06a4f;
+
   --radius-card: 22px;
   --radius-inner: 14px;
   --radius-pill: 999px;

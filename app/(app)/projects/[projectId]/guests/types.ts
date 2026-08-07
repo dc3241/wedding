@@ -1,5 +1,13 @@
 export type RsvpStatus = "pending" | "attending" | "declined";
 
+export type GuestMemberType = "adult" | "child";
+
+export const GUEST_MEMBER_TYPES: GuestMemberType[] = ["adult", "child"];
+
+export function isGuestMemberType(value: string): value is GuestMemberType {
+  return (GUEST_MEMBER_TYPES as string[]).includes(value);
+}
+
 export type GuestMember = {
   id: string;
   project_id: string;
@@ -12,6 +20,8 @@ export type GuestMember = {
   sort_order: number;
   relationship_side: string | null;
   relationship: string | null;
+  member_type: GuestMemberType;
+  related_to_member_id: string | null;
   created_at: string;
 };
 
@@ -42,6 +52,14 @@ export type GuestPersonLine = {
   rsvp_token: string;
   householdMemberCount: number;
   isFirstInHousehold: boolean;
+  /** Resolved primary member name for association sublabel; null when unassociated. */
+  relatedToPrimaryName: string | null;
+};
+
+/** Unassociated adult eligible as a "Guest of" target. */
+export type PrimaryMemberOption = {
+  id: string;
+  name: string;
 };
 
 export const RSVP_STATUSES: RsvpStatus[] = ["pending", "attending", "declined"];

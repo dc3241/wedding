@@ -95,6 +95,9 @@ export function MealConfigCard({
           onChange={(e) => handleStyleChange(e.target.value)}
           disabled={isStylePending}
         >
+          {style === "none" ? (
+            <option value="none">No meal selection</option>
+          ) : null}
           {MEAL_SERVICE_STYLES.map((option) => (
             <option key={option.value} value={option.value}>
               {option.label}

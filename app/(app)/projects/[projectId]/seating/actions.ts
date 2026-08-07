@@ -171,9 +171,34 @@ export async function setSeatingTableKind(
     return { ok: false, error: "Dance floors do not have a table kind." };
   }
 
+  if (kind === "sweetheart") {
+    const { error: demoteError } = await supabase
+      .from("seating_tables")
+      .update({ kind: "standard" })
+      .eq("project_id", existing.project_id)
+      .eq("kind", "sweetheart")
+      .neq("id", tableId);
+
+    if (demoteError) throw demoteError;
+  }
+
+  const patch: { kind: string; seat_count?: number } = { kind };
+
+  if (kind === "sweetheart" && existing.kind !== "sweetheart") {
+    const { count, error: countError } = await supabase
+      .from("seating_assignments")
+      .select("id", { count: "exact", head: true })
+      .eq("table_id", tableId);
+
+    if (countError) throw countError;
+    if ((count ?? 0) === 0) {
+      patch.seat_count = 2;
+    }
+  }
+
   const { data, error } = await supabase
     .from("seating_tables")
-    .update({ kind })
+    .update(patch)
     .eq("id", tableId)
     .select("project_id")
     .single();

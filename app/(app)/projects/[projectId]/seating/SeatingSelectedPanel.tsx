@@ -1,6 +1,12 @@
 "use client";
 
-import { SEAT_COUNT_MAX, SEAT_COUNT_MIN } from "./types";
+import {
+  SEAT_COUNT_MAX,
+  SEAT_COUNT_MIN,
+  SEATING_TABLE_KINDS,
+  seatingKindLabel,
+  type SeatingSeatableKind,
+} from "./types";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
 
@@ -8,9 +14,11 @@ type SeatingSelectedPanelProps = {
   selectedId: string | null;
   seatCount: number | null;
   occupancy: number;
+  kind: SeatingSeatableKind | null;
   isDancefloor: boolean;
   placing: boolean;
   isPending: boolean;
+  onKindChange: (kind: SeatingSeatableKind) => void;
   onSeatCountChange: (seatCount: number) => void;
   onRotate: (direction: "cw" | "ccw") => void;
   onDelete: () => void;
@@ -20,9 +28,11 @@ export function SeatingSelectedPanel({
   selectedId,
   seatCount,
   occupancy,
+  kind,
   isDancefloor,
   placing,
   isPending,
+  onKindChange,
   onSeatCountChange,
   onRotate,
   onDelete,
@@ -32,6 +42,43 @@ export function SeatingSelectedPanel({
 
   return (
     <div className="flex flex-wrap items-end gap-5">
+      {!isDancefloor ? (
+        <div>
+          <p className="mb-2 text-[12px] font-semibold uppercase tracking-[0.09em] text-muted">
+            Kind
+          </p>
+          <div
+            className="flex flex-wrap rounded-[var(--radius-inner)] bg-well p-1 shadow-recessed"
+            role="group"
+            aria-label="Table kind"
+          >
+            {SEATING_TABLE_KINDS.map((option) => {
+              const active = kind === option;
+              return (
+                <button
+                  key={option}
+                  type="button"
+                  disabled={selectionControlsDisabled}
+                  aria-pressed={active}
+                  onClick={() => onKindChange(option)}
+                  className={cn(
+                    "rounded-[var(--radius-inner)] px-3 py-2 text-[12px] font-semibold transition-colors",
+                    active
+                      ? "bg-accent-wash text-accent"
+                      : "text-muted hover:text-ink",
+                    selectionControlsDisabled && "opacity-60",
+                  )}
+                >
+                  {option === "sweetheart"
+                    ? "Sweetheart table"
+                    : seatingKindLabel(option)}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
+
       {!isDancefloor ? (
         <div>
           <p className="mb-2 text-[12px] font-semibold uppercase tracking-[0.09em] text-muted">

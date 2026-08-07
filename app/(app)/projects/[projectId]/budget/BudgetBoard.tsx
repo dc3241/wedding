@@ -200,56 +200,55 @@ function StatCell({
   );
 }
 
-function CategoryStateLine({ group }: { group: BudgetCategoryGroup }) {
-  const untracked = group.actualTotal === 0;
+function formatSignedCurrency(amount: number) {
+  const abs = formatCurrency(Math.abs(amount));
+  if (amount > 0) return `+${abs}`;
+  if (amount < 0) return `−${abs}`;
+  return abs;
+}
 
-  if (untracked) {
-    return (
-      <span className="text-[13px] font-normal text-muted">Nothing tracked</span>
-    );
+/** Paid / Actual ramp — full-group paidTotal vs actualTotal. Over-plan is NOT on the bar. */
+function CategoryBar({
+  category,
+  actualTotal,
+  paidTotal,
+}: {
+  category: string;
+  actualTotal: number;
+  paidTotal: number;
+}) {
+  let fillPct = 0;
+  let fillTone: "rosewood" | "clay" | "sage" | null = null;
+
+  if (actualTotal > 0) {
+    const fraction = Math.min(1, Math.max(0, paidTotal / actualTotal));
+    fillPct = fraction * 100;
+    fillTone =
+      fraction < 0.5 ? "rosewood" : fraction < 1 ? "clay" : "sage";
   }
 
   return (
-    <span
-      className={cn(
-        "text-[13px] font-normal tabular-nums",
-        group.isOver ? "text-rosewood" : "text-muted",
-      )}
-    >
-      {formatCurrency(group.actualTotal)} tracked
-    </span>
-  );
-}
-
-function CategoryBar({ group }: { group: BudgetCategoryGroup }) {
-  const untracked = group.actualTotal === 0;
-  const over = group.isOver;
-  const pct =
-    group.plannedTotal > 0
-      ? Math.min(100, (group.actualTotal / group.plannedTotal) * 100)
-      : group.actualTotal > 0
-        ? 100
-        : 0;
-
-  return (
     <div
-      className="mt-3 h-2 overflow-hidden rounded-[var(--radius-inner)] bg-well p-0.5 shadow-recessed"
-      role="img"
+      className="mt-3 h-2 overflow-hidden rounded-[var(--radius-pill)] bg-well shadow-recessed"
+      role="progressbar"
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-valuenow={Math.round(fillPct)}
       aria-label={
-        untracked
-          ? "Nothing tracked"
-          : over
-            ? `Over plan · ${formatCurrency(group.actualTotal)} of ${formatCurrency(group.plannedTotal)}`
-            : `${formatCurrency(group.actualTotal)} of ${formatCurrency(group.plannedTotal)} tracked`
+        actualTotal === 0
+          ? `${category} · nothing tracked`
+          : `${category} · ${Math.round(fillPct)}% paid`
       }
     >
-      {!untracked && pct > 0 ? (
+      {fillTone != null && fillPct > 0 ? (
         <div
           className={cn(
-            "h-full rounded-[var(--radius-inner)] transition-[width] duration-300",
-            over ? "bg-rosewood" : "bg-sage",
+            "h-full rounded-[var(--radius-pill)] transition-[width] duration-300",
+            fillTone === "rosewood" && "bg-rosewood",
+            fillTone === "clay" && "bg-clay",
+            fillTone === "sage" && "bg-sage",
           )}
-          style={{ width: `${pct}%` }}
+          style={{ width: `${fillPct}%` }}
         />
       ) : null}
     </div>
@@ -277,6 +276,14 @@ function CategorySection({
   allItems: BudgetItemForAggregate[];
   todayKey: string;
 }) {
+  // Full-group ledger sum — never visibleItems (filter must not move the bar).
+  const paidTotal = group.items.reduce((sum, item) => sum + item.paid, 0);
+  const hasActual = group.actualTotal > 0;
+  const difference = group.plannedTotal - group.actualTotal;
+  const differenceTone =
+    group.actualTotal > group.plannedTotal ? "text-rosewood" : "text-sage";
+
+  // Next-due derivation UNCHANGED — earliest among visibleItems.
   const nextDues = visibleItems
     .map((item) => item.nextDue)
     .filter((due): due is NonNullable<typeof due> => due != null)
@@ -300,6 +307,7 @@ function CategorySection({
           onToggle();
         }}
       >
+        {/* (a) Label · Actual (display-only; blank when nothing tracked) */}
         <div className="flex items-baseline justify-between gap-x-3">
           <span className="flex min-w-0 items-center gap-2">
             <span className="truncate text-[15px] font-medium text-ink">
@@ -307,15 +315,28 @@ function CategorySection({
             </span>
             {matchBadge ? <Pill>{matchBadge}</Pill> : null}
           </span>
-          {group.plannedTotal > 0 ? (
+          {hasActual ? (
             <span className="shrink-0 text-[15px] font-medium tabular-nums text-ink">
-              {formatCurrency(group.plannedTotal)}
+              {formatCurrency(group.actualTotal)}
             </span>
           ) : null}
         </div>
-        <CategoryBar group={group} />
+
+        {/* (b) Paid / Actual progress ramp */}
+        <CategoryBar
+          category={group.category}
+          actualTotal={group.actualTotal}
+          paidTotal={paidTotal}
+        />
+
         <div className="mt-2 space-y-1">
-          <CategoryStateLine group={group} />
+          {/* (c) Total paid — full-group ledger sum */}
+          <p className="text-[13px] font-medium tabular-nums text-ink">
+            Total paid{"  "}
+            {formatCurrency(paidTotal)}
+          </p>
+
+          {/* (d) Next due — earliest unpaid in category (existing derivation) */}
           {earliestNext ? (
             <p
               className={cn(
@@ -330,6 +351,25 @@ function CategorySection({
               )}
               {earliestPast ? " · past due" : ""}
             </p>
+          ) : null}
+        </div>
+
+        {/* (e)+(f) Hairline · Budget (plannedTotal) + over-plan Difference delta */}
+        <div className="mt-3 flex flex-wrap items-baseline gap-x-3 gap-y-1 border-t border-hairline pt-3">
+          <span className="text-[13px] font-medium text-muted">Budget</span>
+          <span className="text-[13px] font-medium tabular-nums text-ink">
+            {formatCurrency(group.plannedTotal)}
+          </span>
+          {/* Difference only when expanded — collapsed face stays Budget-only */}
+          {open && hasActual ? (
+            <span
+              className={cn(
+                "text-[13px] font-medium tabular-nums",
+                differenceTone,
+              )}
+            >
+              {formatSignedCurrency(difference)}
+            </span>
           ) : null}
         </div>
       </summary>

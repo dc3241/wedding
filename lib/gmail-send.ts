@@ -62,9 +62,16 @@ export async function sendGmailMessage(
     let message = `Gmail API error (${response.status}).`;
     try {
       const data = (await response.json()) as {
-        error?: { message?: string };
+        error?: { message?: string; status?: string };
       };
       if (data.error?.message) message = data.error.message;
+      if (
+        data.error?.status === "PERMISSION_DENIED" ||
+        /insufficient.*scope/i.test(message)
+      ) {
+        message =
+          "Gmail is connected without send permission. Click Reconnect and approve sending email.";
+      }
     } catch {
       // use default message
     }

@@ -15,6 +15,8 @@ import { getGmailConnectionEmail } from "@/lib/gmail-connection-status";
 import { vendorCategoryLabel } from "@/lib/vendor-categories";
 import { createClient } from "@/utils/supabase/server";
 
+export const dynamic = "force-dynamic";
+
 type SentMessage = {
   id: string;
   subject: string | null;

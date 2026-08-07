@@ -4,9 +4,14 @@ import type { OverviewData } from "@/components/dashboard/overview-data";
 
 type CoupleDashboardProps = {
   overview: OverviewData;
+  /** Personal account owner — excludes invited collaborators (no account). */
+  isPersonalOwner?: boolean;
 };
 
-export function CoupleDashboard({ overview }: CoupleDashboardProps) {
+export function CoupleDashboard({
+  overview,
+  isPersonalOwner = false,
+}: CoupleDashboardProps) {
   return (
     <div className="space-y-4">
       <SlimHero
@@ -16,7 +21,11 @@ export function CoupleDashboard({ overview }: CoupleDashboardProps) {
         showCountdown={false}
         className="mb-0"
       />
-      <ProjectOverview data={overview} showLastContact={false} />
+      <ProjectOverview
+        data={overview}
+        showLastContact={false}
+        isPersonalOwner={isPersonalOwner}
+      />
     </div>
   );
 }

@@ -13,6 +13,12 @@ const RSVP_LABEL: Record<RsvpStatus, string> = {
   declined: "Declined",
 };
 
+const RSVP_TRIGGER_COLOR: Record<RsvpStatus, string> = {
+  attending: "text-sage",
+  pending: "text-clay",
+  declined: "text-rosewood",
+};
+
 export function RsvpSelect({
   guestId,
   status,
@@ -36,7 +42,11 @@ export function RsvpSelect({
           await updateRsvp(guestId, next);
         });
       }}
-      className={cn("bg-surface py-2 text-[14px]", className)}
+      className={cn(
+        "bg-surface py-2 text-[14px]",
+        RSVP_TRIGGER_COLOR[status],
+        className,
+      )}
     >
       {RSVP_STATUSES.map((value) => (
         <option key={value} value={value}>

@@ -11,6 +11,7 @@ import {
   moveSeatingTable,
   replaceSeat,
   rotateSeatingTable,
+  setSeatingTableKind,
   setSeatingTableSeatCount,
   swapSeats,
   unseatMember,
@@ -27,10 +28,12 @@ import {
   isAssignableRsvpStatus,
   isDancefloor,
   isSeatableTable,
+  isSeatingTableKind,
   NUDGE_FINE_STEP,
   NUDGE_STEP,
   type RosterPerson,
   type SeatingAssignment,
+  type SeatingSeatableKind,
   type SeatingTable,
   type SeatingTableShape,
 } from "./types";
@@ -213,6 +216,31 @@ export function SeatingWorkspace({
       startTransition(async () => {
         const result = await setSeatingTableSeatCount(id, next);
         if (!result.ok) {
+          setErrorMessage(result.error);
+        }
+      });
+    },
+    [placing, selectedTableId],
+  );
+
+  const handleKindChange = useCallback(
+    (kind: SeatingSeatableKind) => {
+      if (!selectedTableId || placing) return;
+
+      const id = selectedTableId;
+      setErrorMessage(null);
+      startTransition(async () => {
+        const result = await setSeatingTableKind(id, kind);
+        if (result.ok) {
+          setSelectedTableId(null);
+          setConfirmation(
+            kind === "sweetheart"
+              ? "Marked as sweetheart table."
+              : kind === "head"
+                ? "Marked as head table."
+                : "Table kind set to standard.",
+          );
+        } else {
           setErrorMessage(result.error);
         }
       });
@@ -437,9 +465,13 @@ export function SeatingWorkspace({
   async function handleBreakdownAdd(
     tableId: string,
     memberId: string,
+    seat: number | "auto",
   ): Promise<string | null> {
     setErrorMessage(null);
-    const result = await assignMemberToLowestFreeSeat(memberId, tableId);
+    const result =
+      seat === "auto"
+        ? await assignMemberToLowestFreeSeat(memberId, tableId)
+        : await assignMemberToSeat(memberId, tableId, seat);
     if (result.ok) {
       const person = peopleById.get(memberId);
       const tableLabel = tableLabelById.get(tableId) ?? "table";
@@ -665,9 +697,15 @@ export function SeatingWorkspace({
           occupancy={
             selectedTableId ? (occupancyByTable[selectedTableId] ?? 0) : 0
           }
+          kind={
+            selectedTable && isSeatingTableKind(selectedTable.kind)
+              ? selectedTable.kind
+              : null
+          }
           isDancefloor={selectedIsDancefloor}
           placing={placing}
           isPending={isPending}
+          onKindChange={handleKindChange}
           onSeatCountChange={handleSeatCountChange}
           onRotate={handleRotate}
           onDelete={handleDelete}

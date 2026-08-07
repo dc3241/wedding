@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { AccountDashboard } from "@/components/dashboard/account-dashboard";
 import {
   buildUrgentItems,
+  buildWeddingCardModels,
   countTasksDueThisWeek,
   countVendorsNeedingAction,
   type TaskRow,
@@ -11,6 +12,16 @@ import { getAccountContext } from "@/lib/account-context";
 import { createClient } from "@/utils/supabase/server";
 
 const projectSelect = "id, name, wedding_date, status" as const;
+
+type GuestConfirmedRow = { project_id: string };
+type TaskRollupRow = {
+  id: string;
+  title: string;
+  status: string;
+  due_date: string | null;
+  project_id: string;
+  projects: { name: string } | { name: string }[] | null;
+};
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -47,33 +58,58 @@ export default async function DashboardPage() {
   const archivedList = archivedProjects ?? [];
   const activeProjectIds = activeList.map((project) => project.id);
 
-  const [{ data: tasks }, { data: vendorRows }] =
+  const emptyTasks: TaskRollupRow[] = [];
+  const emptyVendors: VendorRow[] = [];
+  const emptyGuests: GuestConfirmedRow[] = [];
+
+  const [{ data: tasks }, { data: vendorRows }, { data: confirmedGuests }] =
     activeProjectIds.length === 0
-      ? [{ data: [] as TaskRow[] }, { data: [] as VendorRow[] }]
+      ? [
+          { data: emptyTasks },
+          { data: emptyVendors },
+          { data: emptyGuests },
+        ]
       : await Promise.all([
+          // Full active-scoped task set — rollup + urgent both derive from this.
           supabase
             .from("tasks")
             .select("id, title, status, due_date, project_id, projects(name)")
-            .in("project_id", activeProjectIds)
-            .neq("status", "done")
-            .not("due_date", "is", null),
+            .in("project_id", activeProjectIds),
           supabase
             .from("project_vendors")
             .select("id, status, project_id, vendors(name), projects(name)")
             .in("project_id", activeProjectIds),
+          supabase
+            .from("guests")
+            .select("project_id")
+            .in("project_id", activeProjectIds)
+            .eq("rsvp_status", "attending"),
         ]);
 
-  const taskList = (tasks ?? []) as TaskRow[];
+  const taskList = (tasks ?? []) as TaskRollupRow[];
   const vendors = (vendorRows ?? []) as VendorRow[];
+  const confirmedGuestRows = (confirmedGuests ?? []) as GuestConfirmedRow[];
+
+  // Urgent / due-this-week still only care about incomplete dated tasks.
+  const urgentTaskList: TaskRow[] = taskList.filter(
+    (task) => task.status !== "done" && task.due_date != null,
+  );
+
+  const activeWeddingCards = buildWeddingCardModels(
+    activeList,
+    taskList,
+    confirmedGuestRows,
+  );
 
   return (
     <AccountDashboard
       activeProjects={activeList}
       archivedProjects={archivedList}
+      activeWeddingCards={activeWeddingCards}
       activeWeddings={activeList.length}
-      tasksDueThisWeek={countTasksDueThisWeek(taskList)}
+      tasksDueThisWeek={countTasksDueThisWeek(urgentTaskList)}
       vendorsNeedingAction={countVendorsNeedingAction(vendors)}
-      urgentItems={buildUrgentItems(taskList, vendors)}
+      urgentItems={buildUrgentItems(urgentTaskList, vendors)}
     />
   );
 }

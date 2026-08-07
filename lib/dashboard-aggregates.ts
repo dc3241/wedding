@@ -1,6 +1,7 @@
 import {
   countTasksDueThisWeek,
 } from "@/components/dashboard/planner-dashboard";
+import { isTaskPastDue } from "@/lib/task-overdue";
 
 export type PlannerProjectSummary = {
   id: string;
@@ -8,6 +9,78 @@ export type PlannerProjectSummary = {
   wedding_date: string | null;
   status: string;
 };
+
+/** Active-project card view-model for the planner dashboard wedding grid (DASH-03). */
+export type WeddingCardModel = {
+  id: string;
+  name: string;
+  weddingDate: string | null;
+  confirmedGuests: number;
+  tasksDone: number;
+  tasksTotal: number;
+  tasksOverdue: number;
+};
+
+type TaskRollupRow = {
+  project_id: string;
+  status: string;
+  due_date: string | null;
+};
+
+type GuestConfirmedRow = {
+  project_id: string;
+};
+
+export function buildWeddingCardModels(
+  projects: PlannerProjectSummary[],
+  tasks: TaskRollupRow[],
+  confirmedGuestRows: GuestConfirmedRow[],
+  now: Date = new Date(),
+): WeddingCardModel[] {
+  const guestsByProject = new Map<string, number>();
+  for (const row of confirmedGuestRows) {
+    guestsByProject.set(
+      row.project_id,
+      (guestsByProject.get(row.project_id) ?? 0) + 1,
+    );
+  }
+
+  const rollupByProject = new Map<
+    string,
+    { done: number; total: number; overdue: number }
+  >();
+  for (const task of tasks) {
+    const bucket = rollupByProject.get(task.project_id) ?? {
+      done: 0,
+      total: 0,
+      overdue: 0,
+    };
+    bucket.total += 1;
+    if (task.status === "done") {
+      bucket.done += 1;
+    } else if (isTaskPastDue(task.due_date, task.status, now)) {
+      bucket.overdue += 1;
+    }
+    rollupByProject.set(task.project_id, bucket);
+  }
+
+  return projects.map((project) => {
+    const rollup = rollupByProject.get(project.id) ?? {
+      done: 0,
+      total: 0,
+      overdue: 0,
+    };
+    return {
+      id: project.id,
+      name: project.name,
+      weddingDate: project.wedding_date,
+      confirmedGuests: guestsByProject.get(project.id) ?? 0,
+      tasksDone: rollup.done,
+      tasksTotal: rollup.total,
+      tasksOverdue: rollup.overdue,
+    };
+  });
+}
 
 export type TaskRow = {
   id: string;

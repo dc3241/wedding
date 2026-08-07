@@ -16,7 +16,6 @@ import {
   type VendorTargetRow,
 } from "@/components/vendors/VendorsToBookSection";
 import { IN_FLIGHT_STATUSES, type OutreachVendor } from "@/components/vendors/outreach-vendor";
-import { ButtonLink } from "@/components/ui/button";
 import { PageHeader } from "@/components/ui/page-header";
 import { getAccountContext } from "@/lib/account-context";
 import { deriveBookedVendorMoney } from "@/lib/booked-vendor-money";
@@ -24,6 +23,8 @@ import { sectionStackClass } from "@/lib/density";
 import { getGmailConnectionEmail } from "@/lib/gmail-connection-status";
 import { VENDOR_CATEGORIES } from "@/lib/vendor-categories";
 import { createClient } from "@/utils/supabase/server";
+
+export const dynamic = "force-dynamic";
 
 const PV_SELECT =
   "id, status, quoted_price, notes, vendors(id, name, category, contact_email, contact_phone, address, website, notes, ai_overview, last_enriched_at)";
@@ -428,14 +429,6 @@ export default async function VendorsPage({
         title="Vendors"
         eyebrow={eyebrow}
         description="Find local vendors, track outreach, and book your team."
-        actions={
-          <ButtonLink
-            href={`/projects/${projectId}/vendors/outreach`}
-            variant="default"
-          >
-            Review drafts
-          </ButtonLink>
-        }
       />
 
       <GmailConnection

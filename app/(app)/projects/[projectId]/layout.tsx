@@ -37,7 +37,10 @@ export default async function ProjectLayout({
     redirect(onboardingRedirect);
   }
 
+  // Shell / assistant density still collapse null → personal. Tab filter +
+  // Overview Suggested-path well read the three-state signal instead.
   const accountKind = account?.kind ?? "personal";
+  const tabAudience = account?.kind ?? null;
 
   const { data: messageRows } = await supabase
     .from("assistant_messages")
@@ -59,7 +62,7 @@ export default async function ProjectLayout({
         weddingDate={project.wedding_date}
         accountKind={accountKind}
       >
-        <ProjectWorkspaceNav projectId={projectId} accountKind={accountKind} />
+        <ProjectWorkspaceNav projectId={projectId} accountKind={tabAudience} />
         {children}
       </ProjectShell>
     </AssistantWorkspace>

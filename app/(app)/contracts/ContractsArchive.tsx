@@ -31,6 +31,10 @@ const STATUS_PILL: Record<
   signed: { label: "Signed", variant: "sage" },
 };
 
+/** Shared so header and rows keep identical track widths. */
+const ARCHIVE_COLS =
+  "md:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_minmax(0,0.7fr)_minmax(0,0.7fr)_5.5rem_6.5rem]";
+
 /** Local calendar date key (YYYY-MM-DD) from a timestamptz ISO string. */
 function createdDateKey(iso: string): string {
   const d = new Date(iso);
@@ -207,72 +211,80 @@ export function ContractsArchive({
         </EmptyState>
       ) : (
         <Card className="overflow-hidden p-0">
-          <div className="hidden border-b border-hairline px-5 py-3 md:grid md:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_minmax(0,0.7fr)_minmax(0,0.7fr)_auto_auto] md:gap-4">
-            <span className="text-[12px] font-semibold uppercase tracking-[0.09em] text-muted">
-              Contract
-            </span>
-            <span className="text-[12px] font-semibold uppercase tracking-[0.09em] text-muted">
-              Wedding
-            </span>
-            <span className="text-[12px] font-semibold uppercase tracking-[0.09em] text-muted">
-              Category
-            </span>
-            <span className="text-[12px] font-semibold uppercase tracking-[0.09em] text-muted">
-              Date
-            </span>
-            <span className="text-[12px] font-semibold uppercase tracking-[0.09em] text-muted">
-              Status
-            </span>
-            <span className="sr-only">Download</span>
-          </div>
-          <ul className="list-none p-3 sm:p-4">
-            {filtered.map((row) => {
-              const status = normalizeStatus(row.status);
-              const chip = STATUS_PILL[status];
-              const categoryLabel = row.category
-                ? vendorCategoryLabel(row.category)
-                : "Uncategorized";
-              return (
-                <li
-                  key={row.id}
-                  className={cn(
-                    "mb-2 rounded-[var(--radius-inner)] bg-well px-4 py-3.5 shadow-recessed last:mb-0",
-                    "md:grid md:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_minmax(0,0.7fr)_minmax(0,0.7fr)_auto_auto] md:items-center md:gap-4",
-                  )}
-                >
-                  <div className="min-w-0">
-                    <p className="truncate text-[15px] font-medium text-ink">
-                      {row.name}
-                    </p>
-                    <p className="mt-1 text-[13px] text-muted md:hidden">
+          <div className="p-3 sm:p-4">
+            <div
+              className={cn(
+                "mb-2 hidden border-b border-hairline px-4 py-3 md:grid md:gap-4",
+                ARCHIVE_COLS,
+              )}
+            >
+              <span className="text-[12px] font-semibold uppercase tracking-[0.09em] text-muted">
+                Contract
+              </span>
+              <span className="text-[12px] font-semibold uppercase tracking-[0.09em] text-muted">
+                Wedding
+              </span>
+              <span className="text-[12px] font-semibold uppercase tracking-[0.09em] text-muted">
+                Category
+              </span>
+              <span className="text-[12px] font-semibold uppercase tracking-[0.09em] text-muted">
+                Date
+              </span>
+              <span className="text-[12px] font-semibold uppercase tracking-[0.09em] text-muted">
+                Status
+              </span>
+              <span className="sr-only">Download</span>
+            </div>
+            <ul className="list-none">
+              {filtered.map((row) => {
+                const status = normalizeStatus(row.status);
+                const chip = STATUS_PILL[status];
+                const categoryLabel = row.category
+                  ? vendorCategoryLabel(row.category)
+                  : "Uncategorized";
+                return (
+                  <li
+                    key={row.id}
+                    className={cn(
+                      "mb-2 rounded-[var(--radius-inner)] bg-well px-4 py-3.5 shadow-recessed last:mb-0",
+                      "md:grid md:items-center md:gap-4",
+                      ARCHIVE_COLS,
+                    )}
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate text-[15px] font-medium text-ink">
+                        {row.name}
+                      </p>
+                      <p className="mt-1 text-[13px] text-muted md:hidden">
+                        {row.project_name}
+                        <span className="mx-1.5">·</span>
+                        {categoryLabel}
+                        <span className="mx-1.5">·</span>
+                        <span className="tabular-nums">
+                          {formatUploadedDate(row.created_at)}
+                        </span>
+                      </p>
+                    </div>
+                    <p className="hidden truncate text-[14px] font-medium text-ink md:block">
                       {row.project_name}
-                      <span className="mx-1.5">·</span>
-                      {categoryLabel}
-                      <span className="mx-1.5">·</span>
-                      <span className="tabular-nums">
-                        {formatUploadedDate(row.created_at)}
-                      </span>
                     </p>
-                  </div>
-                  <p className="hidden truncate text-[14px] font-medium text-ink md:block">
-                    {row.project_name}
-                  </p>
-                  <p className="hidden truncate text-[14px] text-muted md:block">
-                    {categoryLabel}
-                  </p>
-                  <p className="hidden text-[14px] tabular-nums text-muted md:block">
-                    {formatUploadedDate(row.created_at)}
-                  </p>
-                  <div className="mt-2 md:mt-0">
-                    <Pill variant={chip.variant}>{chip.label}</Pill>
-                  </div>
-                  <div className="mt-3 md:mt-0 md:justify-self-end">
-                    <ContractDownloadButton fileId={row.id} />
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
+                    <p className="hidden truncate text-[14px] text-muted md:block">
+                      {categoryLabel}
+                    </p>
+                    <p className="hidden text-[14px] tabular-nums text-muted md:block">
+                      {formatUploadedDate(row.created_at)}
+                    </p>
+                    <div className="mt-2 md:mt-0">
+                      <Pill variant={chip.variant}>{chip.label}</Pill>
+                    </div>
+                    <div className="mt-3 md:mt-0 md:justify-self-end">
+                      <ContractDownloadButton fileId={row.id} />
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
         </Card>
       )}
     </div>

@@ -8,11 +8,13 @@ import { StatCard } from "@/components/ui/stat-card";
 import type {
   PlannerProjectSummary,
   UrgentItem,
+  WeddingCardModel,
 } from "@/lib/dashboard-aggregates";
 
 type AccountDashboardProps = {
   activeProjects: PlannerProjectSummary[];
   archivedProjects: PlannerProjectSummary[];
+  activeWeddingCards: WeddingCardModel[];
   activeWeddings: number;
   tasksDueThisWeek: number;
   vendorsNeedingAction: number;
@@ -22,6 +24,7 @@ type AccountDashboardProps = {
 export function AccountDashboard({
   activeProjects,
   archivedProjects,
+  activeWeddingCards,
   activeWeddings,
   tasksDueThisWeek,
   vendorsNeedingAction,
@@ -59,7 +62,7 @@ export function AccountDashboard({
       </section>
 
       <DashboardWeddingList
-        activeProjects={activeProjects}
+        activeWeddingCards={activeWeddingCards}
         archivedProjects={archivedProjects}
       />
     </div>

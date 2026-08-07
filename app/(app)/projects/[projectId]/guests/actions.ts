@@ -9,7 +9,11 @@ import {
   type PartnerSideToken,
 } from "@/lib/partner-sides";
 import { createClient } from "@/utils/supabase/server";
-import type { RsvpStatus } from "./types";
+import {
+  isGuestMemberType,
+  type GuestMemberType,
+  type RsvpStatus,
+} from "./types";
 
 function guestsPath(projectId: string) {
   return `/projects/${projectId}/guests`;
@@ -45,6 +49,16 @@ function normalizeRelationshipSide(
   return trimmed;
 }
 
+function normalizeMemberType(
+  value: string | null | undefined,
+): GuestMemberType {
+  const trimmed = (value ?? "adult").trim() || "adult";
+  if (!isGuestMemberType(trimmed)) {
+    throw new Error(`Invalid member_type: ${trimmed}`);
+  }
+  return trimmed;
+}
+
 export async function addGuest(
   projectId: string,
   fullName: string,
@@ -54,9 +68,66 @@ export async function addGuest(
   additionalPeople: GuestPersonWrite[] = [],
   address = "",
   primary: Omit<GuestPersonWrite, "name"> = {},
+  options: {
+    member_type?: string | null;
+    primaryMemberId?: string | null;
+  } = {},
 ) {
   const trimmedName = fullName.trim();
   if (!trimmedName) return;
+
+  const memberType = normalizeMemberType(options.member_type);
+  const primaryMemberId = options.primaryMemberId?.trim() || null;
+
+  const supabase = await createClient();
+
+  // Associated path: join an existing unassociated-adult primary's household.
+  // Structurally blocks chains (target must be adult + related_to IS NULL).
+  if (primaryMemberId) {
+    const { data: primaryMember, error: primaryError } = await supabase
+      .from("guest_members")
+      .select("id, guest_id, project_id, member_type, related_to_member_id")
+      .eq("id", primaryMemberId)
+      .eq("project_id", projectId)
+      .maybeSingle();
+
+    if (primaryError) throw primaryError;
+    if (!primaryMember) {
+      throw new Error("Primary member not found in this project.");
+    }
+    if (
+      primaryMember.member_type !== "adult" ||
+      primaryMember.related_to_member_id != null
+    ) {
+      throw new Error(
+        "Guest of target must be an unassociated adult in this project.",
+      );
+    }
+
+    const { count } = await supabase
+      .from("guest_members")
+      .select("*", { count: "exact", head: true })
+      .eq("guest_id", primaryMember.guest_id);
+
+    const { error: memberError } = await supabase.from("guest_members").insert({
+      project_id: projectId,
+      guest_id: primaryMember.guest_id,
+      name: trimmedName,
+      meal_option_id: null,
+      dietary_note: null,
+      attending: false,
+      sort_order: count ?? 0,
+      relationship_side: normalizeRelationshipSide(primary.relationship_side),
+      relationship: normalizeRelationship(primary.relationship),
+      member_type: memberType,
+      related_to_member_id: primaryMember.id,
+    });
+
+    if (memberError) throw memberError;
+
+    revalidatePath(guestsPath(projectId));
+    return;
+  }
 
   const people: GuestPersonWrite[] = [
     {
@@ -72,8 +143,6 @@ export async function addGuest(
       }))
       .filter((person) => Boolean(person.name)),
   ];
-
-  const supabase = await createClient();
 
   const { data: guest, error } = await supabase
     .from("guests")
@@ -101,6 +170,9 @@ export async function addGuest(
       sort_order: index,
       relationship_side: normalizeRelationshipSide(person.relationship_side),
       relationship: normalizeRelationship(person.relationship),
+      // First person uses the form member_type; additional party adults stay adult.
+      member_type: index === 0 ? memberType : "adult",
+      related_to_member_id: null,
     })),
   );
 

@@ -107,10 +107,11 @@ function SeatingTableGraphic({
   onNeedsSeatClick: (occupant: SeatOccupant) => void;
 }) {
   const dancefloor = isDancefloor(table.kind);
+  const sweetheart = table.kind === "sweetheart";
   const body = tableBodyForElement(table.shape, table.kind);
   const seats = seatPositionsForTable(table.shape, table.seat_count, table.kind);
-  const stroke = selected ? "var(--accent)" : "var(--ring)";
-  const strokeWidth = selected ? 2 : 1.5;
+  const stroke = selected || sweetheart ? "var(--accent)" : "var(--ring)";
+  const strokeWidth = selected || sweetheart ? 2 : 1.5;
   const over = !dancefloor && occupied > table.seat_count;
   const full = !dancefloor && occupied >= table.seat_count;
   const countColor = over
@@ -139,8 +140,8 @@ function SeatingTableGraphic({
         dancefloor
           ? table.label
           : over
-            ? `${table.label}, ${occupied} of ${table.seat_count} seats — over capacity`
-            : `${table.label}, ${occupied} of ${table.seat_count} seats filled`
+            ? `${table.label}${sweetheart ? ", sweetheart" : ""}, ${occupied} of ${table.seat_count} seats — over capacity`
+            : `${table.label}${sweetheart ? ", sweetheart" : ""}, ${occupied} of ${table.seat_count} seats filled`
       }
     >
       <g
@@ -273,6 +274,23 @@ function SeatingTableGraphic({
       >
         {table.label}
       </text>
+
+      {sweetheart ? (
+        <text
+          x={0}
+          y={-20}
+          textAnchor="middle"
+          dominantBaseline="middle"
+          fill="var(--accent)"
+          fontSize={10}
+          fontFamily="var(--font-sans)"
+          fontWeight={600}
+          letterSpacing="0.06em"
+          style={{ pointerEvents: "none", textTransform: "uppercase" }}
+        >
+          Sweetheart
+        </text>
+      ) : null}
 
       {!dancefloor ? (
         <text

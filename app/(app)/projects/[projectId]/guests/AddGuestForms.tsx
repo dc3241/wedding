@@ -2,25 +2,35 @@
 
 import { useState, useTransition } from "react";
 import { addGuest } from "./actions";
+import type { GuestMemberType, PrimaryMemberOption } from "./types";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import {
+  SegmentedToggle,
+  SegmentedToggleItem,
+} from "@/components/ui/topbar";
 import { GUEST_RELATIONSHIPS } from "@/lib/guest-relationships";
 import type { ResolvedPartnerSides } from "@/lib/partner-sides";
 
 export function AddGuestForms({
   projectId,
   partnerSides,
+  primaryOptions = [],
 }: {
   projectId: string;
   partnerSides: ResolvedPartnerSides;
+  primaryOptions?: PrimaryMemberOption[];
 }) {
   const [isAddPending, startAddTransition] = useTransition();
   const [partySize, setPartySize] = useState(1);
+  const [memberType, setMemberType] = useState<GuestMemberType>("adult");
+  const [primaryMemberId, setPrimaryMemberId] = useState("");
 
-  const additionalSlots = Math.max(0, partySize - 1);
+  const associating = Boolean(primaryMemberId);
+  const additionalSlots = associating ? 0 : Math.max(0, partySize - 1);
 
   function handleAddSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -30,7 +40,7 @@ export function AddGuestForms({
     const household = (form.get("household") as string) ?? "";
     const phone = (form.get("phone") as string) ?? "";
     const address = (form.get("address") as string) ?? "";
-    const size = Number(form.get("party_size") ?? 1);
+    const size = associating ? 1 : Number(form.get("party_size") ?? 1);
     const primarySide = (form.get("relationship_side") as string) ?? "";
     const primaryRelationship = (form.get("relationship") as string) ?? "";
 
@@ -39,14 +49,16 @@ export function AddGuestForms({
       relationship_side: string;
       relationship: string;
     }> = [];
-    for (let i = 0; i < Math.max(0, size - 1); i++) {
-      additionalPeople.push({
-        name: (form.get(`additional_name_${i}`) as string) ?? "",
-        relationship_side:
-          (form.get(`additional_relationship_side_${i}`) as string) ?? "",
-        relationship:
-          (form.get(`additional_relationship_${i}`) as string) ?? "",
-      });
+    if (!associating) {
+      for (let i = 0; i < Math.max(0, size - 1); i++) {
+        additionalPeople.push({
+          name: (form.get(`additional_name_${i}`) as string) ?? "",
+          relationship_side:
+            (form.get(`additional_relationship_side_${i}`) as string) ?? "",
+          relationship:
+            (form.get(`additional_relationship_${i}`) as string) ?? "",
+        });
+      }
     }
 
     if (!name.trim()) return;
@@ -64,9 +76,15 @@ export function AddGuestForms({
           relationship_side: primarySide,
           relationship: primaryRelationship,
         },
+        {
+          member_type: memberType,
+          primaryMemberId: primaryMemberId || null,
+        },
       );
       formEl.reset();
       setPartySize(1);
+      setMemberType("adult");
+      setPrimaryMemberId("");
     });
   }
 
@@ -96,6 +114,63 @@ export function AddGuestForms({
               disabled={isAddPending}
             />
           </div>
+
+          <div className="space-y-1.5 sm:col-span-2">
+            <p className="text-[14px] font-medium text-ink" id="guest-member-type-label">
+              Type
+            </p>
+            <SegmentedToggle
+              aria-labelledby="guest-member-type-label"
+              className="w-fit p-0.5"
+            >
+              <SegmentedToggleItem
+                active={memberType === "adult"}
+                aria-pressed={memberType === "adult"}
+                onClick={() => setMemberType("adult")}
+                disabled={isAddPending}
+                className="px-3 py-1 text-[12px] font-semibold"
+              >
+                Adult
+              </SegmentedToggleItem>
+              <SegmentedToggleItem
+                active={memberType === "child"}
+                aria-pressed={memberType === "child"}
+                onClick={() => setMemberType("child")}
+                disabled={isAddPending}
+                className="px-3 py-1 text-[12px] font-semibold"
+              >
+                Child
+              </SegmentedToggleItem>
+            </SegmentedToggle>
+          </div>
+
+          <div className="space-y-1.5 sm:col-span-2">
+            <label
+              htmlFor="guest-of"
+              className="text-[14px] font-medium text-ink"
+            >
+              Guest of{" "}
+              <span className="font-normal text-muted">(optional)</span>
+            </label>
+            <Select
+              id="guest-of"
+              value={primaryMemberId}
+              onChange={(e) => {
+                const next = e.target.value;
+                setPrimaryMemberId(next);
+                if (next) setPartySize(1);
+              }}
+              disabled={isAddPending}
+            >
+              <option value="">New household</option>
+              {primaryOptions.map((option) => (
+                <option key={option.id} value={option.id}>
+                  {option.name}
+                </option>
+              ))}
+            </Select>
+          </div>
+
           <div className="grid gap-3 sm:col-span-2 sm:grid-cols-2">
             <div className="space-y-1.5">
               <label
@@ -206,71 +281,75 @@ export function AddGuestForms({
               </div>
             </div>
           ))}
-          <div className="space-y-1.5">
-            <label
-              htmlFor="guest-household"
-              className="text-[14px] font-medium text-ink"
-            >
-              Household
-            </label>
-            <Input
-              id="guest-household"
-              name="household"
-              type="text"
-              placeholder="e.g. Smith family"
-              disabled={isAddPending}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <label
-              htmlFor="guest-phone"
-              className="text-[14px] font-medium text-ink"
-            >
-              Phone
-            </label>
-            <Input
-              id="guest-phone"
-              name="phone"
-              type="tel"
-              placeholder="(555) 555-5555"
-              disabled={isAddPending}
-            />
-          </div>
-          <div className="space-y-1.5 sm:col-span-2">
-            <label
-              htmlFor="guest-address"
-              className="text-[14px] font-medium text-ink"
-            >
-              Address
-            </label>
-            <Input
-              id="guest-address"
-              name="address"
-              type="text"
-              placeholder="Mailing address"
-              disabled={isAddPending}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <label
-              htmlFor="guest-party-size"
-              className="text-[14px] font-medium text-ink"
-            >
-              Party size
-            </label>
-            <Input
-              id="guest-party-size"
-              name="party_size"
-              type="number"
-              min={1}
-              value={partySize}
-              onChange={(e) => {
-                const next = Math.max(1, Number(e.target.value) || 1);
-                setPartySize(next);
-              }}
-              disabled={isAddPending}
-            />
-          </div>
+          {!associating ? (
+            <>
+              <div className="space-y-1.5">
+                <label
+                  htmlFor="guest-household"
+                  className="text-[14px] font-medium text-ink"
+                >
+                  Household
+                </label>
+                <Input
+                  id="guest-household"
+                  name="household"
+                  type="text"
+                  placeholder="e.g. Smith family"
+                  disabled={isAddPending}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label
+                  htmlFor="guest-phone"
+                  className="text-[14px] font-medium text-ink"
+                >
+                  Phone
+                </label>
+                <Input
+                  id="guest-phone"
+                  name="phone"
+                  type="tel"
+                  placeholder="(555) 555-5555"
+                  disabled={isAddPending}
+                />
+              </div>
+              <div className="space-y-1.5 sm:col-span-2">
+                <label
+                  htmlFor="guest-address"
+                  className="text-[14px] font-medium text-ink"
+                >
+                  Address
+                </label>
+                <Input
+                  id="guest-address"
+                  name="address"
+                  type="text"
+                  placeholder="Mailing address"
+                  disabled={isAddPending}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label
+                  htmlFor="guest-party-size"
+                  className="text-[14px] font-medium text-ink"
+                >
+                  Party size
+                </label>
+                <Input
+                  id="guest-party-size"
+                  name="party_size"
+                  type="number"
+                  min={1}
+                  value={partySize}
+                  onChange={(e) => {
+                    const next = Math.max(1, Number(e.target.value) || 1);
+                    setPartySize(next);
+                  }}
+                  disabled={isAddPending}
+                />
+              </div>
+            </>
+          ) : null}
         </div>
         <Button type="submit" variant="primary" disabled={isAddPending}>
           {isAddPending ? "Adding…" : "Add guest"}

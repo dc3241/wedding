@@ -1,3 +1,4 @@
+import { unstable_noStore as noStore } from "next/cache";
 import { getGmailOAuthConfig } from "@/lib/gmail-oauth";
 import { createClient } from "@/utils/supabase/server";
 
@@ -17,6 +18,8 @@ const EXPIRY_BUFFER_MS = 60_000;
 
 /** Loads Gmail tokens server-side only — never expose to the client. */
 export async function getGmailAccessForSend(): Promise<GmailSendAuth> {
+  noStore();
+
   const supabase = await createClient();
 
   const {

@@ -12,7 +12,8 @@ export function ProjectWorkspaceNav({
   accountKind,
 }: {
   projectId: string;
-  accountKind: AccountKind;
+  /** Null = no account (invited collaborator). Do not collapse to `"personal"`. */
+  accountKind: AccountKind | null;
 }) {
   const pathname = usePathname();
   const tabs = tabsForAccountKind(accountKind);
