@@ -19,7 +19,7 @@ export function LandingHero() {
           </p>
           <div className="mt-8 flex flex-wrap items-center gap-3">
             <ButtonLink
-              href="/signup"
+              href="/login"
               variant="primary"
               className="px-6 py-3.5 text-[15px] md:px-8 md:py-4 md:text-[16px]"
             >

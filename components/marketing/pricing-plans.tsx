@@ -27,7 +27,7 @@ const COUPLE_PLANS: Plan[] = [
     price: "$0",
     period: "forever",
     description: "Everything you need to start planning the day you get engaged.",
-    cta: { label: "Start free", href: "/signup", variant: "default" },
+    cta: { label: "Start free", href: "/login", variant: "default" },
     features: [
       "Starter plan from your date & budget",
       "Checklist & day-of timeline",
@@ -41,7 +41,7 @@ const COUPLE_PLANS: Plan[] = [
     period: "one-time",
     description: "Try 7 days for $7 — applied to your $99.",
     // TODO PRICE-02: route to $7 trial checkout ($7 → credit toward $99).
-    cta: { label: "Start your $7 week", href: "/signup", variant: "primary" },
+    cta: { label: "Start your $7 week", href: "/login", variant: "primary" },
     features: [
       "Everything in Free",
       "Planning assistant & vendor outreach",
@@ -222,7 +222,7 @@ function PlannerCard() {
         One flat price, unlimited weddings.
       </p>
       {/* TODO PRICE-02: annual vs monthly maps to distinct Stripe prices ($590/yr, $59/mo). */}
-      <ButtonLink href="/signup" variant="primary" className="mt-6 w-full">
+      <ButtonLink href="/login" variant="primary" className="mt-6 w-full">
         Start free trial
       </ButtonLink>
       <ul className="mt-6 space-y-3 border-t border-hairline pt-6">

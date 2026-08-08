@@ -6,7 +6,10 @@ import {
 import { updateSession } from "@/utils/supabase/middleware";
 
 export async function middleware(request: NextRequest) {
-  const { response, user } = await updateSession(request);
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-pathname", request.nextUrl.pathname);
+
+  const { response, user } = await updateSession(request, requestHeaders);
 
   const { pathname } = request.nextUrl;
   if (pathname.startsWith("/invite/") && !user) {

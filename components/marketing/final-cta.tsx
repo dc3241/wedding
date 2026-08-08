@@ -19,7 +19,7 @@ export function FinalCta() {
           </p>
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
             <ButtonLink
-              href="/signup"
+              href="/login"
               variant="default"
               className="border-surface bg-surface px-5 py-3 text-[15px] hover:bg-well"
             >

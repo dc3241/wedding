@@ -1,12 +1,35 @@
 import { notFound, redirect } from "next/navigation";
+import type { Metadata } from "next";
 import { AssistantWorkspace } from "@/components/assistant/AssistantWorkspace";
 import type { AssistantMessage } from "@/components/assistant/types";
 import { TourProvider } from "@/components/tour/TourProvider";
 import { ProjectShell } from "@/components/projects/project-shell";
 import { ProjectWorkspaceNav } from "@/components/projects/project-workspace-nav";
 import { getAccountContext } from "@/lib/account-context";
+import { getBrandingForProject } from "@/lib/branding/get-branding";
 import { coupleOnboardingRedirect } from "@/lib/onboarding-gate";
 import { createClient } from "@/utils/supabase/server";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ projectId: string }>;
+}): Promise<Metadata> {
+  const { projectId } = await params;
+  const branding = await getBrandingForProject(projectId);
+  const brandName = branding?.brandName?.trim();
+
+  if (!brandName) {
+    return {};
+  }
+
+  return {
+    title: {
+      default: brandName,
+      template: `%s — ${brandName}`,
+    },
+  };
+}
 
 export default async function ProjectLayout({
   children,

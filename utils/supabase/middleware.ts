@@ -4,9 +4,12 @@ import type { User } from "@supabase/supabase-js";
 
 export async function updateSession(
   request: NextRequest,
+  requestHeaders?: Headers,
 ): Promise<{ response: NextResponse; user: User | null }> {
+  const headersForNext = requestHeaders ?? request.headers;
+
   let supabaseResponse = NextResponse.next({
-    request,
+    request: { headers: headersForNext },
   });
 
   const supabase = createServerClient(
@@ -22,7 +25,7 @@ export async function updateSession(
             request.cookies.set(name, value)
           );
           supabaseResponse = NextResponse.next({
-            request,
+            request: { headers: headersForNext },
           });
           cookiesToSet.forEach(({ name, value, options }) =>
             supabaseResponse.cookies.set(name, value, options)

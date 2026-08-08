@@ -64,6 +64,9 @@ export function PlannerProjectSidebar({
   const onBilling =
     pathname === "/account/billing" ||
     pathname.startsWith("/account/billing?");
+  const onBranding =
+    pathname === "/account/branding" ||
+    pathname.startsWith("/account/branding?");
 
   return (
     <aside className="w-[260px] shrink-0">
@@ -83,6 +86,9 @@ export function PlannerProjectSidebar({
           </Link>
           <Link href="/contracts" className={navLinkClass(onContracts)}>
             Contracts
+          </Link>
+          <Link href="/account/branding" className={navLinkClass(onBranding)}>
+            Branding
           </Link>
           <Link href="/account/billing" className={navLinkClass(onBilling)}>
             Billing

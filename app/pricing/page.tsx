@@ -81,7 +81,7 @@ export default function PricingPage() {
               Free to begin. Upgrade when you&apos;re ready — no card required.
             </p>
             <ButtonLink
-              href="/signup"
+              href="/login"
               variant="primary"
               className="mt-7 px-7 py-3.5 text-[15px]"
             >

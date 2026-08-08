@@ -207,7 +207,7 @@ export function AudienceSection() {
 
         <div className="mt-9 flex flex-col items-center text-center">
           <ButtonLink
-            href="/signup"
+            href="/login"
             variant="primary"
             className="px-6 py-3.5 text-[15px]"
           >

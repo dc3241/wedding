@@ -9,13 +9,13 @@ export function MarketingFooter() {
           <Wordmark className="h-5 w-auto text-ink" />
         </Link>
         <nav className="flex flex-wrap gap-x-5 gap-y-2 text-[13px] text-muted">
-          <Link href="/signup" className="hover:text-ink">
+          <Link href="/login" className="hover:text-ink">
             Sign up
           </Link>
           <Link href="/login" className="hover:text-ink">
             Sign in
           </Link>
-          <Link href="/billing" className="hover:text-ink">
+          <Link href="/account/billing" className="hover:text-ink">
             Billing
           </Link>
         </nav>
