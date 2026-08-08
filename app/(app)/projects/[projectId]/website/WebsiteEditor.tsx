@@ -27,6 +27,7 @@ import { resolveSectionOrder } from "@/components/website/types";
 import { WeddingSiteView } from "@/components/website/WeddingSiteView";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { TourHelpButton } from "@/components/tour/TourHelpButton";
 import { PageHeader } from "@/components/ui/page-header";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -105,6 +106,7 @@ function EditorSection({
         <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
           <button
             type="button"
+            data-tour="website-section-toggle"
             aria-expanded={open}
             aria-controls={panelId}
             onClick={() => setOpen((current) => !current)}
@@ -121,7 +123,10 @@ function EditorSection({
             </h2>
           </button>
           {reorder ? (
-            <div onClick={(e) => e.stopPropagation()}>
+            <div
+              data-tour="website-section-reorder"
+              onClick={(e) => e.stopPropagation()}
+            >
               <ReorderButtons
                 index={reorder.index}
                 total={reorder.total}
@@ -451,7 +456,7 @@ export function WebsiteEditor({
             }
             reorder={reorder}
           >
-            <div>
+            <div data-tour="website-timeline-layout">
               <label
                 htmlFor="schedule-layout"
                 className="mb-1.5 block text-[13px] text-muted"
@@ -676,6 +681,7 @@ export function WebsiteEditor({
             <span className="text-ink">/w/{savedSlug || "your-link"}</span> once live.
           </>
         }
+        actions={<TourHelpButton tourKey="website" />}
       />
 
       <Card className="space-y-5 px-6 py-5">
@@ -827,6 +833,7 @@ export function WebsiteEditor({
         </div>
 
         <div
+          data-tour="website-preview"
           className={cn(
             "min-w-0",
             isPlanner && "xl:sticky xl:top-6 xl:self-start",

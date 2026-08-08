@@ -21,12 +21,14 @@ export function GuestPersonRow({
   mealSelectionActive,
   rowClass,
   partnerSides,
+  tourRsvpAnchor = false,
 }: {
   person: GuestPersonLine;
   mealOptions: MealOption[];
   mealSelectionActive: boolean;
   rowClass: string;
   partnerSides: ResolvedPartnerSides;
+  tourRsvpAnchor?: boolean;
 }) {
   const member = person.member;
   const [name, setName] = useState(member.name ?? "");
@@ -112,7 +114,10 @@ export function GuestPersonRow({
           <span className="text-[14px] text-muted">Add relationship</span>
         )}
       </td>
-      <td className="py-3 pr-4 align-top">
+      <td
+        className="py-3 pr-4 align-top"
+        data-tour={tourRsvpAnchor ? "guests-rsvp" : undefined}
+      >
         <RsvpSelect guestId={person.guestId} status={person.rsvp_status} />
       </td>
       {mealSelectionActive ? (

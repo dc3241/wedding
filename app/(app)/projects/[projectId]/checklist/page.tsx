@@ -1,6 +1,7 @@
 import { ChecklistBoard } from "@/components/checklist/ChecklistBoard";
 import { GenerateStarterChecklist } from "@/components/checklist/GenerateStarterChecklist";
 import type { ChecklistTask } from "@/components/checklist/TaskRow";
+import { TourHelpButton } from "@/components/tour/TourHelpButton";
 import { PageHeader } from "@/components/ui/page-header";
 import { getAccountContext } from "@/lib/account-context";
 import {
@@ -158,7 +159,11 @@ export default async function ChecklistPage({
     <div className={stackClass}>
       {taskList.length === 0 ? (
         <div className="space-y-6">
-          <PageHeader title="Checklist" eyebrow={eyebrow} />
+          <PageHeader
+            title="Checklist"
+            eyebrow={eyebrow}
+            actions={<TourHelpButton tourKey="checklist" />}
+          />
           <GenerateStarterChecklist projectId={projectId} />
         </div>
       ) : (

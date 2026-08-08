@@ -10,6 +10,7 @@ import { ASSISTANT_PREFILLS } from "@/components/assistant/prefills";
 import { FileManager } from "@/components/files/FileManager";
 import type { ProjectFile } from "@/components/files/types";
 import { EmptyState } from "@/components/ui/empty-state";
+import { TourHelpButton } from "@/components/tour/TourHelpButton";
 import { PageHeader } from "@/components/ui/page-header";
 import { getAccountContext } from "@/lib/account-context";
 import { sectionStackClass } from "@/lib/density";
@@ -123,7 +124,12 @@ export default async function NotesPage({
         eyebrow={eyebrow}
         title="Notes & files"
         description="Meeting notes, ideas, and documents for this wedding."
-        actions={<AddNoteButton projectId={projectId} />}
+        actions={
+          <div className="flex items-center gap-2">
+            <TourHelpButton tourKey="notes" />
+            <AddNoteButton projectId={projectId} />
+          </div>
+        }
       />
 
       <section className="space-y-4">
@@ -153,6 +159,7 @@ export default async function NotesPage({
         kind="file"
         files={fileList}
         label="Misc. Files"
+        dataTour="notes-files"
       />
     </div>
   );

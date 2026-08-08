@@ -73,7 +73,11 @@ export function GuestPersonList({
   const countNoun = count === 1 ? "person" : "people";
 
   return (
-    <section id="guest-list" className="scroll-mt-6 space-y-4">
+    <section
+      id="guest-list"
+      data-tour="guests-list"
+      className="scroll-mt-6 space-y-4"
+    >
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex flex-wrap items-center gap-3">
           <p className="flex items-baseline gap-2">
@@ -146,7 +150,12 @@ export function GuestPersonList({
                 <th className="pb-3 pr-4 font-semibold">Relationship</th>
                 <th className="pb-3 pr-4 font-semibold">RSVP</th>
                 {mealSelectionActive ? (
-                  <th className="pb-3 pr-4 font-semibold">Meal</th>
+                  <th
+                    data-tour="guests-meal"
+                    className="pb-3 pr-4 font-semibold"
+                  >
+                    Meal
+                  </th>
                 ) : null}
                 <th className="pb-3 pr-4 font-semibold">Dietary</th>
                 <th className="pb-3 text-right font-semibold">
@@ -155,7 +164,7 @@ export function GuestPersonList({
               </tr>
             </thead>
             <tbody>
-              {sortedPeople.map((person) => (
+              {sortedPeople.map((person, index) => (
                 <GuestPersonRow
                   key={person.member.id}
                   person={person}
@@ -163,6 +172,7 @@ export function GuestPersonList({
                   mealSelectionActive={mealSelectionActive}
                   rowClass={rowClass}
                   partnerSides={partnerSides}
+                  tourRsvpAnchor={index === 0}
                 />
               ))}
             </tbody>

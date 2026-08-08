@@ -8,10 +8,13 @@ export type ProjectTab = {
   coupleOnly?: boolean;
 };
 
+/** Couple documentation Contracts tab — distinct from CRM `contracts`. */
+export const COUPLE_CONTRACTS_SEGMENT = "agreements";
+
 /**
  * Master tab list. Audience filters in `tabsForAccountKind` produce:
  * - personal: Overview · Calendar · Checklist · Budget · Vendors · Guests · Website ·
- *   Seating · Day-of timeline · Notes & files
+ *   Seating · Day-of timeline · Contracts · Notes & files
  * - business: Overview · Checklist · Budget · Vendors · Guests · Website · Seating ·
  *   Day-of timeline · Contracts · Notes & files · Access
  * - null (no account / invited collaborator): personal set minus Calendar
@@ -27,6 +30,11 @@ export const PROJECT_TABS: ProjectTab[] = [
   { label: "Seating", segment: "seating" },
   { label: "Day-of timeline", segment: "timeline" },
   { label: "Contracts", segment: "contracts", plannerOnly: true },
+  {
+    label: "Contracts",
+    segment: COUPLE_CONTRACTS_SEGMENT,
+    coupleOnly: true,
+  },
   { label: "Notes & files", segment: "notes" },
   { label: "Access", segment: "access", plannerOnly: true },
 ];

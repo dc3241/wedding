@@ -4,6 +4,7 @@ export type AccountKind = "personal" | "business";
 
 export type AccountContext = {
   kind: AccountKind;
+  isDemo: boolean;
   projectIds: string[];
   singleProjectId: string | null;
   firstProjectId: string | null;
@@ -24,7 +25,7 @@ export async function getAccountContext(
 
   const { data: account } = await supabase
     .from("accounts")
-    .select("kind")
+    .select("kind, is_demo")
     .eq("id", memberships[0].account_id)
     .single();
 
@@ -39,6 +40,7 @@ export async function getAccountContext(
 
   return {
     kind,
+    isDemo: account?.is_demo === true,
     projectIds,
     singleProjectId: projectIds.length === 1 ? projectIds[0] : null,
     firstProjectId: projectIds[0] ?? null,

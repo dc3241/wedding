@@ -169,7 +169,7 @@ export function VendorSearchForm({
     (onListCount > 0 && Boolean(categoryId));
 
   const searchCard = (
-    <Card className="px-6 py-5">
+    <Card data-tour="vendors-search" className="px-6 py-5">
       <form onSubmit={handleSubmit} className="space-y-5">
         <div>
           <Eyebrow>Discover</Eyebrow>

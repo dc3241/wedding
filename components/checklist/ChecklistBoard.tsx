@@ -6,6 +6,7 @@ import { AddTask } from "@/components/checklist/AddTask";
 import { TaskRow, type ChecklistTask } from "@/components/checklist/TaskRow";
 import { Card } from "@/components/ui/card";
 import { Eyebrow } from "@/components/ui/eyebrow";
+import { TourHelpButton } from "@/components/tour/TourHelpButton";
 import { PageHeader } from "@/components/ui/page-header";
 import type {
   ChecklistAggregates,
@@ -181,7 +182,7 @@ function ActivePhaseRail({ aggregates }: { aggregates: ChecklistAggregates }) {
 
 function OpenNowRail({ tasks }: { tasks: UpNextTask[] }) {
   return (
-    <Card className="px-6 py-[22px]">
+    <Card data-tour="checklist-open-now" className="px-6 py-[22px]">
       <p className="mb-[15px] text-[12px] font-semibold uppercase tracking-[0.09em] text-muted">
         Open right now
       </p>
@@ -298,7 +299,11 @@ export function ChecklistBoard({
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Checklist" eyebrow={eyebrow} />
+      <PageHeader
+        title="Checklist"
+        eyebrow={eyebrow}
+        actions={<TourHelpButton tourKey="checklist" />}
+      />
 
       <ProgressBand aggregates={aggregates} />
 
@@ -322,7 +327,7 @@ export function ChecklistBoard({
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_300px] lg:items-start">
-        <div className="min-w-0">
+        <div data-tour="checklist-phases" className="min-w-0">
           {sections.map((section) => {
             const key = section.label;
             return (

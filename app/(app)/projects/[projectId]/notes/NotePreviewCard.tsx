@@ -12,9 +12,11 @@ import { cn } from "@/lib/cn";
 export function NotePreviewCard({
   note,
   onOpen,
+  tourActionAnchor = false,
 }: {
   note: Note;
   onOpen: () => void;
+  tourActionAnchor?: boolean;
 }) {
   const preview = previewNoteBody(note.body);
   const needsAction = note.action_status === "needs_action";
@@ -31,6 +33,7 @@ export function NotePreviewCard({
           onOpen();
         }
       }}
+      data-tour={tourActionAnchor ? "notes-action" : undefined}
       className={cn(
         "flex h-full cursor-pointer flex-col px-5 py-4 transition-transform duration-150",
         "hover:-translate-y-px",

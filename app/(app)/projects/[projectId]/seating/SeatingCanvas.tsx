@@ -647,6 +647,7 @@ export function SeatingCanvas({
   return (
     <div
       ref={viewportRef}
+      data-tour="seating-canvas"
       className={cn(
         "relative overflow-hidden rounded-[var(--radius-card)] bg-canvas shadow-raised",
         placing || assignMode || moveMode || pendingSeat || selectedId

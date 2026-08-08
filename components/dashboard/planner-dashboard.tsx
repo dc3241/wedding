@@ -1,3 +1,4 @@
+import { TourHelpButton } from "@/components/tour/TourHelpButton";
 import { ProjectOverview } from "@/components/dashboard/project-overview";
 import type { OverviewData } from "@/components/dashboard/overview-data";
 
@@ -6,7 +7,14 @@ type PlannerDashboardProps = {
 };
 
 export function PlannerDashboard({ overview }: PlannerDashboardProps) {
-  return <ProjectOverview data={overview} showLastContact />;
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-end">
+        <TourHelpButton />
+      </div>
+      <ProjectOverview data={overview} showLastContact />
+    </div>
+  );
 }
 
 export function countTasksDueThisWeek(

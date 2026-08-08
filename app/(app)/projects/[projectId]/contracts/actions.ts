@@ -1,8 +1,15 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { COUPLE_CONTRACTS_SEGMENT } from "@/lib/project-tabs";
 import { getVendorCategoryById } from "@/lib/vendor-categories";
 import { createClient } from "@/utils/supabase/server";
+
+function revalidateContractSurfaces(projectId: string) {
+  revalidatePath(`/projects/${projectId}/contracts`);
+  revalidatePath(`/projects/${projectId}/${COUPLE_CONTRACTS_SEGMENT}`);
+  revalidatePath("/contracts");
+}
 
 const CONTRACT_STATUSES = ["draft", "sent", "signed"] as const;
 
@@ -42,8 +49,7 @@ export async function updateContractStatus(
     return { ok: false, error: error?.message ?? "Could not update status." };
   }
 
-  revalidatePath(`/projects/${file.project_id}/contracts`);
-  revalidatePath("/contracts");
+  revalidateContractSurfaces(file.project_id);
   return { ok: true };
 }
 
@@ -73,7 +79,6 @@ export async function setFileCategory(
     };
   }
 
-  revalidatePath(`/projects/${file.project_id}/contracts`);
-  revalidatePath("/contracts");
+  revalidateContractSurfaces(file.project_id);
   return { ok: true };
 }

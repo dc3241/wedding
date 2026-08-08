@@ -60,7 +60,7 @@ export function GuestRoster({
   );
 
   return (
-    <Card className="w-full px-5 py-5">
+    <Card data-tour="seating-assign" className="w-full px-5 py-5">
       <p className="mb-3 text-[12px] font-semibold uppercase tracking-[0.09em] text-muted">
         Guests
       </p>

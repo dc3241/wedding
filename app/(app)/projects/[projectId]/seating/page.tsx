@@ -9,6 +9,7 @@ import type {
 import { isSeatingTableKind, isSeatingTableShape } from "./types";
 import type { RsvpStatus } from "@/app/(app)/projects/[projectId]/guests/types";
 import { RSVP_STATUSES } from "@/app/(app)/projects/[projectId]/guests/types";
+import { TourHelpButton } from "@/components/tour/TourHelpButton";
 import { PageHeader } from "@/components/ui/page-header";
 import { getAccountContext } from "@/lib/account-context";
 import { sectionStackClass } from "@/lib/density";
@@ -158,6 +159,7 @@ export default async function SeatingPage({
         eyebrow={eyebrow}
         title="Seating"
         description="Place tables, then click a seat and pick a person — or click a seated person to move, swap, or unseat."
+        actions={<TourHelpButton tourKey="seating" />}
       />
 
       <SeatingWorkspace

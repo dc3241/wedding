@@ -1,4 +1,5 @@
 import { SlimHero } from "@/components/ui";
+import { TourHelpButton } from "@/components/tour/TourHelpButton";
 import { ProjectOverview } from "@/components/dashboard/project-overview";
 import type { OverviewData } from "@/components/dashboard/overview-data";
 
@@ -14,13 +15,16 @@ export function CoupleDashboard({
 }: CoupleDashboardProps) {
   return (
     <div className="space-y-4">
-      <SlimHero
-        coupleNames={overview.coupleNames}
-        weddingDate={overview.weddingDate}
-        projectId={overview.projectId}
-        showCountdown={false}
-        className="mb-0"
-      />
+      <div className="flex items-stretch gap-3">
+        <SlimHero
+          coupleNames={overview.coupleNames}
+          weddingDate={overview.weddingDate}
+          projectId={overview.projectId}
+          showCountdown={false}
+          className="mb-0 min-w-0 flex-1"
+        />
+        <TourHelpButton className="self-center" />
+      </div>
       <ProjectOverview
         data={overview}
         showLastContact={false}

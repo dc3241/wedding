@@ -16,6 +16,7 @@ import {
   type VendorTargetRow,
 } from "@/components/vendors/VendorsToBookSection";
 import { IN_FLIGHT_STATUSES, type OutreachVendor } from "@/components/vendors/outreach-vendor";
+import { TourHelpButton } from "@/components/tour/TourHelpButton";
 import { PageHeader } from "@/components/ui/page-header";
 import { getAccountContext } from "@/lib/account-context";
 import { deriveBookedVendorMoney } from "@/lib/booked-vendor-money";
@@ -429,6 +430,7 @@ export default async function VendorsPage({
         title="Vendors"
         eyebrow={eyebrow}
         description="Find local vendors, track outreach, and book your team."
+        actions={<TourHelpButton tourKey="vendors" />}
       />
 
       <GmailConnection

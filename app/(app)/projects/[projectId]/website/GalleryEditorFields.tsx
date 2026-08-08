@@ -79,7 +79,7 @@ export function GalleryEditorFields({
 
   return (
     <div className="space-y-4">
-      <div>
+      <div data-tour="website-gallery-shape">
         <label
           htmlFor="gallery-image-shape"
           className="mb-1.5 block text-[13px] text-muted"

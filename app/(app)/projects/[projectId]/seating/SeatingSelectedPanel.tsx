@@ -48,6 +48,7 @@ export function SeatingSelectedPanel({
             Kind
           </p>
           <div
+            data-tour="seating-sweetheart"
             className="flex flex-wrap rounded-[var(--radius-inner)] bg-well p-1 shadow-recessed"
             role="group"
             aria-label="Table kind"

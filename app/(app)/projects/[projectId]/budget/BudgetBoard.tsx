@@ -25,6 +25,7 @@ import { AskAssistantPrompt } from "@/components/assistant/AskAssistantPrompt";
 import { ASSISTANT_PREFILLS } from "@/components/assistant/prefills";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
+import { TourHelpButton } from "@/components/tour/TourHelpButton";
 import { PageHeader } from "@/components/ui/page-header";
 import { Pill } from "@/components/ui/pill";
 import { cn } from "@/lib/cn";
@@ -229,6 +230,7 @@ function CategoryBar({
 
   return (
     <div
+      data-tour="budget-category-ramp"
       className="mt-3 h-2 overflow-hidden rounded-[var(--radius-pill)] bg-well shadow-recessed"
       role="progressbar"
       aria-valuemin={0}
@@ -329,7 +331,7 @@ function CategorySection({
           paidTotal={paidTotal}
         />
 
-        <div className="mt-2 space-y-1">
+        <div data-tour="budget-paid-due" className="mt-2 space-y-1">
           {/* (c) Total paid — full-group ledger sum */}
           <p className="text-[13px] font-medium tabular-nums text-ink">
             Total paid{"  "}
@@ -619,7 +621,11 @@ export function BudgetBoard({
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Budget" eyebrow={eyebrow} />
+      <PageHeader
+        title="Budget"
+        eyebrow={eyebrow}
+        actions={<TourHelpButton tourKey="budget" />}
+      />
 
       <AllocationBand projectId={projectId} aggregates={aggregates} />
 
@@ -689,6 +695,7 @@ export function BudgetBoard({
                 </EmptyState>
               ) : (
                 <div
+                  data-tour="budget-categories"
                   className="grid gap-4"
                   style={{
                     // Cap at 4 cols: track min is at least ~1/4 of the row (3× gap-4).

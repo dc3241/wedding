@@ -20,12 +20,16 @@ export function NotesBoard({ notes }: { notes: Note[] }) {
 
   return (
     <>
-      <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {sorted.map((note) => (
+      <ul
+        data-tour="notes-grid"
+        className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4"
+      >
+        {sorted.map((note, index) => (
           <li key={note.id} className="min-w-0">
             <NotePreviewCard
               note={note}
               onOpen={() => setOpenNoteId(note.id)}
+              tourActionAnchor={index === 0}
             />
           </li>
         ))}

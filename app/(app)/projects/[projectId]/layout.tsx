@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { AssistantWorkspace } from "@/components/assistant/AssistantWorkspace";
 import type { AssistantMessage } from "@/components/assistant/types";
+import { TourProvider } from "@/components/tour/TourProvider";
 import { ProjectShell } from "@/components/projects/project-shell";
 import { ProjectWorkspaceNav } from "@/components/projects/project-workspace-nav";
 import { getAccountContext } from "@/lib/account-context";
@@ -42,13 +43,28 @@ export default async function ProjectLayout({
   const accountKind = account?.kind ?? "personal";
   const tabAudience = account?.kind ?? null;
 
-  const { data: messageRows } = await supabase
-    .from("assistant_messages")
-    .select("id, role, content, created_at")
-    .eq("project_id", projectId)
-    .order("created_at", { ascending: true });
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  const initialMessages = (messageRows ?? []) as AssistantMessage[];
+  const [messagesResult, toursResult] = await Promise.all([
+    supabase
+      .from("assistant_messages")
+      .select("id, role, content, created_at")
+      .eq("project_id", projectId)
+      .order("created_at", { ascending: true }),
+    user
+      ? supabase
+          .from("user_tours")
+          .select("tour_key")
+          .eq("user_id", user.id)
+      : Promise.resolve({ data: [] as { tour_key: string }[] | null }),
+  ]);
+
+  const initialMessages = (messagesResult.data ?? []) as AssistantMessage[];
+  const dismissedTourKeys = (toursResult.data ?? []).map(
+    (row) => row.tour_key,
+  );
 
   return (
     <AssistantWorkspace
@@ -56,15 +72,20 @@ export default async function ProjectLayout({
       accountKind={accountKind}
       initialMessages={initialMessages}
     >
-      <ProjectShell
+      <TourProvider
         projectId={projectId}
-        coupleNames={project.name}
-        weddingDate={project.wedding_date}
-        accountKind={accountKind}
+        dismissedTourKeys={dismissedTourKeys}
       >
-        <ProjectWorkspaceNav projectId={projectId} accountKind={tabAudience} />
-        {children}
-      </ProjectShell>
+        <ProjectShell
+          projectId={projectId}
+          coupleNames={project.name}
+          weddingDate={project.wedding_date}
+          accountKind={accountKind}
+        >
+          <ProjectWorkspaceNav projectId={projectId} accountKind={tabAudience} />
+          {children}
+        </ProjectShell>
+      </TourProvider>
     </AssistantWorkspace>
   );
 }

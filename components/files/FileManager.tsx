@@ -103,6 +103,11 @@ function FileRow({
   );
 }
 
+export type FileVendorOption = {
+  id: string;
+  name: string;
+};
+
 export function FileManager({
   projectId,
   kind = "file",
@@ -111,6 +116,8 @@ export function FileManager({
   emptyState = "No files yet. Upload a PDF, image, or document to get started.",
   trailingSlots = {},
   projectVendorId = null,
+  vendorOptions,
+  dataTour,
 }: {
   projectId: string;
   kind?: FileKind;
@@ -120,12 +127,21 @@ export function FileManager({
   trailingSlots?: Record<string, ReactNode>;
   /** When set, stamped onto uploaded files (VND-10 contract ↔ vendor link). */
   projectVendorId?: string | null;
+  /**
+   * When provided (couple Contracts), show an upload-time vendor picker.
+   * Link is INSERT-only via recordFile — not editable after upload.
+   */
+  vendorOptions?: FileVendorOption[];
+  /** Optional page-tour anchor (e.g. notes tab). */
+  dataTour?: string;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploadCategory, setUploadCategory] = useState("");
+  const [uploadVendorId, setUploadVendorId] = useState("");
   const isContract = kind === "contract";
+  const showVendorPicker = isContract && vendorOptions !== undefined;
 
   async function handleFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -142,6 +158,9 @@ export function FileManager({
 
     const mimeType = resolveMimeType(file)!;
     const storagePath = buildStoragePath(projectId, file.name);
+    const linkedVendorId =
+      projectVendorId ??
+      (showVendorPicker && uploadVendorId !== "" ? uploadVendorId : null);
 
     setIsUploading(true);
 
@@ -170,7 +189,7 @@ export function FileManager({
           ...(isContract
             ? { category: uploadCategory === "" ? null : uploadCategory }
             : {}),
-          ...(projectVendorId ? { projectVendorId } : {}),
+          ...(linkedVendorId ? { projectVendorId: linkedVendorId } : {}),
         });
       } catch (recordErr) {
         await supabase.storage.from(PROJECT_FILES_BUCKET).remove([storagePath]);
@@ -186,7 +205,7 @@ export function FileManager({
   }
 
   return (
-    <section className="space-y-4">
+    <section data-tour={dataTour} className="space-y-4">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-[12px] font-semibold uppercase tracking-[0.09em] text-muted">
@@ -213,6 +232,25 @@ export function FileManager({
                 {VENDOR_CATEGORIES.map((cat) => (
                   <option key={cat.id} value={cat.id}>
                     {cat.label}
+                  </option>
+                ))}
+              </Select>
+            </label>
+          ) : null}
+          {showVendorPicker ? (
+            <label className="flex min-w-[160px] flex-col gap-1.5">
+              <span className="text-[13px] font-medium text-muted">Vendor</span>
+              <Select
+                value={uploadVendorId}
+                onChange={(e) => setUploadVendorId(e.target.value)}
+                disabled={isUploading}
+                aria-label="Link vendor"
+                className="min-w-[160px]"
+              >
+                <option value="">No vendor</option>
+                {(vendorOptions ?? []).map((vendor) => (
+                  <option key={vendor.id} value={vendor.id}>
+                    {vendor.name}
                   </option>
                 ))}
               </Select>

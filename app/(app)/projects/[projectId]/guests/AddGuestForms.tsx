@@ -89,7 +89,7 @@ export function AddGuestForms({
   }
 
   return (
-    <Card className="px-6 py-5">
+    <Card data-tour="guests-add" className="px-6 py-5">
       <form onSubmit={handleAddSubmit} className="space-y-4">
         <div>
           <Eyebrow>Add guest</Eyebrow>

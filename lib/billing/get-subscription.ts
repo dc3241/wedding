@@ -20,6 +20,28 @@ export async function getSubscriptionForAccount(
   supabase: SupabaseClient,
   accountId: string,
 ): Promise<SubscriptionSnapshot> {
+  // Demo accounts have no subscriptions row — treat as entitled (no paywall).
+  const { data: account, error: accountError } = await supabase
+    .from("accounts")
+    .select("is_demo")
+    .eq("id", accountId)
+    .maybeSingle();
+
+  if (accountError) {
+    throw new Error(accountError.message);
+  }
+
+  if (account?.is_demo) {
+    return {
+      isActive: true,
+      status: "demo",
+      currentPeriodEnd: null,
+      cancelAtPeriodEnd: false,
+      priceId: null,
+      hasCustomer: false,
+    };
+  }
+
   const { data: row, error } = await supabase
     .from("subscriptions")
     .select(

@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { createWeddingWebsite } from "./actions";
+import { TourHelpButton } from "@/components/tour/TourHelpButton";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Eyebrow } from "@/components/ui/eyebrow";
@@ -21,7 +22,10 @@ export function CreateWebsiteButton({ projectId }: { projectId: string }) {
   }
 
   return (
-    <Card className="px-8 py-12 text-center">
+    <Card className="relative px-8 py-12 text-center">
+      <div className="absolute right-4 top-4">
+        <TourHelpButton tourKey="website" />
+      </div>
       <Eyebrow className="mb-2 block">Website</Eyebrow>
       <h1 className="font-display text-[32px] font-extrabold tracking-[-0.03em] text-ink md:text-[42px]">
         Your wedding website

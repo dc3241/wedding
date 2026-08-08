@@ -1,5 +1,6 @@
 "use client";
 
+import { DemoCta } from "@/components/demo/demo-cta";
 import { ButtonLink } from "@/components/ui/button";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { cn } from "@/lib/cn";
@@ -179,6 +180,7 @@ export function AudienceSection() {
               ? 'From the day you sign up to the day you say "I do" — no juggling five different tools.'
               : "Run your whole book without switching tools — or losing track of which client is where."}
           </p>
+          <DemoCta kind={isCouples ? "personal" : "business"} />
         </div>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5">

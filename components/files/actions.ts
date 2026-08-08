@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { COUPLE_CONTRACTS_SEGMENT } from "@/lib/project-tabs";
 import { getVendorCategoryById } from "@/lib/vendor-categories";
 import { createClient } from "@/utils/supabase/server";
 import {
@@ -8,9 +9,14 @@ import {
   type FileKind,
 } from "./types";
 
-function revalidatePathForKind(projectId: string, kind: string) {
-  const segment = kind === "contract" ? "contracts" : "notes";
-  return `/projects/${projectId}/${segment}`;
+function revalidatePathsForKind(projectId: string, kind: string) {
+  if (kind === "contract") {
+    revalidatePath(`/projects/${projectId}/contracts`);
+    revalidatePath(`/projects/${projectId}/${COUPLE_CONTRACTS_SEGMENT}`);
+    revalidatePath("/contracts");
+    return;
+  }
+  revalidatePath(`/projects/${projectId}/notes`);
 }
 
 function resolveCategory(
@@ -65,10 +71,7 @@ export async function recordFile(
 
   if (error) throw error;
 
-  revalidatePath(revalidatePathForKind(projectId, meta.kind));
-  if (meta.kind === "contract") {
-    revalidatePath("/contracts");
-  }
+  revalidatePathsForKind(projectId, meta.kind);
   if (meta.projectVendorId) {
     revalidatePath(`/projects/${projectId}/vendors`);
   }
@@ -126,10 +129,7 @@ export async function deleteFile(fileId: string) {
 
   if (deleteError) throw deleteError;
 
-  revalidatePath(revalidatePathForKind(file.project_id, file.kind));
-  if (file.kind === "contract") {
-    revalidatePath("/contracts");
-  }
+  revalidatePathsForKind(file.project_id, file.kind);
   if (file.project_vendor_id) {
     revalidatePath(`/projects/${file.project_id}/vendors`);
   }

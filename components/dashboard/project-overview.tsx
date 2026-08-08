@@ -218,7 +218,10 @@ export function ProjectOverview({
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div
+        data-tour="stats"
+        className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4"
+      >
         <OverviewStatCard
           label="Countdown"
           error={countdownError ? <LoadError label="countdown" /> : undefined}
@@ -334,12 +337,14 @@ export function ProjectOverview({
       </div>
 
       <Card className="px-5 py-4 sm:px-6 sm:py-[18px]">
-        <AskAssistantPrompt
-          prefill={ASSISTANT_PREFILLS.overview}
-          title="What should I tackle next?"
-          description="I'll look at what's already set up and suggest the highest-leverage next step."
-          cta="Ask assistant"
-        />
+        <div data-tour="assistant">
+          <AskAssistantPrompt
+            prefill={ASSISTANT_PREFILLS.overview}
+            title="What should I tackle next?"
+            description="I'll look at what's already set up and suggest the highest-leverage next step."
+            cta="Ask assistant"
+          />
+        </div>
         {isPersonalOwner ? (
           <div className="mt-4 rounded-[var(--radius-inner)] bg-well px-4 py-4 shadow-recessed">
             <p className="text-[15px] font-semibold text-ink">
@@ -376,7 +381,7 @@ export function ProjectOverview({
       </Card>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <Card className="px-6 py-[22px]">
+        <Card data-tour="payment" className="px-6 py-[22px]">
           <h2 className="font-display text-[19px] font-extrabold tracking-[-0.02em] text-ink">
             Next payment due
           </h2>
@@ -453,7 +458,7 @@ export function ProjectOverview({
           )}
         </Card>
 
-        <Card className="px-6 py-[22px]">
+        <Card data-tour="attention" className="px-6 py-[22px]">
           <h2 className="font-display text-[19px] font-extrabold tracking-[-0.02em] text-ink">
             Needs attention
           </h2>

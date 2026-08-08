@@ -110,7 +110,7 @@ export default async function BillingPage({
 
           <div className="shrink-0">
             {subscription.isActive ? (
-              <ManageBillingButton />
+              subscription.hasCustomer ? <ManageBillingButton /> : null
             ) : isPlanner ? (
               <PlannerSubscribeButton />
             ) : (

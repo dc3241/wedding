@@ -23,6 +23,7 @@ import { AskAssistantPrompt } from "@/components/assistant/AskAssistantPrompt";
 import { ASSISTANT_PREFILLS } from "@/components/assistant/prefills";
 import { ButtonLink } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { TourHelpButton } from "@/components/tour/TourHelpButton";
 import { PageHeader } from "@/components/ui/page-header";
 import { getAccountContext } from "@/lib/account-context";
 import { tallyAttendingMeals } from "@/lib/caterer-tally";
@@ -335,6 +336,7 @@ export default async function GuestsPage({
             </ButtonLink>
           </span>
         }
+        actions={<TourHelpButton tourKey="guests" />}
       />
 
       <Card className="p-[30px]">
