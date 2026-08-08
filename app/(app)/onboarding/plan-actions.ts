@@ -84,7 +84,7 @@ export async function generatePlan(
     supabase
       .from("wedding_profile")
       .select(
-        "location, guest_estimate, style, traditions, priorities, vibe_notes",
+        "location, guest_estimate, style, traditions, priorities, vibe_notes, formality, priority_vendor_category_ids, already_booked_vendor_category_ids",
       )
       .eq("project_id", projectId)
       .maybeSingle(),
@@ -105,6 +105,22 @@ export async function generatePlan(
       ? Math.max(0, wholeMonthsBetween(todayIso, project.wedding_date))
       : null;
 
+  const priorityVendorCategoryIds = Array.isArray(
+    profile?.priority_vendor_category_ids,
+  )
+    ? profile.priority_vendor_category_ids.filter(
+        (id): id is string => typeof id === "string",
+      )
+    : [];
+
+  const alreadyBookedVendorCategoryIds = Array.isArray(
+    profile?.already_booked_vendor_category_ids,
+  )
+    ? profile.already_booked_vendor_category_ids.filter(
+        (id): id is string => typeof id === "string",
+      )
+    : [];
+
   const raw = await callClaudeForWeddingPlan(
     {
       projectName: project.name,
@@ -116,6 +132,9 @@ export async function generatePlan(
       traditions: profile?.traditions ?? null,
       priorities: profile?.priorities ?? null,
       vibeNotes: profile?.vibe_notes ?? null,
+      formality: profile?.formality ?? null,
+      priorityVendorCategoryIds,
+      alreadyBookedVendorCategoryIds,
     },
     todayIso,
     runwayMonths,
@@ -212,27 +231,19 @@ export async function commitPlan(projectId: string, approvedPlan: WeddingPlan) {
     });
   }
 
-  if (taskRows.length > 0) {
-    const { error } = await supabase.from("tasks").insert(taskRows);
-    if (error) throw error;
+  const { error } = await supabase.rpc("commit_wedding_plan", {
+    p_project_id: projectId,
+    p_tasks: taskRows,
+    p_budget_items: budgetRows,
+    p_vendor_targets: vendorRows,
+  });
+
+  if (error) {
+    if (error.message.includes("already_committed")) {
+      redirect(projectPath(projectId));
+    }
+    throw error;
   }
-
-  if (budgetRows.length > 0) {
-    const { error } = await supabase.from("budget_items").insert(budgetRows);
-    if (error) throw error;
-  }
-
-  if (vendorRows.length > 0) {
-    const { error } = await supabase.from("vendor_targets").insert(vendorRows);
-    if (error) throw error;
-  }
-
-  const { error: profileError } = await supabase
-    .from("wedding_profile")
-    .update({ onboarded_at: new Date().toISOString() })
-    .eq("project_id", projectId);
-
-  if (profileError) throw profileError;
 
   revalidatePath("/onboarding");
   revalidatePath(projectPath(projectId));

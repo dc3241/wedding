@@ -16,15 +16,18 @@ import { VENDOR_CATEGORIES } from "@/lib/vendor-categories";
 
 export function TemplateEditor({
   initial,
+  seed,
   onCancel,
   onSaved,
 }: {
   initial?: ContractTemplateRow | null;
+  /** Prefill for create (e.g. assistant draft). Ignored when editing. */
+  seed?: { name: string; body: string } | null;
   onCancel: () => void;
   onSaved: () => void;
 }) {
-  const [name, setName] = useState(initial?.name ?? "");
-  const [body, setBody] = useState(initial?.body ?? "");
+  const [name, setName] = useState(initial?.name ?? seed?.name ?? "");
+  const [body, setBody] = useState(initial?.body ?? seed?.body ?? "");
   const [category, setCategory] = useState(initial?.category ?? "");
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();

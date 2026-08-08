@@ -1,86 +1,70 @@
-# Wedding Planning SaaS — Project Bible (v33)
+# Wedding Planning SaaS — Project Bible (v34)
 
-Canonical state document. **Supersedes v32.** Drop this into the Project's instructions/knowledge so
-any new chat picks up cold. Lives in-repo at `PROJECT_BIBLE_v33.md`. The repo's `.cursor/design.mdc`,
+Canonical state document. **Supersedes v33.** Drop this into the Project's instructions/knowledge so
+any new chat picks up cold. Lives in-repo at `PROJECT_BIBLE_v34.md`. The repo's `.cursor/design.mdc`,
 `app/globals.css`, `design/reference.html` (stale — see §10), and `supabase/migrations/` remain the
 live source of truth; this summarizes them and the decisions behind them. Current through migration
-**0064** (on disk); **next-free migration is 0065**.
+**0069** (on disk); **next-free migration is 0070**.
 
-**v33 records product slices atop v32** (which itself recorded NOTES-01 / ASSIST-UI-01 + CAL-02 /
-VND-11 / DASH-02 catch-up).
+**v34 folds the v33 trailing appendices into the body and records product slices that were missing
+from the v33 body** (demo, tours, onboarding polish through ONB-05, contract-template generation).
+Everything in v33 that isn't touched below carries forward.
 
 | Slice | What | Schema |
 |---|---|---|
-| **GST-12** | Guest **plus-one / child association**: `member_type` (`adult`\|`child`) + `related_to_member_id` self-FK; "Guest of" create path; person-list association sublabels. Chain prevention is **writer-enforced** (no trigger). | **0063** |
-| **SEAT-13** | **One sweetheart table per project** (partial unique index) + action demote of any prior sweetheart + empty sweetheart defaults to 2 seats. | **0064** |
-| **CAL-03** | Calendar **hue polish**: `--cal-w-1…5` categorical wedding/kind tints; shared chips + legend; couple vs planner audience rules. | **NONE** |
-| **DASH-03** | Planner dashboard **wedding cards** (`WeddingCardModel` / confirmed guests + task bar via `isTaskPastDue`). | **NONE** |
-| **BUD polish** | Category / item bars = **paid ÷ actual** ramp (not actual-vs-planned); collapsed face shows Actual / Total paid / Next due. | **NONE** |
-| **Gmail reconnect** | Require `refresh_token`; `noStore` on credential reads; reconnect messaging; advance `to_contact` → `contacted` on successful send. | **NONE** |
+| **DEMO-01** | Ephemeral demo accounts: `accounts.is_demo` / `is_demo_template` / `demo_created_at` + mutual-exclusion CHECK; SECURITY DEFINER `clone_demo_account(p_kind)`. | **0065** |
+| **DEMO-02 / DEMO-03** | Client entry (`startDemo`: anon mint → RPC → `/projects`); marketing CTA + in-app `DemoBanner`; demo billing bypass (`status: "demo"`). Seeds are separate hand-apply SQL. | **NONE** |
+| **TOUR-01** | `user_tours` dismissal state + auto-fire / `?` replay page tours (8 keys; Calendar / Access / Timeline / Contracts out of slice). | **0066** |
+| **ONB-02** | Category CHECKs on four vendor-category columns; `include_budget` / `include_checklist` / `include_vendors`; atomic `commit_wedding_plan` RPC. | **0067** |
+| **ONB-03** | Plan-scope checkboxes write the `include_*` flags; preview discards unflagged sections; Approve no longer blocked by an unchecked checklist. | **NONE** |
+| **POLISH-01** | Soft-stack account-kind toggle; `wedding_profile.traditions` write-dead (column kept); Decide Later tertiary CTA on wizard steps. | **NONE** |
+| **ONB-04** | `formality` + `priority_vendor_category_ids` (prompt directives; no code weighting). | **0068** |
+| **ONB-05** | `already_booked_vendor_category_ids` + **row-level** `vendor_targets` exclusion in `commit_wedding_plan`; checklist suppression remains prompt-only. | **0069** |
+| **CON-04** | Planner contract-template **generate → editable preview → commit** via existing `createContractTemplate`. Account-scoped; not a chat-assistant tool. `{{amount}}` excluded from generator output. | **NONE** |
 
-> **PROVENANCE — READ BEFORE TRUSTING v33 RATIONALE.** GST-12, SEAT-13, CAL-03, DASH-03 (partial —
-> see below), BUD polish, and the Gmail hardening were built in **Cursor freeform, outside a Claude
-> session** (no Step 0, no designed-to-fail checkpoint, no session reasoning captured), and this bible
-> draft was **authored by Cursor** — against the standing rule that Cursor catches factual drift but
-> does not author the bible. This version is that draft **reviewed and corrected by Claude**, same
-> posture as v32. Consequences:
-> - **Code-scan facts** (migration DDL, column/file existence, tab gating, which policy is on a table)
->   are reliable and recorded as such — 0063–0064 are on disk, live paste UNCONFIRMED.
-> - **"Decided"/rationale for the freeform slices is reconstructed, adopted-for-now** — NOT a prior
->   in-session decision. Re-derive the *why* with Dom before any future work leans on it. This
->   includes GST-12 chain-prevention-not-a-trigger, SEAT-13 one-sweetheart, CAL-03 categorical hues,
->   and the BUD paid/actual reframe.
-> - **DASH-03 is the exception:** its data model, the blurb deferral (→ DASH-03a), and the
->   `isTaskPastDue` extraction were reasoned in a Claude session (this cycle) and are session-authored,
->   not reconstructed — see the DASH-03 entry (§6/§7) and the DASH-03a deferral (§13/§14).
+> **PROVENANCE.** v33's freeform-slice caveats (GST-12 / SEAT-13 / CAL-03 / BUD polish / Gmail
+> reconnect rationale reconstructed) still apply. ONB-03…05 + POLISH-01 appendices claimed
+> **LIVE VERIFIED (Dom)** for 0068/0069 and the no-schema onboarding polish — treat those as closed
+> unless re-introspecting. DEMO-01/02/03, TOUR-01, ONB-02 (0067), and CON-04 are **code-verified on
+> disk**; confirm hand-paste of **0065–0067** (and any still-open **0060–0064**) before treating as
+> live. Demo template seeds (`supabase/seeds/demo_templates*.sql`) are a separate hand-apply, not the
+> migration.
 
-**Also closed / corrected in v33 (discrepancies found vs v32):**
-- **Couple Calendar tab gating VERIFIED** — `coupleOnly` ⇒ `account.kind === "personal"` only.
-  Business and invited members (`kind = null`) do **not** see the tab. RLS still dual-gates
-  project-linked events (CAL-02); tab visibility is intentionally narrower than RLS.
-- **Registry is NOT a workspace tab** — outbound registry links live under **Website** /
-  `external_registry_links`. v32 incorrectly restored "Registry" as a tab. (Spot-check on the visual
-  walk: v32-Cursor got this wrong in the *other* direction, so "Cursor says X now" after "Cursor said
-  not-X before" earns one eyeball.)
-- **Assistant `get_notes` / `get_note` DO surface `action_status`** (pin-sort + summary count) —
-  confirmed in `lib/assistant/read-tools.ts`. `add_note` still does not set it.
-- **0059 seating DDL reconstructed** — `seating_assignments.guest_member_id` + composite FK + unique;
-  `guest_id` nullable/write-dead; occupancy remains **action-enforced**.
-- **`guests.party_size` is not fully inert** — still written by `addGuest` and drives additional
-  create slots; person-grain display/summary does not use it for headcount. Drop still deferred
-  (MEAL-03a / **0065+**).
-- **RsvpAccessCard removed** from Guests — no replacement card; `regenerateGuestRsvpToken` remains.
+**Also closed / corrected in v34 (discrepancies found vs v33 body):**
+- **Next-free is 0070**, not 0065. Disk has **0065–0069**. v33's trailing §14 appendix already said
+  0070; the header / §5 / §14 / §15 body did not.
+- **ONB-02 is SHIPPED as 0067** — not deferred. The four vendor/file/template category columns now
+  have CHECKs (`null` or one of the 13 canonical `VENDOR_CATEGORIES` ids).
+- **Onboarding is a 6-step wizard**, not 3: Basics → Budget → Style (scope) → Your focus (formality +
+  priority) → Already booked → Plan preview.
+- **`wedding_profile.traditions` is write-dead** (POLISH-01); drop is a future destructive migration.
+- **DEMO / TOUR were entirely absent** from the v33 body (and from the appendices).
+- **CON-04 shipped** (generate contract template draft) — absent from v33.
+- Deferred drops shift to **0070+**: MEAL-03a (`guests.meal_choice` + `guests.party_size`),
+  `budget_items.due_date`, `rsvp_access_mode`, and (unscheduled) `wedding_profile.traditions`.
+- **`isTaskPastDue` is still NOT single-sourced** — only `lib/dashboard-aggregates.ts` imports
+  `lib/task-overdue.ts`; Overview (`buildOverviewData`) and assistant `getChecklist` still inline.
 
-Everything in v32 that isn't touched by the above carries forward: NOTES-01 / ASSIST-UI-01, CAL-02 /
-VND-11 / DASH-02, Website-tab polish, SEAT-12 / 0059, Guests GST-03…09, the budget arc, etc.
-
-> **Numbering note:** **0063–0064 are taken** (`guest_member_association`, `seating_sweetheart_unique`).
-> The v32 bible's "next-free 0063" claim is **stale**. **Next-free is 0065.** The deferred trio —
-> **MEAL-03a** (drop `guests.meal_choice` AND `guests.party_size`), **ONB-02**, and the
-> **`budget_items.due_date` drop** — plus the **`rsvp_access_mode` drop** candidate all take
-> **0065+**. Do not `db push`. **Do not offer `viewer` from Access** until WRITE-01. **CON-03** (real
-> PDF bytes) remains **DEFERRED by choice**. **Marketing copy policy:** do not promote or lead with
-> "AI"; frame as the app / "automatically" / "the assistant."
+> **Numbering note:** **0065–0069 are taken.** Next-free is **0070.** Do not `db push`. **Do not
+> offer `viewer` from Access** until WRITE-01. **CON-03** (real PDF bytes) remains **DEFERRED by
+> choice**. **Marketing copy policy:** do not promote or lead with "AI"; frame as the app /
+> "automatically" / "the assistant." CON-04's UI label "Generate with the assistant" is the
+> sanctioned framing for that surface.
 
 **Verification status (READ THIS):**
-- **0031–0059** remain as recorded (0059 applied live + visually verified; **DDL now reconstructed in
-  §5**).
-- **0060–0062** — ON DISK, DDL reconstructed; **live paste still UNCONFIRMED** unless Dom closed them.
-- **0063 `guest_member_association` (GST-12)** — ON DISK, DDL reconstructed. **Confirm hand-paste**
-  (`guest_members.member_type` / `related_to_member_id` + CHECKs + FK) before treating as live.
-- **0064 `seating_sweetheart_unique` (SEAT-13)** — ON DISK. **Confirm hand-paste** (partial unique
-  index `seating_tables_one_sweetheart_per_project`) before treating as live.
-- **CAL-03 / DASH-03 / BUD polish / Gmail reconnect** — no schema; code shipped.
-- **Couple Calendar tab gating CLOSED** — personal-only (`coupleOnly`); see §6.
-- **Assistant notes-read shape CLOSED** — `action_status` returned; see §9.
-- **Still open (human gate):** confirm **0060–0064** pastes; the **broad** Soft stack + LAND-01/01a
-  visual checkpoint (now also Guests association + sweetheart + wedding cards + calendar hues). See
-  §10 / §15.
+- **0031–0059** remain as recorded (0059 applied live + visually verified).
+- **0060–0064** — ON DISK, DDL reconstructed; **live paste still UNCONFIRMED** unless Dom closed them.
+- **0065–0067** — ON DISK (DEMO-01 / TOUR-01 / ONB-02). Confirm hand-paste + demo seed apply.
+- **0068–0069** — ON DISK; appendices claimed **APPLIED + LIVE VERIFIED (Dom)**.
+- **ONB-03 / POLISH-01 / CON-04 / DEMO-02/03 / tour UI** — no schema (or UI-only); code shipped;
+  ONB-03 / POLISH-01 claimed live-verified.
+- **Still open (human gate):** confirm **0060–0067** pastes (+ demo seeds); broad Soft stack visual
+  checkpoint including **demo CTA / banner**, **page tours**, **6-step onboarding**, **CON-04
+  generate flow**. See §10 / §15.
 
-Sections changed from v32: header, **§1**, **§3**, **§4** (guest association + seating DDL + notes /
-calendar flags), **§5** (0063–0064 + 0059 reconstruct), **§6** (tabs / Calendar gate / Guests /
-Dashboard / Seating / Calendar polish), **§7** (v33 batch), **§9**, **§10**, **§11**, **§12**,
-**§13**, **§14**, **§15**.
+Sections changed from v33: header, **§1**, **§3**, **§4** (demo flags + `user_tours`), **§5**
+(0065–0069), **§6** (demo banner / tours), **§7** (v34 batch), **§8** (6-step onboarding), **§9**,
+**§10**, **§13**, **§14**, **§15**. Trailing v33 appendices folded in; no append section remains.
 
 **Companion doc:** a separate **Launch Prep Runbook** exists (ops checklist for going to production).
 This bible covers product/architecture state; the runbook covers deployment. Keep both.
@@ -106,23 +90,25 @@ see that project and nothing else in the planner's book — no CRM tabs. This is
 and it is what `can_access_project`'s "OR direct project member" branch was designed for in 0001.
 **Not** account-level seats / `account_invitations`. See §4.
 
-The app spans: the couple planning product (onboarding → AI plan, checklist, vendors, **guests as a
-flat one-line-per-person list over a preserved household tier — per-person relationship + partner-side,
+The app spans: the couple planning product (**6-step onboarding → AI plan with plan-scope /
+formality / priority / already-booked signals**, checklist, vendors, **guests as a flat
+one-line-per-person list over a preserved household tier — per-person relationship + partner-side,
 plus-one/child association (GST-12), per-person meal members, gated-only RSVP that auto-populates the
 household badge, event-level song requests, household mailing address**, budget with a per-item
 Estimate/Actual/Difference/Paid model + payment ledger + dated payment schedule + filterable cards
 (**paid/actual category bars**), **notes with an optional action lifecycle (needs-action pin / done) +
 files**, day-of timeline, gift registry with public share + guest claims, **in-app AI assistant with
-in-page prompts on Overview and empty tabs**, **a seating builder at the per-member grain with at most
-one sweetheart table**, **a couple-only project Calendar tab with wedding/kind hue polish**), a planner
-CRM (contracts, lead pipeline, proposals → accepted agreement → printable contract, project access +
-couple/collaborator invitations, archive finished weddings, **dashboard wedding cards**, an
-account-level Vendor library **with detail/portfolio + Instagram + private media**, an authorable
-Calendar, and a cross-project Contracts archive with reusable contract templates), Stripe billing for
-both audiences, marketing `/` + `/pricing`, and a **public, shareable wedding website** with a
-5-template photo-led gallery, **an editor that reorders and collapses sections with a sticky live
-preview, image border-shape and timeline-layout options**, **adaptive meal- and song-aware gated RSVP
-intake** (household lookup → per-attendee meal + optional song; **no self-report headcount, email
+in-page prompts on Overview and empty tabs**, **guided page tours (TOUR-01)**, **a seating builder at
+the per-member grain with at most one sweetheart table**, **a couple-only project Calendar tab with
+wedding/kind hue polish**), a planner CRM (contracts, lead pipeline, proposals → accepted agreement →
+printable contract, project access + couple/collaborator invitations, archive finished weddings,
+**dashboard wedding cards**, an account-level Vendor library **with detail/portfolio + Instagram +
+private media**, an authorable Calendar, and a cross-project Contracts archive with reusable contract
+templates **+ assistant-drafted templates (CON-04)**), Stripe billing for both audiences, marketing
+`/` + `/pricing` **with live demo CTAs (DEMO-02/03)**, and a **public, shareable wedding website**
+with a 5-template photo-led gallery, **an editor that reorders and collapses sections with a sticky
+live preview, image border-shape and timeline-layout options**, **adaptive meal- and song-aware gated
+RSVP intake** (household lookup → per-attendee meal + optional song; **no self-report headcount, email
 optional**), and a registry sub-page (under Website / public `/w/[slug]/registry` — **not** a project
 workspace tab).
 
@@ -202,8 +188,12 @@ In `.cursor/main.mdc` (architecture) + `.cursor/design.mdc` (Soft stack design).
   Constrained: `project_vendors.status` (0030/0031), `calendar_events.event_kind` (0045),
   `guests.rsvp_status` (`pending|attending|declined`), **`guest_members.relationship_side`
   (`partner_1|partner_2`, 0056)**, **`guest_members.member_type` (`adult|child`, 0063)**,
-  **`notes.action_status` (`needs_action|done` or null, 0062)**. Remaining gap: the four
-  vendor/file/template category columns — §13.
+  **`notes.action_status` (`needs_action|done` or null, 0062)**, **`wedding_profile.formality`
+  (`casual|semi-formal|formal|black-tie` or null, 0068)**, **`user_tours.status`
+  (`completed|skipped`, 0066)**. **ONB-02 / 0067 closed the four vendor/file/template category
+  CHECKs** (`vendor_targets.category`, `vendors.category`, `files.category`,
+  `contract_templates.category` — null or one of the 13 canonical ids). `budget_items.category` and
+  `guest_members.relationship` stay free-text by design.
 - **Billing source of truth = the webhook-updated `subscriptions` row.**
 - **Self-contained snapshot for public surfaces.** Public-rendered content stores its displayed data
   on its own row — never joins live into private tables. **Website section order + per-section layout /
@@ -215,9 +205,11 @@ In `.cursor/main.mdc` (architecture) + `.cursor/design.mdc` (Soft stack design).
   surfaces, no policy change.
 - **Anon WRITE = tightly-scoped INSERT-only RLS (or a definer RPC) + server-derived scope.** Public
   writes are RSVP (`submit_rsvp` RPC) and registry claims (INSERT). **There are exactly SIX anon
-  surfaces** (three reads + one INSERT + two RPC executes) — see §4. **v31–v33 add NO anon surfaces**
+  surfaces** (three reads + one INSERT + two RPC executes) — see §4. **v31–v34 add NO anon surfaces**
   (RSVP-02's email-optional / no-headcount are client-form changes; `submit_rsvp` is untouched;
-  `vendor-media` is a private authenticated-only bucket; GST-12 / SEAT-13 are authenticated-only).
+  `vendor-media` is a private authenticated-only bucket; GST-12 / SEAT-13 / tours / onboarding polish
+  are authenticated-only). **Demo uses Supabase anonymous auth + authenticated RPC** — not a new anon
+  RLS surface.
 - **Discrete writes over client-authoritative state.** Every mutation writes by id +
   `revalidatePath`. `useOptimistic` is the sanctioned in-pattern fallback.
 - **Keep public/reusable UI pure via prop injection.** `components/website/` imports NO Supabase/auth/
@@ -229,10 +221,19 @@ In `.cursor/main.mdc` (architecture) + `.cursor/design.mdc` (Soft stack design).
   `projects_account_id_immutable` trigger; 0030's `(project_id, vendor_id)` unique index; 0031/0045's
   composite FKs; 0051/0052's `budget_payments`/`payment_schedule` composite FKs; `guest_members
   (project_id, guest_id) → guests` ON DELETE CASCADE (0006); **0059's `(project_id, guest_member_id)`
-  unique on `seating_assignments`**; **0064's one-sweetheart-per-project partial unique index**.
+  unique on `seating_assignments`**; **0064's one-sweetheart-per-project partial unique index**;
+  **0067's category CHECKs + `commit_wedding_plan` already-committed guard**; **0069's row-level
+  already-booked filter inside `commit_wedding_plan`**.
   **Seating occupancy stays action-enforced** (writers check seat_count vs seated count) — 0059 did
   not add a structural occupancy constraint.
+- **Row-level filtering vs. all-or-nothing gating are different enforcement shapes — name which one
+  a slice needs, don't default to the simpler one.** `include_vendors` (ONB-02) is a boolean gate:
+  the whole `vendor_targets` insert either happens or doesn't. `already_booked_vendor_category_ids`
+  (ONB-05) is a per-row filter within an insert that's otherwise proceeding. Confirm in Step 0 which
+  shape a suppression requirement actually needs before assuming the existing gate pattern extends.
 - **Structural enforcement can only act on a SHARED KEY. Say so out loud when it can't.**
+  Exemplar: checklist already-booked suppression (ONB-05) has **no possible** structural backstop —
+  `tasks` has no vendor-category column. Prompt-directive only; do not invent title-string heuristics.
 - **A dedicated action owns an integrity obligation.** Don't extend a generic `update<Thing>(id,
   fields)` writer with a field that carries a constraint the generic writer doesn't understand.
   Exemplars: `setSeatingTableKind`, `setBudgetItemProjectVendor`, `removeProjectVendor`,
@@ -257,6 +258,10 @@ In `.cursor/main.mdc` (architecture) + `.cursor/design.mdc` (Soft stack design).
   deliberately NOT imported from / wired to `VENDOR_CATEGORIES`, carries NO DB CHECK, and is enforced
   by the guest writers (`isGuestRelationship`). A convenience picklist is not a vocabulary and must
   never be "unified" with the vendor-category ids. (Same posture as `budget-quick-categories.ts`.)
+  **`priority_vendor_category_ids` / `already_booked_vendor_category_ids` reuse the canonical 13-id
+  `VENDOR_CATEGORIES` vocabulary via array-subset CHECK (`<@`) — no new vendor-category vocabulary.**
+  **`formality` is a small closed ordinal enum, CHECK-constrained, deliberately distinct from the
+  free-text `style` column** (aesthetic/vibe vs. formality/dress-code tier).
 - **Resolve display vocabulary AT THE CALL SITE, not inside the consuming lib.** Exemplar:
   `relationship_side` stores a stable token (`partner_1`/`partner_2`); the display label is derived at
   render via `lib/partner-sides.ts` (profile names → `projects.name` split → generic Partner 1/2).
@@ -279,9 +284,10 @@ In `.cursor/main.mdc` (architecture) + `.cursor/design.mdc` (Soft stack design).
   rewrite them.** (v29 — unchanged.)
 - **Additive-then-destructive for column reinterpretation / supersession.** Exemplars: `actual_amount`
   reinterpreted; `budget_items.due_date` write-dead then dropped later; **`rsvp_access_mode` kept and
-  read-dead after gated-only (0054, drop candidate 0065+); `guests.meal_choice` inert after the
-  flatten (drop in MEAL-03a / 0065+); `guests.party_size` still written by `addGuest` for create-form
-  slots but unused for person-grain headcount (also drop in MEAL-03a / 0065+).**
+  read-dead after gated-only (0054, drop candidate 0070+); `guests.meal_choice` inert after the
+  flatten (drop in MEAL-03a / 0070+); `guests.party_size` still written by `addGuest` for create-form
+  slots but unused for person-grain headcount (also drop in MEAL-03a / 0070+);
+  `wedding_profile.traditions` write-dead as of POLISH-01 (drop unscheduled — same posture).**
 - **A gated (token-bound) RSVP write to a KNOWN guest is NOT the forbidden auto-match.** The standing
   rule "no auto-matching of open RSVPs to guests" exists because an **open** submission arrives with no
   guaranteed identity. GST-04 made every submission gated: the household token resolves to
@@ -376,10 +382,10 @@ display line and the home for per-person fields.
   add/edit field on Guests), `phone` (nullable — surfaced in place of email), **`address` (nullable,
   0056 — household mailing address)**, `household` (nullable label), `party_size` int default 1
   (**still written by `addGuest` and drives additional create-form slots; person-grain display/
-  summary does not use it for headcount — drop in MEAL-03a / 0065+**), `rsvp_status` text NOT NULL
+  summary does not use it for headcount — drop in MEAL-03a / 0070+**), `rsvp_status` text NOT NULL
   default `pending` CHECK `pending|attending|declined` (**the badge — the authoritative shown status;
   written by `updateRsvp` AND `submit_rsvp`**), `meal_choice` (nullable, **inert — drop in MEAL-03a /
-  0065+**), `notes`, `created_at`, `rsvp_token` NOT NULL default `encode(gen_random_bytes(16),'hex')`
+  0070+**), `notes`, `created_at`, `rsvp_token` NOT NULL default `encode(gen_random_bytes(16),'hex')`
   (the per-household gated-lookup token).
 - **`guest_members` (0040 + 0056 + 0063)** — the **person / display line**. `id`, `project_id`,
   `guest_id` (composite FK `(project_id, guest_id) → guests` ON DELETE CASCADE), `name` (nullable),
@@ -427,7 +433,7 @@ distinguishes sweetheart by **form + "SWEETHEART" label** (accent stroke), never
 Unchanged. Sole writer `set_project_archived(uuid, boolean)` — SECURITY DEFINER,
 `can_manage_project_access`-gated.
 
-### The six public (anon) surfaces (UNCHANGED count in v33)
+### The six public (anon) surfaces (UNCHANGED count in v34)
 
 1. **Read:** `wedding_websites` anon `SELECT using (published = true)` (0022). Riders:
    `external_registry_links` (0035), `meal_service_style` (0038), `rsvp_access_mode` (0041 —
@@ -444,10 +450,24 @@ Unchanged. Sole writer `set_project_archived(uuid, boolean)` — SECURITY DEFINE
 6. **Read (RPC):** `lookup_rsvp_household(...)` — definer, anon execute (0041; full-name in 0043).
 
 `rsvp_attendees` / `guest_members` / `guests` / `rsvp_submissions` / `project_invitations` /
-`calendar_events` / `contract_templates` / `budget_payments` / `payment_schedule` / `notes` / the
-seating tables have NO anon policy. Storage carve-outs: **0042 `website-media` public SELECT**
-(recorded, not counted); **0061 `vendor-media` private bucket** — authenticated account-member policies
-only, **NO anon SELECT**, reads via signed URLs (same posture as `project-files`).
+`calendar_events` / `contract_templates` / `budget_payments` / `payment_schedule` / `notes` /
+`user_tours` / the seating tables have NO anon policy. Storage carve-outs: **0042 `website-media`
+public SELECT** (recorded, not counted); **0061 `vendor-media` private bucket** — authenticated
+account-member policies only, **NO anon SELECT**, reads via signed URLs (same posture as
+`project-files`). **Demo visitors authenticate anonymously then call authenticated RPCs** — still not
+an anon RLS surface.
+
+### Demo account flags (DEMO-01 / 0065) — ON DISK (confirm paste)
+
+`accounts` gains `is_demo boolean NOT NULL DEFAULT false`, `is_demo_template boolean NOT NULL DEFAULT
+false`, `demo_created_at timestamptz`, plus CHECK `not (is_demo and is_demo_template)`. Template rows
+are curated seed data; visitor clones are `is_demo = true`. See §5 / §7.
+
+### `user_tours` (TOUR-01 / 0066) — ON DISK (confirm paste)
+
+User-scoped (not project-scoped): PK `(user_id, tour_key)`; `status` `completed|skipped`;
+`dismissed_at`. RLS: authenticated own rows only. **No CHECK on `tour_key`** — keys live in
+`lib/tours/tour-config.ts`. See §7.
 
 ### Notes (NOTES-01 / 0062) — ON DISK, paste-unconfirmed
 
@@ -484,7 +504,7 @@ project-linked `calendar_events` into WRITE-01.
 
 ## 5. Migrations (source of truth: `supabase/migrations/`)
 
-Applied in order. **You are the source of truth on the next number — next free is 0065.**
+Applied in order. **You are the source of truth on the next number — next free is 0070.**
 
 > **How migrations are applied here (READ THIS BEFORE SUGGESTING ANY CLI COMMAND):** by hand-pasting
 > each file into the Supabase SQL editor and running it once, in order. There is NO CLI
@@ -493,9 +513,10 @@ Applied in order. **You are the source of truth on the next number — next free
 
 > **A migration paste must return clean. Any error means NOTHING applied.** After every migration,
 > confirm with `to_regclass` / `to_regprocedure` / `pg_policies` / `pg_indexes` before running any
-> checkpoint. A file on disk is NOT an applied migration. **0060–0064 are on disk with reconstructed
-> DDL; live paste of 0060–0064 is UNCONFIRMED this cycle unless Dom already closed them — confirm
-> before treating as applied.**
+> checkpoint. A file on disk is NOT an applied migration. **0060–0067 live paste is UNCONFIRMED
+> unless Dom closed them; 0068–0069 claimed LIVE VERIFIED in the v33 appendices — re-confirm before
+> relying.** Demo template seeds are a separate hand-apply (`supabase/seeds/demo_templates*.sql`),
+> not part of the migration sequence.
 
 > **Write migrations to be re-runnable.** `create or replace` for functions; `drop … if exists`
 > before every `create policy` / `create trigger`; `create … if not exists` for indexes;
@@ -513,8 +534,13 @@ Applied in order. **You are the source of truth on the next number — next free
 - **0062 notes_action_status (NOTES-01)** — ON DISK, paste-unconfirmed
 - **0063 guest_member_association (GST-12)** — ON DISK, paste-unconfirmed
 - **0064 seating_sweetheart_unique (SEAT-13)** — ON DISK, paste-unconfirmed
+- **0065 demo_account_clone (DEMO-01)** — ON DISK, paste-unconfirmed
+- **0066 user_tours (TOUR-01)** — ON DISK, paste-unconfirmed
+- **0067 commit_wedding_plan (ONB-02)** — ON DISK, paste-unconfirmed
+- **0068 formality_and_vendor_priority (ONB-04)** — ON DISK; claimed LIVE VERIFIED (Dom)
+- **0069 already_booked_vendor_categories (ONB-05)** — ON DISK; claimed LIVE VERIFIED (Dom)
 
-(For DDL/introspection notes on 0026–0058, see v27/v28/v29/v30. 0059–0064 below.)
+(For DDL/introspection notes on 0026–0058, see v27/v28/v29/v30. 0059–0069 below.)
 
 ### 0059 seating_member_grain (SEAT-12) — APPLIED LIVE + visually verified, DDL RECONSTRUCTED (v33)
 
@@ -569,20 +595,74 @@ for anyone with project access (RLS). Tab visibility is separately `coupleOnly` 
   'sweetheart'`. Does **not** change the kind CHECK (`standard|sweetheart|head` already allowed).
 - **Checkpoint:** index present in `pg_indexes`.
 
-**Verified this cycle (code scan):** GST-12 / SEAT-13 / CAL-03 / DASH-03 / BUD polish / Gmail reconnect
-code; Calendar `coupleOnly` gating; assistant notes-read `action_status`; 0059 DDL reconstructed.
-**NOT verified this cycle:** live paste of 0060–0064; DB introspection.
+### 0065 demo_account_clone (DEMO-01) — ON DISK (confirm paste)
 
-### Column reference (v33 note; earlier entries unchanged)
+- `accounts.is_demo` / `is_demo_template` / `demo_created_at` + CHECK not both demo and template.
+- SECURITY DEFINER `clone_demo_account(p_kind text)` → authenticated; idempotent one demo account per
+  `(auth.uid(), kind)`; clones a curated `is_demo_template` graph via temp `demo_id_map`.
+- Clones projects, vendors, leads/proposals/templates (business), guests + members (association
+  remapped in two passes), seating, budget + payments + schedule, tasks, notes, timeline, websites
+  (**slug forced null, unpublished**), RSVPs, calendar. **Skips:** subscriptions, `assistant_messages`,
+  `project_invitations`, `outreach_messages`. Regenerates guest `rsvp_token`s; file `storage_path`
+  shared with template (no storage copy).
+- **Seeds:** `supabase/seeds/demo_templates.sql` + `demo_templates_guests.sql` (hand-apply, not this
+  migration).
+- **Checkpoint:** columns + CHECK; `to_regprocedure('clone_demo_account(text)')`; at least one
+  `is_demo_template` row per kind before treating demo CTAs as live.
+
+### 0066 user_tours (TOUR-01) — ON DISK (confirm paste)
+
+- Table `user_tours (user_id, tour_key, status, dismissed_at)` PK `(user_id, tour_key)`; status CHECK
+  `completed|skipped`; RLS own-row for authenticated.
+- **No CHECK on `tour_key`** — new keys ship in `lib/tours/tour-config.ts`, not migrations.
+- **Checkpoint:** `to_regclass('public.user_tours')` + policy present.
+
+### 0067 commit_wedding_plan (ONB-02) — ON DISK (confirm paste)
+
+- Category CHECKs (13 canonical ids): `vendor_targets.category`; `vendors.category` (nullable);
+  `files.category` (nullable); `contract_templates.category` (nullable).
+- `wedding_profile.include_budget` / `include_checklist` / `include_vendors` boolean NOT NULL default
+  true.
+- SECURITY DEFINER `commit_wedding_plan(project_id, tasks jsonb, budget_items jsonb, vendor_targets
+  jsonb)`: `can_edit_project`; reject if `onboarded_at` set; flag-gated inserts; stamp `onboarded_at`.
+  Replaces the three non-atomic client inserts in `commitPlan`.
+- **Checkpoint:** four CHECKs via `pg_get_constraintdef`; three `include_*` columns; function present.
+
+### 0068 formality_and_vendor_priority (ONB-04) — claimed APPLIED + LIVE VERIFIED
+
+- `wedding_profile.formality` nullable + CHECK (`casual|semi-formal|formal|black-tie`).
+- `priority_vendor_category_ids text[] NOT NULL default '{}'` + `<@` subset CHECK vs 13 ids.
+- Prompt-directive only (no code-level budget/checklist weighting).
+- **Checkpoint:** columns + CHECKs; invalid category id rejected on direct insert.
+
+### 0069 already_booked_vendor_categories (ONB-05) — claimed APPLIED + LIVE VERIFIED
+
+- `already_booked_vendor_category_ids text[] NOT NULL default '{}'` + same `<@` CHECK pattern.
+- Replaces `commit_wedding_plan`: when inserting `vendor_targets`, excludes rows whose category is in
+  the already-booked list (**row-level filter**, independent of model compliance). Checklist
+  suppression remains prompt-only (no category column on `tasks`).
+- Preview mirrors commit: hides already-booked categories from the editable vendor list.
+- **Checkpoint:** column + CHECK; direct-payload bypass test (hand-crafted already-booked category in
+  payload → excluded at commit).
+
+**Verified (code scan, v34):** DEMO / TOUR / ONB-02…05 / POLISH-01 / CON-04 files; 0065–0069 DDL on
+disk; Calendar `coupleOnly`; assistant notes-read `action_status`; `isTaskPastDue` still multi-homed.
+**Confirm live:** pastes of 0060–0067; demo seeds; re-confirm 0068–0069 if needed.
+
+### Column reference (v34 note; earlier entries unchanged)
 
 **`guest_members.member_type` / `related_to_member_id`** (0063). **`notes.action_status`** nullable
 text + CHECK (0062). **`vendors.instagram`** nullable text (0061). **`wedding_websites.content`**
 jsonb carries section order + layout / image-shape. **Seating:** member-grain assignments (0059) +
-one-sweetheart-per-project index (0064).
+one-sweetheart-per-project index (0064). **`accounts` demo flags** (0065). **`user_tours`** (0066).
+**`wedding_profile.include_*`** (0067); **`formality` / `priority_vendor_category_ids`** (0068);
+**`already_booked_vendor_category_ids`** (0069). **`wedding_profile.traditions` write-dead**
+(POLISH-01 — column retained).
 
-**No-migration slices to date (append v33):** DASH-01; DASH-02; **DASH-03**; CON-01; budget row polish;
-**BUD paid/actual ramp polish**; BUD-FILTER-01; BUD-QUICKADD-01/02; BUD-NOTES-01; GST-03; WEB-EDITOR-02;
-WEB-STYLE-01; RSVP-02; FIX-02; ASSIST-UI-01; **CAL-03**; **Gmail reconnect hardening**. (Earlier list
+**No-migration slices to date (append v34):** DASH-01; DASH-02; **DASH-03**; CON-01; **CON-04**;
+budget row polish; **BUD paid/actual ramp polish**; BUD-FILTER-01; BUD-QUICKADD-01/02; BUD-NOTES-01;
+GST-03; WEB-EDITOR-02; WEB-STYLE-01; RSVP-02; FIX-02; ASSIST-UI-01; **CAL-03**; **Gmail reconnect
+hardening**; **ONB-03**; **POLISH-01**; **DEMO-02 / DEMO-03**; tour UI (keys in code). (Earlier list
 carries forward.)
 
 ---
@@ -593,6 +673,13 @@ One login. `lib/post-login-path.ts` routes by account kind.
 - **Planner (business):** `/dashboard`, `PlannerShell` + `PlannerProjectSidebar`.
 - **Couple (personal):** into their project workspace (`CoupleShell`), gated by onboarding.
 - **Invited member (no account):** into the invited project via `/projects`.
+
+**Demo (DEMO-03):** when `account.isDemo`, app layout mounts a single non-dismissible `DemoBanner`
+(`bg-accent-wash` — not an accent flood). Demo visitors arrive via marketing CTA → `/projects`.
+
+**Tours (TOUR-01):** project layout loads dismissed `tour_key`s and wraps children in `TourProvider`;
+`TourHelpButton` (`?`) on covered tabs for manual replay.
+
 
 ### Planner sidebar nav
 
@@ -737,7 +824,7 @@ sets the household badge.
 ### Account-scoped planner surfaces
 
 `/leads`, `/account/billing`, `/vendors` (VND-08/08a + **VND-11 detail/portfolio**), `/calendar`
-(CAL-01 + **CAL-03 hues/chips/legend**), `/contracts` (CON-01/01a/02). Couple project Calendar is
+(CAL-01 + **CAL-03 hues/chips/legend**), `/contracts` (CON-01/01a/02 + **CON-04 generate**). Couple project Calendar is
 under the project workspace (`/projects/[id]/calendar`, CAL-02 RLS; **tab = personal-only**, §6).
 Shared calendar chrome: `CalendarEventChip`, `CalendarLegend`, `lib/calendar-hues.ts` (`--cal-w-1…5`
 categorical wedding/kind tints — not status colours).
@@ -851,14 +938,88 @@ Category/item bars = paid ÷ actual (rosewood/clay/sage); collapsed face Actual 
 Require refresh_token; `noStore` on credential reads; reconnect messaging; status advance on send.
 *(Rationale reconstructed.)*
 
+
+### v34 — Demo + tours + onboarding polish + contract draft
+
+> **Provenance:** ONB-03…05 / POLISH-01 claimed LIVE VERIFIED (Dom) in v33 appendices (now folded
+> here). DEMO / TOUR / ONB-02 / CON-04 are code-verified on disk; confirm pastes for 0065–0067.
+
+#### DEMO-01 / DEMO-02 / DEMO-03 — Ephemeral demo accounts. Migration **0065** + no-schema UI.
+
+Marketing `DemoCta` (landing audience section) → `startDemo(kind)`: real session skips RPC and goes to
+`/projects`; else anonymous auth → `clone_demo_account` → `/projects`. In-app `DemoBanner` when
+`account.isDemo`; `getSubscriptionForAccount` treats demo as entitled (`status: "demo"`). Seeds are
+hand-apply SQL. No convert-to-real-account path yet.
+
+#### TOUR-01 — Page tours. Migration **0066**.
+
+`user_tours` dismissal state. Auto-fire once per tab when targets present; `?` (`TourHelpButton`)
+always replays. Keys: `overview`, `seating`, `guests`, `budget`, `website`, `checklist`, `vendors`,
+`notes`. Out of slice: Calendar, Access, Day-of timeline, Contracts.
+
+#### ONB-02 — Atomic plan commit + category CHECKs. Migration **0067**.
+
+Four category CHECKs; `include_*` flags; `commit_wedding_plan` SECURITY DEFINER. `commitPlan` calls
+the RPC (not three inserts).
+
+#### ONB-03 — Plan-scope UI. NO SCHEMA.
+
+Style-step checkboxes write `include_*`. Preview discards unflagged sections; Approve not blocked by
+unchecked checklist. Generator still produces all three sections (accepted cost).
+
+#### POLISH-01 — Toggle + Traditions + Decide Later. NO SCHEMA.
+
+Soft-stack kind toggle; `traditions` write-dead; Decide Later tertiary CTA on steps 1–5.
+
+#### ONB-04 — Formality + vendor priority. Migration **0068**.
+
+`formality` + `priority_vendor_category_ids`. Prompt directives only.
+
+#### ONB-05 — Already booked. Migration **0069**.
+
+`already_booked_vendor_category_ids` + row-level `vendor_targets` exclusion in `commit_wedding_plan`.
+Checklist suppression prompt-only. Preview hides already-booked categories.
+
+#### CON-04 — Contract template draft generation. NO SCHEMA.
+
+`/contracts` Templates: generate intake → editable `TemplateEditor` seed → existing
+`createContractTemplate`. Account-scoped (`resolveBusinessAccountId`). Allowlist tokens exclude
+`{{amount}}`. Not a chat-assistant tool.
+
 ---
 
 ## 8. Onboarding → AI starting plan
 
-Unchanged from v29/v30. 3-step wizard captures `wedding_profile` + `wedding_date` + `total_budget`;
-`generate-wedding-plan.ts` returns strict JSON; editable preview; **Approve** (`commitPlan`) inserts
-tasks/budget_items/vendor_targets, stamps `onboarded_at`, guards double-commit. Computed task due dates
-floor through `clampDueDateToToday`; `phase` is derived, never authored.
+**6-step wizard** (`onboarding-wizard.tsx` + `plan-preview-step.tsx`):
+
+| Step | Content |
+|---|---|
+| 1 Basics | wedding date, location, guest estimate |
+| 2 Budget | total budget |
+| 3 Style | style / priorities / vibe + **"What should we suggest?"** scope checkboxes (`include_checklist` / `include_budget` / `include_vendors`) |
+| 4 Your focus | formality radios + priority vendor-category checkboxes (ONB-04) |
+| 5 Already booked | already-booked vendor-category checkboxes (ONB-05) |
+| 6 Plan preview | generate → edit → Approve |
+
+**Decide Later** (POLISH-01) is a ghost tertiary CTA on steps 1–5 — same advance/save handler as
+Continue/Create (empty-field advance already allowed; labeling/affordance only).
+
+`saveOnboarding` writes profile fields + scope flags + formality + priority/already-booked id arrays
+(filtered via `getVendorCategoryById` ahead of DB CHECKs). **`traditions` is no longer written**
+(POLISH-01); column retained, reads null; prompt degrades to `"none specified"`.
+
+`generatePlan` / `generate-wedding-plan.ts` still returns the full three-section JSON every time
+(ONB-01 shape unchanged). Scope gating is client-side at preview (unflagged sections discarded) and at
+Approve (`include_checklist && checklist.length === 0` is the only checklist-empty block). The model
+prompt includes formality + priority + already-booked as facts plus **directive** guidance bullets;
+priority/formality influence is prompt-only (no code weighting). Already-booked also has a structural
+`vendor_targets` filter at commit (0069); checklist already-booked suppression cannot — `tasks` has no
+category column (prompt-only + manual preview remove).
+
+**Approve** (`commitPlan`) builds JSON payloads and calls a single `commit_wedding_plan` RPC (0067 /
+0069) — not three client inserts. RPC: `can_edit_project`, reject if already `onboarded_at`,
+flag-gated inserts, already-booked row filter on vendors, then stamp `onboarded_at`. Computed task due
+dates floor through `clampDueDateToToday`; `phase` is derived, never authored.
 
 > **⚠️ `onboarded_at` lives on `wedding_profile`, NOT on `projects`.** A planner-created project has no
 > `wedding_profile` row (Mila & Griffin reads null — correct). This is also why the partner-side derive
@@ -869,6 +1030,8 @@ floor through `clampDueDateToToday`; `phase` is derived, never authored.
 
 The generator's response shape (ONB-01) is unchanged; `vendorCategories[].category` must be a
 `VENDOR_CATEGORIES` id; the generated budget `category` is free-text; `plannedAmount` becomes Estimate.
+Known cost accepted (ONB-03): unchecked sections are still generated then discarded client-side —
+revisit only if token cost/latency becomes a real complaint.
 
 ---
 
@@ -894,7 +1057,7 @@ proactive messages (Phase 5).
 > entities.** Surfaces WITHOUT assistant coverage include leads, proposals, invitations, seating (incl.
 > the per-member grain + sweetheart), the calendar, contract templates, the account vendor library, the
 > budget ledger / payment schedule, **and the guest-rework RSVP / website-editor / GST-12 association
-> surfaces (no new tools in v32/v33).** Website has a narrow write (`set_website_travel`). The assistant
+> surfaces (no new tools in v32–v34; CON-04 is account-scoped, not a chat tool).** Website has a narrow write (`set_website_travel`). The assistant
 > has no vendor-removal tool and should not get one.
 > - **`get_notes` / `get_note` return `action_status`** (pin-sort needs-action; summary count) —
 >   confirmed in `lib/assistant/read-tools.ts` (v33). **`add_note` still does NOT set `action_status`**
@@ -911,7 +1074,7 @@ proactive messages (Phase 5).
 >   `related_to_member_id`**). Not broken (new columns nullable / default adult), but out of sync with
 >   the couple-side form — update/retire before relying on assistant-created guests carrying the new
 >   fields.
-> **Re-run this audit when any new write tool ships** (none shipped in v33 — discovery/UI only).
+> **Re-run this audit when any new write tool ships** (none shipped in v33/v34 — discovery/UI + CON-04 are not chat write tools).
 
 > The legacy `getBudget` assistant READ tool still double-counts quotes into `allocated`; the UI read
 > path does not. Stale; separate cleanup.
@@ -931,7 +1094,7 @@ cards; recessed wells for rows/tracks. Hierarchy = raised-contains-recessed.
 
 | Tier | Where | What it gets |
 |---|---|---|
-| **1 — App chrome** | `app/(app)/`, most of `components/`, planner, forms, **seating canvas**, assistant + **in-page `AskAssistantPrompt` wells**, settings, Access, `/vendors` / `/calendar` / `/contracts`, the Budget page, the Guests page, **the Notes board**, **the website editor incl. the sticky preview**, **the dashboard wedding cards** | Soft stack palette + Figtree; two depth levels; three radii; **no** accent flood; **no** Cormorant/Great Vibes |
+| **1 — App chrome** | `app/(app)/`, most of `components/`, planner, forms, **seating canvas**, assistant + **in-page `AskAssistantPrompt` wells**, settings, Access, `/vendors` / `/calendar` / `/contracts`, the Budget page, the Guests page, **the Notes board**, **the website editor incl. the sticky preview**, **the dashboard wedding cards**, **demo banner**, **page-tour overlay** | Soft stack palette + Figtree; two depth levels; three radii; **no** accent flood; **no** Cormorant/Great Vibes |
 | **2 — Emotional** | Landing, onboarding hero/welcome, empty-state heroes, `/invite/[token]` | Same palette + Figtree; larger display scale; **exactly one** deep field `--deep` per surface |
 | **3 — Website + print** | `components/website/`, public `/w/[slug]` (incl. the gated RSVP + song intake, **the image-shape + timeline-layout render**), `RunSheetDocument.tsx` print header, the contract print document | `--ws-*` colour + Cormorant + (Romance) Great Vibes + Hanken |
 
@@ -1019,15 +1182,16 @@ didn't work?* If the answer is "the same," it's decoration.
 
 **Cursor-freeform work still needs the gate.** v31–v33 product work includes freeform Cursor batches
 (the entire v33 product batch except DASH-03 ran freeform, outside a Claude session). The promotion bar
-is still a live pass — and any migration still needs the §5 landed-confirmation. **0060–0064 pastes
-remain unconfirmed** unless Dom closed them. 0059 DDL is now reconstructed (v33).
+is still a live pass — and any migration still needs the §5 landed-confirmation. **0060–0067 pastes
+remain unconfirmed** unless Dom closed them; **0068–0069 claimed LIVE VERIFIED**. 0059 DDL is
+reconstructed (v33).
 
-**Cursor must not author the bible.** v32 AND v33 are both the exception that proves the rule: Cursor
-drafted each under credit pressure / freeform work, and each took a full Claude review pass to strip
-reconstructed rationale back to "reconstructed, adopted-for-now," restore the DASH-03a deferral, flag
-the `isTaskPastDue` single-source risk, and correct the invited-couple Calendar edge. Prefer: Claude
-authors the bible from session reasoning; a code scan is a **findings list** for factual drift only
-(migration numbers, columns, paths, gating).
+**Cursor must not author the bible.** v32–v34 are successive exceptions under the same rule: Cursor
+may draft from a code scan / folded appendices, and each version still needs a Dom/Claude review pass
+to keep reconstructed rationale marked as such. Prefer: Claude authors from session reasoning; a code
+scan is a **findings list** for factual drift only (migration numbers, columns, paths, gating).
+v34 specifically folds v33's trailing appendices and adds DEMO/TOUR/CON-04 that were missing from the
+v33 body.
 
 **Verification lessons (carried forward):**
 1. Confirm the migration landed before believing any checkpoint (`to_regclass` / `to_regprocedure` /
@@ -1043,20 +1207,21 @@ authors the bible from session reasoning; a code scan is a **findings list** for
 10. **A "next-free" migration number from Cursor — or from THIS bible — is a claim to verify, not a
     fact.** 0053 surfaced during GST-04 Step 0; **0059 was taken by seating while v30 claimed
     next-free 0059**; **0060–0062 shipped while v31 claimed next-free 0060**; **0063–0064 shipped
-    while v32 claimed next-free 0063**. Grep `supabase/migrations/` before trusting a number.
+    while v32 claimed next-free 0063**; **0065–0069 shipped while v33 claimed next-free 0065**. Grep `supabase/migrations/` before trusting a number.
 
 **Documentation discipline:** factual drift (numbers, paths, existence, gating) may be corrected from
 a code scan. Prefer section-level diffs.
 
-**Drift watchlist (append v33):**
-- **Trusting "next-free 0063"** — **0063–0064 are taken**; next-free is **0065**.
+**Drift watchlist (append v34):**
+- **Trusting "next-free 0065"** — **0065–0069 are taken**; next-free is **0070**.
+- Treating **ONB-02 as deferred** — shipped as **0067**.
 - Re-opening Calendar tab gating as undecided — it is **verified personal-only** (§6). But do NOT read
   "personal-only" as "collaborators only lose it" — every kind-null user loses it, invited couples
   included (§6 edge note).
 - Treating Registry as a workspace tab — it is **not**; links live under Website.
 - Assuming assistant guest-add writes GST-12 fields — it does **not** yet (§9).
-- Assuming Overview / assistant already import `isTaskPastDue` — DASH-03 extracted it but did NOT
-  refactor them in-slice; verify before trusting the rule is single-sourced (§13).
+- Assuming Overview / assistant already import `isTaskPastDue` — still multi-homed; verify/collapse
+  (§13).
 - Dropping the DASH-03a blurb decision — it's a deliberate deferral (needs `projects.description` +
   an editor), not an omission (§13 / §14).
 - Nesting a raised `EmptyState` / card inside another raised card — keep recessed-prompt pattern.
@@ -1065,13 +1230,18 @@ a code scan. Prefer section-level diffs.
 - Server/Supabase or `lib/partner-sides.ts` imports into `components/website/` via the sticky preview.
 - A future `submit_rsvp` replace that drops gated-only / song-gate / badge auto-populate while "just"
   touching the form (RSVP-02 did NOT — the RPC is still 0058).
-- Dropping `guests.meal_choice` / `guests.party_size` / `rsvp_access_mode` / `budget_items.due_date`
-  before their planned supersession migration (**0065+**). Claiming `party_size` is fully inert —
-  it still drives create-form slots.
+- Dropping `guests.meal_choice` / `guests.party_size` / `rsvp_access_mode` / `budget_items.due_date` /
+  `wedding_profile.traditions` before their planned supersession migration (**0070+**). Claiming
+  `party_size` is fully inert — it still drives create-form slots. Do not resurrect a `traditions`
+  write path.
 - Adding a second sweetheart without demoting (0064 + action enforce uniqueness).
 - Encoding table kind in a status colour (sweetheart uses form/text + accent stroke only).
 - Treating ASSIST-UI-01 as Phase 5 proactive assistant (it is discovery-only).
-- (All prior watchlist items from v32/v31/v30/v29/v28 carry forward — no open RSVP path; no fuzzy
+- Inventing title-string heuristics to filter already-booked checklist tasks (architecturally ruled
+  out — §3 / ONB-05).
+- Emitting `{{amount}}` from CON-04's generator (excluded by product decision).
+- Copying template `rsvp_token`s or published website slugs when cloning demo accounts.
+- (All prior watchlist items from v33/v32/v31/v30/v29/v28 carry forward — no open RSVP path; no fuzzy
   attendee-name match; badge is the shown status; relationship picklist stays free-text/unwired; store
   the partner-side token not the name; no Bride/Groom; server-gate songs when off; no review/apply
   inbox; Paid=ledger-only; no per-installment stored status; budget filter never rewrites the headline;
@@ -1123,66 +1293,69 @@ a code scan. Prefer section-level diffs.
 
 ## 13. Known caveats / things to verify
 
-**Closed by earlier versions (v10–v31):** the full budget arc; 0026 introspection; ONB-00/ONB-01;
+**Closed by earlier versions (v10–v33):** the full budget arc; 0026 introspection; ONB-00/ONB-01;
 invitation RLS asymmetry; vendor category vocabularies; no vendor removal; booked-slot independence;
 multi-owner run sheets; dance floor; registry; meals + per-household gated RSVP; website photos +
 sections; collaborator invites; planner create; pricing/marketing; archive; invite cookie; account
 Vendor library; calendar; contracts archive + templates; **the full Guests-page rework (GST-03…09)**;
-**Website-tab polish + SEAT-12 (v31)**. Full detail in v27–v31 §13.
+**Website-tab polish + SEAT-12 (v31)**; **NOTES-01 / ASSIST-UI-01 / CAL-02 / VND-11 / DASH-02 (v32)**;
+**GST-12 / SEAT-13 / CAL-03 / DASH-03 / BUD polish / Gmail reconnect (v33)**. Full detail in v27–v33.
 
-**Shipped and recorded (v32/v33) — residual paste confirmation only where noted:**
-- **NOTES-01** — notes action lifecycle + preview/modal board; **0062** on disk (confirm paste).
-  Assistant read tools **do** return `action_status` (§9).
-- **ASSIST-UI-01** — in-page `AskAssistantPrompt` (no schema; no new write tools).
-- **CAL-02 / VND-11 / DASH-02** — **0060** / **0061** / no schema (confirm 0060–0061 pastes).
-- **GST-12 / SEAT-13 / CAL-03 / DASH-03 / BUD polish / Gmail reconnect** — **0063** / **0064** / no
-  schema (confirm 0063–0064 pastes).
-- **Couple Calendar tab gating CLOSED** — personal-only (§6).
-- **0059 seating DDL RECONSTRUCTED** — occupancy remains action-enforced (§5).
+**Shipped and recorded (v34) — residual paste confirmation where noted:**
+- **DEMO-01/02/03** — **0065** on disk (confirm paste + seeds); marketing CTA → anon → clone →
+  `/projects` + banner + billing bypass. No convert-to-real-account slice yet.
+- **TOUR-01** — **0066** on disk (confirm paste); 8 keys; auto-fire + `?` replay.
+- **ONB-02** — **0067** on disk (confirm paste). Category CHECKs + `include_*` + atomic commit RPC.
+  **Closes the former "four category columns have NO CHECK" open item.**
+- **ONB-03 / POLISH-01** — no schema; claimed live-verified. Scope UI; traditions write-dead; Decide
+  Later; Soft-stack kind toggle.
+- **ONB-04 / ONB-05** — **0068 / 0069**; claimed LIVE VERIFIED. Formality + priority + already-booked;
+  row-level vendor_targets filter; checklist already-booked prompt-only.
+- **CON-04** — no schema. Generate → preview → `createContractTemplate`. `{{amount}}` excluded from
+  generator output.
 
-**Open — v33 (deferrals + gaps):**
-- **0060–0064 hand-paste UNCONFIRMED** — on disk + DDL reconstructed; confirm before treating as live.
-- **DASH-03a (deferred) — wedding-card blurb.** DASH-03 shipped schema-free by design; the one-line
-  card description was split out as DASH-03a, needing `projects.description` (**0065+**) AND an actual
-  edit affordance. Deferred deliberately to avoid a dead write path (no column without an editor).
-  Not dropped — pending.
-- **Past-due predicate single-source UNVERIFIED.** DASH-03 introduced `lib/task-overdue.ts`
-  (`isTaskPastDue`) as the canonical rule, but Overview (`buildOverviewData`) and the assistant
-  (`getChecklist`) were NOT refactored in-slice. Confirm they import `isTaskPastDue` rather than
-  re-inlining the rule; if they still inline it, the predicate lives in 3 places — collapse to one.
-- **`rsvp_access_mode` read-dead (0054), not dropped** — drop candidate **0065+**.
+**Open — v34 (deferrals + gaps):**
+- **0060–0067 hand-paste UNCONFIRMED** (0068–0069 claimed verified — re-confirm if unsure). Demo seeds
+  are a separate apply.
+- **DASH-03a (deferred) — wedding-card blurb.** Needs `projects.description` (**0070+**) AND an edit
+  affordance. Deferred deliberately to avoid a dead write path.
+- **Past-due predicate still multi-homed.** `lib/task-overdue.ts` (`isTaskPastDue`) is canonical, but
+  Overview (`buildOverviewData` / `buildAttention`) and assistant (`getChecklist` / `isOverdue`) still
+  inline. Collapse to one helper.
+- **`rsvp_access_mode` read-dead (0054), not dropped** — drop candidate **0070+**.
 - **`guests.meal_choice` inert; `guests.party_size` still written for create slots** — both drop in
-  **MEAL-03a / 0065+**. (`rsvp_submissions.party_size` is a DIFFERENT column — still live/RPC-derived.)
-- **`guests.email` UI-deprecated, kept** — email may still matter for invites; later destructive
-  migration if ever wanted.
-- **Per-member RSVP status (model B) deferred.** GST-09 is household-badge only; the summary band counts
-  people by household badge (multi-person households overcount slightly — consistent, not a bug). The
-  **DASH-03 confirmed-guest card count is the same household-badge grain** — same caveat, new consumer.
-- **GST-12 association not editable after create** — deliberate for now; no update writer for
-  `related_to_member_id` / `member_type`.
-- **Song `style=none` dead-toggle.** Toggle live but no surface when there's no attendee grain. Fix if
-  confusing = disable the toggle when `style=none`. Leave for now.
+  **MEAL-03a / 0070+**. (`rsvp_submissions.party_size` is a DIFFERENT column — still live/RPC-derived.)
+- **`wedding_profile.traditions` write-dead** — drop unscheduled (same additive-then-destructive
+  posture). Do not resurrect a write path.
+- **`guests.email` UI-deprecated, kept** — email may still matter for invites.
+- **Per-member RSVP status (model B) deferred.** GST-09 is household-badge only; DASH-03 confirmed-
+  guest count is the same household-badge grain.
+- **GST-12 association not editable after create** — deliberate for now.
+- **Song `style=none` dead-toggle.** Leave for now.
 - **Anon UPDATE grant on `guests`** — RLS-blocked; fold into WRITE-01.
 - **Partner-side derive heuristic** — trailing-year strip + `&`/`and` split, backstopped by generic
   Partner 1/2.
-- **Assistant guest-add path not updated** (§9) — predates GST-07/GST-12; verify/retire before relying
-  on assistant-created guests. **No new assistant write tools in v33** (`add_note` still omits
-  `action_status`).
-- **`guest_members.relationship` free-text + the relationship picklist** — deliberate; do not enum, do
-  not wire to `VENDOR_CATEGORIES`.
+- **Assistant guest-add path not updated** (§9) — predates GST-07/GST-12. **No new assistant write
+  tools in v34** (`add_note` still omits `action_status`; CON-04 is account-scoped, not a chat tool).
+- **`guest_members.relationship` free-text + the relationship picklist** — deliberate.
 - **0053 `files_vendor_link` + 0050 `registry_teardown` rationale uncaptured** — reconstruct before
-  relying on internals. (0059 DDL now captured.)
+  relying on internals.
+- **Vendor-priority / formality influence is prompt-directive only** — if output doesn't reflect
+  priorities, follow-up is a new slice (deterministic post-processing), not a bug patch.
+- **Checklist already-booked suppression has no structural backstop** — expected model-compliance gap;
+  mitigation is manual task removal in preview.
+- **Demo → real account conversion** — not shipped.
 
-**Open — v29 budget (carried forward):** `budget_items.due_date` write-dead (drop **0065+** after parity);
+**Open — v29 budget (carried forward):** `budget_items.due_date` write-dead (drop **0070+** after parity);
 reconciled payment schedule (model b) deferred; budget dashboard overhaul deferred (mockup-first);
 `budget_payments`/`payment_schedule` ride `can_access_project` (viewer sharp edge); `budget_items.category`
 free-text + quick-add list deliberate.
 
 **Open — v28 (carried forward):** CON-03 deferred; CAL-01a deferred; contract category axis vendor-only;
-`{{amount}}` no project source; `files.category` inherits the existing write gate; four NO-CHECK category
-columns (ONB-02's decision).
+`{{amount}}` no project source (and CON-04 generator deliberately excludes it); `files.category`
+inherits the existing write gate.
 
-**Open — security / schema (carried forward + v33):**
+**Open — security / schema (carried forward + v34):**
 - **`viewer` can write on every project-scoped (or project-accessible) table except `projects` and the
   WRITE-01 exemplars** — `project_vendors`, `tasks`, `budget_items`, `budget_payments`,
   `payment_schedule`, `guests`, `guest_members` (**incl. GST-12 association columns**), `rsvp_attendees`,
@@ -1191,8 +1364,8 @@ columns (ONB-02's decision).
   `viewer` passes. Unreached today (Access issues only `{couple, collaborator}`). **WRITE-01 before any
   `viewer` invite** — including guest, seating, notes, and calendar writers.
 - **`projects` has NO DELETE policy** (silent-no-op shape, unreached).
-- **Four category columns have NO CHECK** — ONB-02 (**0065+**). (`budget_items.category` and
-  `guest_members.relationship` stay free-text — NOT in that CHECK set.)
+- **Four vendor/file/template category columns NOW HAVE CHECKs (0067)** — closed. (`budget_items.category`
+  and `guest_members.relationship` stay free-text — NOT in that CHECK set.)
 - **`guest_members.attending` default true, inert as shown status** — the badge is authoritative.
 - **`website-media` public SELECT has no published gate** — intentional. **`vendor-media` has no anon
   SELECT** — intentional (private + signed URLs).
@@ -1203,7 +1376,8 @@ columns (ONB-02's decision).
 **Open — Soft stack / design (the standing human gate, now partially closed):** the broad Dom live Soft
 stack + LAND-01/01a walk — Guests, Budget, website editor + public site, and public RSVP are verified
 (v31); Notes / AskAssistantPrompt / Vendor library detail / couple Calendar / **GST-12 / SEAT-13 /
-DASH-03 / CAL-03** are shipped-but-unwalked; planner dashboard/leads/billing/Access, `/vendors` /
+DASH-03 / CAL-03** shipped-but-unwalked unless closed; **add demo CTA/banner, page tours, 6-step
+onboarding, CON-04 generate flow** to the walk; planner dashboard/leads/billing/Access, `/vendors` /
 `/calendar` / `/contracts`, landing, `/pricing`, login, `/invite/[token]`, `/w/[slug]` date hydration
 still want a walk unless closed in the same pass; budget dashboard overhaul mockup; Tier 1 date locale
 policy; stale `reference.html`; `theme-direction.html` to delete; legacy CSS aliases; font-load scoping.
@@ -1211,13 +1385,14 @@ policy; stale `reference.html`; `theme-direction.html` to delete; legacy CSS ali
 **Dev DB state (baseline — re-introspect before relying on rows):**
 - `dominicciccaglione@gmail.com` — **personal**, "Dom & Jordyn 2027", wedding 2027-02-13. 12 guest
   households, every household ≥1 member (22 after the 0055 backfill). Song toggle state per §15 note.
-  Seating at member grain (0059). Confirm **0060–0064** if using Calendar / vendor media / notes action
-  status / guest association / sweetheart uniqueness.
+  Seating at member grain (0059). Confirm **0060–0069** if using Calendar / vendor media / notes action
+  status / guest association / sweetheart / demo / tours / onboarding polish.
 - `d.ciccaglione1@gmail.com` — **business**, "Events by Jordyn". Projects include Mila & Griffin
   (planner-created, no `wedding_profile`, 2027-02-15, $40,000, 0 members — must remain), Matt & Courtney
   (2027-06-13), Bryce & Emma (no date set — budget/guest test project).
 - `d.ciccaglione@icloud.com` — **orphaned auth user, 0 memberships** (invited-couple fixture).
 > Confirm song-request toggles are OFF on both test projects post-verification if not already.
+> Confirm at least one `is_demo_template` personal + business account before demo QA.
 
 ---
 
@@ -1254,19 +1429,33 @@ VND-08/08a, CAL-01, CON-01/01a/02); the full budget money-tracking arc; **the Gu
 - **BUD polish** — No schema. Paid/actual category bars.
 - **Gmail reconnect** — No schema. Refresh-token / reconnect hardening.
 
-Current through **0064** (on disk); next-free **0065** (the deferred trio — MEAL-03a incl. `party_size`,
-ONB-02, `budget_items.due_date` drop — plus the `rsvp_access_mode` drop candidate all take **0065+**).
+**Done (v34 — Demo + tours + onboarding polish + contract draft):**
+- **DEMO-01/02/03** — **0065** + no-schema UI. Ephemeral demo accounts, marketing CTA, banner, billing
+  bypass. Seeds separate.
+- **TOUR-01** — **0066**. Page-tour dismissal + auto-fire / `?` replay (8 keys).
+- **ONB-02** — **0067**. Category CHECKs + `include_*` + atomic `commit_wedding_plan`.
+- **ONB-03** — No schema. Plan-scope UI + preview/Approve gating.
+- **POLISH-01** — No schema. Soft-stack kind toggle; traditions write-dead; Decide Later.
+- **ONB-04** — **0068**. Formality + priority vendor categories (prompt directives).
+- **ONB-05** — **0069**. Already-booked categories + row-level vendor_targets commit filter.
+- **CON-04** — No schema. Assistant-drafted contract templates (generate → preview → save).
 
-**In progress:** confirm **0060–0064 hand-pastes**; the **broad** Dom Soft stack + LAND-01 live visual
-checkpoint (Notes / AskAssistantPrompt / Vendor detail / couple Calendar / GST-12 / SEAT-13 / DASH-03 /
-CAL-03 + planner surfaces still unwalked unless closed).
+Current through **0069** (on disk); next-free **0070** (MEAL-03a incl. `party_size`,
+`budget_items.due_date` drop, `rsvp_access_mode` drop, optional `traditions` drop, DASH-03a
+`projects.description` — all **0070+**).
 
-**Remaining couple side:** moodboard; **MEAL-03a (0065+, drops `guests.meal_choice` + `guests.party_size`)**;
-**ONB-02 (0065+)**; **`budget_items.due_date` drop (0065+, after parity)**; **`rsvp_access_mode` drop
-(0065+)**; **DASH-03a (wedding-card blurb — `projects.description` 0065+ + editor)**; optional
-website-media orphan GC; budget dashboard overhaul (mockup-first); optional reconciled payment schedule
-(model b); **optional per-member RSVP status (guest model B — member-ID-carrying gated form)**; optional
-assistant write for note `action_status`; optional post-create edit for GST-12 association.
+**In progress:** confirm **0060–0069 hand-pastes** (+ demo seeds); the **broad** Dom Soft stack +
+LAND-01 live visual checkpoint (Notes / AskAssistantPrompt / Vendor detail / couple Calendar /
+GST-12 / SEAT-13 / DASH-03 / CAL-03 / **demo / tours / 6-step onboarding / CON-04** + planner surfaces
+still unwalked unless closed).
+
+**Remaining couple side:** moodboard; **MEAL-03a (0070+, drops `guests.meal_choice` + `guests.party_size`)**;
+**`budget_items.due_date` drop (0070+, after parity)**; **`rsvp_access_mode` drop (0070+)**; optional
+**`wedding_profile.traditions` drop**; **DASH-03a (wedding-card blurb — `projects.description` 0070+ +
+editor)**; optional website-media orphan GC; budget dashboard overhaul (mockup-first); optional
+reconciled payment schedule (model b); **optional per-member RSVP status (guest model B)**; optional
+assistant write for note `action_status`; optional post-create edit for GST-12 association; demo →
+real account conversion.
 
 **Remaining planner side:** invoicing accepted proposals; deeper CRM; INV-06 (email delivery); `viewer`
 invite (after WRITE-01); PRICE-02 (Stripe Prices + checkout); CAL-01a (task-due calendar overlay);
@@ -1279,26 +1468,29 @@ optional per-seat UI depth.
 
 **Phase 5 — automation:** PROACTIVE assistant. (ASSIST-UI-01 is discovery only — not Phase 5.)
 
-**Decided (append v33 — code-verified where noted; rationale reconstructed unless flagged
-session-authored):**
+**Decided (append v34 — code-verified where noted):**
 - **Notes action status is optional tri-state** (`null` / `needs_action` / `done`) with pin-sort; not a
-  second task system. Assistant reads surface it; writes do not (yet). *(Reconstructed.)*
+  second task system. Assistant reads surface it; writes do not (yet).
 - **In-page assistant prompts use recessed Soft stack wells** inside raised cards / EmptyState action
   slots — no accent floods, no raised-inside-raised.
 - **`vendor-media` is private** (signed URLs); do not add anon SELECT.
 - **Couple project Calendar RLS is dual-gated** (account member OR project access) — CAL-02. **Tab
-  visibility is personal-account-only** (`coupleOnly`) — verified in `lib/project-tabs.ts`; every
-  kind-null user (incl. invited couples) loses the tab (§6 edge note).
+  visibility is personal-account-only** (`coupleOnly`).
 - **Plus-one/child association is person-grain** (`member_type` + `related_to_member_id`); chain
-  prevention is writer-enforced, not a trigger. *(Reconstructed.)*
-- **At most one sweetheart table per project** (partial unique index + action demote). *(Reconstructed.)*
-- **Calendar wedding/kind hues are categorical** (`--cal-w-*`), never status colours. *(Reconstructed.)*
-- **Budget category bars read paid ÷ actual**, not actual-vs-planned. *(Reconstructed.)*
-- **DASH-03 wedding cards ship schema-free; the blurb is deferred to DASH-03a** (no `projects.description`
-  column without an editor — dead-write-path avoidance). The past-due rule is extracted to
-  `lib/task-overdue.ts`. *(Session-authored.)*
-- (All prior "Decided" items from v32/v31/v30/v29/v28 carry forward — website up/down reorder; content
-  jsonb layout options; email-optional RSVP; per-member seating; etc.)
+  prevention is writer-enforced, not a trigger.
+- **At most one sweetheart table per project** (partial unique index + action demote).
+- **Calendar wedding/kind hues are categorical** (`--cal-w-*`), never status colours.
+- **Budget category bars read paid ÷ actual**, not actual-vs-planned.
+- **DASH-03 wedding cards ship schema-free; the blurb is deferred to DASH-03a.**
+- **Plan-scope flags gate preview/commit; the model still generates all three sections** (accepted cost).
+- **Formality / priority are prompt directives; already-booked vendors get a structural
+  `vendor_targets` filter + prompt checklist suppression** (no structural checklist filter possible).
+- **Demo accounts are ephemeral clones of curated templates**; billing treats demo as entitled; no
+  convert-to-real path yet.
+- **Tour keys live in code, not DB CHECKs**; dismissal is user-scoped.
+- **CON-04 is account-scoped generation into the existing template writer** — not a chat-assistant tool;
+  `{{amount}}` excluded from generator output by product decision.
+- (All prior "Decided" items from v33/v32/v31/v30/v29/v28 carry forward.)
 
 ---
 
@@ -1306,76 +1498,73 @@ session-authored):**
 
 The couple product is feature-complete, shareable, and payable — Budget (v29), Guests (v30 + **GST-12**),
 Website + per-member seating (v31 + **SEAT-13**), Notes + in-page assistant + couple Calendar (v32 +
-**CAL-03**), and planner wedding cards / budget polish / Gmail reconnect (v33). Schema pastes for
-**0060–0064** still need confirmation unless Dom closed them. The planner product has a CRM +
+**CAL-03**), planner wedding cards / budget polish / Gmail reconnect (v33), and **demo + tours +
+6-step onboarding polish + CON-04 (v34)**. Schema pastes for **0060–0067** still need confirmation
+unless Dom closed them; **0068–0069** claimed live-verified. The planner product has a CRM +
 collaborator invites + wedding archive + account Vendor library **(detail/portfolio + Instagram +
 private media)** + authorable Calendar + **wedding cards** + cross-project Contracts archive with
-templates. Plan is **couples-first launch**. Bible at **v33**. Schema through **0064** (on disk);
-next-free **0065**.
+templates **(+ assistant-drafted templates)**. Plan is **couples-first launch**. Bible at **v34**.
+Schema through **0069** (on disk); next-free **0070**.
 
 **Do not** resume a Modern romantic / VND-01 layout pass; **do not** reorder website sections with
 @dnd-kit or pull @dnd-kit into the website editor; **do not** fork a second collapse affordance for the
 section editor; **do not** import Supabase or `lib/partner-sides.ts` into `components/website/` (incl.
 via the sticky preview); **do not** re-open Calendar tab gating as undecided (it is **personal-only** —
 and that excludes invited couples, not just collaborators, §6); **do not** treat Registry as a workspace
-tab; **do not** assume Overview / assistant already import `isTaskPastDue` (DASH-03 extracted it but
-didn't refactor them — verify); **do not** drop the DASH-03a blurb deferral; **do not** trust "next-free
-0063" (0063–0064 taken — next-free is **0065**); **do not** drop `guests.meal_choice` /
-`guests.party_size` until MEAL-03a, or `budget_items.due_date` / `rsvp_access_mode` until parity
-(**0065+**); **do not** claim `party_size` is fully inert (it still drives create slots); **do not**
+tab; **do not** assume Overview / assistant already import `isTaskPastDue` (still multi-homed —
+verify/collapse); **do not** drop the DASH-03a blurb deferral; **do not** trust "next-free 0065"
+(0065–0069 taken — next-free is **0070**); **do not** treat ONB-02 as deferred (shipped as **0067**);
+**do not** drop `guests.meal_choice` / `guests.party_size` until MEAL-03a, or `budget_items.due_date` /
+`rsvp_access_mode` / `traditions` until parity (**0070+**); **do not** claim `party_size` is fully
+inert (it still drives create slots); **do not** resurrect a `traditions` write path; **do not**
 restore an open/anonymous RSVP path or a guest-facing self-report headcount as the count source; **do
 not** auto-match RSVP attendee names to `guest_members`; **do not** treat `guest_members.attending` as
 the shown RSVP status (the badge is); **do not** persist a client song when the toggle is off; **do
 not** add anon SELECT on `registry_claims` / `rsvp_attendees` / `guest_members` / `guests` /
-`rsvp_submissions` / `budget_payments` / `payment_schedule` / `notes` / the seating tables /
-**`vendor-media`**; **do not** add a published gate to `website-media` SELECT; **do not** offer `viewer`
-from Access until WRITE-01; **do not** fork a second invitation mechanism; **do not** wire PRICE-01 CTAs
-to invented Stripe Price IDs; **do not** lead marketing copy with "AI"; **do not** write `archived_at`
-except via `set_project_archived`; **do not** harden `budget_items.category` /
+`rsvp_submissions` / `budget_payments` / `payment_schedule` / `notes` / `user_tours` / the seating
+tables / **`vendor-media`**; **do not** add a published gate to `website-media` SELECT; **do not**
+offer `viewer` from Access until WRITE-01; **do not** fork a second invitation mechanism; **do not**
+wire PRICE-01 CTAs to invented Stripe Price IDs; **do not** lead marketing copy with "AI"; **do not**
+write `archived_at` except via `set_project_archived`; **do not** harden `budget_items.category` /
 `timeline_events.owner`/`section` / `guest_members.relationship` to enums; **do not** set the
 pending-invite cookie from InvitePage render (middleware only); **do not** reintroduce a review/apply
 RSVP inbox; **do not** treat ASSIST-UI-01 as proactive automation (Phase 5); **do not** encode
-sweetheart (or any table kind) in a status colour.
+sweetheart (or any table kind) in a status colour; **do not** invent title-string heuristics to filter
+already-booked checklist tasks; **do not** emit `{{amount}}` from CON-04's generator; **do not** copy
+template `rsvp_token`s or published website slugs in demo clones.
 
-**A. Confirm hand-paste of 0060 → 0061 → 0062 → 0063 → 0064** (in order). Checkpoint: `calendar_events`
-policy; `vendors.instagram` + `vendor-media`; `notes.action_status` + CHECK; `guest_members.member_type`
-/ `related_to_member_id` + FK/CHECKs; `seating_tables_one_sweetheart_per_project` index.
+**A. Confirm hand-paste of 0060 → … → 0069** (in order) + apply demo seeds. Checkpoint: `calendar_events`
+policy; `vendors.instagram` + `vendor-media`; `notes.action_status`; guest association columns;
+sweetheart index; `clone_demo_account` + `is_demo_template` rows; `user_tours`; `commit_wedding_plan` +
+category CHECKs + `include_*`; formality / priority / already-booked columns + CHECKs.
 
-**A′. Confirm `isTaskPastDue` is single-sourced.** Grep for the past-due rule (strict local-date `<`,
-`status <> 'done'`): confirm `buildOverviewData` and the assistant `getChecklist` import
-`lib/task-overdue.ts` rather than re-inlining it. If they still inline, collapse to the one helper.
+**A′. Confirm `isTaskPastDue` is single-sourced.** Grep for the past-due rule: confirm `buildOverviewData`
+and the assistant `getChecklist` import `lib/task-overdue.ts` rather than re-inlining. If they still
+inline, collapse to the one helper.
 
 **B. Close the broad Soft stack + LAND-01/01a visual checkpoint** — still unwalked or newly shipped:
 Notes board + AskAssistantPrompt empties, Vendor library detail/portfolio, couple Calendar (**incl.
-CAL-03 hues**), **GST-12 Guest of / association sublabels**, **SEAT-13 sweetheart**, **DASH-03 wedding
-cards** (confirm: real confirmed-guest count vs the task total; overdue segment matches
-`status <> 'done' and due_date < current_date`; Bryce & Emma shows "Date not set / no countdown", no
-`in NaN days`; a tasks=0 project shows "No tasks yet"; **archive from the card → leaves the ACTIVE grid
-AND archived ids stay out of the guest/task aggregates**; Enter → `/projects/{id}`), planner
-dashboard/leads/billing/Access, `/vendors`, `/calendar`, `/contracts`, landing, `/pricing`, login,
-`/invite/[token]`, `/w/[slug]` date hydration. (Guests core / Budget / website / public-RSVP already
-verified — re-spot-check association + paid/actual bars.) Confirm no hydration mismatch (countdown +
-calendar all-day + budget due-dates + any guest/RSVP/card date share the local-date tz class). Fix only
-real regressions.
+CAL-03 hues**), **GST-12 / SEAT-13 / DASH-03**, **demo CTA + banner**, **page tours (`?` replay)**,
+**6-step onboarding (scope / formality / already-booked / Decide Later)**, **CON-04 generate flow**,
+planner dashboard/leads/billing/Access, `/vendors`, `/calendar`, `/contracts`, landing, `/pricing`,
+login, `/invite/[token]`, `/w/[slug]` date hydration. Confirm no hydration mismatch. Fix only real
+regressions.
 
 **C. Invite Jordyn for real** (prefer an INV-07 collaborator invite; confirm
 `project_members.role = 'collaborator'` in SQL after accept). Confirm the invited collaborator does
 **not** see the Calendar tab.
 
-**D. Apply + checkpoint any un-pasted migrations through 0064.** A file on disk is not applied.
+**D. Apply + checkpoint any un-pasted migrations through 0069 + demo seeds.** A file on disk is not
+applied.
 
-**E. MEAL-03a — drop `guests.meal_choice` AND `guests.party_size`. Migration 0065+** (after confirming
+**E. MEAL-03a — drop `guests.meal_choice` AND `guests.party_size`. Migration 0070+** (after confirming
 create-form no longer needs `party_size`; the `rsvp_submissions.party_size` column stays).
 
-**F. Drop `budget_items.due_date` and `rsvp_access_mode`. Migration 0065+** — only after confirming
-parity (schedule installments cover every prior single-date item; RSVP has no read of the mode).
+**F. Drop `budget_items.due_date`, `rsvp_access_mode`, and optionally `wedding_profile.traditions`.
+Migration 0070+** — only after confirming parity (schedule installments cover every prior single-date
+item; RSVP has no read of the mode; traditions has no write path).
 
-**G. ONB-02 — `commitPlan` atomicity + category CHECKs. Migration 0065+.** Three sequential non-atomic
-inserts → a SECURITY DEFINER function. Owns the category-constraint decision across
-`vendor_targets.category`, `vendors.category`, `files.category`, `contract_templates.category`.
-(`budget_items.category` and `guest_members.relationship` stay free-text.)
-
-**H. WRITE-01 — project-scoped write policy audit. BEFORE ANY `viewer` INVITE.** Enumerate every
+**G. WRITE-01 — project-scoped write policy audit. BEFORE ANY `viewer` INVITE.** Enumerate every
 project-scoped (and project-accessible) table; decide per table `can_access_project` (read-alike) vs
 `can_edit_project` (write); migrate the ones that should change in one pass. Sharp `can_access_project`
 writes a `viewer` would pass include the guest writers (**incl. GST-12**), **the seating writers
@@ -1384,33 +1573,34 @@ writes a `viewer` would pass include the guest writers (**incl. GST-12**), **the
 Also resolve the belt-and-suspenders anon UPDATE grant on `guests`. Collaborators already pass
 `can_edit_project`.
 
-**I. Budget dashboard overhaul (mockup-first).** Aesthetic; data model complete.
+**H. Budget dashboard overhaul (mockup-first).** Aesthetic; data model complete.
 
-**J. Launch (after ONB-02 + visual QA).** Separate prod Supabase org on Pro + migrations **0001–0064**
-(+ 0065 if MEAL-03a / drops shipped) by hand — never `db push` — + storage buckets
-(`project-files` + `website-media` + **`vendor-media`**) + SMTP; Vercel + domain + env; Stripe live +
-webhook + Portal + Tax; prod Places key; Gmail testing mode; privacy + ToS; monitoring; **full prod
-smoke** — real signup, deliberate double-click, a couple + a collaborator invite round trip, planner
-New-wedding create, archive/unarchive, a vendor add/remove + package link cycle, a vendor-library
-no-link add + guarded delete + **portfolio upload**, a calendar event round trip incl. all-day +
-archive-overlay + **couple project Calendar**, multi-line budget vendor links, a budget payment log +
-installment schedule + waterfall past-due + **paid/actual bar** round trip, **a per-member seating
-assign + sweetheart cycle**, a flat guest add (address + phone + Guest 2 + relationship/side) + **a
-Guest-of association add**, a gated household-lookup RSVP (per-attendee meal + song, **no email, no
-headcount field**) that auto-populates the badge and shows in the responses panel, a hero/gallery
-upload + five-template render + **a section reorder / collapse / image-shape / timeline-layout edit
-with the sticky preview**, checklist delete, an assistant-built checklist **opened from an
-AskAssistantPrompt**, a notes needs-action → done cycle, a contracts archive filter + signed download,
-a template fill + Print/Save-as-PDF, a registry claim, **planner wedding-card archive/enter**.
+**I. Launch (after paste confirmation + visual QA).** Separate prod Supabase org on Pro + migrations
+**0001–0069** (+ 0070 if MEAL-03a / drops shipped) by hand — never `db push` — + storage buckets
+(`project-files` + `website-media` + **`vendor-media`**) + SMTP + **demo template seeds**; Vercel +
+domain + env; Stripe live + webhook + Portal + Tax; prod Places key; Gmail testing mode; privacy + ToS;
+monitoring; **full prod smoke** — real signup, deliberate double-click, a couple + a collaborator
+invite round trip, planner New-wedding create, archive/unarchive, a vendor add/remove + package link
+cycle, a vendor-library no-link add + guarded delete + **portfolio upload**, a calendar event round
+trip incl. all-day + archive-overlay + **couple project Calendar**, multi-line budget vendor links, a
+budget payment log + installment schedule + waterfall past-due + **paid/actual bar** round trip,
+**a per-member seating assign + sweetheart cycle**, a flat guest add + **a Guest-of association add**,
+a gated household-lookup RSVP that auto-populates the badge, a hero/gallery upload + five-template
+render + **section reorder / collapse / image-shape / timeline-layout with sticky preview**, checklist
+delete, an assistant-built checklist **opened from an AskAssistantPrompt**, a notes needs-action →
+done cycle, a contracts archive filter + signed download, a template fill + Print/Save-as-PDF +
+**CON-04 generate → save**, a registry claim, **planner wedding-card archive/enter**, **demo CTA for
+couple + planner**, **a page tour auto-fire + `?` replay**, **a full 6-step onboarding Approve with
+scope / formality / already-booked**.
 
-**K. Planner depth / revenue (post-launch).** Invoicing; INV-06 email; `viewer` invite (after WRITE-01);
+**J. Planner depth / revenue (post-launch).** Invoicing; INV-06 email; `viewer` invite (after WRITE-01);
 PRICE-02; CAL-01a; CON-03; reconciled payment schedule (model b); **guest model B (per-member RSVP
-status)**; lead→project conversion (Phase 4 — re-audit write policies).
+status)**; lead→project conversion (Phase 4 — re-audit write policies); demo → real account conversion.
 
-**L. Seating — remaining (OPTIONAL).** SEAT-07 assistant mock-up; per-seat UI depth (per-member grain
+**K. Seating — remaining (OPTIONAL).** SEAT-07 assistant mock-up; per-seat UI depth (per-member grain
 + sweetheart uniqueness already shipped).
 
-**M (other rounding-out):** moodboard; assistant tools for leads/proposals/RSVP/seating/invitations/
+**L (other rounding-out):** moodboard; assistant tools for leads/proposals/RSVP/seating/invitations/
 calendar/templates/budget (re-run the §9 write-tool audit when any ship); optional note
 `action_status` write tool; **update/retire the assistant guest-add path for GST-07/GST-12 fields**;
 optional post-create GST-12 association edit; **DASH-03a wedding-card blurb**; `projects` DELETE policy
@@ -1418,10 +1608,10 @@ decision; website caching; website-media orphan GC; currency-helper consolidatio
 double-count; **reconstruct 0050 `registry_teardown` + 0053 `files_vendor_link` rationale**; regenerate
 `reference.html` / delete `theme-direction.html` / retire CSS aliases; font-load scoping; countdown +
 calendar + budget/guest-date hydration harden; Phase 5 proactive assistant (beyond ASSIST-UI-01
-discovery).
+discovery); optional Calendar/Access/Timeline/Contracts tours.
 
-**Recommended path:** **paste + checkpoint 0060–0064 + confirm `isTaskPastDue` single-source (A/A′/D)**
-→ **close the broad visual checkpoint + invite Jordyn (B/C)** → **MEAL-03a + due_date/rsvp_access_mode
-drops (E/F)** → **ONB-02 / 0065 (G)** → **budget dashboard mockup (I)** → **Launch (J)** → WRITE-01
-before `viewer` (H) → invoicing → INV-06 / PRICE-02 / CAL-01a / CON-03 / reconciled schedule / guest
-model B → conversion (K) → remaining M.
+**Recommended path:** **paste + checkpoint 0060–0069 + demo seeds + confirm `isTaskPastDue`
+single-source (A/A′/D)** → **close the broad visual checkpoint + invite Jordyn (B/C)** → **MEAL-03a +
+due_date/rsvp_access_mode/traditions drops (E/F)** → **budget dashboard mockup (H)** → **Launch (I)** →
+WRITE-01 before `viewer` (G) → invoicing → INV-06 / PRICE-02 / CAL-01a / CON-03 / reconciled schedule /
+guest model B → conversion (J) → remaining L.

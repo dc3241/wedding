@@ -15,6 +15,9 @@ export type WeddingProfileInput = {
   traditions: string | null;
   priorities: string | null;
   vibeNotes: string | null;
+  formality: string | null;
+  priorityVendorCategoryIds: string[];
+  alreadyBookedVendorCategoryIds: string[];
 };
 
 type RawChecklistItem = {
@@ -183,6 +186,17 @@ Total budget target: ${profile.totalBudget !== null ? `$${profile.totalBudget}` 
 Style & vibe: ${profile.style ?? "not specified"}
 Traditions to honor: ${profile.traditions ?? "none specified"}
 Top priorities: ${profile.priorities ?? "none specified"}
+Formality: ${profile.formality ?? "not specified"}
+Priority vendor categories: ${
+    profile.priorityVendorCategoryIds.length > 0
+      ? profile.priorityVendorCategoryIds.join(", ")
+      : "none specified"
+  }
+Already booked (do not suggest finding a vendor for these): ${
+    profile.alreadyBookedVendorCategoryIds.length > 0
+      ? profile.alreadyBookedVendorCategoryIds.join(", ")
+      : "none specified"
+  }
 Anything else: ${profile.vibeNotes ?? "none"}
 
 Return STRICT JSON ONLY — no prose, no markdown, no code fences — matching exactly this shape:
@@ -197,6 +211,8 @@ Guidance:
 ${runwayGuidance}
 - Budget categories should sum to roughly the couple's total budget target (within about 10% if a target is given).
 - Reflect their style, traditions, and priorities in task titles, budget splits, and vendor category notes.
+- If priority vendor categories are specified, allocate a larger budget share and generate earlier/more thorough checklist coverage for those categories specifically. Reflect formality in vendor tone, task framing, and budget tier assumptions.
+- For already-booked vendor categories, do NOT generate a checklist task for finding or hiring a vendor in that category, and do NOT include it in vendorCategories — the couple already has this vendor. This applies even if that category is also marked as a priority. DO still include a normal budget line item for that category, since they are still paying for it.
 - vendorCategories[].category MUST be exactly one of these ids (no labels, no synonyms): ${vendorCategoryIds}.
 - Include essential vendor categories from that id list tailored to their wedding. note stays free text.`;
 }

@@ -8,6 +8,11 @@ import { Card } from "@/components/ui/card";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { VENDOR_CATEGORIES } from "@/lib/vendor-categories";
+import {
+  FORMALITY_OPTIONS,
+  type Formality,
+} from "@/lib/wedding-formality";
 
 type OnboardingWizardProps = {
   projectId: string;
@@ -20,9 +25,21 @@ type FormState = {
   guestEstimate: string;
   totalBudget: string;
   style: string;
-  traditions: string;
   priorities: string;
   vibeNotes: string;
+  includeBudget: boolean;
+  includeChecklist: boolean;
+  includeVendors: boolean;
+  formality: Formality | "";
+  priorityVendorCategoryIds: string[];
+  alreadyBookedVendorCategoryIds: string[];
+};
+
+const FORMALITY_LABELS: Record<Formality, string> = {
+  casual: "Casual",
+  "semi-formal": "Semi-formal",
+  formal: "Formal",
+  "black-tie": "Black-tie",
 };
 
 function parseOptionalInt(value: string): number | null {
@@ -46,9 +63,14 @@ function toFields(form: FormState): OnboardingFields {
     guestEstimate: parseOptionalInt(form.guestEstimate),
     totalBudget: parseOptionalBudget(form.totalBudget),
     style: form.style,
-    traditions: form.traditions,
     priorities: form.priorities,
     vibeNotes: form.vibeNotes,
+    includeBudget: form.includeBudget,
+    includeChecklist: form.includeChecklist,
+    includeVendors: form.includeVendors,
+    formality: form.formality || null,
+    priorityVendorCategoryIds: form.priorityVendorCategoryIds,
+    alreadyBookedVendorCategoryIds: form.alreadyBookedVendorCategoryIds,
   };
 }
 
@@ -74,6 +96,12 @@ function FieldGroup({
   );
 }
 
+function toggleIdInList(ids: string[], categoryId: string): string[] {
+  return ids.includes(categoryId)
+    ? ids.filter((id) => id !== categoryId)
+    : [...ids, categoryId];
+}
+
 export function OnboardingWizard({
   projectId,
   coupleNames,
@@ -87,13 +115,42 @@ export function OnboardingWizard({
     guestEstimate: "",
     totalBudget: "",
     style: "",
-    traditions: "",
     priorities: "",
     vibeNotes: "",
+    includeBudget: true,
+    includeChecklist: true,
+    includeVendors: true,
+    formality: "",
+    priorityVendorCategoryIds: [],
+    alreadyBookedVendorCategoryIds: [],
   });
 
   function updateField<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
+  }
+
+  function togglePriorityVendorCategory(categoryId: string) {
+    setForm((prev) => ({
+      ...prev,
+      priorityVendorCategoryIds: toggleIdInList(
+        prev.priorityVendorCategoryIds,
+        categoryId,
+      ),
+    }));
+  }
+
+  function toggleAlreadyBookedVendorCategory(categoryId: string) {
+    setForm((prev) => ({
+      ...prev,
+      alreadyBookedVendorCategoryIds: toggleIdInList(
+        prev.alreadyBookedVendorCategoryIds,
+        categoryId,
+      ),
+    }));
+  }
+
+  function handleContinue() {
+    setStep((current) => current + 1);
   }
 
   function handleSaveAndContinue() {
@@ -101,12 +158,14 @@ export function OnboardingWizard({
     startTransition(async () => {
       try {
         await saveOnboarding(projectId, toFields(form));
-        setStep(4);
+        setStep(6);
       } catch {
         setSaveError("We couldn't save your preferences. Please try again.");
       }
     });
   }
+
+  const advance = step < 5 ? handleContinue : handleSaveAndContinue;
 
   return (
     <div className="mx-auto w-full max-w-[760px] px-6 py-14 pb-24">
@@ -247,22 +306,6 @@ export function OnboardingWizard({
               </FieldGroup>
 
               <FieldGroup
-                label="Traditions to honor"
-                htmlFor="traditions"
-                hint="Cultural, religious, or family customs"
-              >
-                <Textarea
-                  id="traditions"
-                  rows={3}
-                  placeholder="Jewish hora, Vietnamese tea ceremony..."
-                  value={form.traditions}
-                  onChange={(event) =>
-                    updateField("traditions", event.target.value)
-                  }
-                />
-              </FieldGroup>
-
-              <FieldGroup
                 label="Top priorities"
                 htmlFor="priorities"
                 hint="What matters most to you?"
@@ -294,20 +337,193 @@ export function OnboardingWizard({
                 />
               </FieldGroup>
 
+              <fieldset className="space-y-3">
+                <legend className="text-sm font-medium text-ink">
+                  What should we suggest?
+                </legend>
+                <p className="text-[13px] text-muted">
+                  We&apos;ll draft only the parts you want — you can always add
+                  more later.
+                </p>
+                <div className="space-y-2.5">
+                  {(
+                    [
+                      {
+                        key: "includeChecklist" as const,
+                        id: "include-checklist",
+                        label: "Checklist",
+                      },
+                      {
+                        key: "includeBudget" as const,
+                        id: "include-budget",
+                        label: "Budget",
+                      },
+                      {
+                        key: "includeVendors" as const,
+                        id: "include-vendors",
+                        label: "Vendor recommendations",
+                      },
+                    ] as const
+                  ).map((option) => (
+                    <label
+                      key={option.id}
+                      htmlFor={option.id}
+                      className="flex cursor-pointer items-center gap-2.5 text-[15px] font-medium text-ink"
+                    >
+                      <input
+                        id={option.id}
+                        type="checkbox"
+                        checked={form[option.key]}
+                        onChange={(event) =>
+                          updateField(option.key, event.target.checked)
+                        }
+                        className="size-4 shrink-0 rounded border-ring accent-accent"
+                      />
+                      {option.label}
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+            </div>
+          ) : null}
+
+          {step === 4 ? (
+            <div className="space-y-5">
+              <div>
+                <h2 className="font-display text-[28px] leading-tight text-ink">
+                  Your focus
+                </h2>
+                <p className="mt-1.5 text-[15px] text-muted">
+                  Optional — helps us weight the plan toward what you care
+                  about most.
+                </p>
+              </div>
+
+              <fieldset className="space-y-3">
+                <legend className="text-sm font-medium text-ink">
+                  Formality
+                </legend>
+                <p className="text-[13px] text-muted">
+                  How dressed-up should the day feel?
+                </p>
+                <div className="space-y-2.5">
+                  {FORMALITY_OPTIONS.map((option) => (
+                    <label
+                      key={option}
+                      htmlFor={`formality-${option}`}
+                      className="flex cursor-pointer items-center gap-2.5 text-[15px] font-medium text-ink"
+                    >
+                      <input
+                        id={`formality-${option}`}
+                        type="radio"
+                        name="formality"
+                        checked={form.formality === option}
+                        onChange={() => updateField("formality", option)}
+                        className="size-4 shrink-0 accent-accent"
+                      />
+                      {FORMALITY_LABELS[option]}
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+
+              <fieldset className="space-y-3">
+                <legend className="text-sm font-medium text-ink">
+                  Priority vendors
+                </legend>
+                <p className="text-[13px] text-muted">
+                  We&apos;ll put more budget and checklist attention on these
+                  categories.
+                </p>
+                <div className="space-y-2.5">
+                  {VENDOR_CATEGORIES.map((category) => (
+                    <label
+                      key={category.id}
+                      htmlFor={`priority-vendor-${category.id}`}
+                      className="flex cursor-pointer items-center gap-2.5 text-[15px] font-medium text-ink"
+                    >
+                      <input
+                        id={`priority-vendor-${category.id}`}
+                        type="checkbox"
+                        checked={form.priorityVendorCategoryIds.includes(
+                          category.id,
+                        )}
+                        onChange={() =>
+                          togglePriorityVendorCategory(category.id)
+                        }
+                        className="size-4 shrink-0 rounded border-ring accent-accent"
+                      />
+                      {category.label}
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+            </div>
+          ) : null}
+
+          {step === 5 ? (
+            <div className="space-y-5">
+              <div>
+                <h2 className="font-display text-[28px] leading-tight text-ink">
+                  Already booked
+                </h2>
+                <p className="mt-1.5 text-[15px] text-muted">
+                  Optional — we&apos;ll skip finding those vendors, but still
+                  plan budget for them.
+                </p>
+              </div>
+
+              <fieldset className="space-y-3">
+                <legend className="text-sm font-medium text-ink">
+                  Vendors you already have
+                </legend>
+                <p className="text-[13px] text-muted">
+                  Select any categories you&apos;ve already booked.
+                </p>
+                <div className="space-y-2.5">
+                  {VENDOR_CATEGORIES.map((category) => (
+                    <label
+                      key={category.id}
+                      htmlFor={`already-booked-${category.id}`}
+                      className="flex cursor-pointer items-center gap-2.5 text-[15px] font-medium text-ink"
+                    >
+                      <input
+                        id={`already-booked-${category.id}`}
+                        type="checkbox"
+                        checked={form.alreadyBookedVendorCategoryIds.includes(
+                          category.id,
+                        )}
+                        onChange={() =>
+                          toggleAlreadyBookedVendorCategory(category.id)
+                        }
+                        className="size-4 shrink-0 rounded border-ring accent-accent"
+                      />
+                      {category.label}
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+
               {saveError ? (
                 <p className="text-sm text-rosewood">{saveError}</p>
               ) : null}
             </div>
           ) : null}
 
-          {step === 4 ? (
+          {step === 6 ? (
             <PlanPreviewStep
               projectId={projectId}
-              onBack={() => setStep(3)}
+              includeBudget={form.includeBudget}
+              includeChecklist={form.includeChecklist}
+              includeVendors={form.includeVendors}
+              alreadyBookedVendorCategoryIds={
+                form.alreadyBookedVendorCategoryIds
+              }
+              onBack={() => setStep(5)}
             />
           ) : null}
 
-          {step < 4 ? (
+          {step < 6 ? (
             <div className="mt-8 flex items-center justify-between gap-3 border-t border-hairline pt-6">
               {step > 1 ? (
                 <Button
@@ -322,22 +538,29 @@ export function OnboardingWizard({
                 <span />
               )}
 
-              {step < 3 ? (
+              <div className="flex items-center gap-2">
                 <Button
                   type="button"
-                  onClick={() => setStep((current) => current + 1)}
-                >
-                  Continue
-                </Button>
-              ) : (
-                <Button
-                  type="button"
-                  onClick={handleSaveAndContinue}
+                  variant="ghost"
+                  onClick={advance}
                   disabled={isPending}
                 >
-                  {isPending ? "Saving…" : "Create my wedding plan"}
+                  Decide Later
                 </Button>
-              )}
+                {step < 5 ? (
+                  <Button type="button" onClick={handleContinue}>
+                    Continue
+                  </Button>
+                ) : (
+                  <Button
+                    type="button"
+                    onClick={handleSaveAndContinue}
+                    disabled={isPending}
+                  >
+                    {isPending ? "Saving…" : "Create my wedding plan"}
+                  </Button>
+                )}
+              </div>
             </div>
           ) : null}
         </Card>

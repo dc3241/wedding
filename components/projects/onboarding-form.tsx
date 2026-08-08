@@ -52,10 +52,10 @@ export function OnboardingForm() {
           </legend>
           <div className="grid grid-cols-2 gap-3">
             <label
-              className={`cursor-pointer rounded-md border px-3 py-3 text-center text-sm transition-colors ${
+              className={`cursor-pointer rounded-[var(--radius-inner)] border px-3 py-3 text-center text-sm font-medium transition-colors ${
                 choice === "couple"
-                  ? "border-zinc-900 bg-zinc-900 text-white"
-                  : "border-zinc-300 hover:bg-zinc-50"
+                  ? "border-accent bg-accent text-surface shadow-raised"
+                  : "border-ring bg-surface text-ink hover:bg-well"
               }`}
             >
               <input
@@ -69,10 +69,10 @@ export function OnboardingForm() {
               My own wedding
             </label>
             <label
-              className={`cursor-pointer rounded-md border px-3 py-3 text-center text-sm transition-colors ${
+              className={`cursor-pointer rounded-[var(--radius-inner)] border px-3 py-3 text-center text-sm font-medium transition-colors ${
                 choice === "planner"
-                  ? "border-zinc-900 bg-zinc-900 text-white"
-                  : "border-zinc-300 hover:bg-zinc-50"
+                  ? "border-accent bg-accent text-surface shadow-raised"
+                  : "border-ring bg-surface text-ink hover:bg-well"
               }`}
             >
               <input

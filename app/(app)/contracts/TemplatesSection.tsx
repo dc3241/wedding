@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import {
   deleteContractTemplate,
   fillContractTemplate,
+  generateContractTemplateDraft,
   listProjectVendorsForFill,
   type ContractTemplateRow,
   type FillVendorOption,
@@ -14,15 +15,27 @@ import { TemplateEditor } from "./TemplateEditor";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Input } from "@/components/ui/input";
 import { Pill } from "@/components/ui/pill";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { vendorCategoryLabel } from "@/lib/vendor-categories";
+import {
+  VENDOR_CATEGORIES,
+  vendorCategoryLabel,
+} from "@/lib/vendor-categories";
 import type { ArchiveWedding } from "./types";
+
+const PAYMENT_STRUCTURES = [
+  { value: "deposit + installments", label: "Deposit + installments" },
+  { value: "full on signing", label: "Full on signing" },
+  { value: "custom", label: "Custom" },
+] as const;
 
 type Mode =
   | { kind: "list" }
   | { kind: "create" }
+  | { kind: "generate-intake" }
+  | { kind: "generate-draft"; name: string; body: string }
   | { kind: "edit"; template: ContractTemplateRow }
   | { kind: "fill"; template: ContractTemplateRow }
   | {
@@ -46,6 +59,14 @@ export function TemplatesSection({
   const [mode, setMode] = useState<Mode>({ kind: "list" });
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+
+  // Generate intake state
+  const [genVendorCategory, setGenVendorCategory] = useState("");
+  const [genPaymentStructure, setGenPaymentStructure] = useState<string>(
+    PAYMENT_STRUCTURES[0].value,
+  );
+  const [genCancellationWindow, setGenCancellationWindow] = useState("30 days");
+  const [genNotes, setGenNotes] = useState("");
 
   // Fill form state
   const [projectId, setProjectId] = useState("");
@@ -104,6 +125,44 @@ export function TemplatesSection({
     });
   }
 
+  function startGenerateIntake() {
+    setError(null);
+    setGenVendorCategory("");
+    setGenPaymentStructure(PAYMENT_STRUCTURES[0].value);
+    setGenCancellationWindow("30 days");
+    setGenNotes("");
+    setMode({ kind: "generate-intake" });
+  }
+
+  function handleGenerateDraft() {
+    if (!genPaymentStructure.trim()) {
+      setError("Choose a payment structure.");
+      return;
+    }
+    if (!genCancellationWindow.trim()) {
+      setError("Enter a cancellation window.");
+      return;
+    }
+    setError(null);
+    startTransition(async () => {
+      const result = await generateContractTemplateDraft({
+        vendorCategory: genVendorCategory || undefined,
+        paymentStructure: genPaymentStructure,
+        cancellationWindow: genCancellationWindow,
+        notes: genNotes.trim() || undefined,
+      });
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      setMode({
+        kind: "generate-draft",
+        name: result.draft.name,
+        body: result.draft.body,
+      });
+    });
+  }
+
   function startFill(template: ContractTemplateRow) {
     setError(null);
     setProjectId("");
@@ -143,6 +202,135 @@ export function TemplatesSection({
   if (mode.kind === "create") {
     return (
       <TemplateEditor onCancel={() => setMode({ kind: "list" })} onSaved={refresh} />
+    );
+  }
+
+  if (mode.kind === "generate-draft") {
+    return (
+      <div className="space-y-3">
+        <p className="rounded-[var(--radius-inner)] bg-accent-wash px-4 py-2.5 text-[13px] font-medium text-accent shadow-recessed">
+          Draft — review before saving
+        </p>
+        <TemplateEditor
+          seed={{ name: mode.name, body: mode.body }}
+          onCancel={() => setMode({ kind: "generate-intake" })}
+          onSaved={refresh}
+        />
+      </div>
+    );
+  }
+
+  if (mode.kind === "generate-intake") {
+    return (
+      <Card className="space-y-5 p-5 sm:p-6">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="text-[19px] font-extrabold tracking-[-0.02em] text-ink">
+              Generate with the assistant
+            </h2>
+            <p className="mt-1 text-[13px] text-muted">
+              Answer a few prompts, then review and edit the draft before saving.
+            </p>
+          </div>
+          <Button
+            type="button"
+            variant="ghost"
+            className="px-3 py-2 text-[13px]"
+            onClick={() => setMode({ kind: "list" })}
+            disabled={isPending}
+          >
+            Cancel
+          </Button>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <label className="flex flex-col gap-1.5">
+            <span className="text-[13px] font-medium text-muted">
+              Vendor category
+            </span>
+            <Select
+              value={genVendorCategory}
+              onChange={(e) => setGenVendorCategory(e.target.value)}
+              disabled={isPending}
+              aria-label="Vendor category for draft"
+            >
+              <option value="">General</option>
+              {VENDOR_CATEGORIES.map((cat) => (
+                <option key={cat.id} value={cat.id}>
+                  {cat.label}
+                </option>
+              ))}
+            </Select>
+          </label>
+          <label className="flex flex-col gap-1.5">
+            <span className="text-[13px] font-medium text-muted">
+              Payment structure
+            </span>
+            <Select
+              value={genPaymentStructure}
+              onChange={(e) => setGenPaymentStructure(e.target.value)}
+              disabled={isPending}
+              aria-label="Payment structure"
+            >
+              {PAYMENT_STRUCTURES.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </Select>
+          </label>
+          <label className="flex flex-col gap-1.5">
+            <span className="text-[13px] font-medium text-muted">
+              Cancellation window
+            </span>
+            <Input
+              value={genCancellationWindow}
+              onChange={(e) => setGenCancellationWindow(e.target.value)}
+              placeholder="30 days"
+              disabled={isPending}
+              aria-label="Cancellation window"
+            />
+          </label>
+        </div>
+
+        <label className="flex flex-col gap-1.5">
+          <span className="text-[13px] font-medium text-muted">
+            Tone or extra clauses (optional)
+          </span>
+          <Textarea
+            value={genNotes}
+            onChange={(e) => setGenNotes(e.target.value)}
+            rows={3}
+            disabled={isPending}
+            placeholder="Warm but firm; include weather contingency…"
+            aria-label="Tone or extra clauses"
+          />
+        </label>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            type="button"
+            variant="primary"
+            onClick={handleGenerateDraft}
+            disabled={isPending}
+          >
+            {isPending ? "Generating…" : "Generate draft"}
+          </Button>
+          {error ? (
+            <Button
+              type="button"
+              variant="default"
+              onClick={handleGenerateDraft}
+              disabled={isPending}
+              className="px-3 py-2 text-[13px]"
+            >
+              Try again
+            </Button>
+          ) : null}
+        </div>
+
+        {error ? <p className="text-[13px] text-rosewood">{error}</p> : null}
+      </Card>
     );
   }
 
@@ -319,13 +507,22 @@ export function TemplatesSection({
         <p className="text-[14px] text-muted">
           Reusable agreements you fill for a wedding, then print.
         </p>
-        <Button
-          type="button"
-          variant="primary"
-          onClick={() => setMode({ kind: "create" })}
-        >
-          New template
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            type="button"
+            variant="default"
+            onClick={startGenerateIntake}
+          >
+            Generate with the assistant
+          </Button>
+          <Button
+            type="button"
+            variant="primary"
+            onClick={() => setMode({ kind: "create" })}
+          >
+            New template
+          </Button>
+        </div>
       </div>
 
       {error ? <p className="text-[13px] text-rosewood">{error}</p> : null}

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { formatWeddingDate } from "@/components/website/template-utils";
 import { resolveBusinessAccountId } from "@/lib/billing/resolve-account";
+import { callClaudeForContractTemplate } from "@/lib/generate-contract-template";
 import { applyTemplateTokens } from "@/lib/contract-template-tokens";
 import { formatCurrency } from "@/lib/format-currency";
 import { getVendorCategoryById, vendorCategoryLabel } from "@/lib/vendor-categories";
@@ -57,6 +58,54 @@ function moneyOrBlank(value: number | null | undefined): string {
     return "";
   }
   return formatCurrency(Number(value));
+}
+
+export async function generateContractTemplateDraft(input: {
+  vendorCategory?: string;
+  paymentStructure: string;
+  cancellationWindow: string;
+  notes?: string;
+}): Promise<
+  | { ok: true; draft: { name: string; body: string } }
+  | { ok: false; error: string }
+> {
+  const supabase = await createClient();
+  try {
+    await resolveBusinessAccountId(supabase);
+  } catch {
+    return { ok: false, error: "No business account found." };
+  }
+
+  const paymentStructure = input.paymentStructure.trim();
+  const cancellationWindow = input.cancellationWindow.trim();
+  if (!paymentStructure) {
+    return { ok: false, error: "Choose a payment structure." };
+  }
+  if (!cancellationWindow) {
+    return { ok: false, error: "Enter a cancellation window." };
+  }
+
+  const vendorCategory = input.vendorCategory?.trim() || undefined;
+  if (vendorCategory && !getVendorCategoryById(vendorCategory)) {
+    return { ok: false, error: "Choose a valid vendor category." };
+  }
+
+  const draft = await callClaudeForContractTemplate({
+    vendorCategory,
+    paymentStructure,
+    cancellationWindow,
+    notes: input.notes?.trim() || undefined,
+  });
+
+  if (!draft) {
+    return {
+      ok: false,
+      error:
+        "We couldn't generate a draft right now. Please try again in a moment.",
+    };
+  }
+
+  return { ok: true, draft };
 }
 
 export async function createContractTemplate(input: {

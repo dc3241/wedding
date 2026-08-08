@@ -30,18 +30,38 @@ function formatDueDate(date: string | null) {
   });
 }
 
+function planPartsCopy(parts: string[]): string {
+  if (parts.length === 0) return "your plan";
+  if (parts.length === 1) return `your ${parts[0]}`;
+  if (parts.length === 2) return `your ${parts[0]} and ${parts[1]}`;
+  return `your ${parts.slice(0, -1).join(", ")}, and ${parts[parts.length - 1]}`;
+}
+
 type PlanPreviewStepProps = {
   projectId: string;
+  includeBudget: boolean;
+  includeChecklist: boolean;
+  includeVendors: boolean;
+  alreadyBookedVendorCategoryIds: string[];
   onBack: () => void;
 };
 
-export function PlanPreviewStep({ projectId, onBack }: PlanPreviewStepProps) {
+export function PlanPreviewStep({
+  projectId,
+  includeBudget,
+  includeChecklist,
+  includeVendors,
+  alreadyBookedVendorCategoryIds,
+  onBack,
+}: PlanPreviewStepProps) {
   const [plan, setPlan] = useState<WeddingPlan | null>(null);
   const [budgetTarget, setBudgetTarget] = useState<number | null>(null);
   const [genError, setGenError] = useState<string | null>(null);
   const [genLoading, setGenLoading] = useState(false);
   const [hasLoaded, setHasLoaded] = useState(false);
   const [isPending, startTransition] = useTransition();
+
+  const alreadyBookedSet = new Set(alreadyBookedVendorCategoryIds);
 
   const loadPlan = useCallback((options?: { replace?: boolean }) => {
     setGenLoading(true);
@@ -50,20 +70,27 @@ export function PlanPreviewStep({ projectId, onBack }: PlanPreviewStepProps) {
       setPlan(null);
     }
 
+    const booked = new Set(alreadyBookedVendorCategoryIds);
+
     startTransition(async () => {
       const result = await generatePlan(projectId);
       setGenLoading(false);
       setHasLoaded(true);
 
       if (result.ok) {
-        setPlan(result.plan);
+        setPlan({
+          ...result.plan,
+          vendorCategories: result.plan.vendorCategories.filter(
+            (item) => !booked.has(item.category),
+          ),
+        });
         setBudgetTarget(result.totalBudgetTarget);
       } else {
         setPlan(null);
         setGenError(result.error);
       }
     });
-  }, [projectId]);
+  }, [alreadyBookedVendorCategoryIds, projectId]);
 
   useEffect(() => {
     if (!hasLoaded && !genLoading) {
@@ -155,8 +182,15 @@ export function PlanPreviewStep({ projectId, onBack }: PlanPreviewStepProps) {
   function handleApprove() {
     if (!plan) return;
 
+    const approved: WeddingPlan = {
+      ...plan,
+      vendorCategories: plan.vendorCategories.filter(
+        (item) => !alreadyBookedSet.has(item.category),
+      ),
+    };
+
     startTransition(async () => {
-      await commitPlan(projectId, plan);
+      await commitPlan(projectId, approved);
     });
   }
 
@@ -165,6 +199,12 @@ export function PlanPreviewStep({ projectId, onBack }: PlanPreviewStepProps) {
     0,
   ) ?? 0;
 
+  const requestedParts = [
+    includeChecklist ? "checklist" : null,
+    includeBudget ? "budget" : null,
+    includeVendors ? "vendor list" : null,
+  ].filter((part): part is string => part !== null);
+
   return (
     <div className="space-y-8">
       <div>
@@ -172,8 +212,7 @@ export function PlanPreviewStep({ projectId, onBack }: PlanPreviewStepProps) {
           Your plan
         </h2>
         <p className="mt-1.5 text-[15px] text-muted">
-          Review and tweak before we build your checklist, budget, and vendor
-          list.
+          Review and tweak before we build {planPartsCopy(requestedParts)}.
         </p>
       </div>
 
@@ -208,175 +247,183 @@ export function PlanPreviewStep({ projectId, onBack }: PlanPreviewStepProps) {
 
       {plan && !genLoading ? (
         <>
-          <section className="space-y-4">
-            <Eyebrow>Checklist</Eyebrow>
-            <div className="divide-y divide-hairline rounded-[var(--radius-card)] border border-hairline bg-surface">
-              {plan.checklist.map((item, index) => (
-                <div
-                  key={`checklist-${index}`}
-                  className="flex flex-col gap-3 p-4 sm:flex-row sm:items-start"
-                >
-                  <div className="min-w-0 flex-1 space-y-2">
-                    <Input
-                      value={item.title}
-                      onChange={(event) =>
-                        updateChecklistItem(index, "title", event.target.value)
-                      }
-                      aria-label="Task title"
-                    />
-                    <div className="flex flex-wrap gap-2">
-                      <select
-                        value={item.phase}
-                        onChange={(event) =>
-                          updateChecklistItem(index, "phase", event.target.value)
-                        }
-                        className="rounded-[var(--radius-inner)] border border-ring bg-surface px-2 py-1.5 text-sm text-ink outline-none focus:border-accent"
-                        aria-label="Task phase"
-                      >
-                        {PHASE_OPTIONS.map((phase) => (
-                          <option key={phase} value={phase}>
-                            {phase}
-                          </option>
-                        ))}
-                      </select>
+          {includeChecklist ? (
+            <section className="space-y-4">
+              <Eyebrow>Checklist</Eyebrow>
+              <div className="divide-y divide-hairline rounded-[var(--radius-card)] border border-hairline bg-surface">
+                {plan.checklist.map((item, index) => (
+                  <div
+                    key={`checklist-${index}`}
+                    className="flex flex-col gap-3 p-4 sm:flex-row sm:items-start"
+                  >
+                    <div className="min-w-0 flex-1 space-y-2">
                       <Input
-                        type="date"
-                        value={item.dueDate ?? ""}
+                        value={item.title}
                         onChange={(event) =>
-                          updateChecklistItem(
+                          updateChecklistItem(index, "title", event.target.value)
+                        }
+                        aria-label="Task title"
+                      />
+                      <div className="flex flex-wrap gap-2">
+                        <select
+                          value={item.phase}
+                          onChange={(event) =>
+                            updateChecklistItem(index, "phase", event.target.value)
+                          }
+                          className="rounded-[var(--radius-inner)] border border-ring bg-surface px-2 py-1.5 text-sm text-ink outline-none focus:border-accent"
+                          aria-label="Task phase"
+                        >
+                          {PHASE_OPTIONS.map((phase) => (
+                            <option key={phase} value={phase}>
+                              {phase}
+                            </option>
+                          ))}
+                        </select>
+                        <Input
+                          type="date"
+                          value={item.dueDate ?? ""}
+                          onChange={(event) =>
+                            updateChecklistItem(
+                              index,
+                              "dueDate",
+                              event.target.value,
+                            )
+                          }
+                          className="w-auto"
+                          aria-label="Due date"
+                        />
+                        <span className="self-center text-[13px] text-muted">
+                          {formatDueDate(item.dueDate)}
+                        </span>
+                      </div>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      className="shrink-0 self-start text-[13px]"
+                      onClick={() => removeChecklistItem(index)}
+                    >
+                      Remove
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </section>
+          ) : null}
+
+          {includeBudget ? (
+            <section className="space-y-4">
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <Eyebrow>Budget</Eyebrow>
+                <p className="text-[13px] text-muted tabular-nums">
+                  Total: {formatCurrency(budgetTotal)}
+                  {budgetTarget !== null ? (
+                    <>
+                      {" "}
+                      / {formatCurrency(budgetTarget)} target
+                    </>
+                  ) : null}
+                </p>
+              </div>
+              <div className="divide-y divide-hairline rounded-[var(--radius-card)] border border-hairline bg-surface">
+                {plan.budget.map((item, index) => (
+                  <div
+                    key={`budget-${index}`}
+                    className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center"
+                  >
+                    <Input
+                      value={item.category}
+                      onChange={(event) =>
+                        updateBudgetItem(index, "category", event.target.value)
+                      }
+                      className="min-w-0 flex-1"
+                      aria-label="Budget category"
+                    />
+                    <div className="relative w-full sm:w-36">
+                      <span className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-[15px] text-muted">
+                        $
+                      </span>
+                      <Input
+                        type="text"
+                        inputMode="decimal"
+                        value={String(item.plannedAmount)}
+                        onChange={(event) =>
+                          updateBudgetItem(
                             index,
-                            "dueDate",
+                            "plannedAmount",
                             event.target.value,
                           )
                         }
-                        className="w-auto"
-                        aria-label="Due date"
+                        className="pl-7 tabular-nums"
+                        aria-label="Planned amount"
                       />
-                      <span className="self-center text-[13px] text-muted">
-                        {formatDueDate(item.dueDate)}
-                      </span>
                     </div>
-                  </div>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    className="shrink-0 self-start text-[13px]"
-                    onClick={() => removeChecklistItem(index)}
-                  >
-                    Remove
-                  </Button>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          <section className="space-y-4">
-            <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <Eyebrow>Budget</Eyebrow>
-              <p className="text-[13px] text-muted tabular-nums">
-                Total: {formatCurrency(budgetTotal)}
-                {budgetTarget !== null ? (
-                  <>
-                    {" "}
-                    / {formatCurrency(budgetTarget)} target
-                  </>
-                ) : null}
-              </p>
-            </div>
-            <div className="divide-y divide-hairline rounded-[var(--radius-card)] border border-hairline bg-surface">
-              {plan.budget.map((item, index) => (
-                <div
-                  key={`budget-${index}`}
-                  className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center"
-                >
-                  <Input
-                    value={item.category}
-                    onChange={(event) =>
-                      updateBudgetItem(index, "category", event.target.value)
-                    }
-                    className="min-w-0 flex-1"
-                    aria-label="Budget category"
-                  />
-                  <div className="relative w-full sm:w-36">
-                    <span className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-[15px] text-muted">
-                      $
-                    </span>
-                    <Input
-                      type="text"
-                      inputMode="decimal"
-                      value={String(item.plannedAmount)}
-                      onChange={(event) =>
-                        updateBudgetItem(
-                          index,
-                          "plannedAmount",
-                          event.target.value,
-                        )
-                      }
-                      className="pl-7 tabular-nums"
-                      aria-label="Planned amount"
-                    />
-                  </div>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    className="shrink-0 self-start text-[13px] sm:self-center"
-                    onClick={() => removeBudgetItem(index)}
-                  >
-                    Remove
-                  </Button>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          <section className="space-y-4">
-            <Eyebrow>Vendor categories</Eyebrow>
-            <div className="divide-y divide-hairline rounded-[var(--radius-card)] border border-hairline bg-surface">
-              {plan.vendorCategories.map((item, index) => (
-                <div
-                  key={`vendor-${index}`}
-                  className="flex flex-col gap-3 p-4 sm:flex-row sm:items-start"
-                >
-                  <div className="min-w-0 flex-1 space-y-2">
-                    <Select
-                      value={item.category}
-                      onChange={(event) =>
-                        updateVendorCategory(
-                          index,
-                          "category",
-                          event.target.value,
-                        )
-                      }
-                      aria-label="Vendor category"
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      className="shrink-0 self-start text-[13px] sm:self-center"
+                      onClick={() => removeBudgetItem(index)}
                     >
-                      {VENDOR_CATEGORIES.map((cat) => (
-                        <option key={cat.id} value={cat.id}>
-                          {cat.label}
-                        </option>
-                      ))}
-                    </Select>
-                    <Textarea
-                      rows={2}
-                      value={item.note}
-                      onChange={(event) =>
-                        updateVendorCategory(index, "note", event.target.value)
-                      }
-                      placeholder="Why this matters for your wedding"
-                      aria-label="Vendor note"
-                    />
+                      Remove
+                    </Button>
                   </div>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    className="shrink-0 self-start text-[13px]"
-                    onClick={() => removeVendorCategory(index)}
+                ))}
+              </div>
+            </section>
+          ) : null}
+
+          {includeVendors ? (
+            <section className="space-y-4">
+              <Eyebrow>Vendor categories</Eyebrow>
+              <div className="divide-y divide-hairline rounded-[var(--radius-card)] border border-hairline bg-surface">
+                {plan.vendorCategories.map((item, index) => (
+                  <div
+                    key={`vendor-${index}`}
+                    className="flex flex-col gap-3 p-4 sm:flex-row sm:items-start"
                   >
-                    Remove
-                  </Button>
-                </div>
-              ))}
-            </div>
-          </section>
+                    <div className="min-w-0 flex-1 space-y-2">
+                      <Select
+                        value={item.category}
+                        onChange={(event) =>
+                          updateVendorCategory(
+                            index,
+                            "category",
+                            event.target.value,
+                          )
+                        }
+                        aria-label="Vendor category"
+                      >
+                        {VENDOR_CATEGORIES.filter(
+                          (cat) => !alreadyBookedSet.has(cat.id),
+                        ).map((cat) => (
+                          <option key={cat.id} value={cat.id}>
+                            {cat.label}
+                          </option>
+                        ))}
+                      </Select>
+                      <Textarea
+                        rows={2}
+                        value={item.note}
+                        onChange={(event) =>
+                          updateVendorCategory(index, "note", event.target.value)
+                        }
+                        placeholder="Why this matters for your wedding"
+                        aria-label="Vendor note"
+                      />
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      className="shrink-0 self-start text-[13px]"
+                      onClick={() => removeVendorCategory(index)}
+                    >
+                      Remove
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </section>
+          ) : null}
 
           <div className="flex flex-wrap items-center justify-between gap-3 border-t border-hairline pt-6">
             <Button
@@ -399,7 +446,10 @@ export function PlanPreviewStep({ projectId, onBack }: PlanPreviewStepProps) {
               <Button
                 type="button"
                 onClick={handleApprove}
-                disabled={isPending || plan.checklist.length === 0}
+                disabled={
+                  isPending ||
+                  (includeChecklist && plan.checklist.length === 0)
+                }
               >
                 {isPending ? "Saving…" : "Approve & start planning"}
               </Button>
@@ -416,7 +466,9 @@ export function StepProgress({ currentStep }: { currentStep: number }) {
     { id: 1, label: "The basics" },
     { id: 2, label: "Your budget" },
     { id: 3, label: "Your style" },
-    { id: 4, label: "Your plan" },
+    { id: 4, label: "Your focus" },
+    { id: 5, label: "Already booked" },
+    { id: 6, label: "Your plan" },
   ] as const;
 
   return (
