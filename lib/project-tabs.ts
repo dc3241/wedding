@@ -17,7 +17,10 @@ export const COUPLE_CONTRACTS_SEGMENT = "agreements";
  *   Seating · Day-of timeline · Contracts · Notes & files
  * - business: Overview · Checklist · Budget · Vendors · Guests · Website · Seating ·
  *   Day-of timeline · Contracts · Notes & files · Access
- * - null (no account / invited collaborator): personal set minus Calendar
+ * - null + role couple (invited couple): personal set minus couple Contracts
+ *   (Calendar included via CAL-04 exception)
+ * - null (invited collaborator / other): personal set minus Calendar (and
+ *   couple Contracts)
  */
 export const PROJECT_TABS: ProjectTab[] = [
   { label: "Overview", segment: "" },
@@ -41,13 +44,31 @@ export const PROJECT_TABS: ProjectTab[] = [
 
 /**
  * Filter workspace tabs by account kind.
- * Pass `null` when the viewer has no account (invited collaborator) — do not
+ * Pass `null` when the viewer has no account (invited member) — do not
  * collapse null to `"personal"` at the call site.
+ *
+ * CAL-04: when `kind` is null and `projectMemberRole` is `"couple"`, Calendar
+ * is shown (still coupleOnly for everyone else). Other coupleOnly tabs stay
+ * personal-only. `plannerOnly` remains account-kind only — never role.
  */
-export function tabsForAccountKind(kind: AccountKind | null): ProjectTab[] {
+export function tabsForAccountKind(
+  kind: AccountKind | null,
+  projectMemberRole?: string | null,
+): ProjectTab[] {
   return PROJECT_TABS.filter((tab) => {
     if (tab.plannerOnly && kind !== "business") return false;
-    if (tab.coupleOnly && kind !== "personal") return false;
+    if (tab.coupleOnly) {
+      if (kind === "personal") return true;
+      // Calendar-only role exception for invited couples (CAL-04).
+      if (
+        kind === null &&
+        projectMemberRole === "couple" &&
+        tab.segment === "calendar"
+      ) {
+        return true;
+      }
+      return false;
+    }
     return true;
   });
 }

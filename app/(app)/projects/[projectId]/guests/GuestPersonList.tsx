@@ -73,11 +73,7 @@ export function GuestPersonList({
   const countNoun = count === 1 ? "person" : "people";
 
   return (
-    <section
-      id="guest-list"
-      data-tour="guests-list"
-      className="scroll-mt-6 space-y-4"
-    >
+    <section data-tour="guests-list" className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex flex-wrap items-center gap-3">
           <p className="flex items-baseline gap-2">

@@ -42,6 +42,7 @@ export function ProjectCalendarWorkspace({
       lockedProjectId={projectId}
       weddingOverlayLabel="Wedding day"
       hideProjectName
+      railWidth="fixed"
       mutations={{
         create: (input) => createProjectCalendarEvent(projectId, input),
         update: (id, fields) =>

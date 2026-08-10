@@ -59,18 +59,36 @@ export function OutreachRegion({
   const [showDraftForm, setShowDraftForm] = useState(false);
   const [draftError, setDraftError] = useState<string | null>(null);
   const [isDraftPending, startDraftTransition] = useTransition();
+  /** Bumps when a #add-vendor deep link should scroll (works if form already open). */
+  const [addScrollNonce, setAddScrollNonce] = useState(0);
 
   // Global count — never from the filtered subset (BUD-FILTER-01).
   const toContactCount = items.filter(
     (item) => item.status === "to_contact",
   ).length;
 
+  // Booked empty-slot "Add new" deep links: ?category=…#add-vendor. Soft nav
+  // on the same page does not remount this region — react to prop + hash.
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    if (window.location.hash === "#add-vendor") {
+    function openFromDeepLink() {
+      const fromHash = window.location.hash === "#add-vendor";
+      if (!fromHash && !defaultCategoryId) return;
       setShowAdd(true);
+      if (fromHash) setAddScrollNonce((n) => n + 1);
     }
-  }, []);
+
+    openFromDeepLink();
+    window.addEventListener("hashchange", openFromDeepLink);
+    return () => window.removeEventListener("hashchange", openFromDeepLink);
+  }, [defaultCategoryId]);
+
+  useEffect(() => {
+    if (!showAdd || addScrollNonce === 0) return;
+    document.getElementById("add-vendor")?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  }, [showAdd, addScrollNonce]);
 
   // Prune selection when a vendor leaves the outreach list (advance to booked / remove).
   useEffect(() => {
@@ -209,6 +227,7 @@ export function OutreachRegion({
         {showAdd ? (
           <div className="mt-4 border-t border-hairline pt-4">
             <AddVendorForm
+              key={defaultCategoryId ?? "add-vendor"}
               projectId={projectId}
               existingVendors={existingVendors}
               categoryTargets={categoryTargets}
@@ -216,10 +235,7 @@ export function OutreachRegion({
               embedded
             />
           </div>
-        ) : (
-          // Keep #add-vendor anchor for Booked empty-slot deep links even when collapsed.
-          <div id="add-vendor" className="scroll-mt-6" hidden aria-hidden />
-        )}
+        ) : null}
 
         {showDraftForm ? (
           <div className="mt-4 rounded-[var(--radius-inner)] bg-well px-5 py-4 shadow-recessed">

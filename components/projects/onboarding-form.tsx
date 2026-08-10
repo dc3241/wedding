@@ -28,8 +28,6 @@ export function OnboardingForm() {
     choice === "couple" ? "Your names" : "Business name";
   const namePlaceholder =
     choice === "couple" ? "Sarah & James" : "Bloom Wedding Co.";
-  const projectLabel =
-    choice === "couple" ? "Wedding name" : "First wedding / client";
 
   return (
     <div className="w-full max-w-md space-y-6">
@@ -102,19 +100,21 @@ export function OnboardingForm() {
           />
         </div>
 
-        <div className="space-y-2">
-          <label htmlFor="projectName" className="text-sm font-medium">
-            {projectLabel}
-          </label>
-          <input
-            id="projectName"
-            name="projectName"
-            type="text"
-            required
-            placeholder="Sarah & James — Oct 2026"
-            className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-zinc-500"
-          />
-        </div>
+        {choice === "couple" ? (
+          <div className="space-y-2">
+            <label htmlFor="projectName" className="text-sm font-medium">
+              Wedding name
+            </label>
+            <input
+              id="projectName"
+              name="projectName"
+              type="text"
+              required
+              placeholder="Sarah & James — Oct 2026"
+              className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-zinc-500"
+            />
+          </div>
+        ) : null}
 
         <SubmitButton />
       </form>

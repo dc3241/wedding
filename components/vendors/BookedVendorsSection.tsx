@@ -824,6 +824,17 @@ function EmptyBookedSlotCard({
         <Link
           href={addHref}
           className="text-[13px] font-medium text-accent hover:opacity-80"
+          onClick={() => {
+            // Same-URL soft nav may not remount OutreachRegion; fire hashchange
+            // so the add form opens (see marketing-topbar pattern).
+            queueMicrotask(() => {
+              if (window.location.hash !== "#add-vendor") {
+                window.location.hash = "add-vendor";
+              } else {
+                window.dispatchEvent(new Event("hashchange"));
+              }
+            });
+          }}
         >
           Add new
         </Link>

@@ -110,9 +110,7 @@ export function GuestPersonRow({
           <span className="text-[14px] font-medium text-ink">
             {relationshipText}
           </span>
-        ) : (
-          <span className="text-[14px] text-muted">Add relationship</span>
-        )}
+        ) : null}
       </td>
       <td
         className="py-3 pr-4 align-top"

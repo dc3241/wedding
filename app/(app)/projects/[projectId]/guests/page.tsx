@@ -21,7 +21,6 @@ import {
 } from "./types";
 import { AskAssistantPrompt } from "@/components/assistant/AskAssistantPrompt";
 import { ASSISTANT_PREFILLS } from "@/components/assistant/prefills";
-import { ButtonLink } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { TourHelpButton } from "@/components/tour/TourHelpButton";
 import { PageHeader } from "@/components/ui/page-header";
@@ -324,18 +323,7 @@ export default async function GuestsPage({
       <PageHeader
         title="Guests"
         eyebrow={eyebrow}
-        description={
-          <span className="inline-flex flex-wrap items-center gap-x-3 gap-y-2">
-            <span>RSVP & meals for your guest list.</span>
-            <ButtonLink
-              href="#guest-list"
-              variant="default"
-              className="px-3.5 py-1.5 text-[13px]"
-            >
-              See list
-            </ButtonLink>
-          </span>
-        }
+        description="RSVP & meals for your guest list."
         actions={<TourHelpButton tourKey="guests" />}
       />
 
@@ -411,17 +399,19 @@ export default async function GuestsPage({
         primaryOptions={primaryOptions}
       />
 
-      <MealConfigCard
-        projectId={projectId}
-        mealServiceStyle={mealServiceStyle}
-        mealSelectionActive={mealSelectionActive}
-        mealOptions={mealOptions}
-      />
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+        <MealConfigCard
+          projectId={projectId}
+          mealServiceStyle={mealServiceStyle}
+          mealSelectionActive={mealSelectionActive}
+          mealOptions={mealOptions}
+        />
 
-      <SongRequestsCard
-        projectId={projectId}
-        songRequestsEnabled={songRequestsEnabled}
-      />
+        <SongRequestsCard
+          projectId={projectId}
+          songRequestsEnabled={songRequestsEnabled}
+        />
+      </div>
 
       <GuestPersonList
         projectId={projectId}

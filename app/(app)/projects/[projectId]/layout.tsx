@@ -71,7 +71,9 @@ export default async function ProjectLayout({
     data: { user },
   } = await supabase.auth.getUser();
 
-  const [messagesResult, toursResult] = await Promise.all([
+  // CAL-04: invited members pass kind=null; Calendar needs project_members.role
+  // only in that path. Account owners never read role for tab gating.
+  const [messagesResult, toursResult, memberRoleResult] = await Promise.all([
     // Last N only (desc + limit), then reverse so the panel seeds newest-last.
     // A naive ascending .limit(N) would return the oldest N — wrong.
     supabase
@@ -86,6 +88,14 @@ export default async function ProjectLayout({
           .select("tour_key")
           .eq("user_id", user.id)
       : Promise.resolve({ data: [] as { tour_key: string }[] | null }),
+    tabAudience === null && user
+      ? supabase
+          .from("project_members")
+          .select("role")
+          .eq("project_id", projectId)
+          .eq("user_id", user.id)
+          .maybeSingle()
+      : Promise.resolve({ data: null as { role: string } | null }),
   ]);
 
   const initialMessages = (
@@ -94,6 +104,7 @@ export default async function ProjectLayout({
   const dismissedTourKeys = (toursResult.data ?? []).map(
     (row) => row.tour_key,
   );
+  const projectMemberRole = memberRoleResult.data?.role ?? null;
 
   return (
     <AssistantWorkspace
@@ -111,7 +122,11 @@ export default async function ProjectLayout({
           weddingDate={project.wedding_date}
           accountKind={accountKind}
         >
-          <ProjectWorkspaceNav projectId={projectId} accountKind={tabAudience} />
+          <ProjectWorkspaceNav
+            projectId={projectId}
+            accountKind={tabAudience}
+            projectMemberRole={projectMemberRole}
+          />
           {children}
         </ProjectShell>
       </TourProvider>

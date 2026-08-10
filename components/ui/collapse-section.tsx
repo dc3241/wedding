@@ -48,7 +48,10 @@ export function CollapseSection({
         </span>
       </button>
 
-      {open ? <div className={bodyClassName}>{children}</div> : null}
+      {/* Keep mounted when closed so in-progress form state survives collapse. */}
+      <div hidden={!open} className={bodyClassName}>
+        {children}
+      </div>
     </div>
   );
 }

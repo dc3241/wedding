@@ -15,7 +15,10 @@ export type CreateProjectResult =
 export async function bootstrapAccountAndProject(formData: FormData) {
   const accountKind = formData.get("accountKind") as string;
   const accountName = formData.get("accountName") as string;
-  const projectName = formData.get("projectName") as string;
+  const isBusiness = accountKind === "business";
+  const projectName = isBusiness
+    ? null
+    : ((formData.get("projectName") as string) ?? null);
 
   const supabase = await createClient();
 
@@ -41,7 +44,7 @@ export async function bootstrapAccountAndProject(formData: FormData) {
   revalidatePath("/dashboard");
   revalidatePath("/", "layout");
 
-  if (accountKind === "business") {
+  if (isBusiness) {
     redirect("/dashboard");
   }
 

@@ -278,6 +278,7 @@ export function CalendarWorkspace({
   mutations,
   weddingOverlayLabel = "Weddings",
   hideProjectName = false,
+  railWidth = "fluid",
 }: {
   year: number;
   month: number;
@@ -291,6 +292,11 @@ export function CalendarWorkspace({
   mutations?: CalendarEventMutations;
   weddingOverlayLabel?: string;
   hideProjectName?: boolean;
+  /**
+   * `"fluid"` — current planner split (`1.55fr` / `1fr`).
+   * `"fixed"` — calendar column grows; Upcoming rail stays ~340px (project calendar).
+   */
+  railWidth?: "fluid" | "fixed";
 }) {
   const [panel, setPanel] = useState<PanelState>(null);
   // Client-only "today" avoids SSR/client day-boundary mismatch.
@@ -355,7 +361,14 @@ export function CalendarWorkspace({
     : [];
 
   return (
-    <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)] lg:items-start lg:gap-8">
+    <div
+      className={cn(
+        "grid grid-cols-1 gap-6 lg:items-start lg:gap-8",
+        railWidth === "fixed"
+          ? "lg:grid-cols-[minmax(0,1fr)_340px]"
+          : "lg:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)]",
+      )}
+    >
       <Card className="overflow-hidden p-5 md:p-6">
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
           <h2 className="font-display text-[19px] font-extrabold tracking-[-0.02em] text-ink">
@@ -425,7 +438,7 @@ export function CalendarWorkspace({
                 type="button"
                 onClick={() => setPanel({ type: "day", date: cell.localDate })}
                 className={cn(
-                  "flex min-h-[92px] flex-col gap-1 rounded-[var(--radius-inner)] bg-well p-1.5 text-left shadow-recessed transition-colors",
+                  "flex min-h-[88px] flex-col gap-1 rounded-[var(--radius-inner)] bg-well p-1.5 text-left shadow-recessed transition-colors",
                   "hover:bg-accent-wash/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
                   !cell.inMonth && "opacity-45",
                   selected && "ring-2 ring-accent ring-offset-1 ring-offset-surface",

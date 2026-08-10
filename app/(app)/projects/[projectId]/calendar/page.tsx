@@ -230,7 +230,9 @@ export default async function ProjectCalendarPage({
   });
 
   return (
-    <div className="w-full">
+    // Escape ProjectShell max-w-6xl on large viewports only. Centered breakout;
+    // gutters match the shell so other tabs stay on the shared working width.
+    <div className="relative left-1/2 w-[min(100vw,1600px)] -translate-x-1/2 px-6 md:px-8">
       <div className="mb-6">
         <PageHeader
           eyebrow="Schedule"
