@@ -25,6 +25,7 @@ function revalidateWebsiteSurfaces(projectId: string, slug?: string | null) {
   revalidatePath(websitePath(projectId));
   if (slug) {
     revalidatePath(`/w/${slug}`);
+    revalidatePath(`/w/${slug}/rsvp`);
   }
 }
 
@@ -308,7 +309,7 @@ export async function setWeddingWebsiteTravel(
       ? current.slug.trim()
       : null;
   if (slug) {
-    revalidatePath(`/w/${slug}`);
+    revalidateWebsiteSurfaces(projectId, slug);
   }
 
   return {
@@ -439,14 +440,11 @@ export async function updateWeddingWebsite(
     return { ok: false, error: error.message };
   }
 
-  revalidatePath(websitePath(projectId));
   const slug =
     typeof current.slug === "string" && current.slug.trim()
       ? current.slug.trim()
       : null;
-  if (slug) {
-    revalidatePath(`/w/${slug}`);
-  }
+  revalidateWebsiteSurfaces(projectId, slug);
   return { ok: true };
 }
 
@@ -461,6 +459,16 @@ export async function updateWeddingWebsiteSlug(
   }
 
   const supabase = await createClient();
+
+  const { data: existing } = await supabase
+    .from("wedding_websites")
+    .select("slug")
+    .eq("project_id", projectId)
+    .maybeSingle();
+  const previousSlug =
+    typeof existing?.slug === "string" && existing.slug.trim()
+      ? existing.slug.trim()
+      : null;
 
   const { error } = await supabase
     .from("wedding_websites")
@@ -477,7 +485,11 @@ export async function updateWeddingWebsiteSlug(
     return { ok: false, error: error.message };
   }
 
-  revalidatePath(websitePath(projectId));
+  revalidateWebsiteSurfaces(projectId, normalized);
+  if (previousSlug && previousSlug !== normalized) {
+    revalidatePath(`/w/${previousSlug}`);
+    revalidatePath(`/w/${previousSlug}/rsvp`);
+  }
   return { ok: true, slug: normalized };
 }
 
@@ -487,19 +499,23 @@ export async function setWeddingWebsitePublished(
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const supabase = await createClient();
 
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("wedding_websites")
     .update({
       published,
       updated_at: new Date().toISOString(),
     })
-    .eq("project_id", projectId);
+    .eq("project_id", projectId)
+    .select("slug")
+    .maybeSingle();
 
   if (error) {
     return { ok: false, error: error.message };
   }
 
-  revalidatePath(websitePath(projectId));
+  const slug =
+    typeof data?.slug === "string" && data.slug.trim() ? data.slug.trim() : null;
+  revalidateWebsiteSurfaces(projectId, slug);
   return { ok: true };
 }
 
@@ -513,7 +529,7 @@ async function revalidateWebsitePublic(projectId: string) {
   const slug =
     typeof data?.slug === "string" && data.slug.trim() ? data.slug.trim() : null;
   if (slug) {
-    revalidatePath(`/w/${slug}`);
+    revalidateWebsiteSurfaces(projectId, slug);
   }
 }
 

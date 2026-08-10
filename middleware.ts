@@ -28,6 +28,10 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico).*)",
+    /*
+     * Skip static assets and fully-public wedding sites (/w/*) so guest
+     * traffic never pays for getUser() session refresh.
+     */
+    "/((?!_next/static|_next/image|favicon.ico|w/).*)",
   ],
 };

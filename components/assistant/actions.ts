@@ -2,10 +2,30 @@
 
 import { runAssistantWithTools } from "@/lib/assistant/call-assistant";
 import { getAccountContext } from "@/lib/account-context";
-import type { SendAssistantResult } from "@/components/assistant/types";
+import { ASSISTANT_HISTORY_WINDOW } from "@/components/assistant/constants";
+import type {
+  AssistantMessage,
+  SendAssistantResult,
+} from "@/components/assistant/types";
 import { createClient } from "@/utils/supabase/server";
 
-const ASSISTANT_HISTORY_WINDOW = 10;
+export async function loadAssistantMessages(
+  projectId: string,
+): Promise<AssistantMessage[]> {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("assistant_messages")
+    .select("id, role, content, created_at")
+    .eq("project_id", projectId)
+    .order("created_at", { ascending: true });
+
+  if (error || !data) {
+    return [];
+  }
+
+  return data as AssistantMessage[];
+}
 
 export async function sendAssistantMessage(
   projectId: string,

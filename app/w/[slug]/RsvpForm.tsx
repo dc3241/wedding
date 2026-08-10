@@ -38,7 +38,7 @@ type RsvpFormProps = {
   appearance?: "default" | "on-dark";
 };
 
-type FormState = "idle" | "success" | "error";
+type FormState = "idle" | "success" | "error" | "throttled";
 type GatePhase = "resolve" | "search" | "pick" | "form";
 
 function emptyAttendee(): AttendeeDraft {
@@ -78,10 +78,11 @@ export function RsvpForm({
     mealServiceStyle === "family_style" ||
     mealServiceStyle === "stations";
 
-  const [gatePhase, setGatePhase] = useState<GatePhase>(() => {
-    if (initialGuestToken?.trim()) return "resolve";
-    return "search";
-  });
+  // Guest token comes from the client URL (?g=) so the page can ISR —
+  // awaiting searchParams on the server would force dynamic rendering.
+  const [gatePhase, setGatePhase] = useState<GatePhase>(() =>
+    initialGuestToken?.trim() ? "resolve" : "search",
+  );
   const [household, setHousehold] = useState<RsvpHouseholdMatch | null>(null);
   const [candidates, setCandidates] = useState<RsvpHouseholdMatch[]>([]);
   const [fullName, setFullName] = useState("");
@@ -112,13 +113,17 @@ export function RsvpForm({
   );
 
   useEffect(() => {
-    if (!initialGuestToken?.trim()) return;
+    const fromProp = initialGuestToken?.trim() || null;
+    const fromUrl =
+      new URLSearchParams(window.location.search).get("g")?.trim() || null;
+    const token = fromProp || fromUrl;
+    if (!token) return;
+
+    setGatePhase("resolve");
 
     let cancelled = false;
     startLookupTransition(async () => {
-      const rows = await lookupRsvpHousehold(slug, {
-        token: initialGuestToken.trim(),
-      });
+      const rows = await lookupRsvpHousehold(slug, { token });
       if (cancelled) return;
       if (rows.length === 1) {
         applyHousehold(rows[0]);
@@ -133,7 +138,7 @@ export function RsvpForm({
     return () => {
       cancelled = true;
     };
-    // Mount-only resolve for QR token.
+    // Mount-only resolve for QR / share-link token.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -254,6 +259,8 @@ export function RsvpForm({
         setMessage("");
         setAttendees([emptyAttendee()]);
         setShowDietaryDetails(false);
+      } else if (result.reason === "throttled") {
+        setFormState("throttled");
       } else {
         setFormState("error");
       }
@@ -814,6 +821,16 @@ export function RsvpForm({
           style={inputStyle}
         />
       </div>
+
+      {formState === "throttled" ? (
+        <p
+          className="text-[14px]"
+          style={{ color: onDark ? "#f5d0c8" : "var(--ws-accent-deep)" }}
+          role="alert"
+        >
+          Please wait a moment and try again.
+        </p>
+      ) : null}
 
       {formState === "error" ? (
         <p

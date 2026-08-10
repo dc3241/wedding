@@ -8,8 +8,6 @@ const MESSAGE_MAX = 1000;
 const DIETARY_MAX = 500;
 const SONG_MAX = 200;
 const FULL_NAME_MAX = 120;
-const THROTTLE_WINDOW_MS = 60_000;
-const THROTTLE_MAX = 10;
 
 export type SubmitRsvpAttendeeInput = {
   name?: string;
@@ -29,6 +27,10 @@ export type SubmitRsvpInput = {
   attendees?: SubmitRsvpAttendeeInput[];
   householdToken?: string | null;
 };
+
+export type SubmitRsvpResult =
+  | { ok: true }
+  | { ok: false; reason: "throttled" | "error" };
 
 export type RsvpHouseholdMatch = {
   householdToken: string;
@@ -68,6 +70,10 @@ function normalizeAttendees(
   });
 }
 
+function isRsvpThrottled(message: string | undefined): boolean {
+  return Boolean(message && message.includes("rsvp_throttled"));
+}
+
 export async function lookupRsvpHousehold(
   slug: string,
   opts: { token?: string; fullName?: string } = {},
@@ -104,74 +110,49 @@ export async function lookupRsvpHousehold(
 
 export async function submitRsvp(
   input: SubmitRsvpInput,
-): Promise<{ ok: true } | { ok: false }> {
+): Promise<SubmitRsvpResult> {
   if (input.honeypot?.trim()) {
     return { ok: true };
   }
 
   const slug = input.slug.trim();
   if (!slug) {
-    return { ok: false };
+    return { ok: false, reason: "error" };
   }
 
   const name = input.name.trim();
   if (!name || name.length > NAME_MAX) {
-    return { ok: false };
+    return { ok: false, reason: "error" };
   }
 
   const response = input.response === "yes" || input.response === "no" ? input.response : null;
   if (!response) {
-    return { ok: false };
+    return { ok: false, reason: "error" };
   }
 
   const partySize = Math.min(20, Math.max(1, Math.floor(Number(input.partySize)) || 1));
 
   const emailRaw = input.email?.trim() ?? "";
   if (emailRaw.length > EMAIL_MAX) {
-    return { ok: false };
+    return { ok: false, reason: "error" };
   }
   if (emailRaw && !isLightEmail(emailRaw)) {
-    return { ok: false };
+    return { ok: false, reason: "error" };
   }
 
   const messageRaw = input.message?.trim() ?? "";
   if (messageRaw.length > MESSAGE_MAX) {
-    return { ok: false };
+    return { ok: false, reason: "error" };
   }
 
   const householdToken = input.householdToken?.trim() || null;
   if (!householdToken) {
-    return { ok: false };
+    return { ok: false, reason: "error" };
   }
 
   const attendees = normalizeAttendees(input.attendees);
 
   const supabase = createAnonServerClient();
-
-  const { data: website, error: lookupError } = await supabase
-    .from("wedding_websites")
-    .select("project_id")
-    .eq("slug", slug)
-    .maybeSingle();
-
-  if (lookupError || !website?.project_id) {
-    return { ok: false };
-  }
-
-  const projectId = String(website.project_id);
-
-  // Soft spam mitigation (best-effort): anon has no SELECT on rsvp_submissions under RLS,
-  // so this count cannot succeed today — it no-ops when denied. Real backstop is in-app review.
-  const windowStart = new Date(Date.now() - THROTTLE_WINDOW_MS).toISOString();
-  const { count } = await supabase
-    .from("rsvp_submissions")
-    .select("*", { count: "exact", head: true })
-    .eq("project_id", projectId)
-    .gte("created_at", windowStart);
-
-  if (count !== null && count >= THROTTLE_MAX) {
-    return { ok: false };
-  }
 
   const { error: rpcError } = await supabase.rpc("submit_rsvp", {
     p_slug: slug,
@@ -185,7 +166,10 @@ export async function submitRsvp(
   });
 
   if (rpcError) {
-    return { ok: false };
+    if (isRsvpThrottled(rpcError.message)) {
+      return { ok: false, reason: "throttled" };
+    }
+    return { ok: false, reason: "error" };
   }
 
   return { ok: true };

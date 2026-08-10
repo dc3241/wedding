@@ -9,7 +9,8 @@ import {
   type PublicMealServiceStyle,
 } from "../RsvpForm";
 
-export const dynamic = "force-dynamic";
+/** Time-based floor; publish/save calls revalidatePath for freshness. */
+export const revalidate = 300;
 
 function parseMealServiceStyle(value: unknown): PublicMealServiceStyle {
   if (
@@ -83,13 +84,10 @@ export async function generateMetadata({
 
 export default async function PublicRsvpPage({
   params,
-  searchParams,
 }: {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ g?: string }>;
 }) {
   const { slug } = await params;
-  const { g: guestToken } = await searchParams;
   const site = await loadPublishedWebsite(slug);
 
   if (!site) {
@@ -113,7 +111,6 @@ export default async function PublicRsvpPage({
           mealServiceStyle={site.mealServiceStyle}
           mealOptions={site.mealOptions}
           songRequestsEnabled={site.songRequestsEnabled}
-          initialGuestToken={guestToken ?? null}
           appearance="on-dark"
         />
       }

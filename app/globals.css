@@ -129,12 +129,6 @@ body {
   line-height: 1.05;
 }
 
-.couple-name {
-  font-family: var(--font-sans, "Figtree", system-ui, sans-serif);
-  font-weight: 800;
-  line-height: 1.05;
-}
-
 .font-script {
   font-family: var(--font-script, "Great Vibes", cursive);
   font-weight: 400;

@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { AssistantWorkspace } from "@/components/assistant/AssistantWorkspace";
+import { ASSISTANT_HISTORY_WINDOW } from "@/components/assistant/constants";
 import type { AssistantMessage } from "@/components/assistant/types";
 import { TourProvider } from "@/components/tour/TourProvider";
 import { ProjectShell } from "@/components/projects/project-shell";
@@ -71,11 +72,14 @@ export default async function ProjectLayout({
   } = await supabase.auth.getUser();
 
   const [messagesResult, toursResult] = await Promise.all([
+    // Last N only (desc + limit), then reverse so the panel seeds newest-last.
+    // A naive ascending .limit(N) would return the oldest N — wrong.
     supabase
       .from("assistant_messages")
       .select("id, role, content, created_at")
       .eq("project_id", projectId)
-      .order("created_at", { ascending: true }),
+      .order("created_at", { ascending: false })
+      .limit(ASSISTANT_HISTORY_WINDOW),
     user
       ? supabase
           .from("user_tours")
@@ -84,7 +88,9 @@ export default async function ProjectLayout({
       : Promise.resolve({ data: [] as { tour_key: string }[] | null }),
   ]);
 
-  const initialMessages = (messagesResult.data ?? []) as AssistantMessage[];
+  const initialMessages = (
+    [...(messagesResult.data ?? [])].reverse() as AssistantMessage[]
+  );
   const dismissedTourKeys = (toursResult.data ?? []).map(
     (row) => row.tour_key,
   );

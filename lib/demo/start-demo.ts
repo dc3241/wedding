@@ -1,16 +1,9 @@
-import { createClient } from "@/utils/supabase/client";
+import { startDemoAction } from "@/lib/demo/start-demo-action";
+import type { DemoAccountKind, StartDemoResult } from "@/lib/demo/types";
 
-export type DemoAccountKind = "personal" | "business";
+export type { DemoAccountKind, StartDemoResult };
 
-export type StartDemoResult =
-  | { status: "ok"; accountId: string }
-  /** Real (non-anonymous) session — RPC skipped; redirected to /projects. */
-  | { status: "existing" }
-  /** No is_demo_template account for this kind yet. */
-  | { status: "unavailable" }
-  | { status: "error"; message: string };
-
-/** In-flight guard — one click ⇒ one anonymous mint / one RPC. */
+/** In-flight guard — one click ⇒ one server-brokered start. */
 let pending: Promise<StartDemoResult> | null = null;
 
 function goToProjects() {
@@ -18,9 +11,9 @@ function goToProjects() {
 }
 
 /**
- * Entry point for demo visitors (DEMO-02). DEMO-03 wires UI to this.
+ * Entry point for demo visitors (DEMO-02 / DEMO-04).
+ * Server action handles IP throttle, anon mint, and clone.
  * Navigates to /projects on success or when a real session already exists.
- * Returns a typed result for unavailable / error (no throw).
  */
 export function startDemo(kind: DemoAccountKind): Promise<StartDemoResult> {
   if (pending) return pending;
@@ -31,52 +24,15 @@ export function startDemo(kind: DemoAccountKind): Promise<StartDemoResult> {
 }
 
 async function runStartDemo(kind: DemoAccountKind): Promise<StartDemoResult> {
-  try {
-    if (kind !== "personal" && kind !== "business") {
-      return { status: "error", message: "invalid_account_kind" };
-    }
-
-    const supabase = createClient();
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-
-    // Real logged-in user: never mint anonymous, never call clone RPC.
-    if (session && session.user.is_anonymous !== true) {
-      goToProjects();
-      return { status: "existing" };
-    }
-
-    // No session → anonymous auth. Mid-demo anonymous session → reuse it.
-    if (!session) {
-      const { error: anonError } = await supabase.auth.signInAnonymously();
-      if (anonError) {
-        return { status: "error", message: anonError.message };
-      }
-    }
-
-    const { data, error } = await supabase.rpc("clone_demo_account", {
-      p_kind: kind,
-    });
-
-    if (error) {
-      const message = error.message ?? "";
-      if (message.includes("demo_template_missing")) {
-        return { status: "unavailable" };
-      }
-      return { status: "error", message: message || "clone_failed" };
-    }
-
-    if (typeof data !== "string" || !data) {
-      return { status: "error", message: "clone_returned_no_account_id" };
-    }
-
-    goToProjects();
-    return { status: "ok", accountId: data };
-  } catch (err) {
-    return {
-      status: "error",
-      message: err instanceof Error ? err.message : "unknown_error",
-    };
+  if (kind !== "personal" && kind !== "business") {
+    return { status: "error", message: "Something went wrong. Try again." };
   }
+
+  const result = await startDemoAction(kind);
+
+  if (result.status === "ok" || result.status === "existing") {
+    goToProjects();
+  }
+
+  return result;
 }

@@ -2,7 +2,10 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useAssistant } from "@/components/assistant/assistant-context";
-import { sendAssistantMessage } from "@/components/assistant/actions";
+import {
+  loadAssistantMessages,
+  sendAssistantMessage,
+} from "@/components/assistant/actions";
 import type { AssistantMessage } from "@/components/assistant/types";
 import { Button } from "@/components/ui/button";
 import { Eyebrow } from "@/components/ui/eyebrow";
@@ -26,6 +29,40 @@ function formatMessageTime(iso: string) {
   });
 }
 
+function isClientGeneratedId(id: string) {
+  return (
+    id.startsWith("temp-") ||
+    id.startsWith("saved-user-") ||
+    id.startsWith("assistant-")
+  );
+}
+
+/**
+ * Server rows are the source of truth. Keep in-flight optimistic `temp-*`
+ * messages, and keep post-send client ids only when the server list does not
+ * yet contain the same role+content (send may have finished before fetch).
+ */
+function mergeAssistantHistory(
+  server: AssistantMessage[],
+  local: AssistantMessage[],
+): AssistantMessage[] {
+  const merged = [...server];
+  for (const msg of local) {
+    if (!isClientGeneratedId(msg.id)) continue;
+    if (msg.id.startsWith("temp-")) {
+      merged.push(msg);
+      continue;
+    }
+    const alreadyOnServer = server.some(
+      (row) => row.role === msg.role && row.content === msg.content,
+    );
+    if (!alreadyOnServer) {
+      merged.push(msg);
+    }
+  }
+  return merged;
+}
+
 export function AssistantPanel({
   projectId,
   accountKind,
@@ -37,12 +74,44 @@ export function AssistantPanel({
   const [messages, setMessages] = useState(initialMessages);
   const [input, setInput] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [historyLoading, setHistoryLoading] = useState(false);
   const [isPending, startTransition] = useTransition();
   const listRef = useRef<HTMLDivElement>(null);
+  const fullHistoryLoadedRef = useRef(false);
+
+  // Seed from layout preload until full history has loaded once for this project.
+  useEffect(() => {
+    fullHistoryLoadedRef.current = false;
+    setMessages(initialMessages);
+    // Reset only on project change — not on every layout preload refresh.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectId]);
 
   useEffect(() => {
+    if (fullHistoryLoadedRef.current) return;
     setMessages(initialMessages);
   }, [initialMessages]);
+
+  // Full history loads when the panel opens — not on every project navigation.
+  useEffect(() => {
+    if (!open) return;
+
+    let cancelled = false;
+    const showSpinner = !fullHistoryLoadedRef.current;
+    if (showSpinner) setHistoryLoading(true);
+
+    void loadAssistantMessages(projectId).then((rows) => {
+      if (cancelled) return;
+      setMessages((prev) => mergeAssistantHistory(rows, prev));
+      fullHistoryLoadedRef.current = true;
+      if (showSpinner) setHistoryLoading(false);
+    });
+
+    return () => {
+      cancelled = true;
+      if (showSpinner) setHistoryLoading(false);
+    };
+  }, [open, projectId]);
 
   useEffect(() => {
     if (!open || !pendingPrefill) return;
@@ -56,7 +125,7 @@ export function AssistantPanel({
     if (el) {
       el.scrollTop = el.scrollHeight;
     }
-  }, [messages, open, isPending]);
+  }, [messages, open, isPending, historyLoading]);
 
   function handleSend() {
     const text = input.trim();
@@ -156,6 +225,11 @@ export function AssistantPanel({
             isPlanner && "px-4 py-3",
           )}
         >
+          {historyLoading ? (
+            <p className="mb-3 text-[12px] text-muted" role="status">
+              Loading earlier messages…
+            </p>
+          ) : null}
           {messages.length === 0 && !isPending ? (
             <div
               className={cn(

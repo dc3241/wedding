@@ -23,6 +23,12 @@ export function DemoCta({ kind }: { kind: DemoAccountKind }) {
       return;
     }
 
+    if (result.status === "throttled") {
+      setMessage("Please wait a moment and try again.");
+      setPending(false);
+      return;
+    }
+
     if (result.status === "error") {
       setMessage(result.message || "Something went wrong. Try again.");
       setPending(false);
