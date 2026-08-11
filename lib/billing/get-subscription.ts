@@ -14,6 +14,8 @@ export type SubscriptionSnapshot = {
   cancelAtPeriodEnd: boolean;
   priceId: string | null;
   hasCustomer: boolean;
+  /** True only when a real Stripe Subscription id is on the row (not local trials / seeded active). */
+  hasSubscription: boolean;
 };
 
 export async function getSubscriptionForAccount(
@@ -39,13 +41,14 @@ export async function getSubscriptionForAccount(
       cancelAtPeriodEnd: false,
       priceId: null,
       hasCustomer: false,
+      hasSubscription: false,
     };
   }
 
   const { data: row, error } = await supabase
     .from("subscriptions")
     .select(
-      "status, current_period_end, cancel_at_period_end, price_id, stripe_customer_id",
+      "status, current_period_end, cancel_at_period_end, price_id, stripe_customer_id, stripe_subscription_id",
     )
     .eq("account_id", accountId)
     .maybeSingle();
@@ -62,18 +65,31 @@ export async function getSubscriptionForAccount(
       cancelAtPeriodEnd: false,
       priceId: null,
       hasCustomer: false,
+      hasSubscription: false,
     };
   }
 
   const status = row.status ?? null;
+  const now = new Date();
+  const periodEndPassed =
+    row.current_period_end !== null &&
+    new Date(row.current_period_end) <= now;
+
+  // Local planner trials write status=trialing with no Stripe object; expire
+  // them by current_period_end. Real Stripe `active` rows are unchanged.
+  const isActive =
+    status !== null &&
+    ACTIVE_STATUSES.has(status) &&
+    !(status === "trialing" && periodEndPassed);
 
   return {
-    isActive: status !== null && ACTIVE_STATUSES.has(status),
+    isActive,
     status,
     currentPeriodEnd: row.current_period_end,
     cancelAtPeriodEnd: row.cancel_at_period_end,
     priceId: row.price_id,
     hasCustomer: Boolean(row.stripe_customer_id),
+    hasSubscription: row.stripe_subscription_id !== null,
   };
 }
 

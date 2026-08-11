@@ -8,6 +8,7 @@ export type SubscriptionUpsert = {
   account_id: string;
   stripe_customer_id: string;
   stripe_subscription_id?: string | null;
+  stripe_payment_method_id?: string | null;
   status?: string | null;
   price_id?: string | null;
   quantity?: number;
@@ -53,20 +54,27 @@ export async function upsertSubscriptionRow(
   const admin = createServiceRoleClient();
   const now = new Date().toISOString();
 
-  const { error } = await admin.from("subscriptions").upsert(
-    {
-      account_id: row.account_id,
-      stripe_customer_id: row.stripe_customer_id,
-      stripe_subscription_id: row.stripe_subscription_id ?? null,
-      status: row.status ?? null,
-      price_id: row.price_id ?? null,
-      quantity: row.quantity ?? 1,
-      current_period_end: row.current_period_end ?? null,
-      cancel_at_period_end: row.cancel_at_period_end ?? false,
-      updated_at: now,
-    },
-    { onConflict: "account_id" },
-  );
+  const payload: Record<string, unknown> = {
+    account_id: row.account_id,
+    stripe_customer_id: row.stripe_customer_id,
+    stripe_subscription_id: row.stripe_subscription_id ?? null,
+    status: row.status ?? null,
+    price_id: row.price_id ?? null,
+    quantity: row.quantity ?? 1,
+    current_period_end: row.current_period_end ?? null,
+    cancel_at_period_end: row.cancel_at_period_end ?? false,
+    updated_at: now,
+  };
+
+  // Only set when provided — planner subscription sync must not null a
+  // couple's saved payment method (and vice versa leave planners alone).
+  if (row.stripe_payment_method_id !== undefined) {
+    payload.stripe_payment_method_id = row.stripe_payment_method_id;
+  }
+
+  const { error } = await admin.from("subscriptions").upsert(payload, {
+    onConflict: "account_id",
+  });
 
   if (error) {
     throw new Error(error.message);

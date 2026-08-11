@@ -2,6 +2,8 @@
 -- seeds/demo_templates_guests.sql
 -- Additive patch: 4th planner client + realistic guest volumes.
 -- Re-runnable. Apply: supabase db query --linked -f this file
+-- MUST run AFTER demo_templates.sql (depends on business account
+-- a8886e9c-53b7-47d4-a6dc-521bc2b3c363 existing).
 -- ============================================================
 
 create extension if not exists pgcrypto with schema extensions;
@@ -9,6 +11,16 @@ create extension if not exists pgcrypto with schema extensions;
 -- ------------------------------------------------------------
 -- 1) Fourth planner client — Mila & Griffin (~9 months out)
 -- ------------------------------------------------------------
+-- Fresh-DB bootstrap: project was historically assumed present.
+-- Placeholder satisfies NOT NULL + FK; UPDATE below overwrites.
+insert into projects (id, account_id, name)
+values (
+  '1f1a2a78-5c8f-4e7c-902b-74eb5e1318f9',
+  'a8886e9c-53b7-47d4-a6dc-521bc2b3c363',
+  'Demo Bootstrap'
+)
+on conflict (id) do nothing;
+
 do $$
 declare
   v_biz uuid := 'a8886e9c-53b7-47d4-a6dc-521bc2b3c363';

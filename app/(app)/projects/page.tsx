@@ -8,6 +8,10 @@ import {
   getAccountContext,
   getDirectProjectIds,
 } from "@/lib/account-context";
+import {
+  ACCOUNT_LOCKED_PATH,
+  checkEntitlement,
+} from "@/lib/billing/entitlement-gate";
 import { getCoupleDestinationPath } from "@/lib/onboarding-gate";
 import { createClient } from "@/utils/supabase/server";
 
@@ -84,6 +88,14 @@ export default async function ProjectsPage({
         <OnboardingForm />
       </div>
     );
+  }
+
+  const { entitled } = await checkEntitlement(
+    supabase,
+    accountContext.accountId,
+  );
+  if (!entitled) {
+    redirect(ACCOUNT_LOCKED_PATH);
   }
 
   if (accountContext.kind === "personal") {

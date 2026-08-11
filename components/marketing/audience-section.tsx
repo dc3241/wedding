@@ -48,9 +48,9 @@ const PLANNERS_CARDS = [
     icon: TeamIcon,
   },
   {
-    title: "Billing built in",
-    body: "Subscriptions handled inside the platform, so you're not chasing payments across a pile of disconnected services.",
-    icon: BillingIcon,
+    title: "Your brand, not ours",
+    body: "Couples log in and see your logo, your name, your colors — First Look stays behind the scenes.",
+    icon: WebsiteIcon,
   },
 ] as const;
 
@@ -395,28 +395,6 @@ function TeamIcon() {
       <circle cx="14.5" cy="8" r="1.5" stroke="currentColor" strokeWidth="1.5" />
       <path
         d="M6.5 15.5c.4-2 1.8-3.2 3.5-3.2s3.1 1.2 3.5 3.2M3.5 14.5c.3-1.3 1.1-2.1 2-2.1M16.5 14.5c-.3-1.3-1.1-2.1-2-2.1"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
-
-function BillingIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden>
-      <rect
-        x="3.5"
-        y="5"
-        width="13"
-        height="10"
-        rx="1.5"
-        stroke="currentColor"
-        strokeWidth="1.5"
-      />
-      <path
-        d="M3.5 8.5h13M7 12h2.5"
         stroke="currentColor"
         strokeWidth="1.5"
         strokeLinecap="round"

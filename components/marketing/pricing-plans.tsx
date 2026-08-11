@@ -68,6 +68,7 @@ const PLANNER_ANNUAL_EFFECTIVE_MONTHLY = Math.round(
 const PLANNER_FEATURES = [
   "Unlimited active weddings",
   "All couple tools per client",
+  "White-label branding",
   "Lead pipeline & proposals",
   "Printable contracts",
   "Team seats",
@@ -86,7 +87,7 @@ const AGENCY_PLAN: Plan = {
   },
   features: [
     "Unlimited weddings & seats",
-    "Custom branding",
+    "Custom domain & branding",
     "Onboarding & migration help",
     "Dedicated account manager",
   ],
@@ -94,7 +95,7 @@ const AGENCY_PLAN: Plan = {
 
 const FOOTER: Record<Audience, string> = {
   couples: "7 days for $7 · applied to your $99 · keep everything you build.",
-  planners: "14-day free trial · no card to start · cancel anytime.",
+  planners: "7-day free trial · no card to start · cancel anytime.",
 };
 
 function FeatureTick({ children }: { children: string }) {
@@ -221,7 +222,7 @@ function PlannerCard() {
       <p className="mt-3 flex-1 text-[14.5px] leading-relaxed text-muted">
         One flat price, unlimited weddings.
       </p>
-      {/* TODO PRICE-02: annual vs monthly maps to distinct Stripe prices ($590/yr, $59/mo). */}
+      {/* PRICE-02: billing page wires Monthly/Annual Checkout; marketing CTA still trial → login. */}
       <ButtonLink href="/login" variant="primary" className="mt-6 w-full">
         Start free trial
       </ButtonLink>

@@ -7,6 +7,7 @@ import { PlannerShell } from "@/components/planner/planner-shell";
 import type { SidebarProject } from "@/components/planner/planner-project-sidebar";
 import { VendorSearchCacheProvider } from "@/components/vendors/VendorSearchCacheProvider";
 import { getAccountContext } from "@/lib/account-context";
+import { ACCOUNT_LOCKED_PATH } from "@/lib/billing/entitlement-gate";
 import {
   getBrandingForProject,
   projectIdFromPathname,
@@ -27,10 +28,24 @@ export default async function AppLayout({
     redirect("/login");
   }
 
+  const headersList = await headers();
+  const pathname = headersList.get("x-pathname") ?? "";
+  const isLockedPage = pathname === ACCOUNT_LOCKED_PATH;
+
   const account = await getAccountContext(supabase);
   const accountKind = account?.kind ?? "personal";
   const isPlanner = accountKind === "business";
   const showDemoBanner = account?.isDemo === true;
+
+  // ENT-01: lock screen is Tier 2 full-bleed — no couple/planner chrome.
+  if (isLockedPage) {
+    return (
+      <AccountDensityProvider kind={accountKind}>
+        {showDemoBanner ? <DemoBanner /> : null}
+        {children}
+      </AccountDensityProvider>
+    );
+  }
 
   let plannerProjects: SidebarProject[] = [];
   if (isPlanner) {
@@ -45,8 +60,7 @@ export default async function AppLayout({
 
   let coupleBranding = null;
   if (!isPlanner) {
-    const headersList = await headers();
-    const projectId = projectIdFromPathname(headersList.get("x-pathname"));
+    const projectId = projectIdFromPathname(pathname);
     if (projectId) {
       coupleBranding = await getBrandingForProject(projectId);
     }

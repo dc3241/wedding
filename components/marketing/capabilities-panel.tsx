@@ -62,6 +62,7 @@ const GROUPS = [
       "Proposals → signed contracts",
       "Invite couples to their wedding",
       "Every client in one book",
+      "White-labeled client workspace",
     ],
   },
   {

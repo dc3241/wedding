@@ -1,8 +1,13 @@
 import "server-only";
 import { getStripe } from "@/lib/stripe";
-import { upsertSubscriptionRow } from "@/lib/billing/sync-subscription";
 import { createClient } from "@/utils/supabase/server";
+import { createServiceRoleClient } from "@/utils/supabase/service-role";
 
+/**
+ * Ensure the account has a Stripe Customer id.
+ * Never writes status / period / subscription fields — those are owned by
+ * trial-start and the webhook sync path (PRICE-02 abandon-checkout safety).
+ */
 export async function getOrCreateStripeCustomer(
   accountId: string,
 ): Promise<string> {
@@ -19,7 +24,7 @@ export async function getOrCreateStripeCustomer(
 
   const { data: existing, error: existingError } = await supabase
     .from("subscriptions")
-    .select("stripe_customer_id")
+    .select("account_id, stripe_customer_id")
     .eq("account_id", accountId)
     .maybeSingle();
 
@@ -40,15 +45,39 @@ export async function getOrCreateStripeCustomer(
     },
   });
 
-  await upsertSubscriptionRow({
-    account_id: accountId,
-    stripe_customer_id: customer.id,
-    status: null,
-    stripe_subscription_id: null,
-    price_id: null,
-    current_period_end: null,
-    cancel_at_period_end: false,
-  });
+  const admin = createServiceRoleClient();
+  const now = new Date().toISOString();
+
+  if (existing) {
+    // Local trial (or any row without a customer) — attach id only.
+    const { error: updateError } = await admin
+      .from("subscriptions")
+      .update({
+        stripe_customer_id: customer.id,
+        updated_at: now,
+      })
+      .eq("account_id", accountId);
+
+    if (updateError) {
+      throw new Error(updateError.message);
+    }
+  } else {
+    const { error: insertError } = await admin.from("subscriptions").insert({
+      account_id: accountId,
+      stripe_customer_id: customer.id,
+      stripe_subscription_id: null,
+      status: null,
+      price_id: null,
+      quantity: 1,
+      current_period_end: null,
+      cancel_at_period_end: false,
+      updated_at: now,
+    });
+
+    if (insertError) {
+      throw new Error(insertError.message);
+    }
+  }
 
   return customer.id;
 }

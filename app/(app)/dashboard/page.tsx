@@ -9,6 +9,10 @@ import {
   type VendorRow,
 } from "@/lib/dashboard-aggregates";
 import { getAccountContext } from "@/lib/account-context";
+import {
+  ACCOUNT_LOCKED_PATH,
+  checkEntitlement,
+} from "@/lib/billing/entitlement-gate";
 import { createClient } from "@/utils/supabase/server";
 
 const projectSelect = "id, name, wedding_date, status" as const;
@@ -29,6 +33,11 @@ export default async function DashboardPage() {
 
   if (!account) {
     redirect("/projects");
+  }
+
+  const { entitled } = await checkEntitlement(supabase, account.accountId);
+  if (!entitled) {
+    redirect(ACCOUNT_LOCKED_PATH);
   }
 
   if (account.kind === "personal") {

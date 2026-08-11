@@ -1,5 +1,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getAccountContext } from "@/lib/account-context";
+import {
+  ACCOUNT_LOCKED_PATH,
+  checkEntitlement,
+} from "@/lib/billing/entitlement-gate";
 import { getCoupleDestinationPath } from "@/lib/onboarding-gate";
 
 /** Resolve where to send a user immediately after authentication. */
@@ -10,6 +14,11 @@ export async function getPostLoginPath(
 
   if (!account) {
     return "/projects";
+  }
+
+  const { entitled } = await checkEntitlement(supabase, account.accountId);
+  if (!entitled) {
+    return ACCOUNT_LOCKED_PATH;
   }
 
   if (account.kind === "business") {

@@ -3,6 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 export type AccountKind = "personal" | "business";
 
 export type AccountContext = {
+  accountId: string;
   kind: AccountKind;
   isDemo: boolean;
   projectIds: string[];
@@ -23,22 +24,25 @@ export async function getAccountContext(
     return null;
   }
 
+  const accountId = memberships[0].account_id;
+
   const { data: account } = await supabase
     .from("accounts")
     .select("kind, is_demo")
-    .eq("id", memberships[0].account_id)
+    .eq("id", accountId)
     .single();
 
   const { data: projects } = await supabase
     .from("projects")
     .select("id")
-    .eq("account_id", memberships[0].account_id)
+    .eq("account_id", accountId)
     .order("created_at", { ascending: true });
 
   const projectIds = (projects ?? []).map((p) => p.id);
   const kind = (account?.kind ?? "personal") as AccountKind;
 
   return {
+    accountId,
     kind,
     isDemo: account?.is_demo === true,
     projectIds,

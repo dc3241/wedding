@@ -295,6 +295,19 @@ insert into wedding_websites (
 -- ------------------------------------------------------------
 -- 2) BUSINESS TEMPLATE — reshape 3 active clients
 -- ------------------------------------------------------------
+-- Fresh-DB bootstrap: rows were historically "already live". Placeholders
+-- satisfy NOT NULL + FKs; UPDATEs below overwrite with real template values.
+insert into accounts (id, name, kind)
+values ('a8886e9c-53b7-47d4-a6dc-521bc2b3c363', 'Demo Bootstrap', 'business')
+on conflict (id) do nothing;
+
+insert into projects (id, account_id, name)
+values
+  ('e390b41c-3b55-4370-8ca1-857081757bfd', 'a8886e9c-53b7-47d4-a6dc-521bc2b3c363', 'Demo Bootstrap'),
+  ('b7c32347-722a-4c6d-8ba4-c98cd2eb77e8', 'a8886e9c-53b7-47d4-a6dc-521bc2b3c363', 'Demo Bootstrap'),
+  ('7cb744b2-b207-4e76-b944-691798c8878c', 'a8886e9c-53b7-47d4-a6dc-521bc2b3c363', 'Demo Bootstrap')
+on conflict (id) do nothing;
+
 do $$
 declare
   v_biz uuid := 'a8886e9c-53b7-47d4-a6dc-521bc2b3c363';
