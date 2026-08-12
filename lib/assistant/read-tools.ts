@@ -1,15 +1,15 @@
-import {
-  sumPlanned,
-  sumVendorCosts,
-  type BookedVendorCost,
-  type BudgetItem,
-} from "@/app/(app)/projects/[projectId]/budget/types";
+import { toLocalDateKey } from "@/app/(app)/calendar/calendar-source";
 import {
   sumPartySize,
   sumPartySizeByStatus,
   type Guest,
 } from "@/app/(app)/projects/[projectId]/guests/types";
 import { parseWeddingWebsiteContent } from "@/components/website/types";
+import {
+  computeBudgetAggregates,
+  type BudgetItemForAggregate,
+  type ProjectVendorOption,
+} from "@/lib/budget-aggregates";
 import { placesTextSearch } from "@/lib/places-text-search";
 import { resolveProjectLocationHint } from "@/lib/resolve-project-location-hint";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -27,6 +27,8 @@ const NEARBY_CATEGORY_LABELS: Record<NearbyPlaceCategory, string> = {
 const CHECKLIST_ITEMS_CAP = 25;
 const GUESTS_ITEMS_CAP = 40;
 const BUDGET_ITEMS_CAP = 20;
+const BUDGET_PAYMENTS_CAP = 25;
+const PAYMENT_SCHEDULE_CAP = 25;
 const VENDORS_ITEMS_CAP = 30;
 const VENDOR_TARGETS_ITEMS_CAP = 30;
 const NOTES_ITEMS_CAP = 20;
@@ -58,7 +60,27 @@ export const READ_TOOL_DEFINITIONS = [
   {
     name: "get_budget",
     description:
-      "Get budget target, allocation totals, largest line items, and booked-vendor cost summary. Use for budget remaining and spending questions.",
+      "Get budget target, allocated/actual/paid/committed totals, and line items (estimate, actual, paid, difference). Paid is from the payment ledger only. Use for budget remaining and spending questions.",
+    input_schema: {
+      type: "object" as const,
+      properties: {},
+      required: [] as string[],
+    },
+  },
+  {
+    name: "get_budget_payments",
+    description:
+      "Get logged payments from the budget payment ledger (date, amount, linked line item). Use for 'what have we paid so far' with specifics — not actual_amount.",
+    input_schema: {
+      type: "object" as const,
+      properties: {},
+      required: [] as string[],
+    },
+  },
+  {
+    name: "get_payment_schedule",
+    description:
+      "Get payment-schedule installments with covered/uncovered status (waterfall vs ledger paid). Prioritizes overdue and upcoming. Use for 'what's due next' and overdue payment questions.",
     input_schema: {
       type: "object" as const,
       properties: {},
@@ -287,11 +309,16 @@ async function getGuests(supabase: SupabaseClient, projectId: string) {
   };
 }
 
-async function getBudget(supabase: SupabaseClient, projectId: string) {
+async function loadBudgetAggregateInputs(
+  supabase: SupabaseClient,
+  projectId: string,
+) {
   const [
     { data: project, error: projectError },
     { data: items, error: itemsError },
     { data: vendorRows, error: vendorsError },
+    { data: paymentRows, error: paymentsError },
+    { data: scheduleRows, error: scheduleError },
   ] = await Promise.all([
     supabase
       .from("projects")
@@ -301,30 +328,42 @@ async function getBudget(supabase: SupabaseClient, projectId: string) {
     supabase
       .from("budget_items")
       .select(
-        "id, category, label, planned_amount, actual_amount, notes, project_vendor_id",
+        "id, category, label, planned_amount, actual_amount, due_date, notes, project_vendor_id",
       )
       .eq("project_id", projectId)
       .order("category", { ascending: true, nullsFirst: false })
       .order("label", { ascending: true }),
     supabase
       .from("project_vendors")
-      .select("id, quoted_price, vendors(name, category)")
+      .select("id, quoted_price, status, vendors(name)")
       .eq("project_id", projectId)
-      .eq("status", "booked")
-      .not("quoted_price", "is", null)
+      .order("created_at", { ascending: true }),
+    supabase
+      .from("budget_payments")
+      .select("id, budget_item_id, amount, paid_on, note, created_at")
+      .eq("project_id", projectId)
+      .order("paid_on", { ascending: true, nullsFirst: false })
+      .order("created_at", { ascending: true }),
+    supabase
+      .from("payment_schedule")
+      .select("id, budget_item_id, amount, due_on, label")
+      .eq("project_id", projectId)
+      .order("due_on", { ascending: true })
       .order("created_at", { ascending: true }),
   ]);
 
   if (projectError) throw projectError;
   if (itemsError) throw itemsError;
   if (vendorsError) throw vendorsError;
+  if (paymentsError) throw paymentsError;
+  if (scheduleError) throw scheduleError;
 
-  const target =
+  const totalBudget =
     project?.total_budget === null || project?.total_budget === undefined
       ? null
       : Number(project.total_budget);
 
-  const budgetItems: BudgetItem[] = (items ?? []).map((row) => ({
+  const budgetItems = (items ?? []).map((row) => ({
     id: row.id,
     category: row.category,
     label: row.label,
@@ -333,69 +372,225 @@ async function getBudget(supabase: SupabaseClient, projectId: string) {
       row.actual_amount === null || row.actual_amount === undefined
         ? null
         : Number(row.actual_amount),
+    due_date: row.due_date ?? null,
     notes: row.notes,
     project_vendor_id: row.project_vendor_id ?? null,
   }));
 
-  const bookedVendors: BookedVendorCost[] = (vendorRows ?? []).flatMap(
+  const projectVendors: ProjectVendorOption[] = (vendorRows ?? []).flatMap(
     (row) => {
       const vendor = Array.isArray(row.vendors) ? row.vendors[0] : row.vendors;
-      if (!vendor || row.quoted_price === null) return [];
+      if (!vendor) return [];
       return [
         {
           id: row.id,
-          quoted_price: Number(row.quoted_price),
-          vendor: {
-            name: vendor.name,
-            category: vendor.category,
-          },
+          name: vendor.name,
+          quoted_price:
+            row.quoted_price === null || row.quoted_price === undefined
+              ? null
+              : Number(row.quoted_price),
+          status: row.status,
         },
       ];
     },
   );
 
-  const allocated = sumPlanned(budgetItems) + sumVendorCosts(bookedVendors);
-  const remaining = target !== null ? target - allocated : null;
+  const payments = (paymentRows ?? []).map((row) => ({
+    id: row.id,
+    budget_item_id: row.budget_item_id,
+    amount: Number(row.amount),
+    paid_on: row.paid_on ?? null,
+    note: row.note ?? null,
+    created_at: row.created_at as string,
+  }));
 
-  const sortedItems = [...budgetItems].sort(
+  const schedule = (scheduleRows ?? []).map((row) => ({
+    id: row.id,
+    budget_item_id: row.budget_item_id,
+    amount: Number(row.amount),
+    due_on: row.due_on,
+    label: row.label ?? null,
+  }));
+
+  const todayKey = toLocalDateKey(new Date());
+  const aggregates = computeBudgetAggregates(
+    budgetItems,
+    totalBudget,
+    projectVendors,
+    payments,
+    schedule,
+    todayKey,
+  );
+
+  const flatItems: BudgetItemForAggregate[] = aggregates.perCategory.flatMap(
+    (group) => group.items,
+  );
+  const itemLabelById = new Map(
+    flatItems.map((item) => [item.id, item.label ?? "Untitled"]),
+  );
+
+  return {
+    todayKey,
+    aggregates,
+    flatItems,
+    payments,
+    itemLabelById,
+  };
+}
+
+async function getBudget(supabase: SupabaseClient, projectId: string) {
+  const { aggregates, flatItems } = await loadBudgetAggregateInputs(
+    supabase,
+    projectId,
+  );
+
+  const sortedItems = [...flatItems].sort(
     (a, b) => b.planned_amount - a.planned_amount,
   );
   const trimmedItems = sortedItems.map((item) => ({
     id: item.id,
     label: item.label,
     category: item.category,
-    planned_amount: item.planned_amount,
-    actual_amount: item.actual_amount,
+    estimate: item.planned_amount,
+    actual: item.actual_amount,
+    paid: item.paid,
+    difference: item.difference,
   }));
   const { items: cappedItems, truncated: itemsTruncated } = capItems(
     trimmedItems,
     BUDGET_ITEMS_CAP,
   );
 
-  const vendorTotal = sumVendorCosts(bookedVendors);
-  const topVendors = [...bookedVendors]
-    .sort((a, b) => b.quoted_price - a.quoted_price)
-    .slice(0, 3)
-    .map((row) => ({
-      name: row.vendor.name,
-      amount: row.quoted_price,
-    }));
+  return {
+    summary: {
+      target: aggregates.totalBudget,
+      allocated: aggregates.allocated,
+      actual: aggregates.actualTotal,
+      paid: aggregates.paidTotal,
+      committed: aggregates.committed,
+      unallocated: aggregates.unallocated,
+    },
+    items: cappedItems,
+    total: flatItems.length,
+    returned: cappedItems.length,
+    truncated: itemsTruncated || cappedItems.length < flatItems.length,
+  };
+}
+
+async function getBudgetPayments(supabase: SupabaseClient, projectId: string) {
+  const { aggregates, payments, itemLabelById } =
+    await loadBudgetAggregateInputs(supabase, projectId);
+
+  const sorted = [...payments].sort((a, b) => {
+    const aDate = a.paid_on ?? "";
+    const bDate = b.paid_on ?? "";
+    if (aDate !== bDate) return bDate.localeCompare(aDate);
+    return b.created_at.localeCompare(a.created_at);
+  });
+
+  const trimmed = sorted.map((payment) => ({
+    id: payment.id,
+    paid_on: payment.paid_on,
+    amount: payment.amount,
+    budget_item_id: payment.budget_item_id,
+    item_label: itemLabelById.get(payment.budget_item_id) ?? "Untitled",
+    note: excerpt(payment.note, 80) || null,
+  }));
+
+  const { items, truncated: capped } = capItems(trimmed, BUDGET_PAYMENTS_CAP);
 
   return {
     summary: {
-      target,
-      allocated,
-      remaining,
+      paid_total: aggregates.paidTotal,
+      count: payments.length,
     },
-    items: cappedItems,
-    total: budgetItems.length,
-    returned: cappedItems.length,
-    truncated: itemsTruncated || cappedItems.length < budgetItems.length,
-    bookedVendors: {
-      count: bookedVendors.length,
-      total: vendorTotal,
-      top: topVendors,
+    items,
+    total: payments.length,
+    returned: items.length,
+    truncated: capped || items.length < payments.length,
+  };
+}
+
+async function getPaymentSchedule(supabase: SupabaseClient, projectId: string) {
+  const { todayKey, aggregates, flatItems } = await loadBudgetAggregateInputs(
+    supabase,
+    projectId,
+  );
+
+  type ScheduleRow = {
+    id: string;
+    budget_item_id: string;
+    item_label: string;
+    amount: number;
+    due_on: string;
+    label: string | null;
+    covered: boolean;
+    overdue: boolean;
+  };
+
+  const allRows: ScheduleRow[] = [];
+  let coveredCount = 0;
+  let overdueCount = 0;
+  let upcomingCount = 0;
+
+  for (const item of flatItems) {
+    for (const installment of item.schedule) {
+      const overdue = !installment.covered && installment.due_on < todayKey;
+      const upcoming = !installment.covered && installment.due_on >= todayKey;
+      if (installment.covered) coveredCount += 1;
+      if (overdue) overdueCount += 1;
+      if (upcoming) upcomingCount += 1;
+
+      allRows.push({
+        id: installment.id,
+        budget_item_id: item.id,
+        item_label: item.label ?? "Untitled",
+        amount: installment.amount,
+        due_on: installment.due_on,
+        label: installment.label,
+        covered: installment.covered,
+        overdue,
+      });
+    }
+  }
+
+  // Actionable first: overdue, then upcoming uncovered, then covered.
+  const actionable = allRows
+    .filter((row) => !row.covered)
+    .sort((a, b) => {
+      if (a.overdue !== b.overdue) return a.overdue ? -1 : 1;
+      if (a.due_on !== b.due_on) return a.due_on.localeCompare(b.due_on);
+      return a.id.localeCompare(b.id);
+    });
+
+  const { items, truncated: capped } = capItems(
+    actionable,
+    PAYMENT_SCHEDULE_CAP,
+  );
+
+  const nextDueCandidates = actionable.filter((row) => !row.overdue);
+  const nextDue = nextDueCandidates[0] ?? null;
+
+  return {
+    summary: {
+      paid_total: aggregates.paidTotal,
+      installment_count: allRows.length,
+      covered: coveredCount,
+      overdue: overdueCount,
+      upcoming: upcomingCount,
+      next_due: nextDue
+        ? {
+            due_on: nextDue.due_on,
+            amount: nextDue.amount,
+            item_label: nextDue.item_label,
+            label: nextDue.label,
+          }
+        : null,
     },
+    items,
+    total: actionable.length,
+    returned: items.length,
+    truncated: capped || items.length < actionable.length,
   };
 }
 
@@ -720,6 +915,10 @@ export async function executeReadTool(
       return getGuests(supabase, projectId);
     case "get_budget":
       return getBudget(supabase, projectId);
+    case "get_budget_payments":
+      return getBudgetPayments(supabase, projectId);
+    case "get_payment_schedule":
+      return getPaymentSchedule(supabase, projectId);
     case "get_vendors":
       return getVendors(supabase, projectId);
     case "get_vendor_targets":

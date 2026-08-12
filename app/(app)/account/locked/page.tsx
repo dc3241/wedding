@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/card";
 import { getAccountContext } from "@/lib/account-context";
 import { checkEntitlement } from "@/lib/billing/entitlement-gate";
 import { getSubscriptionForAccount } from "@/lib/billing/get-subscription";
+import { startCoupleTrial } from "@/lib/billing/start-couple-trial";
 import { startPlannerTrial } from "@/lib/billing/start-planner-trial";
 import { getPostLoginPath } from "@/lib/post-login-path";
 import { createClient } from "@/utils/supabase/server";
@@ -34,7 +35,8 @@ export default async function AccountLockedPage() {
   // Copy-only: no row / null status → never started; any inactive status → lapsed.
   const neverStarted = subscription.status === null;
   const isPlanner = account.kind === "business";
-  const showPlannerTrialCta = isPlanner && neverStarted;
+  const showTrialCta = neverStarted;
+  const startTrialAction = isPlanner ? startPlannerTrial : startCoupleTrial;
 
   const title = neverStarted
     ? "Start your trial to continue"
@@ -66,20 +68,12 @@ export default async function AccountLockedPage() {
             {body}
           </p>
           <div className="mt-8 flex flex-col items-stretch gap-3 sm:items-center">
-            {showPlannerTrialCta ? (
-              <form action={startPlannerTrial} className="w-full sm:w-auto">
+            {showTrialCta ? (
+              <form action={startTrialAction} className="w-full sm:w-auto">
                 <Button type="submit" variant="primary" className="w-full">
                   Start your 7-day free trial
                 </Button>
               </form>
-            ) : isPlanner ? (
-              <ButtonLink
-                href="/account/billing"
-                variant="primary"
-                className="w-full sm:w-auto"
-              >
-                {cta}
-              </ButtonLink>
             ) : (
               <ButtonLink
                 href="/account/billing"

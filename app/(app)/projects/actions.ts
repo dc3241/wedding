@@ -148,3 +148,43 @@ export async function createProjectFromForm(formData: FormData) {
 
   redirect(`/projects/${result.projectId}`);
 }
+
+export type CloneProjectTemplateResult =
+  | { ok: true }
+  | { ok: false; error: string };
+
+/**
+ * TMPL-01: seed a brand-new project's checklist / budget / vendor-target
+ * structure from another project in the same account. Thin RPC wrapper.
+ */
+export async function cloneProjectTemplate(
+  sourceProjectId: string,
+  targetProjectId: string,
+): Promise<CloneProjectTemplateResult> {
+  const source = sourceProjectId.trim();
+  const target = targetProjectId.trim();
+  if (!source || !target) {
+    return { ok: false, error: "Source and target projects are required." };
+  }
+  if (source === target) {
+    return { ok: false, error: "Source and target must be different projects." };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("clone_project_template", {
+    p_source_project_id: source,
+    p_target_project_id: target,
+  });
+
+  if (error) {
+    return { ok: false, error: error.message };
+  }
+
+  revalidatePath(`/projects/${target}`);
+  revalidatePath(`/projects/${target}/checklist`);
+  revalidatePath(`/projects/${target}/budget`);
+  revalidatePath(`/projects/${target}/vendors`);
+  revalidatePath("/dashboard");
+  revalidatePath("/projects");
+  return { ok: true };
+}

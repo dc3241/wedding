@@ -9,7 +9,8 @@ import { cn } from "@/lib/cn";
 import { useState } from "react";
 
 type Audience = "couples" | "planners";
-type Cadence = "monthly" | "annual";
+type PlannerCadence = "monthly" | "annual";
+type CoupleCadence = "monthly" | "lifetime";
 
 type Plan = {
   name: string;
@@ -21,37 +22,16 @@ type Plan = {
   popular?: boolean;
 };
 
-const COUPLE_PLANS: Plan[] = [
-  {
-    name: "Free",
-    price: "$0",
-    period: "forever",
-    description: "Everything you need to start planning the day you get engaged.",
-    cta: { label: "Start free", href: "/login", variant: "default" },
-    features: [
-      "Starter plan from your date & budget",
-      "Checklist & day-of timeline",
-      "Guest list & basic budget",
-      "One wedding website",
-    ],
-  },
-  {
-    name: "The full plan",
-    price: "$99",
-    period: "one-time",
-    description: "Try 7 days for $7 — applied to your $99.",
-    // TODO PRICE-02: route to $7 trial checkout ($7 → credit toward $99).
-    cta: { label: "Start your $7 week", href: "/login", variant: "primary" },
-    features: [
-      "Everything in Free",
-      "Planning assistant & vendor outreach",
-      "Full budget with vendor links",
-      "Seating chart, RSVP & registry",
-      "Photo-led website + custom RSVP",
-    ],
-    popular: true,
-  },
-];
+const COUPLE_MONTHLY_PRICE = 10;
+const COUPLE_LIFETIME_PRICE = 99;
+
+const COUPLE_FEATURES = [
+  "Everything in Free",
+  "Planning assistant & vendor outreach",
+  "Full budget with vendor links",
+  "Seating chart, RSVP & registry",
+  "Photo-led website + custom RSVP",
+] as const;
 
 /** Planner list prices — presentation only; Stripe objects land in PRICE-02. */
 const PLANNER_MONTHLY_PRICE = 59;
@@ -93,10 +73,7 @@ const AGENCY_PLAN: Plan = {
   ],
 };
 
-const FOOTER: Record<Audience, string> = {
-  couples: "7 days for $7 · applied to your $99 · keep everything you build.",
-  planners: "7-day free trial · no card to start · cancel anytime.",
-};
+const TRIAL_FOOTER = "7-day free trial · no card to start · cancel anytime.";
 
 function FeatureTick({ children }: { children: string }) {
   return (
@@ -155,9 +132,79 @@ function PlanCard({ plan }: { plan: Plan }) {
   );
 }
 
+/** PRICE-08: marketing couple card — real plan choice is post-login on billing. */
+function CoupleCard() {
+  const [cadence, setCadence] = useState<CoupleCadence>("monthly");
+  const lifetime = cadence === "lifetime";
+
+  return (
+    <article className="relative flex h-full flex-col rounded-[var(--radius-card)] bg-surface p-7 shadow-raised ring-2 ring-accent">
+      <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-[var(--radius-pill)] bg-accent px-3 py-1 text-[11px] font-semibold tracking-[0.06em] text-surface uppercase">
+        Most popular
+      </span>
+      <h3 className="text-[19px] font-extrabold tracking-[-0.02em] text-ink">
+        The full plan
+      </h3>
+
+      <div className="mt-4">
+        <SegmentedToggle aria-label="Couple plan" className="w-fit p-0.5">
+          <SegmentedToggleItem
+            active={cadence === "monthly"}
+            aria-pressed={cadence === "monthly"}
+            onClick={() => setCadence("monthly")}
+            className="px-3 py-1 text-[12px] font-semibold"
+          >
+            Monthly
+          </SegmentedToggleItem>
+          <SegmentedToggleItem
+            active={cadence === "lifetime"}
+            aria-pressed={cadence === "lifetime"}
+            onClick={() => setCadence("lifetime")}
+            className="px-3 py-1 text-[12px] font-semibold"
+          >
+            Lifetime
+          </SegmentedToggleItem>
+        </SegmentedToggle>
+      </div>
+
+      <div className="mt-3">
+        {lifetime ? (
+          <p className="flex items-baseline gap-1.5">
+            <span className="text-[40px] font-extrabold tracking-[-0.035em] tabular-nums text-ink">
+              ${COUPLE_LIFETIME_PRICE}
+            </span>
+            <span className="text-[14px] font-medium text-muted">/ one-time</span>
+          </p>
+        ) : (
+          <p className="flex items-baseline gap-1.5">
+            <span className="text-[40px] font-extrabold tracking-[-0.035em] tabular-nums text-ink">
+              ${COUPLE_MONTHLY_PRICE}
+            </span>
+            <span className="text-[14px] font-medium text-muted">/ month</span>
+          </p>
+        )}
+      </div>
+
+      <p className="mt-3 flex-1 text-[14.5px] leading-relaxed text-muted">
+        {lifetime
+          ? "Pay once, plan forever — no recurring charges."
+          : "Full planning tools, billed monthly. Cancel anytime."}
+      </p>
+      <ButtonLink href="/login" variant="primary" className="mt-6 w-full">
+        Start free trial
+      </ButtonLink>
+      <ul className="mt-6 space-y-3 border-t border-hairline pt-6">
+        {COUPLE_FEATURES.map((f) => (
+          <FeatureTick key={f}>{f}</FeatureTick>
+        ))}
+      </ul>
+    </article>
+  );
+}
+
 /** Cadence lives here only — couples never mount this card, so no page-level guard. */
 function PlannerCard() {
-  const [cadence, setCadence] = useState<Cadence>("monthly");
+  const [cadence, setCadence] = useState<PlannerCadence>("monthly");
   const annual = cadence === "annual";
 
   return (
@@ -263,9 +310,7 @@ export function PricingPlans() {
 
       <div className="mx-auto mt-10 grid max-w-3xl gap-6 sm:grid-cols-2">
         {audience === "couples" ? (
-          COUPLE_PLANS.map((plan) => (
-            <PlanCard key={plan.name} plan={plan} />
-          ))
+          <CoupleCard />
         ) : (
           <>
             <PlannerCard />
@@ -275,7 +320,7 @@ export function PricingPlans() {
       </div>
 
       <p className="mx-auto mt-10 max-w-xl text-center text-[13px] font-medium text-muted">
-        {FOOTER[audience]}
+        {TRIAL_FOOTER}
       </p>
     </div>
   );

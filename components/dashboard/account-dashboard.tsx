@@ -38,7 +38,7 @@ export function AccountDashboard({
           title="Dashboard"
           description="Your weddings at a glance."
         />
-        <NewWeddingForm />
+        <NewWeddingForm templateSources={activeProjects} />
       </div>
 
       <div className="mb-8 grid grid-cols-1 gap-3.5 md:grid-cols-3">

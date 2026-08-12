@@ -1,11 +1,9 @@
 "use client";
 
 import {
-  cancelCoupleTrial,
   createCoupleCheckoutSession,
   createPlannerCheckoutSession,
-  createPlannerPortalSession,
-  resumeCoupleTrial,
+  createPortalSession,
 } from "@/app/(app)/account/billing/actions";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,37 +12,40 @@ import {
 } from "@/components/ui/topbar";
 import { useState } from "react";
 
-/** PRICE-05: stop the day-7 $92 charge; keep access through period end. */
-export function CoupleTrialCancelButton() {
-  return (
-    <form action={cancelCoupleTrial}>
-      <Button type="submit" variant="default">
-        Cancel trial
-      </Button>
-    </form>
-  );
-}
-
-/** PRICE-05: undo cancel — day-7 charge is back on. */
-export function CoupleTrialResumeButton() {
-  return (
-    <form action={resumeCoupleTrial}>
-      <Button type="submit" variant="default">
-        Resume trial
-      </Button>
-    </form>
-  );
-}
-
-/** PRICE-03: $7 trial-week Checkout (also used for lapsed reactivation). */
+/** PRICE-08: Monthly / Lifetime toggle + Checkout for couples. */
 export function CoupleSubscribeButton() {
+  const [plan, setPlan] = useState<"monthly" | "lifetime">("monthly");
+
   return (
-    <div className="flex flex-col items-stretch gap-2 sm:items-end">
+    <div className="flex flex-col items-stretch gap-3 sm:items-end">
+      <SegmentedToggle aria-label="Couple plan" className="w-fit p-0.5">
+        <SegmentedToggleItem
+          type="button"
+          active={plan === "monthly"}
+          aria-pressed={plan === "monthly"}
+          onClick={() => setPlan("monthly")}
+          className="px-3 py-1 text-[12px] font-semibold"
+        >
+          Monthly · $10
+        </SegmentedToggleItem>
+        <SegmentedToggleItem
+          type="button"
+          active={plan === "lifetime"}
+          aria-pressed={plan === "lifetime"}
+          onClick={() => setPlan("lifetime")}
+          className="px-3 py-1 text-[12px] font-semibold"
+        >
+          Lifetime · $99
+        </SegmentedToggleItem>
+      </SegmentedToggle>
       <form action={createCoupleCheckoutSession}>
-        <Button type="submit">Start your $7 trial week</Button>
+        <input type="hidden" name="plan" value={plan} />
+        <Button type="submit">Subscribe</Button>
       </form>
       <p className="max-w-[18rem] text-[13px] leading-snug text-muted sm:text-right">
-        $7 today, $92 on day 7 — $99 total, no recurring charges.
+        {plan === "monthly"
+          ? "$10/mo — cancel anytime from billing."
+          : "$99 once — no recurring charges."}
       </p>
     </div>
   );
@@ -84,10 +85,10 @@ export function PlannerSubscribeButton() {
   );
 }
 
-/** PRICE-06: open Stripe Customer Portal for an existing planner Subscription. */
+/** PRICE-06 / PRICE-08: open Stripe Customer Portal for a real Subscription. */
 export function ManageBillingButton() {
   return (
-    <form action={createPlannerPortalSession}>
+    <form action={createPortalSession}>
       <Button type="submit" variant="default">
         Manage subscription
       </Button>

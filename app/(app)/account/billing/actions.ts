@@ -1,11 +1,13 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { getAccountContext } from "@/lib/account-context";
 import { getOrCreateStripeCustomer } from "@/lib/billing/get-or-create-customer";
 import {
+  getCouplePriceId,
   getPlannerPriceId,
+  type CoupleBillingPlan,
   type PlannerBillingInterval,
 } from "@/lib/billing/plans";
 import {
@@ -16,12 +18,6 @@ import { getStripe } from "@/lib/stripe";
 import { createClient } from "@/utils/supabase/server";
 
 const BILLING_PATH = "/account/billing";
-const TRIAL_ENDED_MESSAGE =
-  "This trial has already ended or been charged.";
-
-/** $7 first-week charge. The $92 day-7 amount is FINAL_CHARGE_CENTS in
- *  supabase/functions/charge-trial-balance — update BOTH if the $99 total changes. */
-const TRIAL_WEEK_CENTS = 700;
 
 async function billingBaseUrl() {
   const headersList = await headers();
@@ -37,44 +33,62 @@ function parsePlannerInterval(
   throw new Error("Choose Monthly or Annual.");
 }
 
+function parseCouplePlan(
+  value: FormDataEntryValue | null,
+): CoupleBillingPlan {
+  if (value === "monthly" || value === "lifetime") {
+    return value;
+  }
+  throw new Error("Choose Monthly or Lifetime.");
+}
+
 /**
- * PRICE-03: one-time $7 trial-week Checkout (mode=payment).
- * Saves the card via setup_future_usage for the day-7 $92 charge (PRICE-04).
+ * PRICE-08: couple paid Checkout — Monthly ($10/mo subscription) or
+ * Lifetime ($99 one-time). No trial_period_days; PRICE-07 owns the free window.
  */
-export async function createCoupleCheckoutSession() {
+export async function createCoupleCheckoutSession(formData: FormData) {
+  const plan = parseCouplePlan(formData.get("plan"));
   const supabase = await createClient();
   const accountId = await resolvePersonalAccountId(supabase);
   const customerId = await getOrCreateStripeCustomer(accountId);
+  const priceId = getCouplePriceId(plan);
   const baseUrl = await billingBaseUrl();
   const stripe = getStripe();
 
-  const session = await stripe.checkout.sessions.create({
-    mode: "payment",
-    customer: customerId,
-    line_items: [
-      {
-        price_data: {
-          currency: "usd",
-          product_data: { name: "First Look — Full Plan (trial week)" },
-          unit_amount: TRIAL_WEEK_CENTS,
-        },
-        quantity: 1,
-      },
-    ],
-    payment_intent_data: {
-      setup_future_usage: "off_session",
-      metadata: {
-        account_id: accountId,
-        charge_stage: "trial_week",
-      },
-    },
-    success_url: `${baseUrl}${BILLING_PATH}?status=success`,
-    cancel_url: `${baseUrl}${BILLING_PATH}?status=cancelled`,
-    metadata: {
-      account_id: accountId,
-      charge_stage: "trial_week",
-    },
-  });
+  const session =
+    plan === "monthly"
+      ? await stripe.checkout.sessions.create({
+          mode: "subscription",
+          customer: customerId,
+          line_items: [{ price: priceId, quantity: 1 }],
+          success_url: `${baseUrl}${BILLING_PATH}?status=success`,
+          cancel_url: `${baseUrl}${BILLING_PATH}?status=cancelled`,
+          metadata: {
+            account_id: accountId,
+          },
+          subscription_data: {
+            metadata: {
+              account_id: accountId,
+            },
+          },
+        })
+      : await stripe.checkout.sessions.create({
+          mode: "payment",
+          customer: customerId,
+          line_items: [{ price: priceId, quantity: 1 }],
+          payment_intent_data: {
+            metadata: {
+              account_id: accountId,
+              charge_stage: "couple_lifetime",
+            },
+          },
+          success_url: `${baseUrl}${BILLING_PATH}?status=success`,
+          cancel_url: `${baseUrl}${BILLING_PATH}?status=cancelled`,
+          metadata: {
+            account_id: accountId,
+            charge_stage: "couple_lifetime",
+          },
+        });
 
   if (!session.url) {
     throw new Error("Could not create checkout session.");
@@ -122,74 +136,21 @@ export async function createPlannerCheckoutSession(formData: FormData) {
 }
 
 /**
- * PRICE-05: stop (or undo stopping) the day-7 $92 charge.
- * Does not refund the $7 — only flips cancel_at_period_end while the
- * local trial is still open. RPC can succeed with zero rows updated;
- * we re-read to surface that honestly.
+ * PRICE-06 / PRICE-08: Stripe Customer Portal for any account with a
+ * real Stripe Customer. Uses the dashboard default Portal configuration.
  */
-async function setCoupleTrialCancellation(cancel: boolean) {
+export async function createPortalSession() {
   const supabase = await createClient();
-  const accountId = await resolvePersonalAccountId(supabase);
+  const account = await getAccountContext(supabase);
 
-  const { error } = await supabase.rpc("set_couple_trial_cancellation", {
-    p_account_id: accountId,
-    p_cancel: cancel,
-  });
-
-  if (error) {
-    throw new Error(error.message);
+  if (!account) {
+    throw new Error("No billing account found.");
   }
-
-  const { data: row, error: readError } = await supabase
-    .from("subscriptions")
-    .select(
-      "cancel_at_period_end, status, current_period_end, stripe_subscription_id",
-    )
-    .eq("account_id", accountId)
-    .maybeSingle();
-
-  if (readError) {
-    throw new Error(readError.message);
-  }
-
-  const periodOpen =
-    row?.current_period_end != null &&
-    new Date(row.current_period_end) > new Date();
-  const applied =
-    row?.status === "trialing" &&
-    row.stripe_subscription_id == null &&
-    periodOpen &&
-    row.cancel_at_period_end === cancel;
-
-  if (!applied) {
-    throw new Error(TRIAL_ENDED_MESSAGE);
-  }
-
-  revalidatePath(BILLING_PATH);
-}
-
-/** PRICE-05: cancel the upcoming $92 charge; access lasts through period end. */
-export async function cancelCoupleTrial() {
-  await setCoupleTrialCancellation(true);
-}
-
-/** PRICE-05: undo a cancel — day-7 charge will run again if still open. */
-export async function resumeCoupleTrial() {
-  await setCoupleTrialCancellation(false);
-}
-
-/**
- * PRICE-06: Stripe Customer Portal for planners with a real Subscription.
- * Uses the dashboard default Portal configuration (no configuration id).
- */
-export async function createPlannerPortalSession() {
-  const supabase = await createClient();
-  const accountId = await resolveBusinessAccountId(supabase);
 
   const { data: subscription, error } = await supabase
     .from("subscriptions")
     .select("stripe_customer_id")
-    .eq("account_id", accountId)
+    .eq("account_id", account.accountId)
     .maybeSingle();
 
   if (error) {
