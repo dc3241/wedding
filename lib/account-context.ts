@@ -14,9 +14,20 @@ export type AccountContext = {
 export async function getAccountContext(
   supabase: SupabaseClient,
 ): Promise<AccountContext | null> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return null;
+  }
+
+  // Filter by user_id: fellow-member SELECT (TEAM-01) would otherwise
+  // surface other members' rows and skew multi-account ordering.
   const { data: memberships } = await supabase
     .from("account_members")
     .select("account_id")
+    .eq("user_id", user.id)
     .order("created_at", { ascending: true })
     .limit(1);
 

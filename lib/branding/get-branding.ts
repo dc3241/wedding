@@ -1,4 +1,5 @@
 import "server-only";
+import { resolveBusinessAccountId } from "@/lib/billing/resolve-account";
 import type { ProjectBranding } from "@/lib/branding/types";
 import { createClient } from "@/utils/supabase/server";
 
@@ -31,6 +32,45 @@ export async function getBrandingForProject(
     brandName: row.brand_name,
     brandLogoUrl: row.brand_logo_url,
     brandAccentColor: row.brand_accent_color,
+  };
+}
+
+/**
+ * Own-shell branding for PlannerShell (VENUE-01).
+ * Separate from getBrandingForProject — answers "my account's chrome,"
+ * not "a project I'm viewing's owner's chrome."
+ * Returns null unless plan = 'venue' AND white_label_enabled.
+ */
+export async function getOwnAccountBranding(): Promise<ProjectBranding | null> {
+  const supabase = await createClient();
+
+  let accountId: string;
+  try {
+    accountId = await resolveBusinessAccountId(supabase);
+  } catch {
+    return null;
+  }
+
+  const { data, error } = await supabase
+    .from("accounts")
+    .select(
+      "plan, white_label_enabled, brand_name, brand_logo_url, brand_accent_color",
+    )
+    .eq("id", accountId)
+    .maybeSingle();
+
+  if (error || !data) {
+    return null;
+  }
+
+  if (data.plan !== "venue" || data.white_label_enabled !== true) {
+    return null;
+  }
+
+  return {
+    brandName: data.brand_name,
+    brandLogoUrl: data.brand_logo_url,
+    brandAccentColor: data.brand_accent_color,
   };
 }
 

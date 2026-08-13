@@ -4,6 +4,7 @@ import { LogoutButton } from "@/components/auth/logout-button";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Card } from "@/components/ui/card";
+import { Eyebrow } from "@/components/ui/eyebrow";
 import { cn } from "@/lib/cn";
 
 export type SidebarProject = {
@@ -39,10 +40,10 @@ function extractProjectId(pathname: string): string | null {
 
 const navLinkClass = (active: boolean) =>
   cn(
-    "block rounded-[var(--radius-inner)] px-3.5 py-2.5 text-[14px] font-medium transition-colors",
+    "block rounded-[var(--radius-inner)] border-l-2 px-3.5 py-2.5 text-[14px] font-medium transition-colors",
     active
-      ? "bg-accent-wash font-semibold text-accent shadow-[inset_2px_0_0_var(--accent)]"
-      : "text-muted hover:bg-well hover:text-ink",
+      ? "rounded-tl-none rounded-bl-none border-accent font-semibold text-ink"
+      : "border-transparent text-muted hover:bg-well hover:text-ink",
   );
 
 export function PlannerProjectSidebar({
@@ -67,6 +68,8 @@ export function PlannerProjectSidebar({
   const onBranding =
     pathname === "/account/branding" ||
     pathname.startsWith("/account/branding?");
+  const onTeam =
+    pathname === "/account/team" || pathname.startsWith("/account/team?");
 
   return (
     <aside className="w-[260px] shrink-0">
@@ -87,6 +90,9 @@ export function PlannerProjectSidebar({
           <Link href="/contracts" className={navLinkClass(onContracts)}>
             Contracts
           </Link>
+          <Link href="/account/team" className={navLinkClass(onTeam)}>
+            Team
+          </Link>
           <Link href="/account/branding" className={navLinkClass(onBranding)}>
             Branding
           </Link>
@@ -99,9 +105,7 @@ export function PlannerProjectSidebar({
         </div>
         <div className="mb-3 h-px bg-hairline" />
         <div className="px-3.5 pb-3">
-          <p className="text-[12px] font-semibold uppercase tracking-[0.09em] text-muted">
-            Active weddings
-          </p>
+          <Eyebrow>Active weddings</Eyebrow>
         </div>
         <nav className="flex flex-col gap-1.5 px-1.5 pb-1.5">
           {projects.map((project) => {
@@ -113,19 +117,14 @@ export function PlannerProjectSidebar({
                 key={project.id}
                 href={`/projects/${project.id}`}
                 className={cn(
-                  "flex items-center justify-between gap-2.5 rounded-[var(--radius-inner)] px-3.5 py-3 no-underline transition-colors",
+                  "flex items-center justify-between gap-2.5 rounded-[var(--radius-inner)] border-l-2 bg-well px-3.5 py-3 no-underline shadow-recessed transition-colors",
                   active
-                    ? "bg-accent-wash"
-                    : "bg-well shadow-recessed hover:opacity-90",
+                    ? "rounded-tl-none rounded-bl-none border-accent"
+                    : "border-transparent hover:opacity-90",
                 )}
               >
                 <div className="min-w-0">
-                  <div
-                    className={cn(
-                      "truncate text-[15px] font-semibold leading-snug",
-                      active ? "text-accent" : "text-ink",
-                    )}
-                  >
+                  <div className="truncate text-[15px] font-semibold leading-snug text-ink">
                     {project.name}
                   </div>
                   <div className="mt-0.5 text-[12px] tabular-nums text-muted">

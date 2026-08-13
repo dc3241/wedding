@@ -433,26 +433,30 @@ export function CalendarWorkspace({
             const selected = dayDetailDate === cell.localDate;
 
             return (
-              <button
+              <div
                 key={cell.localDate}
-                type="button"
                 onClick={() => setPanel({ type: "day", date: cell.localDate })}
                 className={cn(
-                  "flex min-h-[88px] flex-col gap-1 rounded-[var(--radius-inner)] bg-well p-1.5 text-left shadow-recessed transition-colors",
-                  "hover:bg-accent-wash/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
+                  "flex min-h-[88px] cursor-pointer flex-col gap-1 rounded-[var(--radius-inner)] bg-well p-1.5 text-left shadow-recessed transition-colors",
+                  "hover:bg-accent-wash/50",
                   !cell.inMonth && "opacity-45",
                   selected && "ring-2 ring-accent ring-offset-1 ring-offset-surface",
                   isToday && "bg-accent-wash/80",
                 )}
               >
-                <span
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setPanel({ type: "day", date: cell.localDate });
+                  }}
                   className={cn(
-                    "text-[13px] font-semibold tabular-nums",
+                    "w-fit rounded-[var(--radius-inner)] text-[13px] font-semibold tabular-nums focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
                     isToday ? "text-accent" : "text-muted",
                   )}
                 >
                   {Number(cell.localDate.slice(8, 10))}
-                </span>
+                </button>
                 <div className="flex min-w-0 flex-1 flex-col gap-0.5">
                   {visible.map((item) => (
                     <EventChip
@@ -476,7 +480,7 @@ export function CalendarWorkspace({
                     </span>
                   ) : null}
                 </div>
-              </button>
+              </div>
             );
           })}
         </div>

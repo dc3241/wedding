@@ -9,6 +9,7 @@ import {
   type PortfolioPhoto,
 } from "@/components/vendors/VendorPortfolioGallery";
 import { Card } from "@/components/ui/card";
+import { Eyebrow } from "@/components/ui/eyebrow";
 import { Pill } from "@/components/ui/pill";
 import { vendorStatusPill } from "@/components/vendors/vendor-status";
 import {
@@ -165,9 +166,7 @@ export default async function VendorLibraryDetailPage({
       </div>
 
       <Card className="mt-6 p-6">
-        <p className="text-[12px] font-semibold uppercase tracking-[0.09em] text-accent">
-          Used on
-        </p>
+        <Eyebrow>Used on</Eyebrow>
 
         {usage.length === 0 ? (
           <p className="mt-3 text-[14px] text-muted">

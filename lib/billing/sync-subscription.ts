@@ -19,9 +19,19 @@ export type SubscriptionUpsert = {
 export async function resolveBillingAccountId(
   supabase: SupabaseClient,
 ): Promise<string> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    throw new Error("No billing account found.");
+  }
+
+  // Scope to the caller's row — fellow-member SELECT (TEAM-01).
   const { data: businessMembership, error: businessError } = await supabase
     .from("account_members")
     .select("account_id, accounts!inner(kind)")
+    .eq("user_id", user.id)
     .eq("accounts.kind", "business")
     .limit(1)
     .maybeSingle();
@@ -37,6 +47,7 @@ export async function resolveBillingAccountId(
   const { data: personalMembership, error: personalError } = await supabase
     .from("account_members")
     .select("account_id, accounts!inner(kind)")
+    .eq("user_id", user.id)
     .eq("accounts.kind", "personal")
     .limit(1)
     .maybeSingle();
@@ -120,6 +131,66 @@ function subscriptionQuantity(subscription: Stripe.Subscription): number {
   return subscription.items.data[0]?.quantity ?? 1;
 }
 
+/**
+ * VENUE-02 / VENUE-02b: flip accounts.plan from the live subscription price.
+ * Additive — only runs when price_id is in the venue monthly/annual set.
+ * Fail-closed: only active/trialing → 'venue'; every other known status
+ * → 'planner'. Unrecognized statuses → 'planner' + warn (do not grant
+ * venue by default).
+ * Idempotent. Does not touch white_label_enabled or brand columns.
+ * CHECK failures (e.g. personal account) must propagate — do not swallow.
+ */
+async function applyVenuePlanFromSubscription(
+  accountId: string,
+  priceId: string | null,
+  status: string | null | undefined,
+): Promise<void> {
+  const venuePriceIds = new Set(
+    [
+      process.env.STRIPE_PRICE_VENUE_MONTHLY,
+      process.env.STRIPE_PRICE_VENUE_ANNUAL,
+    ].filter((id): id is string => Boolean(id)),
+  );
+  if (!priceId || venuePriceIds.size === 0 || !venuePriceIds.has(priceId)) {
+    return;
+  }
+
+  // Venue Checkout has no trial_period_days today (PRICE-02 parity) —
+  // 'trialing' is mapped for correctness but currently unreachable.
+  let plan: "venue" | "planner";
+  switch (status) {
+    case "active":
+    case "trialing":
+      plan = "venue";
+      break;
+    case "canceled":
+    case "incomplete_expired":
+    case "incomplete":
+    case "unpaid":
+    case "past_due":
+    case "paused":
+      plan = "planner";
+      break;
+    default:
+      console.warn(
+        "VENUE-02: unrecognized Stripe subscription status; setting plan=planner",
+        { accountId, priceId, status },
+      );
+      plan = "planner";
+      break;
+  }
+
+  const admin = createServiceRoleClient();
+  const { error } = await admin
+    .from("accounts")
+    .update({ plan })
+    .eq("id", accountId);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
 export async function syncSubscriptionFromStripe(
   subscription: Stripe.Subscription,
 ): Promise<void> {
@@ -133,16 +204,24 @@ export async function syncSubscriptionFromStripe(
     return;
   }
 
+  const priceId = subscriptionPriceId(subscription);
+
   await upsertSubscriptionRow({
     account_id: accountId,
     stripe_customer_id: customerId,
     stripe_subscription_id: subscription.id,
     status: subscription.status,
-    price_id: subscriptionPriceId(subscription),
+    price_id: priceId,
     quantity: subscriptionQuantity(subscription),
     current_period_end: subscriptionPeriodEnd(subscription),
     cancel_at_period_end: subscription.cancel_at_period_end,
   });
+
+  await applyVenuePlanFromSubscription(
+    accountId,
+    priceId,
+    subscription.status,
+  );
 }
 
 export async function syncSubscriptionById(
@@ -166,14 +245,22 @@ export async function markSubscriptionCanceled(
     return;
   }
 
+  const priceId = subscriptionPriceId(subscription);
+
   await upsertSubscriptionRow({
     account_id: accountId,
     stripe_customer_id: customerId,
     stripe_subscription_id: subscription.id,
     status: subscription.status,
-    price_id: subscriptionPriceId(subscription),
+    price_id: priceId,
     quantity: subscriptionQuantity(subscription),
     current_period_end: subscriptionPeriodEnd(subscription),
     cancel_at_period_end: subscription.cancel_at_period_end,
   });
+
+  await applyVenuePlanFromSubscription(
+    accountId,
+    priceId,
+    subscription.status,
+  );
 }

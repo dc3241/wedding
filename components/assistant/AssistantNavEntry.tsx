@@ -119,9 +119,9 @@ export function AssistantNavEntry({ projectId }: { projectId: string }) {
         onClick={handleChipClick}
         aria-expanded={visible}
         aria-controls="assistant-panel"
-        className="flex items-center gap-2 rounded-full border border-accent bg-accent px-3.5 py-2 text-sm font-medium text-surface transition-colors hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+        className="flex items-center gap-2 rounded-full border border-ring bg-surface px-3.5 py-2 text-sm font-medium text-ink transition-colors hover:border-accent hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
       >
-        <AssistantSparkleIcon className="size-[18px] text-surface" />
+        <AssistantSparkleIcon className="size-[18px] text-accent" />
         Assistant
       </button>
     </div>

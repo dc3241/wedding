@@ -19,19 +19,23 @@ export default async function BrandingPage() {
   const { data: row } = await supabase
     .from("accounts")
     .select(
-      "brand_name, brand_logo_url, brand_accent_color, white_label_enabled",
+      "plan, brand_name, brand_logo_url, brand_accent_color, white_label_enabled",
     )
     .eq("id", accountId)
     .maybeSingle();
 
   const shellClass = shellLayoutClass(account.kind, false, "reading");
+  const isVenue = row?.plan === "venue";
+  const description = isVenue
+    ? "Show your logo, name, and accent color across your planner dashboard and to invited couples."
+    : "Show invited couples and collaborators your logo, name, and accent color inside the app. Your planner chrome stays First Look.";
 
   return (
     <div className={shellClass}>
       <PageHeader
         eyebrow="Account"
         title="Branding"
-        description="Show invited couples and collaborators your logo, name, and accent color inside the app. Your planner chrome stays First Look."
+        description={description}
       />
       <BrandingForm
         accountId={accountId}

@@ -5,22 +5,12 @@ import {
   SegmentedToggle,
   SegmentedToggleItem,
 } from "@/components/ui/topbar";
-import { cn } from "@/lib/cn";
 import { useState } from "react";
 
 type Audience = "couples" | "planners";
 type PlannerCadence = "monthly" | "annual";
+type VenueCadence = "monthly" | "annual";
 type CoupleCadence = "monthly" | "lifetime";
-
-type Plan = {
-  name: string;
-  price: string;
-  period?: string;
-  description: string;
-  cta: { label: string; href: string; variant: "default" | "primary" };
-  features: string[];
-  popular?: boolean;
-};
 
 const COUPLE_MONTHLY_PRICE = 10;
 const COUPLE_LIFETIME_PRICE = 99;
@@ -55,23 +45,17 @@ const PLANNER_FEATURES = [
   "Priority support",
 ] as const;
 
-const AGENCY_PLAN: Plan = {
-  name: "Agency",
-  price: "Let's talk",
-  description: "For large teams and franchises with custom needs and volume.",
-  // TODO: replace with real sales inbox once domain mail is live
-  cta: {
-    label: "Contact sales",
-    href: "mailto:hello@firstlook.app",
-    variant: "default",
-  },
-  features: [
-    "Unlimited weddings & seats",
-    "Custom domain & branding",
-    "Onboarding & migration help",
-    "Dedicated account manager",
-  ],
-};
+/** Venue list prices — presentation only; Checkout is post-login on /account/venue-upgrade. */
+const VENUE_MONTHLY_PRICE = 199;
+const VENUE_ANNUAL_PRICE = 1999;
+const VENUE_ANNUAL_SAVINGS = VENUE_MONTHLY_PRICE * 12 - VENUE_ANNUAL_PRICE;
+
+const VENUE_FEATURES = [
+  "Unlimited weddings & team seats",
+  "Your venue's branding across the whole dashboard",
+  "Every planning tool — budget, guests, seating, vendors, contracts, website builder",
+  "Dedicated support getting set up",
+] as const;
 
 const TRIAL_FOOTER = "7-day free trial · no card to start · cancel anytime.";
 
@@ -86,49 +70,6 @@ function FeatureTick({ children }: { children: string }) {
       </span>
       <span>{children}</span>
     </li>
-  );
-}
-
-function PlanCard({ plan }: { plan: Plan }) {
-  return (
-    <article
-      className={cn(
-        "relative flex h-full flex-col rounded-[var(--radius-card)] bg-surface p-7 shadow-raised",
-        plan.popular && "ring-2 ring-accent",
-      )}
-    >
-      {plan.popular ? (
-        <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-[var(--radius-pill)] bg-accent px-3 py-1 text-[11px] font-semibold tracking-[0.06em] text-surface uppercase">
-          Most popular
-        </span>
-      ) : null}
-      <h3 className="text-[19px] font-extrabold tracking-[-0.02em] text-ink">
-        {plan.name}
-      </h3>
-      <p className="mt-3 flex items-baseline gap-1.5">
-        <span className="text-[40px] font-extrabold tracking-[-0.035em] tabular-nums text-ink">
-          {plan.price}
-        </span>
-        {plan.period ? (
-          <span className="text-[14px] font-medium text-muted">/ {plan.period}</span>
-        ) : null}
-      </p>
-      <p className="mt-3 flex-1 text-[14.5px] leading-relaxed text-muted">
-        {plan.description}
-      </p>
-      <ButtonLink
-        href={plan.cta.href}
-        variant={plan.cta.variant}
-        className="mt-6 w-full"
-      >
-        {plan.cta.label}
-      </ButtonLink>
-      <ul className="mt-6 space-y-3 border-t border-hairline pt-6">
-        {plan.features.map((f) => (
-          <FeatureTick key={f}>{f}</FeatureTick>
-        ))}
-      </ul>
-    </article>
   );
 }
 
@@ -147,22 +88,22 @@ function CoupleCard() {
       </h3>
 
       <div className="mt-4">
-        <SegmentedToggle aria-label="Couple plan" className="w-fit p-0.5">
+        <SegmentedToggle aria-label="Couple plan" className="w-full p-0.5">
           <SegmentedToggleItem
             active={cadence === "monthly"}
             aria-pressed={cadence === "monthly"}
             onClick={() => setCadence("monthly")}
-            className="px-3 py-1 text-[12px] font-semibold"
+            className="flex-1 px-3 py-1.5 text-[12px] font-semibold"
           >
-            Monthly
+            Monthly · ${COUPLE_MONTHLY_PRICE}
           </SegmentedToggleItem>
           <SegmentedToggleItem
             active={cadence === "lifetime"}
             aria-pressed={cadence === "lifetime"}
             onClick={() => setCadence("lifetime")}
-            className="px-3 py-1 text-[12px] font-semibold"
+            className="flex-1 px-3 py-1.5 text-[12px] font-semibold"
           >
-            Lifetime
+            Lifetime · ${COUPLE_LIFETIME_PRICE}
           </SegmentedToggleItem>
         </SegmentedToggle>
       </div>
@@ -282,6 +223,74 @@ function PlannerCard() {
   );
 }
 
+/** VENUE-03b: cosmetic Monthly/Annual — real Checkout is post-login on /account/venue-upgrade. */
+function VenueCard() {
+  const [cadence, setCadence] = useState<VenueCadence>("monthly");
+  const annual = cadence === "annual";
+
+  return (
+    <article className="relative flex h-full flex-col rounded-[var(--radius-card)] bg-surface p-7 shadow-raised">
+      <h3 className="text-[19px] font-extrabold tracking-[-0.02em] text-ink">
+        Venue
+      </h3>
+
+      <div className="mt-4">
+        <SegmentedToggle aria-label="Venue billing cadence" className="w-fit p-0.5">
+          <SegmentedToggleItem
+            active={cadence === "monthly"}
+            aria-pressed={cadence === "monthly"}
+            onClick={() => setCadence("monthly")}
+            className="px-3 py-1 text-[12px] font-semibold"
+          >
+            Monthly
+          </SegmentedToggleItem>
+          <SegmentedToggleItem
+            active={cadence === "annual"}
+            aria-pressed={cadence === "annual"}
+            onClick={() => setCadence("annual")}
+            className="px-3 py-1 text-[12px] font-semibold"
+          >
+            Annual
+          </SegmentedToggleItem>
+        </SegmentedToggle>
+      </div>
+
+      <div className="mt-3">
+        {annual ? (
+          <div className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
+            <span className="text-[40px] font-extrabold tracking-[-0.035em] tabular-nums text-ink">
+              ${VENUE_ANNUAL_PRICE.toLocaleString("en-US")}
+            </span>
+            <span className="text-[14px] font-medium text-muted">/ year</span>
+            <span className="rounded-[var(--radius-pill)] bg-accent-wash px-2.5 py-1 text-[13px] font-semibold text-accent">
+              Save ${VENUE_ANNUAL_SAVINGS}/yr
+            </span>
+          </div>
+        ) : (
+          <p className="flex items-baseline gap-1.5">
+            <span className="text-[40px] font-extrabold tracking-[-0.035em] tabular-nums text-ink">
+              ${VENUE_MONTHLY_PRICE}
+            </span>
+            <span className="text-[14px] font-medium text-muted">/ month</span>
+          </p>
+        )}
+      </div>
+
+      <p className="mt-3 flex-1 text-[14.5px] leading-relaxed text-muted">
+        For venues running weddings with their own planning team.
+      </p>
+      <ButtonLink href="/login" variant="primary" className="mt-6 w-full">
+        Get started
+      </ButtonLink>
+      <ul className="mt-6 space-y-3 border-t border-hairline pt-6">
+        {VENUE_FEATURES.map((f) => (
+          <FeatureTick key={f}>{f}</FeatureTick>
+        ))}
+      </ul>
+    </article>
+  );
+}
+
 export function PricingPlans() {
   const [audience, setAudience] = useState<Audience>("couples");
 
@@ -308,13 +317,19 @@ export function PricingPlans() {
         </SegmentedToggle>
       </div>
 
-      <div className="mx-auto mt-10 grid max-w-3xl gap-6 sm:grid-cols-2">
+      <div
+        className={
+          audience === "couples"
+            ? "mx-auto mt-10 grid max-w-md gap-6"
+            : "mx-auto mt-10 grid max-w-3xl gap-6 sm:grid-cols-2"
+        }
+      >
         {audience === "couples" ? (
           <CoupleCard />
         ) : (
           <>
             <PlannerCard />
-            <PlanCard plan={AGENCY_PLAN} />
+            <VenueCard />
           </>
         )}
       </div>

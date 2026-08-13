@@ -38,7 +38,9 @@ export async function sendGmailMessage(
   toEmail: string,
   subject: string,
   body: string
-): Promise<{ ok: true } | { ok: false; error: string }> {
+): Promise<
+  { ok: true; threadId: string | null } | { ok: false; error: string }
+> {
   const raw = buildRfc2822Message(fromEmail, toEmail, subject, body);
   const encoded = base64UrlEncode(raw);
 
@@ -56,7 +58,16 @@ export async function sendGmailMessage(
     );
 
     if (response.ok) {
-      return { ok: true };
+      let threadId: string | null = null;
+      try {
+        const data = (await response.json()) as { threadId?: string };
+        if (typeof data.threadId === "string" && data.threadId.trim()) {
+          threadId = data.threadId.trim();
+        }
+      } catch {
+        // Send succeeded; missing/unparseable body must not fail the send.
+      }
+      return { ok: true, threadId };
     }
 
     let message = `Gmail API error (${response.status}).`;

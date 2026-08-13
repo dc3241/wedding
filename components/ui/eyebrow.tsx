@@ -30,7 +30,7 @@ export function Eyebrow({
     return (
       <span
         className={cn(
-          "text-[12px] font-semibold uppercase tracking-[0.09em] text-accent",
+          "text-[12px] font-semibold uppercase tracking-[0.09em] text-muted",
           className,
         )}
         {...props}

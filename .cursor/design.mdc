@@ -112,10 +112,21 @@ Replaces `--radius: 12px` / `--radius-lg: 16px`.
 
 Money and count numerals: `font-variant-numeric: tabular-nums`.
 
-**Eyebrow (chrome):** 12px / 600, uppercase, letter-spacing 0.09em, color `--accent`. No diamond.
+**Eyebrow (chrome):** 12px / 600, uppercase, letter-spacing 0.09em, color `--muted`. No diamond.
 
-**Accent floods:** Tier 1 permits **no accent flood at all**. `--accent-wash` is for pills and
-small washes only — never a full-page or full-panel color field.
+**Berry accent allowlist (Tier 1):** berry fill/stroke is permitted ONLY on:
+1. the logo mark;
+2. at most one primary-CTA-filled button per view (siblings secondary/ghost/neutral);
+3. a ≤3px active-state indicator (border/underline) on nav links, wedding-list rows, and
+   workspace tabs — never a full-row or full-tab background fill;
+4. an actively-selected object's selection stroke (e.g. `SeatingCanvas`) — distinct from
+   resting-state chips;
+5. inline text links, hover states, and `:focus-visible` outlines.
+
+Everything else — section eyebrows, avatar/initials fills, system/demo banners, nav-row
+background washes, status pills, filter chips — MUST use neutral tokens (`--muted` / `--well` /
+`--surface` / `--hairline` / `--ring`) or the sage/clay/rosewood status ramp, never berry /
+`--accent-wash` as ambient chrome.
 
 **Seating canvas** follows this depth scale: tables are raised `--surface` on `--canvas`; outlines
 read `--ring`.
@@ -229,8 +240,8 @@ Each killed rule is quoted **verbatim** from the pre-Soft-stack `design.mdc`, th
 | "**Flat chrome** — no whisper-emotional shadow on chrome surfaces. Cards may use the standard whisper `card-shadow` only." | The two-level depth scale (`--shadow-raised` / `--shadow-recessed`). Depth is the organizing idea of Tier 1. |
 | "**Two sans weights** — Hanken Grotesk 400 and 500 only." | Figtree, four weights (400/500/600/800), on Tier 1 and Tier 2. **Hanken Grotesk is retired from Tier 1 and Tier 2 only; it survives as `--ws-font-sans` on Tier 3, where it remains the template body face.** |
 | "Two sans weights (400/500) only in chrome." | Figtree, four weights (400/500/600/800), on Tier 1 and Tier 2. **Hanken Grotesk is retired from Tier 1 and Tier 2 only; it survives as `--ws-font-sans` on Tier 3, where it remains the template body face.** |
-| "**Plum is accent** — never a full-page or full-panel color flood. `plum-tint` washes for inline empty states are OK." | Rescoped: **Tier 1 permits no accent flood at all** (`--accent-wash` for pills/washes only). **Tier 2 permits exactly one** `--deep` field per surface. |
-| "No blush or plum color floods (plum-tint washes for small empty states OK)." | Same rescope as above — no Tier 1 accent flood; one Tier 2 deep field. |
+| "**Plum is accent** — never a full-page or full-panel color flood. `plum-tint` washes for inline empty states are OK." | Replaced by the **Berry accent allowlist (Tier 1)** above. **Tier 2** still permits exactly one `--deep` field per surface. |
+| "No blush or plum color floods (plum-tint washes for small empty states OK)." | Same — Tier 1 berry allowlist; Tier 2 one `--deep` field. |
 | "**Display (Cormorant Garamond 600)** — Tier 2 emotional surfaces + Tier 1 data moments" | **Deleted.** Tier 1 and Tier 2 are all-sans. |
 | "**UI (Hanken Grotesk, 400/500)** — Tier 1 chrome" | **UI (Figtree, 400/500/600/800) — Tier 1 and Tier 2.** Hanken survives as `--ws-font-sans` on Tier 3 only. |
 | "Serif for page titles, stat figures, budget figures, couple-identifying text, hero moments, and Tier 2 emotional headlines. Sans for nav, forms, tables, and all other chrome." | **Deleted.** Replaced by the serif/script location rule above. |
@@ -283,7 +294,8 @@ These apply on **every tier** unless a tier carve-out explicitly permits otherwi
 - No floral graphics.
 - No photographic ornament assets.
 - No gold/metal gradients.
-- No Tier 1 accent floods (see Tier 1 / Tier 2 flood rules above).
+- No Tier 1 berry outside the allowlist (logo, one primary CTA, ≤3px active indicator,
+  selection stroke, links/hover/focus) — see Berry accent allowlist above.
 - No heavy glow or decorative (non-hierarchical) shadows.
 - No raised-inside-raised stacking on Tier 1.
 - No ad-hoc radius utilities on Tier 1 — use `--radius-card` / `--radius-inner` / `--radius-pill`.

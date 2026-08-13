@@ -7,8 +7,10 @@ import { getOrCreateStripeCustomer } from "@/lib/billing/get-or-create-customer"
 import {
   getCouplePriceId,
   getPlannerPriceId,
+  getVenuePriceId,
   type CoupleBillingPlan,
   type PlannerBillingInterval,
+  type VenueBillingInterval,
 } from "@/lib/billing/plans";
 import {
   resolveBusinessAccountId,
@@ -18,6 +20,7 @@ import { getStripe } from "@/lib/stripe";
 import { createClient } from "@/utils/supabase/server";
 
 const BILLING_PATH = "/account/billing";
+const VENUE_UPGRADE_PATH = "/account/venue-upgrade";
 
 async function billingBaseUrl() {
   const headersList = await headers();
@@ -27,6 +30,15 @@ async function billingBaseUrl() {
 function parsePlannerInterval(
   value: FormDataEntryValue | null,
 ): PlannerBillingInterval {
+  if (value === "monthly" || value === "annual") {
+    return value;
+  }
+  throw new Error("Choose Monthly or Annual.");
+}
+
+function parseVenueInterval(
+  value: FormDataEntryValue | null,
+): VenueBillingInterval {
   if (value === "monthly" || value === "annual") {
     return value;
   }
@@ -124,6 +136,58 @@ export async function createPlannerCheckoutSession(formData: FormData) {
       metadata: {
         account_id: accountId,
         planner_interval: interval,
+      },
+    },
+  });
+
+  if (!session.url) {
+    throw new Error("Could not create checkout session.");
+  }
+
+  redirect(session.url);
+}
+
+/**
+ * VENUE-02 / VENUE-02b: paid venue Checkout (Monthly / Annual).
+ * No trial_period_days — same posture as PRICE-02.
+ * /account/venue-upgrade is the primary caller.
+ */
+export async function createVenueCheckoutSession(formData: FormData) {
+  const accountId = String(formData.get("accountId") ?? "").trim();
+  if (!accountId) {
+    throw new Error("Account is required.");
+  }
+
+  const interval = parseVenueInterval(formData.get("interval"));
+
+  const supabase = await createClient();
+  const businessAccountId = await resolveBusinessAccountId(supabase);
+
+  if (accountId !== businessAccountId) {
+    throw new Error("Account mismatch.");
+  }
+
+  const customerId = await getOrCreateStripeCustomer(accountId);
+  const priceId = getVenuePriceId(interval);
+  const baseUrl = await billingBaseUrl();
+  const stripe = getStripe();
+
+  const session = await stripe.checkout.sessions.create({
+    mode: "subscription",
+    customer: customerId,
+    line_items: [{ price: priceId, quantity: 1 }],
+    success_url: `${baseUrl}${VENUE_UPGRADE_PATH}?status=success`,
+    cancel_url: `${baseUrl}${VENUE_UPGRADE_PATH}?status=cancelled`,
+    metadata: {
+      account_id: accountId,
+      plan: "venue",
+      venue_interval: interval,
+    },
+    subscription_data: {
+      metadata: {
+        account_id: accountId,
+        plan: "venue",
+        venue_interval: interval,
       },
     },
   });

@@ -80,7 +80,7 @@ function WeddingCard({
     <article className="flex flex-col gap-3.5 rounded-[var(--radius-card)] bg-surface p-5 shadow-raised">
       <div className="flex items-center gap-3">
         <div
-          className="grid h-11 w-11 shrink-0 place-items-center rounded-[var(--radius-pill)] bg-accent-wash text-[14px] font-semibold tracking-[0.02em] text-accent"
+          className="grid h-11 w-11 shrink-0 place-items-center rounded-[var(--radius-pill)] bg-well text-[14px] font-semibold tracking-[0.02em] text-muted"
           aria-hidden
         >
           {coupleInitials(card.name)}

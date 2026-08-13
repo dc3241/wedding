@@ -25,7 +25,7 @@ export default async function ProposalContractPage({
     redirect("/projects");
   }
 
-  const [{ data: leadRow }, { data: proposalRow }, { data: membership }] =
+  const [{ data: leadRow }, { data: proposalRow }, { data: businessAccount }] =
     await Promise.all([
       supabase
         .from("leads")
@@ -40,10 +40,9 @@ export default async function ProposalContractPage({
         .eq("id", proposalId)
         .maybeSingle(),
       supabase
-        .from("account_members")
-        .select("accounts!inner(name, kind)")
-        .eq("accounts.kind", "business")
-        .limit(1)
+        .from("accounts")
+        .select("name, kind")
+        .eq("id", account.accountId)
         .maybeSingle(),
     ]);
 
@@ -55,8 +54,6 @@ export default async function ProposalContractPage({
     notFound();
   }
 
-  const accounts = membership?.accounts;
-  const businessAccount = Array.isArray(accounts) ? accounts[0] : accounts;
   const businessName = businessAccount?.name ?? "Planner";
 
   const lineItems = parseProposalLineItems(proposalRow.line_items);

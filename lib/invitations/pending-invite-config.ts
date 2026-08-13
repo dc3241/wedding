@@ -1,4 +1,5 @@
 export const INVITE_COOKIE = "pending_invite_token";
+export const ACCOUNT_INVITE_COOKIE = "pending_account_invite_token";
 
 const INVITE_COOKIE_MAX_AGE = 30 * 60; // 30 minutes
 

@@ -63,6 +63,7 @@ const GROUPS = [
       "Invite couples to their wedding",
       "Every client in one book",
       "White-labeled client workspace",
+      "Venue accounts: multiple seats, your own branding throughout",
     ],
   },
   {

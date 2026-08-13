@@ -21,6 +21,7 @@ type VendorRow = {
   address: string | null;
   notes: string | null;
   is_preferred: boolean;
+  instagram: string | null;
   project_vendors: { count: number }[] | null;
 };
 
@@ -49,7 +50,7 @@ export default async function VendorLibraryPage() {
   const { data: rows } = await supabase
     .from("vendors")
     .select(
-      "id, name, category, contact_name, contact_email, contact_phone, website, service_area, address, notes, is_preferred, project_vendors(count)",
+      "id, name, category, contact_name, contact_email, contact_phone, website, service_area, address, notes, is_preferred, instagram, project_vendors(count)",
     )
     .eq("account_id", accountId)
     .order("name", { ascending: true });
@@ -66,6 +67,7 @@ export default async function VendorLibraryPage() {
     address: row.address,
     notes: row.notes,
     is_preferred: row.is_preferred,
+    instagram: row.instagram,
     linkCount: row.project_vendors?.[0]?.count ?? 0,
   }));
 

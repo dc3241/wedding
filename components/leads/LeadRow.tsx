@@ -10,6 +10,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Pill } from "@/components/ui/pill";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/cn";
 import {
@@ -285,6 +286,20 @@ export function LeadRow({
             {lead.venue ? <span>{lead.venue}</span> : null}
             {lead.source ? <span>via {lead.source}</span> : null}
           </div>
+          {lead.isStale ? (
+            <div className="mt-1.5">
+              <Pill
+                variant="rosewood"
+                className="gap-1.5 normal-case tracking-normal"
+              >
+                <span
+                  className="size-1.5 shrink-0 rounded-full bg-rosewood"
+                  aria-hidden
+                />
+                No activity in {lead.staleDays ?? "?"}d
+              </Pill>
+            </div>
+          ) : null}
           {contact ? (
             <div className="mt-0.5 text-[13px] text-muted">{contact}</div>
           ) : null}

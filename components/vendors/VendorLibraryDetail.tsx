@@ -7,6 +7,7 @@ import {
 } from "@/app/(app)/vendors/actions";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Eyebrow } from "@/components/ui/eyebrow";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
@@ -228,9 +229,7 @@ export function VendorLibraryDetail({
 
       <Card className="p-6">
         <form onSubmit={handleDetailsSubmit} className="space-y-4">
-          <p className="text-[12px] font-semibold uppercase tracking-[0.09em] text-accent">
-            Details
-          </p>
+          <Eyebrow>Details</Eyebrow>
 
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1.5 sm:col-span-2">
@@ -430,9 +429,7 @@ export function VendorLibraryDetail({
       <Card className="p-6">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <p className="text-[12px] font-semibold uppercase tracking-[0.09em] text-accent">
-              Overview
-            </p>
+            <Eyebrow>Overview</Eyebrow>
             {enrichedLabel ? (
               <p className="mt-1 text-[13px] text-muted">
                 Last updated {enrichedLabel}

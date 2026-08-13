@@ -1,5 +1,6 @@
 "use client";
 
+import { Eyebrow } from "@/components/ui/eyebrow";
 import { WeddingDateEditor } from "@/components/ui/wedding-date-editor";
 import { formatWeddingDate } from "@/components/website/template-utils";
 import { cn } from "@/lib/cn";
@@ -63,9 +64,7 @@ export function WeddingHero({
           className,
         )}
       >
-        <p className="text-[12px] font-semibold uppercase tracking-[0.09em] text-accent">
-          Overview
-        </p>
+        <Eyebrow>Overview</Eyebrow>
         <h1 className="mt-2 font-display text-[32px] font-extrabold leading-[1.02] tracking-[-0.03em] text-ink md:text-[42px]">
           {coupleNames}
         </h1>

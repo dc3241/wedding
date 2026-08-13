@@ -24,6 +24,10 @@ export type Lead = {
   position: number;
   created_at: string;
   updated_at: string;
+  /** Server-derived; never computed on the client. */
+  isStale?: boolean;
+  /** Whole days since updated_at when isStale; for the pipeline label only. */
+  staleDays?: number | null;
 };
 
 export const LEAD_STAGE_LABEL: Record<LeadStage, string> = {

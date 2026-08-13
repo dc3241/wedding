@@ -105,6 +105,9 @@ export async function sendOutreachMessage(
       sent_at: new Date().toISOString(),
       send_error: null,
       updated_at: new Date().toISOString(),
+      ...(sendResult.threadId
+        ? { gmail_thread_id: sendResult.threadId }
+        : {}),
     })
     .eq("id", messageId);
 

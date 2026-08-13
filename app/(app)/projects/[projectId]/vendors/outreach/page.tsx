@@ -21,6 +21,7 @@ type SentMessage = {
   id: string;
   subject: string | null;
   sent_at: string | null;
+  gmailThreadId: string | null;
   vendorName: string;
 };
 
@@ -105,6 +106,7 @@ export default async function OutreachDraftsPage({
       id,
       subject,
       sent_at,
+      gmail_thread_id,
       project_vendors!inner (
         project_id,
         vendors ( name )
@@ -134,6 +136,7 @@ export default async function OutreachDraftsPage({
         id: row.id,
         subject: row.subject,
         sent_at: row.sent_at,
+        gmailThreadId: row.gmail_thread_id,
         vendorName: vendor.name,
       };
     })
@@ -215,14 +218,28 @@ export default async function OutreachDraftsPage({
                 name={item.vendorName}
                 meta={item.subject ?? "(no subject)"}
                 trailing={
-                  item.sent_at ? (
-                    <Pill variant="sage">
-                      Sent{" "}
-                      <span className="tabnum">{formatSentAt(item.sent_at)}</span>
-                    </Pill>
-                  ) : (
-                    <Pill variant="sage">Sent</Pill>
-                  )
+                  <div className="flex items-center gap-3">
+                    {item.gmailThreadId ? (
+                      <a
+                        href={`https://mail.google.com/mail/u/0/#all/${item.gmailThreadId}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[13px] font-semibold text-accent no-underline hover:underline"
+                      >
+                        View in Gmail
+                      </a>
+                    ) : null}
+                    {item.sent_at ? (
+                      <Pill variant="sage">
+                        Sent{" "}
+                        <span className="tabnum">
+                          {formatSentAt(item.sent_at)}
+                        </span>
+                      </Pill>
+                    ) : (
+                      <Pill variant="sage">Sent</Pill>
+                    )}
+                  </div>
                 }
               />
             ))}

@@ -35,8 +35,8 @@ export function ProjectWorkspaceNav({
             key={segment || "overview"}
             href={href}
             className={cn(
-              "rounded-full px-3 py-1.5 text-sm text-muted no-underline transition-[color,background] duration-150 hover:text-ink",
-              active && "bg-accent text-surface",
+              "relative rounded-[var(--radius-inner)] px-3 py-1.5 text-sm text-muted no-underline transition-[color,background] duration-150 after:absolute after:inset-x-3 after:bottom-0 after:h-[2px] after:origin-left after:scale-x-0 after:bg-accent after:transition-transform after:duration-150 hover:text-ink",
+              active && "font-semibold text-ink after:scale-x-100",
             )}
           >
             {label}

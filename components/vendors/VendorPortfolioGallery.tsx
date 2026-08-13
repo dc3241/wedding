@@ -9,6 +9,7 @@ import {
 } from "@/app/(app)/vendors/vendor-media";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Eyebrow } from "@/components/ui/eyebrow";
 import { cn } from "@/lib/cn";
 
 export type PortfolioPhoto = {
@@ -66,9 +67,7 @@ export function VendorPortfolioGallery({
   return (
     <Card className="p-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <p className="text-[12px] font-semibold uppercase tracking-[0.09em] text-accent">
-          Portfolio
-        </p>
+        <Eyebrow>Portfolio</Eyebrow>
         <div>
           <input
             ref={inputRef}

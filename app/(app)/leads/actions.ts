@@ -50,9 +50,18 @@ export async function createLead(
 
   const supabase = await createClient();
 
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { ok: false, error: "No business account found." };
+  }
+
   const { data: membership, error: membershipError } = await supabase
     .from("account_members")
     .select("account_id, accounts!inner(kind)")
+    .eq("user_id", user.id)
     .eq("accounts.kind", "business")
     .limit(1)
     .maybeSingle();

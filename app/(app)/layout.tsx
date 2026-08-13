@@ -10,6 +10,7 @@ import { getAccountContext } from "@/lib/account-context";
 import { ACCOUNT_LOCKED_PATH } from "@/lib/billing/entitlement-gate";
 import {
   getBrandingForProject,
+  getOwnAccountBranding,
   projectIdFromPathname,
 } from "@/lib/branding/get-branding";
 import { createClient } from "@/utils/supabase/server";
@@ -48,14 +49,19 @@ export default async function AppLayout({
   }
 
   let plannerProjects: SidebarProject[] = [];
+  let plannerBranding = null;
   if (isPlanner) {
-    const { data: projects } = await supabase
-      .from("projects")
-      .select("id, name, wedding_date")
-      .is("archived_at", null)
-      .order("wedding_date", { ascending: true, nullsFirst: false })
-      .order("created_at", { ascending: true });
+    const [{ data: projects }, ownBranding] = await Promise.all([
+      supabase
+        .from("projects")
+        .select("id, name, wedding_date")
+        .is("archived_at", null)
+        .order("wedding_date", { ascending: true, nullsFirst: false })
+        .order("created_at", { ascending: true }),
+      getOwnAccountBranding(),
+    ]);
     plannerProjects = projects ?? [];
+    plannerBranding = ownBranding;
   }
 
   let coupleBranding = null;
@@ -71,7 +77,9 @@ export default async function AppLayout({
       <VendorSearchCacheProvider>
         {showDemoBanner ? <DemoBanner /> : null}
         {isPlanner ? (
-          <PlannerShell projects={plannerProjects}>{children}</PlannerShell>
+          <PlannerShell projects={plannerProjects} branding={plannerBranding}>
+            {children}
+          </PlannerShell>
         ) : (
           <CoupleShell branding={coupleBranding}>{children}</CoupleShell>
         )}

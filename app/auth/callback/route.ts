@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { consumePendingInvite } from "@/lib/invitations/pending-invite";
+import { consumePendingInvites } from "@/lib/invitations/pending-invite";
 import { getPostLoginPath } from "@/lib/post-login-path";
 import { createClient } from "@/utils/supabase/server";
 
@@ -13,20 +13,27 @@ export async function GET(request: Request) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
 
     if (!error) {
-      const pending = await consumePendingInvite(supabase);
+      const { project, account } = await consumePendingInvites(supabase);
 
-      if (pending && "projectId" in pending) {
+      if (project && "projectId" in project) {
         return NextResponse.redirect(
-          `${origin}/projects/${pending.projectId}`,
+          `${origin}/projects/${project.projectId}`,
         );
       }
 
-      if (pending && "error" in pending) {
+      if (project && "error" in project) {
         return NextResponse.redirect(
-          `${origin}/invite/${encodeURIComponent(pending.token)}?error=${encodeURIComponent(pending.error)}`,
+          `${origin}/invite/${encodeURIComponent(project.token)}?error=${encodeURIComponent(project.error)}`,
         );
       }
 
+      if (account && "error" in account) {
+        return NextResponse.redirect(
+          `${origin}/invite/account/${encodeURIComponent(account.token)}?error=${encodeURIComponent(account.error)}`,
+        );
+      }
+
+      // Account success (or no pending invites): membership now exists for routing.
       const destination = next ?? (await getPostLoginPath(supabase));
       return NextResponse.redirect(`${origin}${destination}`);
     }

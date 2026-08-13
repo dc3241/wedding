@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
-import { consumePendingInvite } from "@/lib/invitations/pending-invite";
+import { consumePendingInvites } from "@/lib/invitations/pending-invite";
 import { getPostLoginPath } from "@/lib/post-login-path";
 import { createClient } from "@/utils/supabase/server";
 
@@ -24,15 +24,21 @@ export async function login(formData: FormData) {
 
   revalidatePath("/", "layout");
 
-  const pending = await consumePendingInvite(supabase);
+  const { project, account } = await consumePendingInvites(supabase);
 
-  if (pending && "projectId" in pending) {
-    redirect(`/projects/${pending.projectId}`);
+  if (project && "projectId" in project) {
+    redirect(`/projects/${project.projectId}`);
   }
 
-  if (pending && "error" in pending) {
+  if (project && "error" in project) {
     redirect(
-      `/invite/${encodeURIComponent(pending.token)}?error=${encodeURIComponent(pending.error)}`,
+      `/invite/${encodeURIComponent(project.token)}?error=${encodeURIComponent(project.error)}`,
+    );
+  }
+
+  if (account && "error" in account) {
+    redirect(
+      `/invite/account/${encodeURIComponent(account.token)}?error=${encodeURIComponent(account.error)}`,
     );
   }
 

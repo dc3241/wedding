@@ -51,8 +51,8 @@ export function NavLink({ active, className, ...props }: NavLinkProps) {
   return (
     <Link
       className={cn(
-        "rounded-full px-3 py-1.5 text-sm text-muted no-underline transition-[color,background] duration-150 hover:text-ink",
-        active && "bg-accent-wash text-accent",
+        "relative rounded-[var(--radius-inner)] px-3 py-1.5 text-sm text-muted no-underline transition-[color,background] duration-150 after:absolute after:inset-x-3 after:bottom-0.5 after:h-[2px] after:origin-left after:scale-x-0 after:bg-accent after:transition-transform after:duration-150 hover:text-ink",
+        active && "font-semibold text-ink after:scale-x-100",
         className,
       )}
       {...props}

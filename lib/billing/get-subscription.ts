@@ -16,6 +16,8 @@ export type SubscriptionSnapshot = {
   hasCustomer: boolean;
   /** True only when a real Stripe Subscription id is on the row (not local trials / seeded active). */
   hasSubscription: boolean;
+  /** accounts.plan — 'planner' | 'venue' (personal keeps default; unused for couple UI). */
+  accountPlan: string;
 };
 
 export async function getSubscriptionForAccount(
@@ -25,13 +27,18 @@ export async function getSubscriptionForAccount(
   // Demo accounts have no subscriptions row — treat as entitled (no paywall).
   const { data: account, error: accountError } = await supabase
     .from("accounts")
-    .select("is_demo")
+    .select("is_demo, plan")
     .eq("id", accountId)
     .maybeSingle();
 
   if (accountError) {
     throw new Error(accountError.message);
   }
+
+  const accountPlan =
+    typeof account?.plan === "string" && account.plan.length > 0
+      ? account.plan
+      : "planner";
 
   if (account?.is_demo) {
     return {
@@ -42,6 +49,7 @@ export async function getSubscriptionForAccount(
       priceId: null,
       hasCustomer: false,
       hasSubscription: false,
+      accountPlan,
     };
   }
 
@@ -66,6 +74,7 @@ export async function getSubscriptionForAccount(
       priceId: null,
       hasCustomer: false,
       hasSubscription: false,
+      accountPlan,
     };
   }
 
@@ -90,6 +99,7 @@ export async function getSubscriptionForAccount(
     priceId: row.price_id,
     hasCustomer: Boolean(row.stripe_customer_id),
     hasSubscription: row.stripe_subscription_id !== null,
+    accountPlan,
   };
 }
 

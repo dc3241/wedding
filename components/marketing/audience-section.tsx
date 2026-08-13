@@ -4,6 +4,7 @@ import { DemoCta } from "@/components/demo/demo-cta";
 import { ButtonLink } from "@/components/ui/button";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { cn } from "@/lib/cn";
+import Link from "next/link";
 import { useEffect, useState, type ReactNode } from "react";
 
 type Audience = "couples" | "planners";
@@ -205,6 +206,8 @@ export function AudienceSection() {
           })}
         </div>
 
+        {!isCouples ? <VenueCallout /> : null}
+
         <div className="mt-9 flex flex-col items-center text-center">
           <ButtonLink
             href="/login"
@@ -254,6 +257,35 @@ function UnifyChip({ children }: { children: ReactNode }) {
     <span className="inline-flex items-center justify-center rounded-[var(--radius-pill)] border border-ring bg-accent-wash px-4 py-2.5 text-center text-[13px] font-semibold text-ink md:text-[14px]">
       {children}
     </span>
+  );
+}
+
+/** VENUE-03c: subordinate callout inside the planners tab — not a 5th feature card. */
+function VenueCallout() {
+  return (
+    <aside className="mt-5 rounded-[var(--radius-card)] border border-ring bg-surface px-5 py-5 shadow-raised md:px-6 md:py-5">
+      <Eyebrow className="mb-2 block">For venues</Eyebrow>
+      <h3 className="text-[17px] font-extrabold tracking-[-0.02em] text-ink md:text-[19px]">
+        Running a venue with your own planning team?
+      </h3>
+      <p className="mt-2 max-w-[62ch] text-[14px] leading-relaxed text-muted md:text-[15px]">
+        One login for every planner on staff, your venue&apos;s branding on every
+        screen, and the full toolset — checklist to seating chart.
+      </p>
+      <div className="mt-4 flex flex-wrap gap-2">
+        <UnifyChip>Team seats</UnifyChip>
+        <UnifyChip>Your branding</UnifyChip>
+        <UnifyChip>Dedicated support</UnifyChip>
+      </div>
+      <p className="mt-4">
+        <Link
+          href="/pricing"
+          className="text-[14px] font-semibold text-accent underline-offset-2 hover:underline"
+        >
+          See Venue pricing →
+        </Link>
+      </p>
+    </aside>
   );
 }
 

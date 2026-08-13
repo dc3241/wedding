@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Eyebrow } from "@/components/ui/eyebrow";
 import { getAccountContext } from "@/lib/account-context";
 import { checkEntitlement } from "@/lib/billing/entitlement-gate";
 import { getSubscriptionForAccount } from "@/lib/billing/get-subscription";
@@ -58,9 +59,7 @@ export default async function AccountLockedPage() {
           variant="emotional"
           className="px-6 py-8 text-center md:px-8 md:py-10"
         >
-          <p className="text-[12px] font-semibold uppercase tracking-[0.09em] text-accent">
-            Account locked
-          </p>
+          <Eyebrow>Account locked</Eyebrow>
           <h1 className="mt-4 text-[32px] font-extrabold tracking-[-0.03em] text-ink md:text-[36px]">
             {title}
           </h1>

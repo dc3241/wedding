@@ -4,12 +4,14 @@ import {
   createCoupleCheckoutSession,
   createPlannerCheckoutSession,
   createPortalSession,
+  createVenueCheckoutSession,
 } from "@/app/(app)/account/billing/actions";
 import { Button } from "@/components/ui/button";
 import {
   SegmentedToggle,
   SegmentedToggleItem,
 } from "@/components/ui/topbar";
+import { VENUE_ANNUAL_SAVINGS } from "@/lib/billing/plans";
 import { useState } from "react";
 
 /** PRICE-08: Monthly / Lifetime toggle + Checkout for couples. */
@@ -80,6 +82,48 @@ export function PlannerSubscribeButton() {
       <form action={createPlannerCheckoutSession}>
         <input type="hidden" name="interval" value={interval} />
         <Button type="submit">Subscribe</Button>
+      </form>
+    </div>
+  );
+}
+
+/** VENUE-02b: Monthly / Annual toggle + Checkout for venues. */
+export function VenueSubscribeButton({ accountId }: { accountId: string }) {
+  const [interval, setInterval] = useState<"monthly" | "annual">("monthly");
+
+  return (
+    <div className="flex flex-col items-stretch gap-3">
+      <SegmentedToggle aria-label="Venue billing cadence" className="w-fit p-0.5">
+        <SegmentedToggleItem
+          type="button"
+          active={interval === "monthly"}
+          aria-pressed={interval === "monthly"}
+          onClick={() => setInterval("monthly")}
+          className="px-3 py-1 text-[12px] font-semibold"
+        >
+          Monthly · $199
+        </SegmentedToggleItem>
+        <SegmentedToggleItem
+          type="button"
+          active={interval === "annual"}
+          aria-pressed={interval === "annual"}
+          onClick={() => setInterval("annual")}
+          className="px-3 py-1 text-[12px] font-semibold"
+        >
+          Annual · $1,999
+        </SegmentedToggleItem>
+      </SegmentedToggle>
+      {interval === "annual" ? (
+        <span className="w-fit rounded-[var(--radius-pill)] bg-accent-wash px-2.5 py-1 text-[13px] font-semibold text-accent">
+          Save ${VENUE_ANNUAL_SAVINGS}/yr
+        </span>
+      ) : null}
+      <form action={createVenueCheckoutSession}>
+        <input type="hidden" name="accountId" value={accountId} />
+        <input type="hidden" name="interval" value={interval} />
+        <Button type="submit" variant="primary">
+          Subscribe
+        </Button>
       </form>
     </div>
   );

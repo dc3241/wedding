@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import {
   CoupleSubscribeButton,
   ManageBillingButton,
@@ -50,9 +51,12 @@ export default async function BillingPage({
   const subscription = isPlanner
     ? await getPlannerSubscription(supabase)
     : await getCoupleSubscription(supabase);
-  const planLabel = isPlanner
-    ? BILLING_PLANS.planner.label
-    : BILLING_PLANS.couple.label;
+  const isVenuePlan = isPlanner && subscription.accountPlan === "venue";
+  const planLabel = isVenuePlan
+    ? BILLING_PLANS.venue.label
+    : isPlanner
+      ? BILLING_PLANS.planner.label
+      : BILLING_PLANS.couple.label;
   const renewalDate = formatRenewalDate(subscription.currentPeriodEnd);
   const shellClass = shellLayoutClass(account.kind, false, "reading");
 
@@ -186,6 +190,22 @@ export default async function BillingPage({
           </div>
         </div>
       </Card>
+
+      {/* VENUE-03a: discoverable path for planner → venue (not marketing). */}
+      {isPlanner && !isVenuePlan ? (
+        <Card className="mt-4 p-5">
+          <p className="text-[14px] text-muted">
+            Running a venue with multiple planners?{" "}
+            <Link
+              href="/account/venue-upgrade"
+              className="font-medium text-accent underline-offset-2 hover:underline"
+            >
+              Learn about the venue plan
+            </Link>
+            .
+          </p>
+        </Card>
+      ) : null}
     </div>
   );
 }
