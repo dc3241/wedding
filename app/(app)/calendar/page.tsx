@@ -16,6 +16,7 @@ import { isEventKind } from "./types";
 import { PageHeader } from "@/components/ui/page-header";
 import { getAccountContext } from "@/lib/account-context";
 import { deriveScheduleWaterfall } from "@/lib/budget-aggregates";
+import { isTaskPastDue } from "@/lib/task-overdue";
 import { resolveBusinessAccountId } from "@/lib/billing/resolve-account";
 import { createClient } from "@/utils/supabase/server";
 
@@ -252,7 +253,7 @@ export default async function CalendarPage({
           projectName: projectNameById.get(projectId) ?? "Wedding",
           title: (row.title as string).trim() || "Task",
           due_date: due,
-          pastDue: due < todayKey,
+          pastDue: isTaskPastDue(due, row.status as string, now),
         },
       ];
     });

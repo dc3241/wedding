@@ -13,6 +13,11 @@ import {
   getPlannerSubscription,
 } from "@/lib/billing/get-subscription";
 import { BILLING_PLANS } from "@/lib/billing/plans";
+import {
+  resolveBusinessAccountId,
+  resolvePersonalAccountId,
+} from "@/lib/billing/resolve-account";
+import { reconcileCheckoutReturn } from "@/lib/billing/sync-subscription";
 import type { AccountKind } from "@/lib/account-context";
 import { getAccountContext } from "@/lib/account-context";
 import { shellLayoutClass } from "@/lib/density";
@@ -37,9 +42,9 @@ const FREE_COPY: Record<AccountKind, string> = {
 export default async function BillingPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string }>;
+  searchParams: Promise<{ status?: string; session_id?: string }>;
 }) {
-  const { status } = await searchParams;
+  const { status, session_id } = await searchParams;
   const supabase = await createClient();
   const account = await getAccountContext(supabase);
 
@@ -48,6 +53,10 @@ export default async function BillingPage({
   }
 
   const isPlanner = account.kind === "business";
+  const accountId = isPlanner
+    ? await resolveBusinessAccountId(supabase)
+    : await resolvePersonalAccountId(supabase);
+  await reconcileCheckoutReturn(accountId, { status, session_id });
   const subscription = isPlanner
     ? await getPlannerSubscription(supabase)
     : await getCoupleSubscription(supabase);

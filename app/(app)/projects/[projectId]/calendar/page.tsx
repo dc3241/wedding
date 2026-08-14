@@ -14,6 +14,7 @@ import type {
 import { isEventKind } from "@/app/(app)/calendar/types";
 import { PageHeader } from "@/components/ui/page-header";
 import { deriveScheduleWaterfall } from "@/lib/budget-aggregates";
+import { isTaskPastDue } from "@/lib/task-overdue";
 import { createClient } from "@/utils/supabase/server";
 import { ProjectCalendarWorkspace } from "./ProjectCalendarWorkspace";
 
@@ -224,7 +225,7 @@ export default async function ProjectCalendarPage({
         projectName: wedding.name,
         title: (row.title as string).trim() || "Task",
         due_date: due,
-        pastDue: due < todayKey,
+        pastDue: isTaskPastDue(due, row.status as string, now),
       },
     ];
   });

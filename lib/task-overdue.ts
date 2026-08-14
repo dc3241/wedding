@@ -1,7 +1,8 @@
 /**
- * Strict local-date past-due predicate shared by dashboard card rollups.
+ * Strict local-date past-due predicate for checklist tasks.
  * Rule: status !== "done" AND due_date is set AND due_date < today (local midnight).
- * Matches buildOverviewData attention + assistant getChecklist overdue checks.
+ * Single source for Overview attention, assistant getChecklist, wedding-card
+ * rollups, planner urgent tasks, and calendar task overlays.
  */
 export function isTaskPastDue(
   dueDate: string | null | undefined,

@@ -1,76 +1,14 @@
 import { NextResponse } from "next/server";
 import type Stripe from "stripe";
-import { getCouplePriceId } from "@/lib/billing/plans";
 import {
+  applyCheckoutSession,
   markSubscriptionCanceled,
   syncSubscriptionById,
   syncSubscriptionFromStripe,
-  upsertSubscriptionRow,
 } from "@/lib/billing/sync-subscription";
 import { getStripe } from "@/lib/stripe";
 
 export const runtime = "nodejs";
-
-async function handleCoupleLifetimeCheckout(
-  session: Stripe.Checkout.Session,
-): Promise<void> {
-  const accountId = session.metadata?.account_id;
-  if (!accountId) {
-    console.error(
-      "Stripe checkout.session.completed (couple_lifetime): missing account_id metadata.",
-    );
-    return;
-  }
-
-  const customerId =
-    typeof session.customer === "string"
-      ? session.customer
-      : session.customer && !session.customer.deleted
-        ? session.customer.id
-        : null;
-
-  if (!customerId) {
-    console.error(
-      "Stripe checkout.session.completed (couple_lifetime): missing customer.",
-      { accountId },
-    );
-    return;
-  }
-
-  await upsertSubscriptionRow({
-    account_id: accountId,
-    stripe_customer_id: customerId,
-    stripe_subscription_id: null,
-    status: "active",
-    price_id: getCouplePriceId("lifetime"),
-    current_period_end: null,
-    cancel_at_period_end: false,
-  });
-}
-
-async function handleCheckoutSessionCompleted(
-  session: Stripe.Checkout.Session,
-): Promise<void> {
-  // PRICE-08: one-time $99 couple lifetime.
-  if (session.mode === "payment") {
-    if (session.metadata?.charge_stage !== "couple_lifetime") {
-      return;
-    }
-    await handleCoupleLifetimeCheckout(session);
-    return;
-  }
-
-  if (session.mode !== "subscription" || !session.subscription) {
-    return;
-  }
-
-  const subscriptionId =
-    typeof session.subscription === "string"
-      ? session.subscription
-      : session.subscription.id;
-
-  await syncSubscriptionById(subscriptionId);
-}
 
 async function handleInvoiceEvent(invoice: Stripe.Invoice): Promise<void> {
   const subscriptionRef = invoice.parent?.subscription_details?.subscription;
@@ -112,7 +50,7 @@ export async function POST(req: Request) {
   try {
     switch (event.type) {
       case "checkout.session.completed":
-        await handleCheckoutSessionCompleted(
+        await applyCheckoutSession(
           event.data.object as Stripe.Checkout.Session,
         );
         break;

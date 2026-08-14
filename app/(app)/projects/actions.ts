@@ -12,9 +12,14 @@ export type CreateProjectResult =
   | { ok: true; projectId: string }
   | { ok: false; error: string };
 
-export async function bootstrapAccountAndProject(formData: FormData) {
-  const accountKind = formData.get("accountKind") as string;
+export async function bootstrapAccountAndProject(
+  formData: FormData,
+  venueIntent = false,
+) {
   const accountName = formData.get("accountName") as string;
+  const accountKind = venueIntent
+    ? "business"
+    : (formData.get("accountKind") as string);
   const isBusiness = accountKind === "business";
   const projectName = isBusiness
     ? null
@@ -45,10 +50,18 @@ export async function bootstrapAccountAndProject(formData: FormData) {
   revalidatePath("/", "layout");
 
   if (isBusiness) {
+    if (venueIntent) {
+      redirect("/account/venue-upgrade");
+    }
     redirect("/dashboard");
   }
 
   redirect(await getCoupleDestinationPath(supabase, projectId as string));
+}
+
+/** VENUE-04: same bootstrap as planner; one-time redirect hint only. */
+export async function bootstrapAccountWithVenueIntent(formData: FormData) {
+  return bootstrapAccountAndProject(formData, true);
 }
 
 /**

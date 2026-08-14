@@ -22,8 +22,9 @@ async function redirectAfterCoupleTrial(supabase: SupabaseClient) {
 
 /**
  * PRICE-07: start a local-only couple trial (no Stripe objects).
- * Inserts status=trialing with both Stripe ids null; expiry is enforced
- * by getSubscriptionForAccount reading current_period_end.
+ * Inserts status=trialing, or updates a Checkout-initiation stub
+ * (status null) in place. Expiry is enforced by getSubscriptionForAccount
+ * reading current_period_end.
  */
 export async function startCoupleTrial() {
   const supabase = await createClient();
@@ -39,7 +40,7 @@ export async function startCoupleTrial() {
 
   const { data: existing, error: existingError } = await supabase
     .from("subscriptions")
-    .select("account_id")
+    .select("account_id, status")
     .eq("account_id", accountId)
     .maybeSingle();
 
@@ -47,9 +48,10 @@ export async function startCoupleTrial() {
     throw new Error(existingError.message);
   }
 
-  // Row already present (active trial, expired trial, paid, canceled, …) —
-  // never reset the clock or overwrite. Button only renders when no row.
-  if (existing) {
+  // Real rows (paid, lapsed, previously-trialing, canceled, …) must never
+  // be overwritten. A Checkout-initiation stub (status null, customer id
+  // only) is not a real subscription — convert it in place.
+  if (existing && existing.status !== null) {
     await redirectAfterCoupleTrial(supabase);
   }
 
@@ -58,20 +60,35 @@ export async function startCoupleTrial() {
 
   const admin = createServiceRoleClient();
   const now = new Date().toISOString();
-  const { error: insertError } = await admin.from("subscriptions").insert({
-    account_id: accountId,
+  const trialFields = {
     status: "trialing",
     current_period_end: periodEnd.toISOString(),
-    stripe_customer_id: null,
     stripe_subscription_id: null,
     price_id: null,
     quantity: 1,
     cancel_at_period_end: false,
     updated_at: now,
-  });
+  };
 
-  if (insertError) {
-    throw new Error(insertError.message);
+  if (existing) {
+    const { error: updateError } = await admin
+      .from("subscriptions")
+      .update(trialFields)
+      .eq("account_id", accountId);
+
+    if (updateError) {
+      throw new Error(updateError.message);
+    }
+  } else {
+    const { error: insertError } = await admin.from("subscriptions").insert({
+      account_id: accountId,
+      stripe_customer_id: null,
+      ...trialFields,
+    });
+
+    if (insertError) {
+      throw new Error(insertError.message);
+    }
   }
 
   await redirectAfterCoupleTrial(supabase);

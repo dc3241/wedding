@@ -73,7 +73,7 @@ export async function createCoupleCheckoutSession(formData: FormData) {
           mode: "subscription",
           customer: customerId,
           line_items: [{ price: priceId, quantity: 1 }],
-          success_url: `${baseUrl}${BILLING_PATH}?status=success`,
+          success_url: `${baseUrl}${BILLING_PATH}?status=success&session_id={CHECKOUT_SESSION_ID}`,
           cancel_url: `${baseUrl}${BILLING_PATH}?status=cancelled`,
           metadata: {
             account_id: accountId,
@@ -94,7 +94,7 @@ export async function createCoupleCheckoutSession(formData: FormData) {
               charge_stage: "couple_lifetime",
             },
           },
-          success_url: `${baseUrl}${BILLING_PATH}?status=success`,
+          success_url: `${baseUrl}${BILLING_PATH}?status=success&session_id={CHECKOUT_SESSION_ID}`,
           cancel_url: `${baseUrl}${BILLING_PATH}?status=cancelled`,
           metadata: {
             account_id: accountId,
@@ -126,7 +126,7 @@ export async function createPlannerCheckoutSession(formData: FormData) {
     mode: "subscription",
     customer: customerId,
     line_items: [{ price: priceId, quantity: 1 }],
-    success_url: `${baseUrl}${BILLING_PATH}?status=success`,
+    success_url: `${baseUrl}${BILLING_PATH}?status=success&session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${baseUrl}${BILLING_PATH}?status=cancelled`,
     metadata: {
       account_id: accountId,
@@ -176,7 +176,7 @@ export async function createVenueCheckoutSession(formData: FormData) {
     mode: "subscription",
     customer: customerId,
     line_items: [{ price: priceId, quantity: 1 }],
-    success_url: `${baseUrl}${VENUE_UPGRADE_PATH}?status=success`,
+    success_url: `${baseUrl}${VENUE_UPGRADE_PATH}?status=success&session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${baseUrl}${VENUE_UPGRADE_PATH}?status=cancelled`,
     metadata: {
       account_id: accountId,

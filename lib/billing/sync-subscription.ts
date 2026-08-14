@@ -1,6 +1,7 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type Stripe from "stripe";
+import { getCouplePriceId } from "@/lib/billing/plans";
 import { getStripe } from "@/lib/stripe";
 import { createServiceRoleClient } from "@/utils/supabase/service-role";
 
@@ -263,4 +264,193 @@ export async function markSubscriptionCanceled(
     priceId,
     subscription.status,
   );
+}
+
+function sessionCustomerId(session: Stripe.Checkout.Session): string | null {
+  if (typeof session.customer === "string") {
+    return session.customer;
+  }
+  if (session.customer && !session.customer.deleted) {
+    return session.customer.id;
+  }
+  return null;
+}
+
+function sessionSubscriptionId(
+  session: Stripe.Checkout.Session,
+): string | null {
+  if (!session.subscription) return null;
+  return typeof session.subscription === "string"
+    ? session.subscription
+    : session.subscription.id;
+}
+
+/**
+ * PRICE-08: one-time $99 couple lifetime. No Stripe Subscription object.
+ * Shared by the webhook and Checkout-return reconciliation.
+ */
+async function applyCoupleLifetimeFromCheckout(
+  session: Stripe.Checkout.Session,
+): Promise<void> {
+  const accountId = session.metadata?.account_id;
+  if (!accountId) {
+    console.error(
+      "Stripe checkout.session.completed (couple_lifetime): missing account_id metadata.",
+    );
+    return;
+  }
+
+  const customerId = sessionCustomerId(session);
+  if (!customerId) {
+    console.error(
+      "Stripe checkout.session.completed (couple_lifetime): missing customer.",
+      { accountId },
+    );
+    return;
+  }
+
+  await upsertSubscriptionRow({
+    account_id: accountId,
+    stripe_customer_id: customerId,
+    stripe_subscription_id: null,
+    status: "active",
+    price_id: getCouplePriceId("lifetime"),
+    current_period_end: null,
+    cancel_at_period_end: false,
+  });
+}
+
+/**
+ * Shared Checkout.session.completed writer. Webhook is the primary caller;
+ * Checkout-return reconciliation is the fallback for a missed webhook.
+ */
+export async function applyCheckoutSession(
+  session: Stripe.Checkout.Session,
+): Promise<void> {
+  if (session.mode === "payment") {
+    if (session.metadata?.charge_stage !== "couple_lifetime") {
+      return;
+    }
+    await applyCoupleLifetimeFromCheckout(session);
+    return;
+  }
+
+  if (session.mode !== "subscription" || !session.subscription) {
+    return;
+  }
+
+  const subscriptionId = sessionSubscriptionId(session);
+  if (!subscriptionId) {
+    return;
+  }
+
+  await syncSubscriptionById(subscriptionId);
+}
+
+function checkoutAlreadyApplied(
+  row: {
+    status: string | null;
+    price_id: string | null;
+    stripe_subscription_id: string | null;
+  } | null,
+  session: Stripe.Checkout.Session,
+): boolean {
+  if (!row) return false;
+
+  if (session.mode === "payment") {
+    if (session.metadata?.charge_stage !== "couple_lifetime") {
+      return false;
+    }
+    return (
+      row.status === "active" &&
+      row.price_id === getCouplePriceId("lifetime")
+    );
+  }
+
+  if (session.mode !== "subscription") {
+    return false;
+  }
+
+  const subscriptionId = sessionSubscriptionId(session);
+  // Match THIS checkout's subscription — a prior local trial (status=trialing,
+  // price_id null) or planner row (different stripe_subscription_id) is not
+  // "already applied."
+  return (
+    Boolean(subscriptionId) &&
+    row.stripe_subscription_id === subscriptionId &&
+    row.status !== null &&
+    row.price_id !== null
+  );
+}
+
+/**
+ * CHECKOUT-RECONCILE-01: synchronous fallback on the Checkout return page.
+ * Does not replace the webhook for renewals / cancellations / failures.
+ * No-ops when the webhook already wrote this session's result.
+ */
+export async function reconcileCheckoutReturn(
+  accountId: string,
+  params: { status?: string; session_id?: string },
+): Promise<void> {
+  if (params.status !== "success" || !params.session_id) {
+    return;
+  }
+
+  try {
+    const stripe = getStripe();
+    const session = await stripe.checkout.sessions.retrieve(params.session_id, {
+      expand: ["subscription"],
+    });
+
+    if (session.status !== "complete") {
+      return;
+    }
+
+    if (session.metadata?.account_id !== accountId) {
+      console.error(
+        "CHECKOUT-RECONCILE-01: session metadata account_id does not match authenticated account.",
+        { accountId },
+      );
+      return;
+    }
+
+    const customerId = sessionCustomerId(session);
+    if (!customerId) {
+      console.error(
+        "CHECKOUT-RECONCILE-01: session has no customer.",
+        { accountId },
+      );
+      return;
+    }
+
+    const admin = createServiceRoleClient();
+    const { data: row, error } = await admin
+      .from("subscriptions")
+      .select("status, price_id, stripe_subscription_id, stripe_customer_id")
+      .eq("account_id", accountId)
+      .maybeSingle();
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    if (
+      row?.stripe_customer_id &&
+      row.stripe_customer_id !== customerId
+    ) {
+      console.error(
+        "CHECKOUT-RECONCILE-01: session customer does not match account.",
+        { accountId },
+      );
+      return;
+    }
+
+    if (checkoutAlreadyApplied(row, session)) {
+      return;
+    }
+
+    await applyCheckoutSession(session);
+  } catch (err) {
+    console.error("CHECKOUT-RECONCILE-01: failed to reconcile checkout session", err);
+  }
 }

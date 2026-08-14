@@ -2,7 +2,10 @@
 
 import { useState } from "react";
 import { useFormStatus } from "react-dom";
-import { bootstrapAccountAndProject } from "@/app/(app)/projects/actions";
+import {
+  bootstrapAccountAndProject,
+  bootstrapAccountWithVenueIntent,
+} from "@/app/(app)/projects/actions";
 
 type AccountKindChoice = "couple" | "planner";
 
@@ -16,6 +19,22 @@ function SubmitButton() {
       className="w-full rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60"
     >
       {pending ? "Setting up…" : "Get started"}
+    </button>
+  );
+}
+
+function VenueIntentLink() {
+  const { pending } = useFormStatus();
+
+  return (
+    <button
+      type="submit"
+      formAction={bootstrapAccountWithVenueIntent}
+      formNoValidate
+      disabled={pending}
+      className="text-[13px] font-medium text-muted underline-offset-2 hover:text-accent hover:underline disabled:cursor-not-allowed disabled:opacity-60"
+    >
+      Running a venue instead?
     </button>
   );
 }
@@ -83,6 +102,9 @@ export function OnboardingForm() {
               />
               I&apos;m a planner
             </label>
+          </div>
+          <div className="flex justify-end pt-1">
+            <VenueIntentLink />
           </div>
         </fieldset>
 

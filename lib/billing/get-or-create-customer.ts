@@ -3,6 +3,32 @@ import { getStripe } from "@/lib/stripe";
 import { createClient } from "@/utils/supabase/server";
 import { createServiceRoleClient } from "@/utils/supabase/service-role";
 
+function isStripeResourceMissing(err: unknown): boolean {
+  return (
+    typeof err === "object" &&
+    err !== null &&
+    "code" in err &&
+    (err as { code?: string }).code === "resource_missing"
+  );
+}
+
+/**
+ * True when the id exists and is not deleted in the current Stripe mode/account.
+ * False for test/live mismatch, wrong account, or a deleted customer.
+ */
+async function stripeCustomerIsUsable(customerId: string): Promise<boolean> {
+  const stripe = getStripe();
+  try {
+    const customer = await stripe.customers.retrieve(customerId);
+    return !customer.deleted;
+  } catch (err) {
+    if (isStripeResourceMissing(err)) {
+      return false;
+    }
+    throw err;
+  }
+}
+
 /**
  * Ensure the account has a Stripe Customer id.
  * Never writes status / period / subscription fields — those are owned by
@@ -32,7 +58,10 @@ export async function getOrCreateStripeCustomer(
     throw new Error(existingError.message);
   }
 
-  if (existing?.stripe_customer_id) {
+  if (
+    existing?.stripe_customer_id &&
+    (await stripeCustomerIsUsable(existing.stripe_customer_id))
+  ) {
     return existing.stripe_customer_id;
   }
 
@@ -49,7 +78,8 @@ export async function getOrCreateStripeCustomer(
   const now = new Date().toISOString();
 
   if (existing) {
-    // Local trial (or any row without a customer) — attach id only.
+    // Local trial, missing customer, or stale id (test/live / account switch).
+    // Attach customer id only — do not touch status / period / subscription.
     const { error: updateError } = await admin
       .from("subscriptions")
       .update({

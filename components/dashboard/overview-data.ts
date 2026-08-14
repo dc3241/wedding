@@ -7,6 +7,7 @@ import {
   type NextDueInstallment,
 } from "@/lib/budget-aggregates";
 import { deriveBookedVendorMoney } from "@/lib/booked-vendor-money";
+import { isTaskPastDue } from "@/lib/task-overdue";
 
 export type OverviewTask = {
   id: string;
@@ -263,14 +264,14 @@ function buildNextPayment(
 function buildAttention(
   tasks: OverviewTask[],
   todayKey: string,
+  now: Date,
 ): OverviewAttentionItem[] {
   const items: OverviewAttentionItem[] = [];
 
   for (const task of tasks) {
     if (task.status === "done" || !task.due_date) continue;
     const days = daysUntil(task.due_date, todayKey);
-    // Strict past-due: due_date < today (local).
-    if (days < 0) {
+    if (isTaskPastDue(task.due_date, task.status, now)) {
       const overdueDays = Math.abs(days);
       items.push({
         id: task.id,
@@ -322,7 +323,8 @@ export function buildOverviewData(input: {
   errors: OverviewReadError;
   now?: Date;
 }): OverviewData {
-  const todayKey = toLocalDateKey(input.now ?? new Date());
+  const now = input.now ?? new Date();
+  const todayKey = toLocalDateKey(now);
   const tasks = input.errors.tasks ? [] : input.tasks;
   const payments = input.errors.payments ? [] : input.payments;
   const budgetItems = input.errors.budgetItems ? [] : input.budgetItems;
@@ -391,7 +393,7 @@ export function buildOverviewData(input: {
     nextPayment: input.errors.schedule || input.errors.payments ? null : nextPayment,
     allInstallmentsCovered:
       !input.errors.schedule && !input.errors.payments && allCovered,
-    attention: input.errors.tasks ? [] : buildAttention(tasks, todayKey),
+    attention: input.errors.tasks ? [] : buildAttention(tasks, todayKey, now),
     vendorRows,
     errors: input.errors,
   };

@@ -135,8 +135,9 @@ function vendorNameFromJoin(
 export function buildUrgentItems(
   tasks: TaskRow[],
   vendors: VendorRow[],
+  now: Date = new Date(),
 ): UrgentItem[] {
-  const today = new Date();
+  const today = new Date(now);
   today.setHours(0, 0, 0, 0);
   const soonEnd = new Date(today);
   soonEnd.setDate(soonEnd.getDate() + 7);
@@ -149,7 +150,7 @@ export function buildUrgentItems(
     const due = new Date(task.due_date + "T00:00:00");
     due.setHours(0, 0, 0, 0);
 
-    const overdue = due < today;
+    const overdue = isTaskPastDue(task.due_date, task.status, now);
     const soonDue = due >= today && due <= soonEnd;
     if (!overdue && !soonDue) continue;
 

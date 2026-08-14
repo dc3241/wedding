@@ -13,6 +13,7 @@ import {
 import { placesTextSearch } from "@/lib/places-text-search";
 import { resolveProjectLocationHint } from "@/lib/resolve-project-location-hint";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { isTaskPastDue } from "@/lib/task-overdue";
 import { vendorCategoryLabel } from "@/lib/vendor-categories";
 
 const NEARBY_PLACE_CATEGORIES = ["lodging", "airport", "restaurant"] as const;
@@ -191,17 +192,6 @@ function capItems<T>(items: T[], cap: number): { items: T[]; truncated: boolean 
   return { items: items.slice(0, cap), truncated: true };
 }
 
-function isOverdue(
-  dueDate: string | null,
-  status: "todo" | "in_progress" | "done",
-) {
-  if (!dueDate || status === "done") return false;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const due = new Date(dueDate + "T00:00:00");
-  return due < today;
-}
-
 async function getChecklist(supabase: SupabaseClient, projectId: string) {
   const { data: tasks, error } = await supabase
     .from("tasks")
@@ -214,10 +204,7 @@ async function getChecklist(supabase: SupabaseClient, projectId: string) {
 
   const list = (tasks ?? []).map((task) => ({
     ...task,
-    overdue: isOverdue(
-      task.due_date,
-      task.status as "todo" | "in_progress" | "done",
-    ),
+    overdue: isTaskPastDue(task.due_date, task.status),
   }));
 
   const total = list.length;
