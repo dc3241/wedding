@@ -11,7 +11,7 @@ import {
   SegmentedToggle,
   SegmentedToggleItem,
 } from "@/components/ui/topbar";
-import { VENUE_ANNUAL_SAVINGS } from "@/lib/billing/plans";
+import { VENUE_ANNUAL_SAVINGS } from "@/lib/billing/plan-constants";
 import { useState } from "react";
 
 /** PRICE-08: Monthly / Lifetime toggle + Checkout for couples. */

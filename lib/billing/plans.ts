@@ -1,9 +1,20 @@
 import "server-only";
 
-export type BillingPlanKey = "couple" | "planner" | "venue";
-export type PlannerBillingInterval = "monthly" | "annual";
-export type VenueBillingInterval = "monthly" | "annual";
-export type CoupleBillingPlan = "monthly" | "lifetime";
+import type {
+  BillingPlanKey,
+  CoupleBillingPlan,
+  PlannerBillingInterval,
+  VenueBillingInterval,
+} from "./plan-constants";
+
+export type {
+  BillingPlanKey,
+  PlannerBillingInterval,
+  VenueBillingInterval,
+  CoupleBillingPlan,
+};
+
+export { VENUE_ANNUAL_SAVINGS } from "./plan-constants";
 
 export const BILLING_PLANS = {
   couple: {
@@ -47,9 +58,6 @@ export const BILLING_PLANS = {
     },
   },
 } as const;
-
-/** $199*12 − $1,999 — display only; Checkout uses Stripe Price ids. */
-export const VENUE_ANNUAL_SAVINGS = 400;
 
 export function getPlannerPriceId(interval: PlannerBillingInterval): string {
   const priceId = BILLING_PLANS.planner[interval].priceId;
