@@ -24,7 +24,9 @@ import { CSS } from "@dnd-kit/utilities";
 import { reorderLeads } from "@/app/(app)/leads/actions";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { Pill } from "@/components/ui/pill";
+import type { AccountPlan } from "@/lib/account-context";
 import { cn } from "@/lib/cn";
+import { getCopy } from "@/lib/venue-copy";
 import { LeadRow } from "./LeadRow";
 import {
   buildReorderBatch,
@@ -130,7 +132,13 @@ function LeadColumn({
   );
 }
 
-export function LeadsBoard({ initialLeads }: { initialLeads: Lead[] }) {
+export function LeadsBoard({
+  initialLeads,
+  plan = "planner",
+}: {
+  initialLeads: Lead[];
+  plan?: AccountPlan;
+}) {
   const [columns, setColumns] = useState<LeadColumns>(() =>
     groupLeadsByStage(initialLeads),
   );
@@ -318,7 +326,7 @@ export function LeadsBoard({ initialLeads }: { initialLeads: Lead[] }) {
   if (initialLeads.length === 0) {
     return (
       <p className="px-1 text-[13px] text-muted">
-        No leads yet. Add a prospective couple to start tracking your pipeline.
+        {getCopy("emptyLeads", plan)}
       </p>
     );
   }

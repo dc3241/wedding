@@ -10,6 +10,8 @@ import type {
   UrgentItem,
   WeddingCardModel,
 } from "@/lib/dashboard-aggregates";
+import type { AccountPlan } from "@/lib/account-context";
+import { getCopy } from "@/lib/venue-copy";
 
 type AccountDashboardProps = {
   activeProjects: PlannerProjectSummary[];
@@ -19,6 +21,7 @@ type AccountDashboardProps = {
   tasksDueThisWeek: number;
   vendorsNeedingAction: number;
   urgentItems: UrgentItem[];
+  plan?: AccountPlan;
 };
 
 export function AccountDashboard({
@@ -29,6 +32,7 @@ export function AccountDashboard({
   tasksDueThisWeek,
   vendorsNeedingAction,
   urgentItems,
+  plan = "planner",
 }: AccountDashboardProps) {
   return (
     <div className="mx-auto w-full max-w-[900px]">
@@ -36,19 +40,22 @@ export function AccountDashboard({
         <PageHeader
           eyebrow="Planning"
           title="Dashboard"
-          description="Your weddings at a glance."
+          description={getCopy("dashboardDescription", plan)}
         />
-        <NewWeddingForm templateSources={activeProjects} />
+        <NewWeddingForm templateSources={activeProjects} plan={plan} />
       </div>
 
       <div className="mb-8 grid grid-cols-1 gap-3.5 md:grid-cols-3">
-        <StatCard value={activeWeddings} label="Active weddings" />
+        <StatCard
+          value={activeWeddings}
+          label={getCopy("activeProjectsStat", plan)}
+        />
         <StatCard value={tasksDueThisWeek} label="Tasks due this week" />
         <StatCard value={vendorsNeedingAction} label="Vendors needing action" />
       </div>
 
       <section className="mb-8">
-        <SectionHeader>Urgent across all weddings</SectionHeader>
+        <SectionHeader>{getCopy("urgentSection", plan)}</SectionHeader>
         {urgentItems.length === 0 ? (
           <EmptyState>
             Nothing urgent right now — you&apos;re in good shape.
@@ -64,6 +71,7 @@ export function AccountDashboard({
       <DashboardWeddingList
         activeWeddingCards={activeWeddingCards}
         archivedProjects={archivedProjects}
+        plan={plan}
       />
     </div>
   );

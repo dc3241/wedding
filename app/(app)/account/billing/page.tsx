@@ -1,10 +1,10 @@
 import { redirect } from "next/navigation";
-import Link from "next/link";
 import {
   CoupleSubscribeButton,
   ManageBillingButton,
   PlannerSubscribeButton,
 } from "@/components/billing/couple-billing-actions";
+import { ButtonLink } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
 import { Pill } from "@/components/ui/pill";
@@ -112,109 +112,121 @@ export default async function BillingPage({
         </Card>
       ) : null}
 
-      <Card className="mt-6 p-6">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <h2 className="text-[15px] font-medium text-ink">
-              {planLabel} plan
-            </h2>
-            {isPaidActive ? (
-              <div className="mt-2 space-y-1">
-                <Pill variant="sage">Active</Pill>
-                {subscription.hasSubscription ? (
-                  <>
-                    {renewalDate ? (
-                      <p className="text-[13px] text-muted">
-                        Renews {renewalDate}
-                      </p>
-                    ) : null}
-                    {subscription.cancelAtPeriodEnd && renewalDate ? (
-                      <p className="text-[13px] text-clay">
-                        Cancels at end of period ({renewalDate})
-                      </p>
-                    ) : null}
-                  </>
-                ) : (
-                  <p className="text-[13px] text-muted">
-                    Full plan — you&apos;re all set. No further charges for this
-                    account.
-                  </p>
-                )}
-              </div>
-            ) : isTrialing ? (
-              <div className="mt-2 space-y-1">
-                <Pill variant="clay">Trial</Pill>
-                {isPlanner ? (
-                  <>
-                    {renewalDate ? (
-                      <p className="text-[13px] text-muted">
-                        Trial ends {renewalDate}
-                      </p>
-                    ) : null}
+      <div
+        className={
+          isPlanner && !isVenuePlan
+            ? "mt-6 grid items-stretch gap-4 md:grid-cols-2"
+            : "mt-6"
+        }
+      >
+        <Card className="p-6">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <h2 className="text-[15px] font-medium text-ink">
+                {planLabel} plan
+              </h2>
+              {isPaidActive ? (
+                <div className="mt-2 space-y-1">
+                  <Pill variant="sage">Active</Pill>
+                  {subscription.hasSubscription ? (
+                    <>
+                      {renewalDate ? (
+                        <p className="text-[13px] text-muted">
+                          Renews {renewalDate}
+                        </p>
+                      ) : null}
+                      {subscription.cancelAtPeriodEnd && renewalDate ? (
+                        <p className="text-[13px] text-clay">
+                          Cancels at end of period ({renewalDate})
+                        </p>
+                      ) : null}
+                    </>
+                  ) : (
                     <p className="text-[13px] text-muted">
-                      Subscribe anytime — Monthly or Annual. No second free
-                      period stacks on checkout.
+                      Full plan — you&apos;re all set. No further charges for this
+                      account.
                     </p>
-                  </>
-                ) : (
-                  <>
-                    {renewalDate ? (
+                  )}
+                </div>
+              ) : isTrialing ? (
+                <div className="mt-2 space-y-1">
+                  <Pill variant="clay">Trial</Pill>
+                  {isPlanner ? (
+                    <>
+                      {renewalDate ? (
+                        <p className="text-[13px] text-muted">
+                          Trial ends {renewalDate}
+                        </p>
+                      ) : null}
                       <p className="text-[13px] text-muted">
-                        Trial ends {renewalDate}. Choose Monthly or Lifetime
-                        anytime — no card required until you do.
+                        Subscribe anytime — Monthly or Annual. No second free
+                        period stacks on checkout.
                       </p>
-                    ) : (
-                      <p className="text-[13px] text-muted">
-                        Choose Monthly or Lifetime anytime — no card required
-                        until you do.
-                      </p>
-                    )}
-                  </>
-                )}
-              </div>
-            ) : subscription.isActive && subscription.status === "demo" ? (
-              <div className="mt-2 space-y-1">
-                <Pill variant="sage">Demo</Pill>
-                <p className="text-[13px] text-muted">
-                  Demo accounts are fully unlocked for exploration.
-                </p>
-              </div>
-            ) : (
-              <p className="mt-2 text-[13px] text-muted">
-                {FREE_COPY[account.kind]}
-              </p>
-            )}
-          </div>
-
-          <div className="shrink-0">
-            {showManage ? (
-              <ManageBillingButton />
-            ) : showSubscribe ? (
-              isPlanner ? (
-                <PlannerSubscribeButton />
+                    </>
+                  ) : (
+                    <>
+                      {renewalDate ? (
+                        <p className="text-[13px] text-muted">
+                          Trial ends {renewalDate}. Choose Monthly or Lifetime
+                          anytime — no card required until you do.
+                        </p>
+                      ) : (
+                        <p className="text-[13px] text-muted">
+                          Choose Monthly or Lifetime anytime — no card required
+                          until you do.
+                        </p>
+                      )}
+                    </>
+                  )}
+                </div>
+              ) : subscription.isActive && subscription.status === "demo" ? (
+                <div className="mt-2 space-y-1">
+                  <Pill variant="sage">Demo</Pill>
+                  <p className="text-[13px] text-muted">
+                    Demo accounts are fully unlocked for exploration.
+                  </p>
+                </div>
               ) : (
-                <CoupleSubscribeButton />
-              )
-            ) : null}
-          </div>
-        </div>
-      </Card>
+                <p className="mt-2 text-[13px] text-muted">
+                  {FREE_COPY[account.kind]}
+                </p>
+              )}
+            </div>
 
-      {/* VENUE-03a: discoverable path for planner → venue (not marketing). */}
-      {isPlanner && !isVenuePlan ? (
-        <Card className="mt-4 p-5">
-          <p className="text-[14px] text-muted">
-            Running a venue with multiple planners?{" "}
-            <Link
-              href="/account/venue-upgrade"
-              className="font-medium text-accent underline-offset-2 hover:underline"
-            >
-              Learn about the venue plan
-            </Link>
-            .
-          </p>
+            <div className="shrink-0">
+              {showManage ? (
+                <ManageBillingButton />
+              ) : showSubscribe ? (
+                isPlanner ? (
+                  <PlannerSubscribeButton />
+                ) : (
+                  <CoupleSubscribeButton />
+                )
+              ) : null}
+            </div>
+          </div>
         </Card>
-      ) : null}
+
+        {/* VENUE-06: planner → venue at equal weight with the current plan card. */}
+        {isPlanner && !isVenuePlan ? (
+          <Card className="flex flex-col p-6">
+            <h2 className="text-[15px] font-medium text-ink">
+              Upgrade to Venue
+            </h2>
+            <p className="mt-2 text-[13px] text-muted">
+              Running a venue with multiple planners?{" "}
+              {BILLING_PLANS.venue.monthly.amountLabel} or{" "}
+              {BILLING_PLANS.venue.annual.amountLabel}. Own-shell branding
+              unlocks when white-label is enabled.
+            </p>
+            <div className="mt-auto pt-4">
+              <ButtonLink href="/account/venue-upgrade">
+                Upgrade to Venue
+              </ButtonLink>
+            </div>
+          </Card>
+        ) : null}
+      </div>
     </div>
   );
 }

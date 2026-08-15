@@ -7,10 +7,11 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState, type MouseEvent } from "react";
 
-const SECTION_NAV = [
-  { id: "features", label: "Features", href: "/#features" },
-  { id: "couples", label: "For couples", href: "/#couples" },
-  { id: "planners", label: "For planners", href: "/#planners" },
+const NAV = [
+  { id: "features", label: "Features", href: "/#features", hash: true },
+  { id: "planners", label: "For planners", href: "/for-planners", hash: false },
+  { id: "venues", label: "For venues", href: "/for-venues", hash: false },
+  { id: "pricing", label: "Pricing", href: "/pricing", hash: false },
 ] as const;
 
 const navLinkClass =
@@ -57,7 +58,6 @@ export function MarketingTopbar() {
 
   // Pathname-dependent active styles only after mount — avoids SSR/client mismatch.
   const onHome = mounted && pathname === "/";
-  const onPricing = mounted && pathname === "/pricing";
 
   useEffect(() => {
     setMounted(true);
@@ -78,7 +78,8 @@ export function MarketingTopbar() {
       return;
     }
 
-    const ids = SECTION_NAV.map((item) => item.id);
+    // Features is the only remaining homepage hash target in the topbar.
+    const ids = NAV.filter((item) => item.hash).map((item) => item.id);
     const elements = ids
       .map((id) => document.getElementById(id))
       .filter((el): el is HTMLElement => el != null);
@@ -113,25 +114,25 @@ export function MarketingTopbar() {
           <Wordmark />
         </Link>
         <NavLinks className="min-w-0 flex-1 justify-center gap-0.5 lg:gap-1">
-          {SECTION_NAV.map((item) => {
-            const isActive = onHome && activeSection === item.id;
+          {NAV.map((item) => {
+            const isActive = item.hash
+              ? onHome && activeSection === item.id
+              : mounted && pathname === item.href;
             return (
               <NavLink
                 key={item.id}
                 href={item.href}
                 className={cn(navLinkClass, isActive && navLinkActiveClass)}
-                onClick={(e) => navigateToSection(e, item.id, onHome)}
+                onClick={
+                  item.hash
+                    ? (e) => navigateToSection(e, item.id, onHome)
+                    : undefined
+                }
               >
                 {item.label}
               </NavLink>
             );
           })}
-          <NavLink
-            href="/pricing"
-            className={cn(navLinkClass, onPricing && navLinkActiveClass)}
-          >
-            Pricing
-          </NavLink>
         </NavLinks>
         <div className="flex shrink-0 items-center gap-2 sm:gap-3">
           <ButtonLink

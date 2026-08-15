@@ -1,6 +1,8 @@
 "use client";
 
 import { DemoCta } from "@/components/demo/demo-cta";
+import { CoupleCollaboration } from "@/components/marketing/couple-collaboration";
+import { WhiteLabelShowcase } from "@/components/marketing/white-label-showcase";
 import { ButtonLink } from "@/components/ui/button";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { cn } from "@/lib/cn";
@@ -49,16 +51,16 @@ const PLANNERS_CARDS = [
     icon: TeamIcon,
   },
   {
-    title: "Your brand, not ours",
-    body: "Couples log in and see your logo, your name, your colors — First Look stays behind the scenes.",
-    icon: WebsiteIcon,
+    title: "Nothing goes stale",
+    body: "Leads sitting untouched for two weeks get flagged automatically, so nobody falls through.",
+    icon: StaleIcon,
   },
 ] as const;
 
 function hashToAudience(hash: string): Audience | null {
   // Normalize "#couples#couples" → "couples" if a prior nav ever doubled the fragment.
   const id = hash.replace(/^#/, "").split("#")[0];
-  if (id === "planners") return "planners";
+  if (id === "planners" || id === "venues") return "planners";
   if (id === "couples") return "couples";
   return null;
 }
@@ -73,7 +75,7 @@ function setAudienceHash(next: Audience) {
 }
 
 export function AudienceSection() {
-  const [audience, setAudience] = useState<Audience>("couples");
+  const [audience, setAudience] = useState<Audience>("planners");
 
   useEffect(() => {
     function syncFromHash() {
@@ -98,7 +100,7 @@ export function AudienceSection() {
       id="audience"
       className="relative mx-auto max-w-6xl scroll-mt-24 px-6 py-14 md:px-10 md:py-16"
     >
-      {/* Scroll targets for topbar /#couples and /#planners — 1px so the browser will scroll */}
+      {/* Scroll targets for topbar hashes — 1px so the browser will scroll */}
       <span
         id="couples"
         className="pointer-events-none absolute top-0 left-0 h-px w-px scroll-mt-24"
@@ -106,6 +108,11 @@ export function AudienceSection() {
       />
       <span
         id="planners"
+        className="pointer-events-none absolute top-0 left-0 h-px w-px scroll-mt-24"
+        aria-hidden
+      />
+      <span
+        id="venues"
         className="pointer-events-none absolute top-0 left-0 h-px w-px scroll-mt-24"
         aria-hidden
       />
@@ -150,12 +157,12 @@ export function AudienceSection() {
             tabIndex={!isCouples ? 0 : -1}
             onClick={() => selectAudience("planners")}
             className={cn(
-              "relative z-10 cursor-pointer rounded-[var(--radius-pill)] px-5 py-2.5 text-[14px] font-semibold transition-colors duration-150",
+              "relative z-10 cursor-pointer rounded-[var(--radius-pill)] px-3 py-2.5 text-[13px] font-semibold whitespace-nowrap transition-colors duration-150 sm:px-5 sm:text-[14px]",
               "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
               !isCouples ? "text-ink" : "text-muted hover:text-ink",
             )}
           >
-            For planners
+            For planners & venues
           </button>
         </div>
       </div>
@@ -169,14 +176,14 @@ export function AudienceSection() {
       >
         <div className="mx-auto mb-9 max-w-[52ch] text-center">
           <Eyebrow className="mb-4 block">
-            {isCouples ? "For couples" : "For planners & their teams"}
+            {isCouples ? "For couples" : "For planners & venues"}
           </Eyebrow>
           <h2 className="text-[32px] font-extrabold tracking-[-0.03em] text-ink md:text-[42px]">
             {isCouples
               ? "Everything for your wedding, in one place."
               : "Every client wedding, one workspace."}
           </h2>
-          <p className="mt-3 text-[15px] leading-relaxed text-muted md:text-[16px]">
+          <p className="mt-3 text-center text-[15px] leading-relaxed text-muted md:text-[16px]">
             {isCouples
               ? 'From the day you sign up to the day you say "I do" — no juggling five different tools.'
               : "Run your whole book without switching tools — or losing track of which client is where."}
@@ -224,30 +231,9 @@ export function AudienceSection() {
         </div>
       </div>
 
-      {/* Unify band — accent-wash raised, NOT a second --deep field */}
-      <div className="mt-14 rounded-[var(--radius-card)] bg-accent-wash px-6 py-10 shadow-raised md:mt-16 md:px-10 md:py-12">
-        <div className="mx-auto max-w-[56ch] text-center">
-          <Eyebrow className="mb-4 block">Where you meet</Eyebrow>
-          <h2 className="text-[28px] font-extrabold tracking-[-0.03em] text-ink md:text-[34px]">
-            One wedding, everyone in it.
-          </h2>
-          <p className="mt-3 text-[15px] leading-relaxed text-muted md:text-[16px]">
-            Most tools pick a side — couples or planners. This one connects them.
-            A planner invites the couple into the same wedding, brings their team
-            along as collaborators, and everyone works from one source of truth.
-            No exports, no duplicate spreadsheets, no wondering which version is
-            current.
-          </p>
-        </div>
+      <WhiteLabelShowcase className="mt-14 md:mt-16" />
 
-        <div className="mt-8 flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-center sm:gap-2 md:gap-3">
-          <UnifyChip>Planner runs the book</UnifyChip>
-          <UnifyArrow />
-          <UnifyChip>Couple plans their day</UnifyChip>
-          <UnifyArrow />
-          <UnifyChip>Team lends a hand</UnifyChip>
-        </div>
-      </div>
+      <CoupleCollaboration className="mt-14 md:mt-16" />
     </section>
   );
 }
@@ -286,25 +272,6 @@ function VenueCallout() {
         </Link>
       </p>
     </aside>
-  );
-}
-
-function UnifyArrow() {
-  return (
-    <span
-      className="hidden shrink-0 text-accent sm:inline-flex"
-      aria-hidden
-    >
-      <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
-        <path
-          d="M4 10h12M11 5l5 5-5 5"
-          stroke="currentColor"
-          strokeWidth="1.75"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      </svg>
-    </span>
   );
 }
 
@@ -430,6 +397,21 @@ function TeamIcon() {
         stroke="currentColor"
         strokeWidth="1.5"
         strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function StaleIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden>
+      <circle cx="10" cy="10" r="7" stroke="currentColor" strokeWidth="1.5" />
+      <path
+        d="M10 6.5V10l2.5 1.5"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
       />
     </svg>
   );

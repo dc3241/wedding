@@ -6,8 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import type { AccountPlan } from "@/lib/account-context";
+import { getCopy } from "@/lib/venue-copy";
 
-export function AddLeadForm() {
+export function AddLeadForm({ plan = "planner" }: { plan?: AccountPlan }) {
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -50,7 +52,7 @@ export function AddLeadForm() {
   if (!open) {
     return (
       <Button type="button" onClick={() => setOpen(true)}>
-        Add lead
+        {getCopy("addLead", plan)}
       </Button>
     );
   }
@@ -163,7 +165,7 @@ export function AddLeadForm() {
 
         <div className="flex gap-2">
           <Button type="submit" disabled={isPending}>
-            {isPending ? "Saving…" : "Save lead"}
+            {isPending ? "Saving…" : getCopy("saveLead", plan)}
           </Button>
           <Button
             type="button"

@@ -7,6 +7,7 @@ import {
   type ProjectBranding,
 } from "@/lib/branding/types";
 import type { CSSProperties, ReactNode } from "react";
+import type { AccountPlan } from "@/lib/account-context";
 
 function BrandMark({ branding }: { branding: ProjectBranding }) {
   const name = branding.brandName?.trim() || DEFAULT_BRAND_NAME;
@@ -36,10 +37,12 @@ export function PlannerShell({
   children,
   projects,
   branding = null,
+  plan = "planner",
 }: {
   children: ReactNode;
   projects: SidebarProject[];
   branding?: ProjectBranding | null;
+  plan?: AccountPlan;
 }) {
   // Same --accent override mechanism as CoupleShell (inline CSS var).
   const accent =
@@ -58,7 +61,7 @@ export function PlannerShell({
         {branding ? <BrandMark branding={branding} /> : <Wordmark />}
       </header>
       <div className="flex flex-1 gap-6 px-8 py-7">
-        <PlannerProjectSidebar projects={projects} />
+        <PlannerProjectSidebar projects={projects} plan={plan} />
         <main className="min-w-0 flex-1">{children}</main>
       </div>
     </div>

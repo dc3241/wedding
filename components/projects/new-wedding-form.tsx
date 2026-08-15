@@ -10,14 +10,20 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import type { AccountPlan } from "@/lib/account-context";
 import type { PlannerProjectSummary } from "@/lib/dashboard-aggregates";
+import { getCopy } from "@/lib/venue-copy";
 
 type NewWeddingFormProps = {
   /** Active (non-archived) projects on this business account — template sources. */
   templateSources?: PlannerProjectSummary[];
+  plan?: AccountPlan;
 };
 
-export function NewWeddingForm({ templateSources = [] }: NewWeddingFormProps) {
+export function NewWeddingForm({
+  templateSources = [],
+  plan = "planner",
+}: NewWeddingFormProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -61,14 +67,14 @@ export function NewWeddingForm({ templateSources = [] }: NewWeddingFormProps) {
       if (sourceProjectId) {
         const sourceName =
           templateSources.find((p) => p.id === sourceProjectId)?.name ??
-          "selected wedding";
+          getCopy("selectedProject", plan);
         const cloneResult = await cloneProjectTemplate(
           sourceProjectId,
           result.projectId,
         );
         if (!cloneResult.ok) {
           setError(
-            `Wedding created, but template copy failed: ${cloneResult.error}`,
+            `${getCopy("templateCopyFailed", plan)}${cloneResult.error}`,
           );
           setCreatedProjectId(result.projectId);
           router.refresh();
@@ -91,7 +97,7 @@ export function NewWeddingForm({ templateSources = [] }: NewWeddingFormProps) {
   if (!open) {
     return (
       <Button type="button" onClick={() => setOpen(true)}>
-        New wedding
+        {getCopy("newProject", plan)}
       </Button>
     );
   }
@@ -102,7 +108,7 @@ export function NewWeddingForm({ templateSources = [] }: NewWeddingFormProps) {
         <p className="text-sm text-sage">{confirmation}</p>
         <div className="mt-3 flex gap-2">
           <Button type="button" onClick={() => openProject(createdProjectId)}>
-            Open wedding
+            {getCopy("openProject", plan)}
           </Button>
           <Button
             type="button"
@@ -126,7 +132,7 @@ export function NewWeddingForm({ templateSources = [] }: NewWeddingFormProps) {
         <p className="text-sm text-rosewood">{error}</p>
         <div className="mt-3 flex gap-2">
           <Button type="button" onClick={() => openProject(createdProjectId)}>
-            Open wedding
+            {getCopy("openProject", plan)}
           </Button>
           <Button
             type="button"
@@ -156,7 +162,7 @@ export function NewWeddingForm({ templateSources = [] }: NewWeddingFormProps) {
               htmlFor="new-wedding-name"
               className="text-sm font-medium text-ink"
             >
-              Wedding name
+              {getCopy("projectNameLabel", plan)}
             </label>
             <Input
               id="new-wedding-name"

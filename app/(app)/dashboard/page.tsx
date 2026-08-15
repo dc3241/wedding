@@ -119,6 +119,7 @@ export default async function DashboardPage() {
       tasksDueThisWeek={countTasksDueThisWeek(urgentTaskList)}
       vendorsNeedingAction={countVendorsNeedingAction(vendors)}
       urgentItems={buildUrgentItems(urgentTaskList, vendors)}
+      plan={account.plan}
     />
   );
 }

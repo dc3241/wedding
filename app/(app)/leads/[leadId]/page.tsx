@@ -16,6 +16,7 @@ import {
 } from "@/components/leads/types";
 import { Pill } from "@/components/ui/pill";
 import { getAccountContext } from "@/lib/account-context";
+import { getCopy } from "@/lib/venue-copy";
 import { createClient } from "@/utils/supabase/server";
 
 export default async function LeadDetailPage({
@@ -105,7 +106,7 @@ export default async function LeadDetailPage({
           href="/leads"
           className="mb-3 inline-block text-[13px] text-muted no-underline hover:text-ink"
         >
-          ← Back to leads
+          {getCopy("backToLeads", account.plan)}
         </Link>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>

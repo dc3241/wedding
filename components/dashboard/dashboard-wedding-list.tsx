@@ -15,6 +15,8 @@ import type {
   PlannerProjectSummary,
   WeddingCardModel,
 } from "@/lib/dashboard-aggregates";
+import type { AccountPlan } from "@/lib/account-context";
+import { getCopy } from "@/lib/venue-copy";
 
 function formatArchivedDate(date: string | null) {
   if (!date) return "No date set";
@@ -28,9 +30,11 @@ function formatArchivedDate(date: string | null) {
 export function DashboardWeddingList({
   activeWeddingCards,
   archivedProjects,
+  plan = "planner",
 }: {
   activeWeddingCards: WeddingCardModel[];
   archivedProjects: PlannerProjectSummary[];
+  plan?: AccountPlan;
 }) {
   const router = useRouter();
   const [view, setView] = useState<"active" | "archived">("active");
@@ -75,11 +79,11 @@ export function DashboardWeddingList({
 
   return (
     <section>
-      <SectionHeader>Weddings</SectionHeader>
+      <SectionHeader>{getCopy("dashboardSection", plan)}</SectionHeader>
       <div className="mb-3 flex justify-end">
         <div
           role="tablist"
-          aria-label="Wedding list"
+          aria-label={getCopy("projectListAria", plan)}
           className={cn(
             "flex rounded-[var(--radius-pill)] bg-well p-[3px] shadow-recessed",
             isPending && "opacity-60",
@@ -119,8 +123,8 @@ export function DashboardWeddingList({
       {isEmpty ? (
         <EmptyState>
           {view === "archived"
-            ? "No archived weddings yet."
-            : "No weddings yet. Create your first client wedding to get started."}
+            ? getCopy("emptyArchived", plan)
+            : getCopy("emptyProjects", plan)}
         </EmptyState>
       ) : view === "active" ? (
         <WeddingCards

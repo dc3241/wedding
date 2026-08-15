@@ -1,10 +1,12 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 export type AccountKind = "personal" | "business";
+export type AccountPlan = "planner" | "venue";
 
 export type AccountContext = {
   accountId: string;
   kind: AccountKind;
+  plan: AccountPlan;
   isDemo: boolean;
   projectIds: string[];
   singleProjectId: string | null;
@@ -39,7 +41,7 @@ export async function getAccountContext(
 
   const { data: account } = await supabase
     .from("accounts")
-    .select("kind, is_demo")
+    .select("kind, is_demo, plan")
     .eq("id", accountId)
     .single();
 
@@ -51,10 +53,12 @@ export async function getAccountContext(
 
   const projectIds = (projects ?? []).map((p) => p.id);
   const kind = (account?.kind ?? "personal") as AccountKind;
+  const plan: AccountPlan = account?.plan === "venue" ? "venue" : "planner";
 
   return {
     accountId,
     kind,
+    plan,
     isDemo: account?.is_demo === true,
     projectIds,
     singleProjectId: projectIds.length === 1 ? projectIds[0] : null,

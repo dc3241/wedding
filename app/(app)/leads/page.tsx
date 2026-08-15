@@ -5,6 +5,7 @@ import type { Lead, LeadStage } from "@/components/leads/types";
 import { PageHeader } from "@/components/ui/page-header";
 import { getAccountContext } from "@/lib/account-context";
 import { isLeadStale, leadInactiveDays } from "@/lib/lead-staleness";
+import { getCopy } from "@/lib/venue-copy";
 import { createClient } from "@/utils/supabase/server";
 
 export default async function LeadsPage() {
@@ -61,13 +62,13 @@ export default async function LeadsPage() {
       <div className="mb-6">
         <PageHeader
           eyebrow="CRM"
-          title="Leads"
-          description="Track prospective couples from first inquiry through booked or lost."
-          actions={<AddLeadForm />}
+          title={getCopy("leadsTitle", account.plan)}
+          description={getCopy("leadsDescription", account.plan)}
+          actions={<AddLeadForm plan={account.plan} />}
         />
       </div>
 
-      <LeadsBoard initialLeads={leads} />
+      <LeadsBoard initialLeads={leads} plan={account.plan} />
     </div>
   );
 }

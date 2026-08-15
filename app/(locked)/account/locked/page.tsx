@@ -82,6 +82,15 @@ export default async function AccountLockedPage() {
                 {cta}
               </ButtonLink>
             )}
+            {isPlanner ? (
+              <ButtonLink
+                href="/account/venue-upgrade"
+                variant="default"
+                className="w-full sm:w-auto"
+              >
+                I run a venue
+              </ButtonLink>
+            ) : null}
             <ButtonLink
               href="/account/billing"
               variant="ghost"

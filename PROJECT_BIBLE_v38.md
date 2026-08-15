@@ -1,96 +1,77 @@
-# Wedding Planning SaaS — Project Bible (v37)
+# Wedding Planning SaaS — Project Bible (v38)
 
-Canonical state document. **Supersedes v36.** Drop this into the Project's instructions/knowledge so
-any new chat picks up cold. Lives in-repo at `PROJECT_BIBLE_v37.md`. The repo's `.cursor/design.mdc`,
-`app/globals.css`, and `supabase/migrations/` remain the live source of truth; this summarizes them
-and the decisions behind them. Current through migration **0083** (on disk, unchanged from v36).
-**Git:** **0070–0083 are committed** (0070–0078 in `3d50a3d` / `97c234a` / `4d5bbcd` / `9a0e267`;
-**0079** in `b2bf8fc`; **0080–0083** in `ca4131f`). **next-free migration remains 0084**.
-Fresh-install SQL bundles live under `supabase/deploy-batches/` (batch1–4) — convenience only;
-hand-paste of numbered migrations remains canonical for incremental applies. Deploy-batches do
-**not** yet include 0080–0083 — incremental paste of those four is required after a batch install.
+Canonical **current-state** document for this repo. Self-contained — do not look for earlier
+bible files; every fact a new chat needs is in **this** document. Drop this into Project
+instructions/knowledge so any new chat picks up cold. Lives in-repo at `PROJECT_BIBLE_v38.md`.
+The repo's `.cursor/design.mdc`, `app/globals.css`, and `supabase/migrations/` remain the live
+source of truth; this summarizes them and the decisions behind them.
 
-**v37 records the venue-intent signup shortcut (finalized), local-trial parity for venue signups, a
-Checkout-return reconciliation fallback, and a trial-guard fix — all NO SCHEMA.** Everything in v36
-that isn't touched below carries forward.
+**Current through migration 0083** (on disk). **Next-free migration is 0084.** **v38 ships zero
+schema.** Fresh-install SQL bundles live under `supabase/deploy-batches/` (batch1–4) —
+convenience only; hand-paste of numbered migrations remains canonical for incremental applies.
+Deploy-batches do **not** yet include 0080–0083 — incremental paste of those four is required
+after a batch install.
 
-**Dev-ops note (v37):** `STRIPE_SECRET_KEY` was briefly live-mode in local `.env.local` during this
-session's testing, producing one real live venue subscription — confirmed cancelled directly in the
-Stripe Dashboard by Dom. Rotate the key in the Stripe Dashboard if it was ever exposed outside this
-machine. Confirm `.env.local` holds a `sk_test_...` value before any further Checkout testing.
+**Git (migrations):** **0070–0083 are committed** (0070–0078 in `3d50a3d` / `97c234a` /
+`4d5bbcd` / `9a0e267`; **0079** in `b2bf8fc`; **0080–0083** in `ca4131f`). ENT-01a /
+CHECKOUT-RECONCILE-01 / TRIAL-GUARD-01 / VENUE-04/05 landed in `2d195c4` on `staging`. v38
+product work (MKT-01…03, VENUE-06/07, WHITE-02, ONBOARD-NUDGE-01) is on disk in the working
+tree as of this write-up.
 
-| Slice | What | Schema |
-|---|---|---|
-| **PRICE-07** | Couple **local** 7-day free trial (`startCoupleTrial`) — same posture as PRICE-01. `status=trialing`, both Stripe ids null; expiry via `current_period_end`. **No card. No $7 Checkout.** | **NONE** |
-| **PRICE-08** | Couple paid Checkout: **Monthly $10/mo** (Stripe Subscription) or **Lifetime $99** (`mode=payment`, `charge_stage=couple_lifetime`). No `trial_period_days` — PRICE-07 owns the free window. Customer Portal for any account with a real Stripe Customer (extends PRICE-06). | **NONE** |
-| **GMAIL-THREAD-01** | `outreach_messages.gmail_thread_id` (nullable; no backfill). Persist Gmail `threadId` from `users.messages.send`; outreach history "View in Gmail" deep-link. Rides existing outreach RLS. | **0080** |
-| **TEAM-01** | Account-level seats for **business** accounts. `account_invitations` + `accept_account_invitation` / `remove_account_member` / `list_account_members`; fellow-member SELECT on `account_members`; `/account/team`; `/invite/account/[token]` + `pending_account_invite_token` cookie (parallel to project invites, not a fork of 0028). **Flat membership — no roles.** `account_members.role` stays vestigial. | **0081** + **0082** |
-| **VENUE-01** | `accounts.plan` `planner` (default) \| `venue` + CHECKs (values + business-only). Own-shell PlannerShell white-label when `plan = 'venue' AND white_label_enabled` (`getOwnAccountBranding`). Hand-set originally; Stripe wiring is VENUE-02. | **0083** |
-| **VENUE-02 / 02b** | Venue paid Checkout Monthly **$199/mo** / Annual **$1,999/yr**. Webhook `applyVenuePlanFromSubscription` flips `accounts.plan` from live venue price ids (fail-closed → `planner`). Does **not** touch branding columns. | **NONE** |
-| **VENUE-03a/b/c** | Discoverability: billing-page venue link; marketing pricing cosmetic toggle (Checkout stays post-login); planners-tab subordinate callout. Public `/pricing` does **not** start venue Checkout. | **NONE** |
-| **VND-12** | Account Vendor library: list rows → raised **card grid** (`VendorCard`). Preferred sage pill; Instagram handle; category footer. `VendorLibraryRow` deleted. No schema. | **NONE** |
-| **LEAD-STALE-01** | Derived-at-read stale-lead predicate (`lib/lead-staleness.ts`): non-terminal stage AND `updated_at` ≥14 days. Terminal `booked`/`lost` never stale. Rosewood "No activity in Nd" pill on `LeadRow`. | **NONE** |
-| **ENT-01a** | Lock screen moved to `app/(locked)/account/locked` — separate layout group so `(app)/layout` never branches on pathname (cached segment left chrome-less lock tree mounted after trial start). Path stays `/account/locked`. | **NONE** |
-| **OVERDUE-01** | `isTaskPastDue` (`lib/task-overdue.ts`) is now the **single source** for Overview attention, assistant `getChecklist`, wedding-card rollups, planner urgent tasks, and calendar **task** overlays. (Budget/schedule `due_on < today` is a different predicate — leave it.) | **NONE** |
+**Dev-ops note:** `STRIPE_SECRET_KEY` was briefly live-mode in local `.env.local` during
+testing, producing one real live venue subscription — confirmed cancelled directly in the
+Stripe Dashboard by Dom. Rotate the key in the Stripe Dashboard if it was ever exposed outside
+this machine. Confirm `.env.local` holds a `sk_test_...` value before any further Checkout
+testing.
 
-| Slice (v37) | What | Schema |
-|---|---|---|
-| **VENUE-04 (finalized)** | Always-visible welcome-screen tertiary link; `venueIntent: true` is request-only; business bootstrap redirects to `/account/venue-upgrade`. No third toggle, no `kind='venue'`. | **NONE** |
-| **VENUE-05** | Local 7-day trial on `/account/venue-upgrade` via `startPlannerTrial()`. Trial keeps `plan='planner'` until a paid subscription. | **NONE** |
-| **CHECKOUT-RECONCILE-01** | `{CHECKOUT_SESSION_ID}` on venue/planner/couple success URLs; return pages call `reconcileCheckoutReturn` → same `applyCheckoutSession` write path as the webhook. Narrow, idempotent fallback. | **NONE** |
-| **TRIAL-GUARD-01** | `startPlannerTrial` / `startCoupleTrial` skip only when a row exists with `status IS NOT NULL`. Null-status Checkout stubs are updated in place. | **NONE** |
+### Live product facts (current truth — do not revive superseded paths)
 
-> **PROVENANCE.** v36 body + on-disk VENUE-04/05 + CHECKOUT-RECONCILE-01 + TRIAL-GUARD-01 (no schema).
-> CHECKOUT-RECONCILE-01 was live-tested by Dom; Cursor's implementation-session Step 0 was not
-> reviewed in chat — mechanics were verified against disk during this bible write-up (see §7 / §13).
-> v35 body + post-v35 commits `b2bf8fc` (couple monthly/lifetime + 0079 commit +
-> ASSIST-BUD already in v35) / `ca4131f` (TEAM / VENUE / vendor cards / lead staleness / Gmail
-> thread / 0080–0083) + on-disk uncommitted ENT-01a + OVERDUE-01 + `plan-constants` extract.
-> Slice IDs match migration headers / code comments (VND-12 / LEAD-STALE-01 / GMAIL-THREAD-01 /
-> ENT-01a / OVERDUE-01 assigned in v36 as catch-up IDs; VENUE-04/05 / CHECKOUT-RECONCILE-01 /
-> TRIAL-GUARD-01 assigned here). **Git status (migrations):** 0070–0083 committed. Live paste:
-> **0071 confirmed live** via `pg_policies` (v35 review); remaining **0060–0070 / 0072–0083**
-> UNCONFIRMED unless Dom closed them. Edge Functions (`purge-demo`, residual `charge-trial-balance`)
-> are **manual Dashboard deploys**. Demo template seeds remain a separate hand-apply.
-
-**Also closed / corrected in v36 (discrepancies found vs v35 body):**
-- **Next-free is 0084**, not 0080. Disk has **0070–0083**. **0079 is committed** (`b2bf8fc`) — v35's
-  "0079 untracked" is stale.
-- **Couple billing is NOT $7 week + day-7 $92.** Live product: **PRICE-07 local trial** (no Stripe
-  objects, no card) then **PRICE-08 Monthly $10 / Lifetime $99**. PRICE-03/04/05 schema (**0076–
-  0078** `stripe_payment_method_id`, `claim_couple_trial_charges`, `set_couple_trial_cancellation`)
-  and Edge Function `charge-trial-balance` are **retained residual** — do not wire a new $7 Checkout
-  or schedule the charge function as the couple path. Treat as dead product; drop unscheduled.
-- **v35 "Not account-level seats / `account_invitations`" is SUPERSEDED.** TEAM-01 shipped account
-  seats for business accounts. Project invitations (0028) remain the invited-member path. Two
-  grains, two tables, two cookies — keep them parallel.
-- **WHITE-01 "planner chrome stays First Look" is PARTIALLY SUPERSEDED.** CoupleShell white-label
-  for invited project viewers is unchanged. **Venue** accounts (`plan = 'venue'` AND
-  `white_label_enabled`) may brand **PlannerShell** via `getOwnAccountBranding`. Ordinary planner
-  accounts still stay First Look.
-- **PRICE-06 Portal is not planner-only.** Any account with a real Stripe Customer can open Portal
-  (couple monthly subscription included). Lifetime / local trial / seeded active still have no
-  Subscription id — Portal is gated on customer, not on planner kind.
-- **`isTaskPastDue` IS now single-sourced** (OVERDUE-01, on disk). v35's "still multi-homed" flag
-  is closed for **task** overdue. Do not re-inline.
-- **ENT-01 lock screen no longer lives under `(app)`.** Path `/account/locked` is unchanged; the
-  route group is `(locked)` so app chrome cannot stick after unlock.
-- **`getAccountContext` / billing resolvers MUST filter `account_members` by `user_id`.** TEAM-01
-  fellow-member SELECT would otherwise return other members' rows and skew account resolution.
-- Deferred destructive drops shift to **0084+** (0080–0083 are taken): MEAL-03a
-  (`guests.meal_choice` + `guests.party_size`), `budget_items.due_date`, `rsvp_access_mode`,
-  optional `wedding_profile.traditions`, DASH-03a `projects.description`, optional PRICE-03/04/05
+- **Couple billing:** local 7-day free trial (PRICE-07 — no Stripe objects, no card) then
+  **Monthly $10** Subscription or **Lifetime $99** one-time Checkout (PRICE-08). The older
+  **$7 week + day-7 $92** path is **dead**. Schema 0076–0078
+  (`stripe_payment_method_id`, `claim_couple_trial_charges`, `set_couple_trial_cancellation`)
+  and Edge Function `charge-trial-balance` are **retained residual** — do not wire a new $7
+  Checkout or schedule that function as the couple path.
+- **Planner billing:** local 7-day trial (PRICE-01) then Monthly **$59** / Annual **$590**
+  Checkout (PRICE-02). Customer Portal (PRICE-06) is for **any** account with a real Stripe
+  Customer (planner Subscription **or** couple monthly) — not planner-only. Lifetime / local
+  trial / seeded active have no Subscription id, so no Portal.
+- **Venue billing:** Monthly **$199** / Annual **$1,999** at `/account/venue-upgrade`
+  (VENUE-02). Webhook (and CHECKOUT-RECONCILE-01 on return) flips `accounts.plan`. Public
+  `/pricing` venue toggle is **cosmetic** — does not start Checkout.
+- **Welcome screen:** three equal-weight options — couple / planner / venue (VENUE-06). Venue
+  is still `accounts.kind = 'business'` plus a request-only `venueIntent` flag; there is **no**
+  `kind='venue'`. `accounts.plan` stays `'planner'` until a paid venue subscription.
+- **Team seats exist** (TEAM-01) for business accounts — flat, no roles. Parallel to project
+  invitations (0028): two tables, two cookies, two accept paths. Do not collapse them.
+- **White-label:** CoupleShell for invited project viewers (WHITE-01). PlannerShell own-shell
+  only when `plan = 'venue' AND white_label_enabled` (VENUE-01). Ordinary planner chrome stays
+  First Look. Accent picker + contrast guard is WHITE-02 (still one free-text hex).
+- **Lock screen** lives in `app/(locked)/account/locked` (ENT-01a). Path `/account/locked`.
+  **`(app)/layout` must not branch on pathname.**
+- **`isTaskPastDue`** (`lib/task-overdue.ts`) is the **single source** for task overdue
+  (OVERDUE-01). Budget/schedule `due_on < today` is a different predicate.
+- **`getAccountContext` includes `plan`** (VENUE-07) and **must filter `account_members` by
+  `user_id`** (TEAM-01 fellow-member SELECT).
+- **A `subscriptions` row with `status = null` is Checkout-initiation debris, not a
+  subscription** (TRIAL-GUARD-01). Guards check `status IS NOT NULL`, not row existence.
+- **Deferred destructive drops are 0084+:** MEAL-03a (`guests.meal_choice` +
+  `guests.party_size`), `budget_items.due_date`, `rsvp_access_mode`, optional
+  `wedding_profile.traditions`, DASH-03a `projects.description`, optional PRICE-03/04/05
   residual drop.
-- Public `/pricing` venue toggle is **cosmetic** — real venue Checkout is `/account/venue-upgrade`
-  (post-login).
 
-**Also closed / recorded in v37:**
-- **VENUE-04 is finalized** — always-visible tertiary venue-intent link; request-only flag; no
-  third toggle. (v36 on disk did not actually carry a "VENUE-04 in-progress" line.)
-- **A `subscriptions` row with `status = null` is Checkout-initiation debris, not a subscription**
-  (TRIAL-GUARD-01).
-- **CHECKOUT-RECONCILE-01** is the return-page fallback; webhook remains primary for every
-  non-return event. Mechanics verified against disk in this write-up.
+| Slice (v38 — all NO SCHEMA) | What | Schema |
+|---|---|---|
+| **MKT-01** | Homepage repositioned **planner/venue-first** (B2B). Hero + shared nav; in-app couple product unchanged. Hero preview tabs: Leads / Vendors / Contracts. | **NONE** |
+| **MKT-02** | Dedicated `/for-planners` landing. Shared marketing chrome. Nav "For planners" points here. | **NONE** |
+| **MKT-03** | Dedicated `/for-venues` landing. Nav "For venues" points here. Cross-links to `/for-planners`. | **NONE** |
+| **VENUE-06** | Venue is a **first-class equal-weight** welcome option (not a tertiary link). Lock screen (business-kind) "I run a venue" CTA. Billing: side-by-side "Upgrade to Venue" card. Same `bootstrapAccountWithVenueIntent` / no `kind='venue'`. | **NONE** |
+| **WHITE-02** | Brand accent: 8 preset swatches (`lib/brand-preset-colors.ts`) + native color picker + hex field; client-side WCAG contrast-vs-white warning (4.5:1) — **does not block save**. Still one free-text hex. | **NONE** |
+| **VENUE-07** | Display-only PlannerShell vocabulary (`lib/venue-copy.ts` / `getCopy(key, plan)`). Venue: Leads→Inquiries, New wedding→New booking, Weddings→Bookings. Routes/stages/tables unchanged. | **NONE** |
+| **ONBOARD-NUDGE-01** | One-time setup card on `/account/venue-upgrade` when `plan='venue'`. Reuses `user_tours` + `dismissTour` with keys `venue_branding_nudge` / `venue_team_nudge` — **not page tours**. | **NONE** |
+
+Full per-slice narratives for the entire product (foundation through v38) are in **§7 of this
+file**. Migration index **0001–0083** is in **§5 of this file**.
 
 > **Numbering note:** **0070–0083 are taken.** Next-free is **0084.** Do not `db push`. **`viewer`
 > invite remains deferred by product choice** (WRITE-01 write gates are done). **CON-03** (real PDF
@@ -100,25 +81,21 @@ machine. Confirm `.env.local` holds a `sk_test_...` value before any further Che
 > — that product path is gone.
 
 **Verification status (READ THIS):**
-- **0031–0059** remain as recorded (0059 applied live + visually verified).
-- **0060–0069** — ON DISK; paste status as in v34/v35 (0068–0069 claimed LIVE VERIFIED in older
-  appendices — re-confirm if unsure).
+- **0031–0059** on disk; **0059 applied live + visually verified.**
+- **0060–0069** — ON DISK. **0068–0069 claimed LIVE VERIFIED** (Dom) — re-confirm if unsure.
 - **0070–0083** — ON DISK **and committed in git**. Confirm remaining hand-pastes + Edge Function
-  deploys + schedules. **0071 LIVE VERIFIED** (`pg_policies`, v35 review).
-- **WHITE-01 / WRITE-01 / CAL-04 / ONB-06 / ENT-01/01a / PRICE-01…02 / PRICE-06…08 / TMPL-01 /
-  AGR-01 / HYG-01/01a / WEB-REVAL / DEMO-04/04b / RSVP-THROTTLE / TEAM-01 / VENUE-01…05 /
-  GMAIL-THREAD / VND-12 / LEAD-STALE / OVERDUE-01 / CHECKOUT-RECONCILE-01 / TRIAL-GUARD-01** —
-  code shipped; residual pastes + Edge Function ops are the human gate. **PRICE-03/04/05 product
-  path is superseded** (schema residual).
+  deploys + schedules. **0071 LIVE VERIFIED** (`pg_policies`).
+- Shipped in code (residual pastes + Edge Function ops are the human gate): WHITE-01/02,
+  WRITE-01, CAL-04, ONB-06, ENT-01/01a, PRICE-01/02/06/07/08, TMPL-01, AGR-01, HYG-01/01a,
+  WEB-REVAL, DEMO-04/04b, RSVP-THROTTLE, TEAM-01, VENUE-01…07, GMAIL-THREAD, VND-12,
+  LEAD-STALE, OVERDUE-01, CHECKOUT-RECONCILE-01, TRIAL-GUARD-01, MKT-01/02/03,
+  ONBOARD-NUDGE-01. **PRICE-03/04/05 product path is superseded** (schema residual).
 - **Still open (human gate):** confirm remaining **0060–0070 / 0072–0083** pastes (+ demo seeds);
   deploy/schedule `purge-demo` (do **not** treat `charge-trial-balance` as the live couple path);
-  broad Soft stack visual checkpoint including **Team**, **venue upgrade + own-shell branding**,
-  **vendor cards**, **stale-lead pills**, **lock-screen route group**, **couple local trial →
-  Monthly/Lifetime**, **View in Gmail**, **venue-intent signup shortcut**, **venue-upgrade trial**.
-  See §10 / §15.
-
-Sections changed from v36: header, **§1**, **§2**, **§3**, **§4**, **§5** (zero-schema note), **§6**,
-**§7** (new v37 batch), **§11**, **§12**, **§13**, **§14**, **§15**.
+  broad Soft stack visual checkpoint including Team, venue upgrade + own-shell branding +
+  venue copy, vendor cards, stale-lead pills, lock-screen route group, couple local trial →
+  Monthly/Lifetime, View in Gmail, three-option welcome, venue-upgrade trial + setup nudge,
+  `/for-planners` + `/for-venues`, accent picker. See §10 / §15.
 
 **Companion doc:** a separate **Launch Prep Runbook** exists (ops checklist for going to production).
 This bible covers product/architecture state; the runbook covers deployment. Keep both.
@@ -146,13 +123,13 @@ and it is what `can_access_project`'s "OR direct project member" branch was desi
 account, same `account_members` row the owner has). Two invitation grains; do not collapse them.
 See §4.
 
-The welcome screen offers exactly two audience toggles — personal / business — per ONB-06. A
-subordinate, always-visible tertiary link ("Running a venue instead?") lets a business-kind signup
-fast-track past the ordinary `/dashboard` landing straight to `/account/venue-upgrade` (VENUE-04).
-This is a routing shortcut only — no third toggle button, no `kind='venue'`, no distinct "venue
-dashboard." Venue accounts render through the identical PlannerShell as any planner account;
-`accounts.plan='venue'` only unlocks own-shell white-label + the venue price tier (VENUE-01), set
-solely by a confirmed paid subscription.
+The welcome screen offers **three equal-weight options** — couple / planner / venue (VENUE-06).
+Couple maps to `kind='personal'`; planner and venue both map to `kind='business'`. Venue submits
+via `bootstrapAccountWithVenueIntent` (`venueIntent: true` is request-only, never persisted) and
+lands on `/account/venue-upgrade` instead of `/dashboard`. **No `kind='venue'`**, no distinct
+venue dashboard. Venue accounts render through the identical PlannerShell as any planner account;
+display copy swaps via `getCopy` (VENUE-07). `accounts.plan='venue'` only unlocks own-shell
+white-label + the venue price tier (VENUE-01), set solely by a confirmed paid subscription.
 
 The app spans: the couple planning product (**6-step onboarding → AI plan with plan-scope /
 formality / priority / already-booked signals**, checklist, vendors, **guests as a flat
@@ -171,12 +148,13 @@ couple/collaborator invitations, **account-level Team seats (TEAM-01)**, archive
 **dashboard wedding cards**, **New wedding optional structure clone (TMPL-01)**, an account-level
 Vendor library **with card-grid list (VND-12) + detail/portfolio + Instagram + private media**,
 **white-label branding for invited CoupleShell viewers (WHITE-01) + venue own-shell branding
-(VENUE-01)**, an authorable Calendar, **outreach "View in Gmail" thread links**, and a cross-project
-Contracts archive with reusable contract templates **+ assistant-drafted templates (CON-04)**), Stripe
-billing (**couple local 7-day trial → Monthly $10 / Lifetime $99; planner local trial → Monthly/Annual;
-venue Monthly/Annual; entitlement lock screen**), marketing `/` + `/pricing` **with live demo CTAs
-(DEMO-02/03 + DEMO-04 purge/throttle)** and a cosmetic venue/team mention (Checkout stays
-post-login), and a **public, shareable wedding website** with a 5-template photo-led gallery, **an
+(VENUE-01) + accent picker/contrast guard (WHITE-02)**, an authorable Calendar, **outreach "View in
+Gmail" thread links**, and a cross-project Contracts archive with reusable contract templates **+
+assistant-drafted templates (CON-04)**), Stripe billing (**couple local 7-day trial → Monthly $10 /
+Lifetime $99; planner local trial → Monthly/Annual; venue Monthly/Annual; entitlement lock screen**),
+marketing `/` **(planner/venue-first, MKT-01)** + `/for-planners` **(MKT-02)** + `/for-venues`
+**(MKT-03)** + `/pricing` **with live demo CTAs (DEMO-02/03 + DEMO-04 purge/throttle)** (Checkout
+stays post-login), and a **public, shareable wedding website** with a 5-template photo-led gallery, **an
 editor that reorders
 and collapses sections with a sticky live preview, image border-shape and timeline-layout options**,
 **adaptive meal- and song-aware gated RSVP intake** (household lookup → per-attendee meal + optional
@@ -313,8 +291,8 @@ In `.cursor/main.mdc` (architecture) + `.cursor/design.mdc` (Soft stack design).
   surfaces, no policy change.
 - **Anon WRITE = tightly-scoped INSERT-only RLS (or a definer RPC) + server-derived scope.** Public
   writes are RSVP (`submit_rsvp` RPC) and registry claims (INSERT). **There are exactly SIX anon
-  surfaces** (three reads + one INSERT + two RPC executes) — see §4. **v31–v37 add NO new anon table
-  surfaces** (RSVP-02 form-only; RSVP-THROTTLE-01 replaces `submit_rsvp` in place; `vendor-media`
+  surfaces** (three reads + one INSERT + two RPC executes) — see §4. **No new anon table
+  surfaces have been added since the six listed in §4** (RSVP-02 form-only; RSVP-THROTTLE-01 replaces `submit_rsvp` in place; `vendor-media`
   private; `brand-media` is a **public storage carve-out** like `website-media`, not a counted table
   surface; `get_project_branding` is authenticated-only; `account_invitations` is authenticated
   account-member only). **Demo uses Supabase anonymous auth + authenticated RPC** — not a new anon
@@ -584,7 +562,7 @@ distinguishes sweetheart by **form + "SWEETHEART" label** (accent stroke), never
 Unchanged. Sole writer `set_project_archived(uuid, boolean)` — SECURITY DEFINER,
 `can_manage_project_access`-gated.
 
-### The six public (anon) surfaces (UNCHANGED count in v37)
+### The six public (anon) surfaces (UNCHANGED count)
 
 1. **Read:** `wedding_websites` anon `SELECT using (published = true)` (0022). Riders:
    `external_registry_links` (0035), `meal_service_style` (0038), `rsvp_access_mode` (0041 —
@@ -632,6 +610,15 @@ logo/name and optional `--accent` override for invited project viewers.
 `accounts.plan = 'venue' AND white_label_enabled`. Ordinary planner accounts stay First Look.
 Do not white-label public websites. Settings at `/account/branding`.
 
+**WHITE-02 (NO SCHEMA):** `/account/branding` accent UI is 8 curated swatches
+(`lib/brand-preset-colors.ts` — Berry / Dusty rose / Wine / Plum / Slate / Navy / Taupe / Forest;
+no sage/clay/rosewood status tokens) + a native `<input type="color">` + the existing hex field.
+All three write the same `brand_accent_color` through `updateAccountBranding`. Live preview updates
+`--accent` from the in-progress selection. Contrast guard (`lib/branding/contrast.ts`) is
+**client-side only** (WCAG relative luminance vs white, 4.5:1); a clay warning appears below
+threshold and **does not block save**. Do not persist a preset id — the stored value is still a
+free-text hex.
+
 ### Account plan (VENUE-01 / 0083) — ON DISK
 
 `accounts.plan` text NOT NULL default `'planner'` + CHECK `planner|venue` + CHECK
@@ -640,20 +627,28 @@ venue; **CHECKOUT-RECONCILE-01** is the same-path fallback on the Checkout retur
 also be hand-set for pilot. Personal accounts keep the default and never use it in couple UI.
 Idempotent plan flips do **not** touch `white_label_enabled` or brand columns.
 
-**VENUE-04 venue-intent bootstrap:** `bootstrapAccountWithVenueIntent`
+**`getAccountContext` returns `plan`** (`planner` | `venue`, defaulting unrecognized values to
+`planner`) so PlannerShell copy (VENUE-07) and own-shell branding can resolve at the call site.
+Still filters `account_members` by `user_id`.
+
+**VENUE-04 / VENUE-06 venue-intent bootstrap:** `bootstrapAccountWithVenueIntent`
 (`app/(app)/projects/actions.ts`) wraps the same `bootstrap_account_and_project` RPC as an ordinary
 planner signup — same business-kind path, same zero-project result. The only difference is the
 post-bootstrap redirect: `/account/venue-upgrade` instead of `/dashboard`, when venue intent was
 signaled on submit. Venue intent is a request-only flag — never written to `accounts` or any other
 table. `accounts.plan` stays `'planner'` through this entire path; it flips to `'venue'` only via a
-confirmed paid subscription (webhook or the CHECKOUT-RECONCILE-01 fallback), exactly as before this
-session.
+confirmed paid subscription (webhook or the CHECKOUT-RECONCILE-01 fallback). **VENUE-06** made
+venue a first-class equal-weight welcome option (and added lock-screen + billing entry points);
+the bootstrap mechanics did not change. There is still no `kind='venue'`.
 
 ### `user_tours` (TOUR-01 / 0066) — ON DISK (confirm paste)
 
 User-scoped (not project-scoped): PK `(user_id, tour_key)`; `status` `completed|skipped`;
-`dismissed_at`. RLS: authenticated own rows only. **No CHECK on `tour_key`** — keys live in
-`lib/tours/tour-config.ts`. See §7.
+`dismissed_at`. RLS: authenticated own rows only. **No CHECK on `tour_key`**. Page-tour keys live
+in `lib/tours/tour-config.ts` (`overview`, `seating`, `guests`, `budget`, `website`, `checklist`,
+`vendors`, `notes`). **ONBOARD-NUDGE-01** reuses the same table + sole writer `dismissTour` for
+storage-only keys `venue_branding_nudge` / `venue_team_nudge` — these are **not** page tours and
+must not be added to `TOUR_KEY_BY_SEGMENT` / `TourProvider` auto-fire. See §7.
 
 ### Notes (NOTES-01 / 0062) — ON DISK, paste-unconfirmed
 
@@ -694,8 +689,8 @@ See §6.
 
 ## 5. Migrations (source of truth: `supabase/migrations/`)
 
-**v37 ships zero schema.** VENUE-04 (finalized), VENUE-05, CHECKOUT-RECONCILE-01, and TRIAL-GUARD-01
-are all NO SCHEMA. Next-free migration remains **0084**.
+**v38 ships zero schema.** MKT-01/02/03, VENUE-06, WHITE-02, VENUE-07, and ONBOARD-NUDGE-01 are
+all NO SCHEMA. Next-free migration remains **0084**.
 
 Applied in order. **You are the source of truth on the next number — next free is 0084.**
 
@@ -708,8 +703,8 @@ Applied in order. **You are the source of truth on the next number — next free
 > **A migration paste must return clean. Any error means NOTHING applied.** After every migration,
 > confirm with `to_regclass` / `to_regprocedure` / `pg_policies` / `pg_indexes` before running any
 > checkpoint. A file on disk is NOT an applied migration. **0060–0083 live paste is UNCONFIRMED
-> unless Dom closed them; 0068–0069 claimed LIVE VERIFIED in older appendices — re-confirm before
-> relying; 0071 LIVE VERIFIED (v35).** Demo template seeds are a separate hand-apply
+> unless Dom closed them; 0068–0069 claimed LIVE VERIFIED — re-confirm before relying; 0071 LIVE
+> VERIFIED.** Demo template seeds are a separate hand-apply
 > (`supabase/seeds/demo_templates*.sql`), not part of the migration sequence. Edge Functions are
 > separate Dashboard deploys.
 
@@ -717,13 +712,45 @@ Applied in order. **You are the source of truth on the next number — next free
 > before every `create policy` / `create trigger`; `create … if not exists` for indexes;
 > `drop constraint if exists` before `add constraint`; guard backfills so a re-paste is a no-op.
 
-- 0001–0047 as recorded in v28/v29 (core tenancy → contract_templates).
-- 0048 budget_label_optional · 0049 budget_alert_dismissals · 0050 registry_teardown
-- 0051 budget_payments (BUD-03) · 0052 payment_schedule (BUD-SCHED-01)
-- 0053 files_vendor_link (drift-discovered — see v30 note) · 0054 rsvp_gated_only (GST-04)
-- 0055 guest_members_backfill (GST-06) · 0056 guest_member_relationship (GST-07)
-- 0057 song_requests (GST-08) · 0058 rsvp_autopopulate (GST-09)
-- **0059 seating_member_grain (SEAT-12)** — applied live + visually verified; DDL reconstructed (v33)
+**Complete index (0001–0083):**
+
+- **0001** core tenancy (`accounts`, `account_members`, `projects`, `project_members`,
+  `can_access_project`; also project-scoped `vendors` as the worked-example feature table)
+- **0002** checklist (`tasks`) · **0003** write access (`is_account_member`,
+  `bootstrap_account_and_project`, members create/update projects)
+- **0004** vendors_account (account-scoped `vendors`) · **0005** discovery_and_outreach
+- **0006** guests (household) · **0007** email_credentials · **0008** outreach_app_columns
+- **0009** notes · **0010** budget (`budget_items`) · **0011** files
+- **0012** wedding_profile (incl. `onboarded_at`) · **0013** vendor_targets
+- **0014** assistant_messages · **0015** timeline_events
+- **0016** contract_status (`files.status` draft/sent/signed) · **0017** leads · **0018** proposals
+- **0019** proposal_acceptance · **0020** subscriptions
+- **0021** wedding_websites · **0022** wedding_websites_public_read
+- **0023** rsvp_submissions (anon INSERT later dropped in 0039 in favor of `submit_rsvp`)
+- **0024** seating_tables · **0025** seating_assignments
+- **0026** budget_item_project_vendor (composite FK, `ON DELETE SET NULL (project_vendor_id)`)
+- **0027** bootstrap_idempotency · **0028** project_invitations (INV-01)
+- **0029** project_member_updates (INV-04; introduces `can_edit_project`; editors UPDATE
+  `projects` + `guard_project_account_id`)
+- **0030** vendor_category_and_status (VND-04) · **0031** vendor_target_link (VND-06)
+- **0032** budget_item_vendor_many (BUD-04) · **0033** seating_dancefloor (SEAT-11)
+- **0034** registry_items · **0035** registry_public · **0036** registry_claims
+- **0037** registry_legacy_links_backfill
+- **0038** meal_options · **0039** rsvp_attendees (`submit_rsvp`) · **0040** guest_members
+- **0041** rsvp_household_access (`lookup_rsvp_household`) · **0042** website_media (WEB-IMG-01)
+- **0043** rsvp_full_name_lookup (RSVP-01a) · **0044** project_archive (ARCH-01)
+- **0045** calendar_events (CAL-01) · **0046** file_category (CON-01a)
+- **0047** contract_templates (CON-02)
+- **0048** budget_label_optional · **0049** budget_alert_dismissals
+- **0050** registry_teardown (native items/claims/tab dropped; external links remain on websites)
+- **0051** budget_payments (BUD-03) · **0052** payment_schedule (BUD-SCHED-01)
+- **0053** files_vendor_link (`files.project_vendor_id` composite FK → `project_vendors`;
+  ON DELETE SET NULL (`project_vendor_id`); contracts on booked-vendor object + Contracts
+  archive; no new RLS — rides 0011 `can_access_project`)
+- **0054** rsvp_gated_only (GST-04) · **0055** guest_members_backfill (GST-06)
+- **0056** guest_member_relationship (GST-07) · **0057** song_requests (GST-08)
+- **0058** rsvp_autopopulate (GST-09)
+- **0059 seating_member_grain (SEAT-12)** — applied live + visually verified; DDL reconstructed
 - **0060 calendar_project_access (CAL-02)** — ON DISK, paste-unconfirmed
 - **0061 vendor_media_and_instagram (VND-11)** — ON DISK, paste-unconfirmed
 - **0062 notes_action_status (NOTES-01)** — ON DISK, paste-unconfirmed
@@ -735,22 +762,22 @@ Applied in order. **You are the source of truth on the next number — next free
 - **0068 formality_and_vendor_priority (ONB-04)** — ON DISK; claimed LIVE VERIFIED (Dom)
 - **0069 already_booked_vendor_categories (ONB-05)** — ON DISK; claimed LIVE VERIFIED (Dom)
 - **0070 account_branding (WHITE-01)** — ON DISK
-- **0071 write_edit_gates (WRITE-01)** — ON DISK; **LIVE VERIFIED** (`pg_policies`, v35)
+- **0071 write_edit_gates (WRITE-01)** — ON DISK; **LIVE VERIFIED** (`pg_policies`)
 - **0072 rsvp_throttle (RSVP-THROTTLE-01)** — ON DISK
 - **0073 demo_cleanup (DEMO-04)** — ON DISK
 - **0074 clone_demo_throttle (DEMO-04b)** — ON DISK
 - **0075 onboarding_business_no_project (ONB-06)** — ON DISK
-- **0076 couple_trial_payment_method (PRICE-03)** — ON DISK
-- **0077 couple_trial_final_charge (PRICE-04)** — ON DISK
-- **0078 couple_trial_cancellation (PRICE-05)** — ON DISK
+- **0076 couple_trial_payment_method (PRICE-03)** — ON DISK (**product superseded**; residual)
+- **0077 couple_trial_final_charge (PRICE-04)** — ON DISK (**product superseded**; residual)
+- **0078 couple_trial_cancellation (PRICE-05)** — ON DISK (**product superseded**; residual)
 - **0079 project_template_clone (TMPL-01)** — ON DISK; **committed** (`b2bf8fc`)
 - **0080 outreach_gmail_thread (GMAIL-THREAD-01)** — ON DISK; committed (`ca4131f`)
 - **0081 account_invitations (TEAM-01)** — ON DISK; committed
 - **0082 account_invitations_business_only (TEAM-01 follow-on)** — ON DISK; committed
 - **0083 account_plan (VENUE-01)** — ON DISK; committed
 
-(For DDL/introspection notes on 0026–0058, see v27/v28/v29/v30. 0059–0069 as in v34 below; 0070–0079
-as in v35; 0080–0083 after.)
+DDL for 0059–0083 is expanded in the subsections below. 0001–0058 live in
+`supabase/migrations/` — read those files before writing queries; do not invent columns.
 
 ### 0059 seating_member_grain (SEAT-12) — APPLIED LIVE + visually verified, DDL RECONSTRUCTED (v33)
 
@@ -973,34 +1000,33 @@ as WHITE-01's business-only CHECK — do not trust the action alone (DEFINER byp
 + `accounts_plan_business_only` CHECK (`plan = 'planner' OR kind = 'business'`).
 - **Checkpoint:** personal + `plan='venue'` rejected; default on existing rows is `'planner'`.
 
-**Verified (code scan, v37):** VENUE-04/05 / CHECKOUT-RECONCILE-01 / TRIAL-GUARD-01 against disk.
-**Verified (code scan, v36):** TEAM-01 / VENUE-01…03 / PRICE-07/08 / GMAIL-THREAD / VND-12 /
-LEAD-STALE / ENT-01a / OVERDUE-01; 0070–0083 DDL on disk **and committed**; **0071 live** on
+**Verified against disk:** TEAM-01 / VENUE-01…07 / PRICE-07/08 / GMAIL-THREAD / VND-12 /
+LEAD-STALE / ENT-01a / OVERDUE-01 / CHECKOUT-RECONCILE-01 / TRIAL-GUARD-01 / WHITE-02 /
+ONBOARD-NUDGE-01 / MKT-01…03. 0070–0083 DDL on disk **and committed**; **0071 live** on
 calendar / guest_members / rsvp_attendees; **`isTaskPastDue` single-sourced** for task overdue.
 **Confirm live:** remaining pastes of 0060–0070 / 0072–0083; Edge Function `purge-demo` deploy;
 demo seeds; Stripe test Checkout for couple monthly/lifetime + planner + venue (plan flip).
 
-### Column reference (v36 note; earlier entries unchanged)
+### Column reference (current)
 
 **`guest_members.member_type` / `related_to_member_id`** (0063). **`notes.action_status`** nullable
 text + CHECK (0062). **`vendors.instagram`** nullable text (0061). **`wedding_websites.content`**
 jsonb carries section order + layout / image-shape. **Seating:** member-grain assignments (0059) +
 one-sweetheart-per-project index (0064). **`accounts` demo flags** (0065) + **branding columns**
-(0070). **`user_tours`** (0066). **`wedding_profile.include_*`** (0067); **`formality` /
-`priority_vendor_category_ids`** (0068); **`already_booked_vendor_category_ids`** (0069).
-**`wedding_profile.traditions` write-dead** (POLISH-01 — column retained).
-**`subscriptions.stripe_payment_method_id`** (0076 — residual). **`demo_start_attempts`** (0073).
-**`outreach_messages.gmail_thread_id`** (0080). **`account_invitations`** (0081). **`accounts.plan`**
-(0083).
+(0070). **`user_tours`** (0066) — page-tour keys plus ONBOARD-NUDGE-01 storage keys.
+**`wedding_profile.include_*`** (0067); **`formality` / `priority_vendor_category_ids`** (0068);
+**`already_booked_vendor_category_ids`** (0069). **`wedding_profile.traditions` write-dead**
+(POLISH-01 — column retained). **`subscriptions.stripe_payment_method_id`** (0076 — residual).
+**`demo_start_attempts`** (0073). **`outreach_messages.gmail_thread_id`** (0080).
+**`account_invitations`** (0081). **`accounts.plan`** (0083).
 
-**No-migration slices to date (append v37):** DASH-01; DASH-02; **DASH-03**; CON-01; **CON-04**;
-budget row polish; **BUD paid/actual ramp polish**; BUD-FILTER-01; BUD-QUICKADD-01/02; BUD-NOTES-01;
-GST-03; WEB-EDITOR-02; WEB-STYLE-01; RSVP-02; FIX-02; ASSIST-UI-01; **CAL-03**; **CAL-04**;
-**Gmail reconnect hardening**; **ONB-03**; **POLISH-01**; **DEMO-02 / DEMO-03**; tour UI; **AGR-01**;
-**ENT-01**; **ENT-01a**; **PRICE-01**; **PRICE-02**; **PRICE-06**; **PRICE-07**; **PRICE-08**;
-**VENUE-02/02b/03**; **VENUE-04**; **VENUE-05**; **CHECKOUT-RECONCILE-01**; **TRIAL-GUARD-01**;
-**VND-12**; **LEAD-STALE-01**; **OVERDUE-01**; **HYG-01**; **HYG-01a**;
-**WEB-REVAL-01**; **ASSIST-BUD-01**. (Earlier list carries forward.)
+**No-migration slices (complete list):** DASH-01; DASH-02; DASH-03; CON-01; CON-04; budget row
+polish; BUD paid/actual ramp polish; BUD-FILTER-01; BUD-QUICKADD-01/02; BUD-NOTES-01; GST-03;
+WEB-EDITOR-02; WEB-STYLE-01; RSVP-02; FIX-02; ASSIST-UI-01; CAL-03; CAL-04; Gmail reconnect
+hardening; ONB-03; POLISH-01; DEMO-02 / DEMO-03; tour UI; AGR-01; ENT-01; ENT-01a; PRICE-01;
+PRICE-02; PRICE-06; PRICE-07; PRICE-08; VENUE-02/02b/03; VENUE-04; VENUE-05; VENUE-06; VENUE-07;
+CHECKOUT-RECONCILE-01; TRIAL-GUARD-01; VND-12; LEAD-STALE-01; OVERDUE-01; HYG-01; HYG-01a;
+WEB-REVAL-01; ASSIST-BUD-01; WHITE-02; ONBOARD-NUDGE-01; MKT-01; MKT-02; MKT-03.
 
 ---
 
@@ -1031,17 +1057,20 @@ First Look.
 
 ### Planner sidebar nav
 
-**Dashboard / Calendar / Leads / Vendors / Contracts / Team / Branding / Billing** — all
-business-account-kind gated, never `project_members.role`. **Team** is `/account/team` (TEAM-01).
-`/account/venue-upgrade` is reachable two ways: the existing Billing link (VENUE-03a) and, new in
-v37, the welcome-screen shortcut (VENUE-04). Gate remains business-membership-only — no project
-count, no entitlement check — reachable by a zero-project, zero-subscription business account
-immediately post-bootstrap. **VENUE-05:** the page now also offers "Start your 7-day free trial"
-alongside Monthly/Annual Subscribe, calling the identical `startPlannerTrial()` used by
-`/account/locked`. Trial does not set `accounts.plan='venue'` — it stays `'planner'` through the
-trial, same as any ordinary planner trial; plan only flips on a confirmed paid subscription. The
-page does not redirect an already-trialing or already-subscribed account away — Subscribe remains
-visible during trial as the upgrade path to paid venue. Not a sidebar item.
+**Dashboard / Calendar / Leads (venue: Inquiries) / Vendors / Contracts / Team / Branding / Billing**
+— all business-account-kind gated, never `project_members.role`. **Team** is `/account/team`
+(TEAM-01). Venue display labels come from `getCopy(key, account.plan)` (VENUE-07) — routes stay
+`/leads`, `/projects`, etc. **`/account/venue-upgrade`** is reachable from: the welcome-screen
+venue option (VENUE-06), the lock screen (business-kind), and Billing's equal-weight Upgrade card.
+Gate remains business-membership-only — no project count, no entitlement check — reachable by a
+zero-project, zero-subscription business account immediately post-bootstrap. **VENUE-05:** the page
+also offers "Start your 7-day free trial" alongside Monthly/Annual Subscribe, calling the identical
+`startPlannerTrial()` used by `/account/locked`. Trial does not set `accounts.plan='venue'` — it
+stays `'planner'` through the trial; plan only flips on a confirmed paid subscription. The page
+does not redirect an already-trialing or already-subscribed account away — Subscribe remains
+visible during trial as the upgrade path to paid venue. **ONBOARD-NUDGE-01:** when `plan='venue'`,
+a one-time "Your venue plan is live" card offers Branding + Team with per-row Not now; dismissed
+via `user_tours`. Not a sidebar item.
 
 ### The signup → workspace path
 
@@ -1067,13 +1096,13 @@ signup (auth.signUp only — NO bootstrap here)
 | `personal` | — | `getCoupleDestinationPath(firstProjectId)` |
 | `business` | — | `/dashboard` |
 
-A tertiary "Running a venue instead?" link is always visible near the audience toggle (not
-conditional on which toggle is selected — an earlier implementation scoped it to "I'm a planner"
-only, which reintroduced the exact discoverability gap the link exists to close; corrected same
-session). Clicking it submits the identical planner-kind form with `venueIntent: true` and
-redirects to `/account/venue-upgrade` on success instead of `/dashboard`. Abandoning that Checkout
-returns to `/account/venue-upgrade?status=cancelled` (confirmed pre-existing `cancel_url`,
-unchanged by this slice).
+A **three-option** welcome (VENUE-06): "We're a couple" / "I'm a planner" / "I run a venue" —
+equal weight, `sm:grid-cols-3`. Couple → `bootstrapAccountAndProject` (`kind=personal`). Planner →
+same action (`kind=business`). Venue → `bootstrapAccountWithVenueIntent` (still `kind=business`,
+`venueIntent: true`) and redirects to `/account/venue-upgrade` on success instead of `/dashboard`.
+Abandoning that Checkout returns to `/account/venue-upgrade?status=cancelled` (pre-existing
+`cancel_url`). Name field label/placeholder swaps for venue ("Venue name"). There is still no
+`accounts.kind='venue'`.
 
 > **`plannerOnly` resolves from ACCOUNT KIND, never from `project_members.role`.** CAL-04 is the
 > only role-aware tab exception (Calendar for invited couples).
@@ -1201,9 +1230,10 @@ sets the household badge, and **rejects rapid-fire spam** (≤3 / household / 1 
 
 ### Account-scoped planner surfaces
 
-`/leads` (**LEAD-STALE-01** rosewood inactivity pill), `/account/billing`, **`/account/team`
-(TEAM-01)**, **`/account/branding` (WHITE-01)**, **`/account/venue-upgrade` (VENUE-02 / VENUE-04 /
-VENUE-05)**, `/vendors`
+`/leads` (**LEAD-STALE-01** rosewood inactivity pill; venue copy **Inquiries** via VENUE-07),
+`/account/billing` (planner plan gets an equal-weight Upgrade-to-Venue card — VENUE-06),
+**`/account/team` (TEAM-01)**, **`/account/branding` (WHITE-01 + WHITE-02 picker/contrast)**,
+**`/account/venue-upgrade` (VENUE-02 / VENUE-05 / VENUE-06 / ONBOARD-NUDGE-01)**, `/vendors`
 (VND-08/08a + **VND-11 detail/portfolio** + **VND-12 card grid**), `/calendar` (CAL-01 + **CAL-03
 hues/chips/legend**), `/contracts` (CON-01/01a/02 + **CON-04 generate**). Couple project Calendar is
 under the project workspace (`/projects/[id]/calendar`, CAL-02/WRITE-01 RLS; **tab = personal +
@@ -1213,7 +1243,8 @@ invited couple**, §6). Shared calendar chrome: `CalendarEventChip`, `CalendarLe
 ### Public surfaces (no auth, outside `(app)`)
 
 `app/w/[slug]`, `/w/[slug]/rsvp`, `/w/[slug]/registry`, `/invite/[token]`, **`/invite/account/[token]`**.
-Marketing `/` + `/pricing`. Marketing copy must not lead with "AI." Entitlement lock: `/account/locked`
+Marketing `/` **(MKT-01 planner/venue-first)** + **`/for-planners` (MKT-02)** + **`/for-venues`
+(MKT-03)** + `/pricing`. Marketing copy must not lead with "AI." Entitlement lock: `/account/locked`
 (authenticated, **`(locked)` group**).
 
 ---
@@ -1223,16 +1254,59 @@ Marketing `/` + `/pricing`. Marketing copy must not lead with "AI." Entitlement 
 Pattern: a folder under the relevant scope with `page.tsx` (server read) + `actions.ts` (`'use server'`
 writes by id + `revalidatePath`); RLS authorizes.
 
-**The full per-slice build narratives for v1–v31 are preserved in the prior bibles and carry forward
-unchanged** (unified shell, onboarding→plan, assistant, contracts, leads, proposals, billing, website
-builder + 5-template gallery, RSVP, seating through SEAT-12, Soft stack, landing, invites, vendors,
-registry, meals, the full budget arc, the Guests-page rework GST-03…09, Website-tab polish, etc.). The
-v32/v33 additions are below.
+Version headings below are **historical organization inside this document**, not pointers to other
+files. Every shipped slice the product depends on is described here.
 
-### v31 — Website-tab polish + per-member seating (carries forward — see v31 §7)
+### Foundation (migrations 0001–0058)
+
+**Tenancy & shells.** One app, one auth, one data model. Personal account = one project (couple);
+business account = many projects (planner). Invited project members have no account — `project_members`
+only (`couple` | `collaborator`; `viewer` exists on the enum but is not issued). CoupleShell vs
+PlannerShell differentiated by routing + `account.kind` tab gates. Signup is `auth.signUp` only;
+bootstrap happens on `/projects` (ONB-00 / ONB-06).
+
+**Couple planning workspace.** 6-step onboarding → AI starting plan (`commit_wedding_plan`). Checklist
+(`tasks`), budget (`budget_items` + `budget_payments` ledger + `payment_schedule` waterfall; Paid is
+ledger-only), vendors (`vendors` account-scoped + `project_vendors` links + outreach via Gmail),
+guests as a flat person-line over a household tier (GST-03…09), notes + files, day-of timeline +
+printable run sheet (HTML/`window.print()`, no PDF lib), seating canvas (own SVG drag, not @dnd-kit)
+through dancefloor (SEAT-11) then member-grain (SEAT-12), public wedding website (5 templates,
+photo-led gallery, gated RSVP, registry as website sub-page — **not** a workspace tab). Gift registry
+native items/claims were torn down (0050); external registry links remain on the site.
+
+**Planner CRM.** Leads kanban (@dnd-kit **here only**), proposals → accepted agreement → printable
+contract, Access tab (project invitations INV-01…08), archive (`set_project_archived`), account Vendor
+library, authorable Calendar (CAL-01), cross-project Contracts archive + templates (CON-01/01a/02).
+Dashboard Urgent-by-wedding (DASH-01).
+
+**Billing foundation.** `subscriptions` row is the source of truth, updated by the Stripe webhook.
+Local trials and paid Checkout are PRICE-* (see later in this section). Entitlement lock: `/account/locked`.
+
+**Invites.** Project: hashed token, middleware cookie `pending_invite_token`, `/invite/[token]`.
+Account Team seats came later (TEAM-01) — parallel, not a fork.
+
+**Design.** Soft stack (STYLE-01 / C1). Landing overhaul LAND-01 + shared `formatWeddingDate` (LAND-01a).
+
+**Slice IDs from this era still in force:** INV-01…08, VND-04/06/08/08a, BUD-02/03/04, BUD-SCHED-01,
+BUD-FILTER-01, BUD-QUICKADD-01/02, BUD-NOTES-01, GST-03…09, SEAT-01…11, CAL-01, CON-01/01a/02,
+ARCH-01, DASH-01, WEB-IMG-01, RSVP-01a, STYLE-01, LAND-01/01a, MEAL options (0038). Native registry
+teardown is 0050 — do not resurrect items/claims/tab.
+
+### v31 — Website-tab polish + per-member seating
 
 WEB-EDITOR-02 / WEB-STYLE-01 / RSVP-02 / FIX-02 (no schema) + SEAT-12 / **0059**. Visually verified;
-0059 DDL now reconstructed (§5).
+0059 DDL reconstructed in §5.
+
+- **WEB-EDITOR-02** — Section reorder via up/down buttons (not @dnd-kit); collapsible section editors
+  (shared chevron); sticky side preview rendering `components/website/` with injected props only.
+  Order + per-section options persist in `wedding_websites.content` jsonb.
+- **WEB-STYLE-01** — Image border-shape options; timeline layout + visitor-facing centering. Stored
+  in `content`, rendered Tier 3.
+- **RSVP-02** — Guest-facing self-report headcount removed (count derives from seat toggles /
+  attendee rows); email no longer required on the form (column nullable since 0023).
+- **FIX-02** — Meal `<select>` white-text contrast on the public RSVP form.
+- **SEAT-12 / 0059** — Seating assignments move to `guest_members` (person) grain. One seat per
+  person; occupancy still action-enforced.
 
 ### v32 — Notes action status + in-page assistant + migration catch-up
 
@@ -1553,14 +1627,13 @@ predicate. Closes the v35 multi-home flag.
 
 ### v37 — Venue signup shortcut + trial parity + Checkout reconciliation fallback
 
-#### VENUE-04 (finalized) — Venue-intent signup shortcut. NO SCHEMA.
+#### VENUE-04 — Venue-intent signup shortcut. NO SCHEMA.
 
-Supersedes v36's "microcopy only, no third toggle" framing — VENUE-04 was never closed in v36, so
-this is a completion, not an amendment to shipped work. Always-visible tertiary link near the
-audience toggle; `venueIntent: true` is a request-only flag (never persisted); routes business-kind
-bootstrap to `/account/venue-upgrade` instead of `/dashboard`. No third toggle button, no
-`kind='venue'`, no venue dashboard (renders through PlannerShell).
-`bootstrapAccountWithVenueIntent` wraps the unchanged `bootstrap_account_and_project` RPC.
+`venueIntent: true` is a request-only flag (never persisted); routes business-kind bootstrap to
+`/account/venue-upgrade` instead of `/dashboard`. No `kind='venue'`, no venue dashboard (renders
+through PlannerShell). `bootstrapAccountWithVenueIntent` wraps the unchanged
+`bootstrap_account_and_project` RPC. **The original tertiary-link UI was replaced by VENUE-06**
+(three equal-weight welcome options); the bootstrap mechanics did not change.
 
 #### VENUE-05 — Local trial on venue-upgrade. NO SCHEMA.
 
@@ -1575,7 +1648,7 @@ reused action, not a venue-upgrade special case.)
 
 **Provenance: drafted + confirmed working live by Dom; Cursor's Step 0/implementation report was
 not reviewed in chat in the implementation session.** Mechanics below were verified against disk
-during this v37 bible write-up (`lib/billing/sync-subscription.ts`,
+(`lib/billing/sync-subscription.ts`,
 `app/api/stripe/webhook/route.ts`, `app/(app)/account/billing/page.tsx`,
 `app/(app)/account/venue-upgrade/page.tsx`, `app/(app)/account/billing/actions.ts`).
 
@@ -1605,6 +1678,73 @@ lifecycle path ever nulls a real subscription's status. When the only existing r
 null-status stub, it's updated in place (preserving `stripe_customer_id`) rather than reinserted.
 Real rows (paid, trialing, canceled, past_due — any non-null status) still correctly block a
 second trial attempt — this narrows the guard by exactly one case, not generally.
+
+### v38 — Marketing landings + venue first-class entry + branding picker + venue copy + setup nudge
+
+All NO SCHEMA. Code-verified against disk in this write-up.
+
+#### MKT-01 — Homepage planner/venue-first repositioning. NO SCHEMA.
+
+Marketing homepage (`components/marketing/landing-page.tsx`) leads with planners and venues as the
+primary audience. In-app couple product is unchanged. Hero: "Built for planners & venues" / "Run
+your planning business — automated." Primary CTA Start free → `/login`; demo CTA is
+`DemoCta kind="business"`. Shared `MarketingTopbar` nav: Features (`/#features`), For planners
+(`/for-planners`), For venues (`/for-venues`), Pricing (`/pricing`). Hero product preview tabs are
+**Leads / Vendors / Contracts** (not the former couple Checklist/Budget/Seating tabs). Copy policy:
+"automatically" / the app — never lead with "AI."
+
+#### MKT-02 — `/for-planners` landing. NO SCHEMA.
+
+`app/for-planners/page.tsx` + `components/marketing/for-planners-page.tsx`. Shared chrome
+(`MarketingTopbar` / `MarketingFooter`). Sections: hero + business demo CTA; What-changes
+before/after strip; leads-to-contracts with `HeroProductPreview`; team seats; `WhiteLabelShowcase`;
+`CoupleCollaboration`; vendor/book close; `FinalCta`. Cross-link to `/for-venues`.
+
+#### MKT-03 — `/for-venues` landing. NO SCHEMA.
+
+`app/for-venues/page.tsx` + `components/marketing/for-venues-page.tsx`. Same chrome and section
+primitives as MKT-02, venue-flavored copy (booking calendar / brand / team). Nav "For venues"
+points here (no longer a homepage hash). Cross-link to `/for-planners`. Public `/pricing` still
+does **not** start venue Checkout.
+
+#### VENUE-06 — Venue entry at full parity. NO SCHEMA.
+
+Welcome: three equal options ("We're a couple" / "I'm a planner" / "I run a venue") in
+`OnboardingForm`. Venue still posts `venueIntent: true` via `bootstrapAccountWithVenueIntent`.
+Lock screen (`app/(locked)/account/locked`): business-kind only gets a full-width "I run a venue"
+pill next to trial/reactivate; personal-kind never sees it. Billing: planner plan (not already
+venue) gets a side-by-side "Upgrade to Venue" card at equal weight with the current plan card —
+still links to `/account/venue-upgrade`; no second Checkout surface. Unchanged: no third
+`accounts.kind`, trial via `startPlannerTrial` does not flip `plan`.
+
+#### WHITE-02 — Brand accent picker + contrast guard. NO SCHEMA.
+
+`/account/branding`: 8 wedding-safe presets in `lib/brand-preset-colors.ts` (constants only — no
+preset id stored; status tokens excluded) + native color picker + hex field. All three write
+`brand_accent_color` through existing `updateAccountBranding`. Live `--accent` preview from
+in-progress selection. Contrast vs white (`lib/branding/contrast.ts`, 4.5:1) is a **client-side
+clay warning** — does not block save. `--accent` still applied the same way: CoupleShell for
+invited viewers (`getBrandingForProject`) and PlannerShell own-shell (`getOwnAccountBranding`
+when venue + white-label).
+
+#### VENUE-07 — Venue-flavored PlannerShell terminology. NO SCHEMA.
+
+`lib/venue-copy.ts` `getCopy(key, plan)`. `getAccountContext` now selects and returns `accounts.plan`.
+Venue-only swaps: sidebar Leads → Inquiries, Active weddings → Active bookings; New wedding → New
+booking (plus form labels); dashboard Weddings → Bookings + matching empty states / stats / urgent
+header; leads page title/add/save/empty/back → inquiry wording. Planner accounts keep today's
+strings. Pipeline stages, routes, and Contracts / Vendors / Calendar / Team / Branding / Billing /
+Budget labels are untouched. Same call-site-resolution pattern as partner-side names.
+
+#### ONBOARD-NUDGE-01 — Post-venue-Checkout branding + Team nudge. NO SCHEMA.
+
+When `accounts.plan = 'venue'`, `/account/venue-upgrade` shows a raised "Your venue plan is live"
+card (`components/account/venue-setup-nudge.tsx`) with two recessed rows: Add your brand colors &
+logo → `/account/branding`; Invite your team → `/account/team`. Each row has its own Not now.
+Storage: `user_tours` keys `venue_branding_nudge` / `venue_team_nudge` via existing `dismissTour`
+(`completed` on continue, `skipped` on Not now). **Not page tours** — do not add these keys to
+`tour-config.ts` / `TourProvider`. Card stays until both keys have a row; absence of a row is
+undismissed (older venue accounts see both rows; no backfill). Planner Checkout is untouched.
 
 ---
 
@@ -1650,8 +1790,8 @@ dates floor through `clampDueDateToToday`; `phase` is derived, never authored.
 
 > **ONB-06:** planner (business) bootstrap creates **no** placeholder project — `bootstrap_account_and_project`
 > returns `null` and the app redirects to `/dashboard` (then ENT-01 may send `/account/locked` until
-> trial). **VENUE-04:** the same RPC with `venueIntent: true` redirects to `/account/venue-upgrade`
-> instead. Couples still get exactly one project at bootstrap.
+> trial). **VENUE-06:** choosing "I run a venue" uses the same RPC with `venueIntent: true` and
+> redirects to `/account/venue-upgrade` instead. Couples still get exactly one project at bootstrap.
 
 The generator's response shape (ONB-01) is unchanged; `vendorCategories[].category` must be a
 `VENDOR_CATEGORIES` id; the generated budget `category` is free-text; `plannedAmount` becomes Estimate.
@@ -1681,9 +1821,9 @@ proactive messages (Phase 5).
 > **Read coverage is complete for project-scoped planning entities but NOT for account-scoped
 > entities.** Surfaces WITHOUT assistant coverage include leads, proposals, invitations, seating (incl.
 > the per-member grain + sweetheart), the calendar, contract templates, the account vendor library,
-> **branding, billing/entitlement, Team seats, venue plan, and the guest-rework RSVP / website-editor /
-> GST-12 association surfaces (no new tools in v32–v36 beyond ASSIST-BUD-01; CON-04 is account-scoped,
-> not a chat tool).**
+> **branding, billing/entitlement, Team seats, venue plan, marketing landings, and the guest-rework
+> RSVP / website-editor / GST-12 association surfaces (no new chat tools beyond ASSIST-BUD-01; CON-04
+> is account-scoped, not a chat tool).**
 > **The budget ledger / payment schedule gap closed in ASSIST-BUD-01** — see below. Website has a
 > narrow write (`set_website_travel`). The assistant has no vendor-removal tool and should not get one.
 > - **`get_notes` / `get_note` return `action_status`** (pin-sort needs-action; summary count) —
@@ -1705,8 +1845,8 @@ proactive messages (Phase 5).
 >   `related_to_member_id`**). Not broken (new columns nullable / default adult), but out of sync with
 >   the couple-side form — update/retire before relying on assistant-created guests carrying the new
 >   fields.
-> **Re-run this audit when any new write tool ships** (none shipped in v33–v36 — discovery/UI + CON-04 /
-> branding / billing / Team / venue are not chat write tools).
+> **Re-run this audit when any new write tool ships** (none shipped after ASSIST-BUD-01 — discovery/UI
+> + CON-04 / branding / billing / Team / venue / marketing are not chat write tools).
 
 ---
 
@@ -1714,7 +1854,7 @@ proactive messages (Phase 5).
 
 > **This section is a POINTER.** Token VALUES live in `app/globals.css`. RULES live in
 > `.cursor/design.mdc`. If they disagree with this file, those two win. Stale
-> `design/reference.html` / `design/theme-direction.html` were **deleted** (v35) — regenerate
+> `design/reference.html` / `design/theme-direction.html` were **deleted** — regenerate
 > reference only if you need a rendered Soft stack exemplar again; do not resurrect theme-direction.
 
 **Direction:** Soft stack (C1) — calm tool organized by **depth**. Mauve-tinted canvas; raised white
@@ -1725,7 +1865,7 @@ cards; recessed wells for rows/tracks. Hierarchy = raised-contains-recessed.
 | Tier | Where | What it gets |
 |---|---|---|
 | **1 — App chrome** | `app/(app)/`, most of `components/`, planner, forms, **seating canvas**, assistant + **in-page `AskAssistantPrompt` wells**, settings, Access, Branding, Team, venue-upgrade, `/vendors` card grid / `/calendar` / `/contracts`, the Budget page, the Guests page, **the Notes board**, **the website editor incl. the sticky preview**, **the dashboard wedding cards**, **demo banner**, **page-tour overlay**, **CoupleShell + venue PlannerShell white-label chrome** | Soft stack palette + Figtree; two depth levels; three radii; **no** accent flood; **no** Cormorant/Great Vibes |
-| **2 — Emotional** | Landing, onboarding hero/welcome, empty-state heroes, `/invite/[token]`, **`/invite/account/[token]`**, **`/account/locked` (`(locked)` group)** | Same palette + Figtree; larger display scale; **exactly one** deep field `--deep` per surface |
+| **2 — Emotional** | Landing **incl. `/for-planners` + `/for-venues`**, onboarding hero/welcome, empty-state heroes, `/invite/[token]`, **`/invite/account/[token]`**, **`/account/locked` (`(locked)` group)** | Same palette + Figtree; larger display scale; **exactly one** deep field `--deep` per surface |
 | **3 — Website + print** | `components/website/`, public `/w/[slug]` (incl. the gated RSVP + song intake, **the image-shape + timeline-layout render**), `RunSheetDocument.tsx` print header, the contract print document | `--ws-*` colour + Cormorant + (Romance) Great Vibes + Hanken |
 
 **Serif / script location rule:** Cormorant Garamond and Great Vibes may appear **only** in
@@ -1747,9 +1887,10 @@ canvas; the task progress bar is a **recessed well** with a sage done-segment + 
 overdue-segment; the countdown is a recessed pill. No raised-inside-raised; berry only as
 `--accent-wash` (count pill / avatar / Enter text). sage = done, rosewood = overdue.
 
-**White-label (WHITE-01 / VENUE-01 — Tier 1):** CoupleShell may override `--accent` from a planner
-brand hex for invited project viewers; venue PlannerShell may do the same when `plan = 'venue'` AND
-white-label is on. Do not treat that as a Tier 1 accent flood. Logo is a brand mark, not photographic
+**White-label (WHITE-01 / WHITE-02 / VENUE-01 — Tier 1):** CoupleShell may override `--accent` from a
+planner brand hex for invited project viewers; venue PlannerShell may do the same when
+`plan = 'venue'` AND white-label is on. Preset swatches + picker are chrome controls, not an accent
+flood. Contrast warning is clay (in-flight), not rosewood. Logo is a brand mark, not photographic
 ornament. Ordinary planner chrome stays First Look.
 
 **Vendor library cards (VND-12 — Tier 1):** one raised `--surface` card per vendor on canvas;
@@ -1786,10 +1927,10 @@ does not resolve it.
 |---|---|
 | Legacy CSS aliases (`--plum`, `--stone`, …) | **Open** — temporary; no new alias consumers |
 | `design/reference.html` regenerate | **Optional** — file deleted; recreate only if a Soft stack exemplar is needed |
-| `design/theme-direction.html` delete | **Done** (v35) |
+| `design/theme-direction.html` delete | **Done** |
 | Font-load scoping | **Open** |
 | GoogleMapsAttribution `#5E5E5E` | **Done** — keep raw hex + Roboto (Google attribution); do not tokenize |
-| **Dom live Soft stack + LAND-01 visual checkpoint** | **Partially closed** — Guests, Budget, website editor + public site, and public RSVP are **verified (v31)**; Notes / AskAssistantPrompt / Vendor detail / Calendar / GST-12 / SEAT-13 / DASH-03 / CAL-03 shipped-but-unwalked unless closed; **add branding, lock screen (locked group), couple local trial → Monthly/Lifetime, invited-couple Calendar, Agreements, template clone, demo purge/throttle UX, Team, venue upgrade + own-shell, vendor cards, stale-lead pills, View in Gmail** to the walk |
+| **Dom live Soft stack + LAND-01 visual checkpoint** | **Partially closed** — Guests, Budget, website editor + public site, and public RSVP are **verified**; Notes / AskAssistantPrompt / Vendor detail / Calendar / GST-12 / SEAT-13 / DASH-03 / CAL-03 shipped-but-unwalked unless closed; **add branding + accent picker, lock screen (locked group), couple local trial → Monthly/Lifetime, invited-couple Calendar, Agreements, template clone, demo purge/throttle UX, Team, venue upgrade + own-shell + venue copy + setup nudge, vendor cards, stale-lead pills, View in Gmail, three-option welcome, `/for-planners` + `/for-venues`** to the walk |
 | Tier 1 date locale policy | **Open** |
 | Run sheet legacy classnames | **Accepted for now** |
 | Budget dashboard overhaul (richer headline / rollup) | **Open** — mockup-first before any slice |
@@ -1823,19 +1964,15 @@ facts.
 **Design the checkpoint to fail.** Ask: *what would this checkpoint look like if the fix silently
 didn't work?* If the answer is "the same," it's decoration.
 
-**Cursor-freeform work still needs the gate.** v31–v37 product work includes freeform Cursor batches.
+**Cursor-freeform work still needs the gate.** Product work includes freeform Cursor batches.
 The promotion bar is still a live pass — and any migration still needs the §5 landed-confirmation.
 **0060–0083 pastes remain unconfirmed** unless Dom closed them; **0068–0069 claimed LIVE VERIFIED**;
-**0071 LIVE VERIFIED**. 0059 DDL is reconstructed (v33).
+**0071 LIVE VERIFIED**. 0059 DDL is reconstructed.
 
-**Cursor must not author the bible.** v32–v37 are successive exceptions under the same rule: Cursor
-may draft from a code scan / folded appendices, and each version still needs a Dom/Claude review pass
-to keep reconstructed rationale marked as such. Prefer: Claude authors from session reasoning; a code
-scan is a **findings list** for factual drift only (migration numbers, columns, paths, gating).
-v37 specifically records VENUE-04 (finalized) / VENUE-05 / CHECKOUT-RECONCILE-01 / TRIAL-GUARD-01
-(CHECKOUT-RECONCILE-01 mechanics verified against disk in this write-up). v36 recorded TEAM-01 /
-VENUE / PRICE-07/08 / GMAIL-THREAD / VND-12 / LEAD-STALE / ENT-01a / OVERDUE-01 and corrected
-couple-billing / next-free / invitation-grain / white-label / `isTaskPastDue` drift from v35.
+**This file is the canonical Project Bible.** A new chat must be able to work from **this document
+alone** — do not tell the reader to open an earlier bible version. Cursor may draft from a code
+scan; prefer: Claude authors from session reasoning; a code scan is a **findings list** for factual
+drift only (migration numbers, columns, paths, gating).
 
 **Verification lessons (carried forward):**
 1. Confirm the migration landed before believing any checkpoint (`to_regclass` / `to_regprocedure` /
@@ -1849,11 +1986,9 @@ couple-billing / next-free / invitation-grain / white-label / `isTaskPastDue` dr
 8. A guard that silently no-ops and a broken guard that doubles rows look identical in the UI — count.
 9. Raw Postgres/PostgREST error objects rendered in the UI mean the write is FAILING, not succeeding.
 10. **A "next-free" migration number from Cursor — or from THIS bible — is a claim to verify, not a
-    fact.** 0053 surfaced during GST-04 Step 0; **0059 was taken by seating while v30 claimed
-    next-free 0059**; **0060–0062 shipped while v31 claimed next-free 0060**; **0063–0064 shipped
-    while v32 claimed next-free 0063**; **0065–0069 shipped while v33 claimed next-free 0065**;
-    **0070–0079 shipped while v34 claimed next-free 0070**; **0080–0083 shipped while v35 claimed
-    next-free 0080**. Grep `supabase/migrations/` before trusting a number.
+    fact.** 0053 surfaced during GST-04 Step 0; later numbers were taken while an earlier bible still
+    claimed them as next-free (0059 seating, 0060–0062, 0063–0064, 0065–0069, 0070–0079, 0080–0083).
+    Grep `supabase/migrations/` before trusting a number. **Next-free today is 0084.**
 11. **A checkpoint only tests what Step 0 thought to ask.** TRIAL-GUARD-01's bug (a null-status stub
     soft-locking trial eligibility) existed since PRICE-01/PRICE-07 shipped but surfaced only once
     VENUE-05 added a second call site and real Checkout-abandonment testing happened. Absence of a
@@ -1863,33 +1998,38 @@ couple-billing / next-free / invitation-grain / white-label / `isTaskPastDue` dr
     back and reviewed line-by-line. This bible write-up confirmed the mechanics against disk; still
     re-read `reconcileCheckoutReturn` / `applyCheckoutSession` before the next slice builds on
     Checkout return handling — same discipline already applied to migration numbers.
+13. **A person confirming "it works" is not the same as a walked checkpoint list.** The v38
+    product slices were confirmed working in conversation but not walked item-by-item against
+    their original prompts' checkpoint bullets. Record the gap explicitly rather than letting a
+    verbal confirmation silently upgrade to "fully verified."
 
 **Documentation discipline:** factual drift (numbers, paths, existence, gating) may be corrected from
 a code scan. Prefer section-level diffs.
 
-**Drift watchlist (append v37):**
+**Drift watchlist:**
 - Treating a `subscriptions` row's mere existence as a real subscription — only `status IS NOT
   NULL` counts (TRIAL-GUARD-01). A `status=null` + `stripe_customer_id` row is Checkout-initiation
   debris.
 - Adding `trial_period_days` to any Checkout Session — local trial stays Stripe-independent.
-- Scoping the venue-intent link to a specific audience toggle — it must render unconditionally.
+- Demoting venue back to a tertiary welcome link — VENUE-06 is three equal-weight options.
+- Adding `accounts.kind='venue'` — venue is business-kind + request-only `venueIntent` + paid
+  `plan='venue'`.
 - A second Checkout-return writer that does not call `applyCheckoutSession`.
 - Skipping the return-page check that `session.metadata.account_id` matches the authenticated
   account.
-- **Trusting "next-free 0080"** — **0080–0083 are taken**; next-free is **0084**.
-- Treating couple billing as **$7 week + day-7 $92** — SUPERSEDED; live path is PRICE-07 local
-  trial + PRICE-08 Monthly $10 / Lifetime $99. Do not reschedule `charge-trial-balance` as the
-  couple path.
-- Treating **TEAM-01 as forbidden** because v35 said "not account-level seats" — seats shipped;
-  keep account invites **parallel** to project invites (two tables, two cookies). Do not reuse
-  `project_invitations` for team seats. Do not parse `/invite/account/` as a project token.
+- **Trusting an outdated "next-free"** — **0080–0083 are taken**; next-free is **0084**.
+- Treating couple billing as **$7 week + day-7 $92** — live path is PRICE-07 local trial +
+  PRICE-08 Monthly $10 / Lifetime $99. Do not reschedule `charge-trial-balance` as the couple path.
+- Reusing `project_invitations` for Team seats. Do not parse `/invite/account/` as a project token.
 - White-labeling **ordinary** planner chrome or public websites — WHITE-01 is CoupleShell /
   invited viewers; VENUE-01 own-shell is **venue + white_label_enabled only**.
+- Persisting a brand **preset id** — WHITE-02 stores a free-text hex only.
+- Blocking branding save on the contrast warning — warning is client-side only.
 - Reading `account_members` without filtering `user_id` after TEAM-01 fellow-member SELECT.
 - Introducing `account_members.role` as authorization — it is vestigial.
 - Treating PRICE-06 Portal as planner-only — couple monthly Subscriptions use it too.
-- Assuming Overview / assistant still inline past-due — **OVERDUE-01 closed** for tasks; do not
-  re-inline. Budget/schedule `due_on < today` is a different predicate.
+- Re-inlining task overdue — **OVERDUE-01**; `isTaskPastDue` is the helper. Budget/schedule
+  `due_on < today` is a different predicate.
 - Putting the lock screen back under `(app)/layout` pathname branching — ENT-01a moved it to
   `(locked)`.
 - Treating **WRITE-01 as still open** — write gates shipped as **0071**; `viewer` invite remains a
@@ -1924,11 +2064,20 @@ a code scan. Prefer section-level diffs.
 - Starting venue Checkout from public `/pricing` (cosmetic only; real path is post-login
   `/account/venue-upgrade`).
 - Storing a `leads.stale` column — LEAD-STALE-01 is derived at read.
-- (All prior watchlist items from v36/v35/v34/v33/v32/v31/v30/v29/v28 carry forward — no open RSVP path;
-  no fuzzy attendee-name match; badge is the shown status; relationship picklist stays
-  free-text/unwired; store the partner-side token not the name; no Bride/Groom; server-gate songs
-  when off; no review/apply inbox; Paid=ledger-only; no per-installment stored status; budget filter
-  never rewrites the headline; etc.)
+- Auto-firing ONBOARD-NUDGE-01 keys as page tours — they are storage-only `user_tours` rows.
+- Hardcoding "Leads" / "New wedding" / "Weddings" in PlannerShell instead of `getCopy`.
+- Restoring an **open/anonymous RSVP path**.
+- Fuzzy-matching RSVP attendee **names** to `guest_members`.
+- Treating `guest_members.attending` as the shown RSVP status — the household badge is.
+- Wiring the relationship picklist to `VENDOR_CATEGORIES` or adding a DB CHECK on
+  `guest_members.relationship`.
+- Storing the partner-side **display name** instead of the `partner_1` / `partner_2` token.
+  **No Bride/Groom.**
+- Persisting a client song when `song_requests_enabled` is off (server-gate).
+- Reintroducing a review/apply RSVP inbox.
+- Deriving Paid from `actual_amount` instead of the `budget_payments` ledger.
+- Storing a per-installment paid/unpaid status (coverage is derived at read via the waterfall).
+- Letting a budget per-card filter rewrite the global "paid so far" headline / Needs-attention panel.
 
 ---
 
@@ -1944,7 +2093,7 @@ a code scan. Prefer section-level diffs.
   `stripe_customer_id`, that it matches the session customer) before writing anything — same
   "don't trust client-supplied state" posture governing every other write boundary in this
   document. Do not skip this check when extending reconciliation to a new Checkout flow.
-- **Live-key incident (v37):** a live `STRIPE_SECRET_KEY` was briefly active in local dev, producing
+- **Live-key incident:** a live `STRIPE_SECRET_KEY` was briefly active in local dev, producing
   one real live venue subscription — cancelled directly in Stripe. Rotate the key if exposure
   beyond this machine is possible. Local Stripe webhook testing requires an active forwarder
   (`stripe listen`) matched to the same mode (test/live) as the active secret key — a mode or
@@ -2003,59 +2152,42 @@ a code scan. Prefer section-level diffs.
 
 ## 13. Known caveats / things to verify
 
-**Closed by earlier versions (v10–v34):** the full budget arc; invitations; vendors; registry; meals +
-gated RSVP; website photos + sections; collaborator invites; Soft stack; Guests rework; Website-tab
-polish + SEAT-12/13; NOTES-01 / ASSIST-UI-01 / CAL-02 / VND-11 / DASH-02/03; DEMO/TOUR/ONB-02…05 /
-CON-04. Full detail in v27–v34.
+**Shipped (full product — residual paste / ops confirmation where noted).** Detail for each slice
+is in §7 of this file. Schema numbers in §5.
 
-**Shipped and recorded (v35) — residual paste / ops confirmation where noted:**
-- **WHITE-01** — **0070**. Branding columns + brand-media + RPC + CoupleShell.
-- **WRITE-01** — **0071**. Project write policies → `can_edit_project`. **Closes the former "viewer
-  can write" schema gap** for listed tables; Access still does not offer `viewer`.
-- **RSVP-THROTTLE-01** — **0072**. Real household velocity cap in `submit_rsvp`.
-- **DEMO-04 / DEMO-04b** — **0073 / 0074** + Edge Function `purge-demo`.
-- **ONB-06** — **0075**. Business bootstrap without placeholder project.
-- **CAL-04** — no schema. Invited couples see Calendar.
-- **AGR-01** — no schema (catch-up). Couple Agreements tab.
-- **TMPL-01** — **0079** (**committed** in v36). Structure clone RPC + New wedding UI.
-- **ENT-01 + PRICE-01/02/06** — lock screen / planner trial / paid Checkout / Portal. **PRICE-03/04/05
-  product path superseded in v36** (0076–0078 schema residual).
-- **HYG-01 / HYG-01a** — no schema. Design HTML deleted; dangling pointers closed; Google hex keep-raw.
-- **WEB-REVAL-01** — public path revalidation (distinct from HYG).
+- Foundation through website/RSVP/seating/budget/guests/invites/Soft stack — migrations **0001–0058**.
+- **SEAT-12/13, NOTES-01, ASSIST-UI-01, CAL-02/03/04, VND-11/12, DASH-02/03, DEMO/TOUR, ONB-02…06,
+  CON-04, AGR-01, WHITE-01/02, WRITE-01, RSVP-THROTTLE, DEMO-04/04b, TMPL-01, ENT-01/01a,
+  PRICE-01/02/06/07/08, HYG-01/01a, WEB-REVAL, ASSIST-BUD, GMAIL-THREAD, TEAM-01, VENUE-01…07,
+  LEAD-STALE, OVERDUE-01, CHECKOUT-RECONCILE-01, TRIAL-GUARD-01, MKT-01/02/03, ONBOARD-NUDGE-01.**
+- **PRICE-03/04/05 product path is superseded** (0076–0078 schema residual — do not schedule
+  `charge-trial-balance` as the couple path).
+- **WRITE-01 / 0071** closed the former "viewer can write" schema gap for listed tables; Access
+  still does not offer `viewer`.
+- **VENUE-06** replaced the tertiary welcome link with three equal-weight options; bootstrap
+  mechanics (VENUE-04) unchanged.
 
-**Shipped and recorded (v36):**
-- **PRICE-07 / PRICE-08** — couple local trial + Monthly $10 / Lifetime $99.
-- **GMAIL-THREAD-01** — **0080**. Outreach Gmail deep-link.
-- **TEAM-01** — **0081 + 0082**. Business account seats; `/account/team`; `/invite/account/[token]`.
-- **VENUE-01 / 02 / 03** — **0083** + no-schema Checkout/discoverability. `accounts.plan`; own-shell
-  branding for venue + white-label. **VENUE-04 finalized in v37.**
-- **VND-12** — vendor library card grid.
-- **LEAD-STALE-01** — derived stale-lead pills (14-day, non-terminal).
-- **ENT-01a** — lock screen in `app/(locked)/`.
-- **OVERDUE-01** — `isTaskPastDue` single-sourced for task overdue.
+**Open — v38 verification gap:** MKT-01/02/03, VENUE-06, WHITE-02, VENUE-07, and
+ONBOARD-NUDGE-01 are code-shipped and were reported working, but the itemized live checkpoints
+from each slice's original build prompt (equal visual weight across all three venue entry
+points; a genuinely low-contrast color actually triggering the WHITE-02 warning; VENUE-07 copy
+flipping correctly on a live plan-change test, not just on a venue-plan account; all four
+ONBOARD-NUDGE-01 checkpoint bullets — both rows showing, each independent dismiss, persistence
+across visits, no-backfill-needed on a pre-existing venue account) have not been individually
+run and reported back. Do not treat these six as fully verified until that walk happens — same
+posture already applied elsewhere in this document to CHECKOUT-RECONCILE-01.
 
-**Shipped and recorded (v37):**
-- **VENUE-04 (finalized)** — no schema. Always-visible venue-intent link; request-only flag.
-- **VENUE-05** — no schema. Local trial on `/account/venue-upgrade` via `startPlannerTrial`.
-- **CHECKOUT-RECONCILE-01** — no schema. Return-page fallback via `applyCheckoutSession`. Mechanics
-  verified against disk in this write-up.
-- **TRIAL-GUARD-01** — no schema. Trial guards skip only on `status IS NOT NULL`.
-
-**Open — v37 (deferrals + gaps):**
+**Open — deferrals + gaps (current):**
 - **CHECKOUT-RECONCILE-01 remaining gap:** no periodic reconciliation job exists for an account that
   abandons Checkout and never even returns to the success page (closed tab mid-flow) — the fallback
-  only fires on the return leg. Flagged as a real, lower-urgency gap, not scoped into any shipped
-  slice. Implementation mechanics were verified against disk in this write-up (`reconcileCheckoutReturn`
-  / `applyCheckoutSession`); re-read those before extending. All three audiences (venue, planner,
-  couple monthly + couple lifetime) received the `{CHECKOUT_SESSION_ID}` success-URL fix.
-- **Rotate `STRIPE_SECRET_KEY`** if it was ever live-mode outside this dev machine (v37 incident,
-  resolved but key hygiene is separate). Confirm `.env.local` holds `sk_test_...` before further
-  Checkout testing.
-
-**Open — v36 (deferrals + gaps):**
+  only fires on the return leg. Lower-urgency. Re-read `reconcileCheckoutReturn` /
+  `applyCheckoutSession` before extending. All three audiences received the `{CHECKOUT_SESSION_ID}`
+  success-URL fix.
+- **Rotate `STRIPE_SECRET_KEY`** if it was ever live-mode outside this dev machine (resolved but
+  key hygiene is separate). Confirm `.env.local` holds `sk_test_...` before further Checkout testing.
 - **0060–0070 / 0072–0083 hand-paste** still need confirmation where not already live-checked;
   **0071 LIVE VERIFIED**. Demo seeds + `purge-demo` deploy/schedule are separate applies.
-  **0079–0083 are committed** (no longer untracked).
+  **0079–0083 are committed**.
 - **DASH-03a (deferred) — wedding-card blurb.** Needs `projects.description` (**0084+**) AND an edit
   affordance. Deferred deliberately to avoid a dead write path.
 - **PRICE-03/04/05 residual** — `stripe_payment_method_id`, claim/cancel RPCs, `charge-trial-balance`
@@ -2073,7 +2205,7 @@ CON-04. Full detail in v27–v34.
 - **Partner-side derive heuristic** — trailing-year strip + `&`/`and` split, backstopped by generic
   Partner 1/2.
 - **Assistant guest-add path not updated** (§9) — predates GST-07/GST-12. **No new assistant write
-  tools in v36.**
+  tools after ASSIST-BUD-01.**
 - **`guest_members.relationship` free-text + the relationship picklist** — deliberate.
 - **0053 `files_vendor_link` + 0050 `registry_teardown` rationale uncaptured** — reconstruct before
   relying on internals.
@@ -2083,28 +2215,18 @@ CON-04. Full detail in v27–v34.
 - **`viewer` invite** — product still deferred (WRITE-01 done). Update `lib/invitations/constants.ts`
   comment when offering.
 - **TEAM-01 has no email delivery** (same as INV-06 for project invites — copy the link).
-- **Venue signup/plan is not a first-class marketing Checkout** — post-login upgrade only. VENUE-04
-  is a welcome-screen routing shortcut, not a third kind or a public Checkout.
+- **Venue Checkout is not a public marketing Checkout** — post-login `/account/venue-upgrade` only.
+  `/for-venues` and `/pricing` are discoverability, not Checkout.
 - **`getAccountContext` still takes the first membership by `created_at`** — a user on both a
   personal and a business account (possible after TEAM-01 accept while already a couple) is a
-  sharp edge; not solved this slice.
-
-**Open — v29 budget (carried forward):** `budget_items.due_date` write-dead (drop **0084+** after parity);
-reconciled payment schedule (model b) deferred; budget dashboard overhaul deferred (mockup-first);
-`budget_items.category` free-text + quick-add list deliberate. (Ledger writers now `can_edit_project`.)
-
-**Open — v28 (carried forward):** CON-03 deferred; CAL-01a deferred; contract category axis vendor-only;
-`{{amount}}` no project source (and CON-04 generator deliberately excludes it); `files.category`
-inherits the **`can_edit_project` write gate** (0071; was `can_access_project` when this line was
-first written).
-
-**Open — security / schema (carried forward + v36):**
-- **WRITE-01 closed the `can_access_project` write gap** for the listed tables. Residual: optional
-  revoke of anon UPDATE GRANT on `guests`; `assistant_messages` / `outreach_messages` out of WRITE-01
-  scope by design; **`guest_members` / `rsvp_attendees` were already `can_edit_project` on mutate
-  (0040 / 0039) — not residual holes**; **`calendar_events` is the FOR-ALL exception** (project-linked
-  SELECT also `can_edit_project`); **`projects` has NO DELETE policy** (silent-no-op shape, unreached).
-- **Four vendor/file/template category columns HAVE CHECKs (0067)** — closed.
+  sharp edge; not solved.
+- **`budget_items.due_date` write-dead** (drop **0084+** after parity); reconciled payment schedule
+  (model b) deferred; budget dashboard overhaul deferred (mockup-first); `budget_items.category`
+  free-text + quick-add list deliberate. (Ledger writers now `can_edit_project`.)
+- **CON-03 deferred**; CAL-01a deferred; contract category axis vendor-only; `{{amount}}` no project
+  source (CON-04 generator deliberately excludes it).
+- **`projects` has NO DELETE policy** (silent-no-op shape, unreached).
+- **`assistant_messages` / `outreach_messages` out of WRITE-01 scope** by design.
 - **`guest_members.attending` default true, inert as shown status** — the badge is authoritative.
 - **`website-media` / `brand-media` public SELECT have no published gate** — intentional.
   **`vendor-media` has no anon SELECT** — intentional.
@@ -2113,9 +2235,10 @@ first written).
   deliberate; do not enum.
 
 **Open — Soft stack / design:** Dom live Soft stack + LAND-01/01a walk — prior verified surfaces plus
-**branding / lock screen (locked group) / couple local trial → Monthly/Lifetime / CAL-04 /
-Agreements / TMPL-01 / demo throttle UX / Team / venue upgrade + own-shell / vendor cards /
-stale-lead pills / View in Gmail / venue-intent shortcut / venue-upgrade trial**; Tier 1 date locale policy; optional Soft stack `reference.html`
+**branding + accent picker / lock screen (locked group) / couple local trial → Monthly/Lifetime /
+CAL-04 / Agreements / TMPL-01 / demo throttle UX / Team / venue upgrade + own-shell + venue copy +
+setup nudge / vendor cards / stale-lead pills / View in Gmail / three-option welcome /
+`/for-planners` + `/for-venues`**; Tier 1 date locale policy; optional Soft stack `reference.html`
 regenerate; legacy CSS aliases; font-load scoping.
 
 **Dev DB state (baseline — re-introspect before relying on rows):**
@@ -2207,13 +2330,24 @@ Guests-page rework (GST-03…09 / 0054–0058).** Migrations **0001–0058**.
 - **OVERDUE-01** — No schema. `isTaskPastDue` single-sourced for tasks.
 
 **Done (v37 — Venue signup shortcut + trial parity + reconciliation):**
-- **VENUE-04 (finalized)** — No schema. Always-visible venue-intent link; request-only
-  flag; direct routing to `/account/venue-upgrade`.
+- **VENUE-04** — No schema. Venue-intent bootstrap (`venueIntent` request-only) routes to
+  `/account/venue-upgrade`. UI later replaced by VENUE-06; mechanics unchanged.
 - **VENUE-05** — No schema. Local trial option on venue-upgrade, reuses `startPlannerTrial`.
 - **CHECKOUT-RECONCILE-01** — No schema. Synchronous Checkout-return fallback
-  reconciliation (mechanics verified against disk in this write-up — see §7 / §13).
+  reconciliation via `applyCheckoutSession`.
 - **TRIAL-GUARD-01** — No schema. Trial guards no longer block on a null-status
   Checkout-abandonment stub.
+
+**Done (v38 — Marketing landings + venue first-class entry + branding picker + venue copy + nudge):**
+- **MKT-01** — No schema. Homepage planner/venue-first reposition; hero preview Leads/Vendors/Contracts.
+- **MKT-02** — No schema. `/for-planners` dedicated landing.
+- **MKT-03** — No schema. `/for-venues` dedicated landing; nav wired.
+- **VENUE-06** — No schema. Three equal-weight welcome options; lock-screen venue CTA; billing
+  Upgrade-to-Venue card.
+- **WHITE-02** — No schema. Accent presets + picker + client-side contrast warning.
+- **VENUE-07** — No schema. Display-only venue vocabulary via `getCopy` / `accounts.plan`.
+- **ONBOARD-NUDGE-01** — No schema. Post-venue-Checkout branding + Team nudge on
+  `/account/venue-upgrade` via `user_tours` storage keys.
 
 Current through **0083** (on disk); next-free **0084** (MEAL-03a incl. `party_size`,
 `budget_items.due_date` drop, `rsvp_access_mode` drop, optional `traditions` drop, DASH-03a
@@ -2221,9 +2355,9 @@ Current through **0083** (on disk); next-free **0084** (MEAL-03a incl. `party_si
 
 **In progress:** confirm **0060–0083 hand-pastes** (+ demo seeds + `purge-demo`); the **broad** Dom
 Soft stack + LAND-01 live visual checkpoint (prior unwalked surfaces + **Team / venue / vendor
-cards / stale leads / lock group / couple Monthly-Lifetime / View in Gmail / venue-intent
-shortcut / venue-upgrade trial**). CHECKOUT-RECONCILE-01 remaining gap: abandoned Checkout with
-no return-page hit (no periodic job).
+cards / stale leads / lock group / couple Monthly-Lifetime / View in Gmail / three-option welcome
+/ venue-upgrade trial + setup nudge / accent picker / `/for-planners` + `/for-venues`**).
+CHECKOUT-RECONCILE-01 remaining gap: abandoned Checkout with no return-page hit (no periodic job).
 
 **Remaining couple side:** moodboard; **MEAL-03a (0084+, drops `guests.meal_choice` + `guests.party_size`)**;
 **`budget_items.due_date` drop (0084+, after parity)**; **`rsvp_access_mode` drop (0084+)**; optional
@@ -2244,23 +2378,29 @@ are **shipped**.
 
 **Phase 5 — automation:** PROACTIVE assistant. (ASSIST-UI-01 is discovery only — not Phase 5.)
 
-**Decided (append v37 — code-verified where noted):**
-- **Venue intent is a request-only routing flag** — never persisted; no `kind='venue'`; no venue
-  dashboard. `plan='venue'` flips only on a confirmed paid subscription.
+**Decided (current — code-verified):**
+- **Venue is a first-class welcome option** (VENUE-06) but still **not** a third `accounts.kind`.
+  `venueIntent` is request-only; `plan='venue'` flips only on a confirmed paid subscription.
+- **Venue display copy is call-site-resolved** from `accounts.plan` (`getCopy`) — do not fork
+  routes or stage vocabularies.
+- **Brand accent is one free-text hex.** Presets/picker are UI sugar; contrast warning does not
+  block save; do not persist a preset id.
+- **ONBOARD-NUDGE-01 keys are storage-only** — reuse `dismissTour` / `user_tours`; do not auto-fire
+  as page tours.
+- **Marketing is planner/venue-first** (MKT-01…03). In-app couple product is unchanged. Public
+  `/pricing` still does not start venue Checkout.
 - **Local trial is uniform across planner lock screen and venue-upgrade** (`startPlannerTrial`);
   trial never sets `plan='venue'`.
 - **A `subscriptions` row with `status = null` is not a subscription** (TRIAL-GUARD-01).
 - **Checkout-return reconciliation must reuse `applyCheckoutSession`** — webhook stays primary
   for every non-return event.
 - **Do not add `trial_period_days` to any Checkout Session.**
-
-**Decided (append v36 — code-verified where noted):**
 - **Couple paid path is local trial then Monthly $10 or Lifetime $99** — not $7+$92.
 - **Team seats are business-only, flat, and parallel to project invitations** (two tables, two
   cookies). `account_members.role` is unused.
 - **Venue own-shell white-label requires `plan = 'venue' AND white_label_enabled`.** Ordinary
   planner chrome stays First Look. CoupleShell invited-viewer branding is unchanged.
-- **Venue Checkout is post-login** (`/account/venue-upgrade`); public `/pricing` is cosmetic.
+- **Venue Checkout is post-login** (`/account/venue-upgrade`).
 - **Webhook flips `accounts.plan` from venue price ids only**; fail-closed to `planner`; does not
   touch brand columns.
 - **LEAD-STALE-01 is derived at read** (14 days, non-terminal); no stale column.
@@ -2268,32 +2408,33 @@ are **shipped**.
 - **`isTaskPastDue` is the single task-overdue helper** (OVERDUE-01).
 - **WRITE-01 write policies use `can_edit_project`; offering `viewer` is still a product deferral.**
 - **CAL-04 is the only role-aware tab exception** (invited couple → Calendar).
-- **Planner (and now couple) trial is local (no Stripe objects) until paid Checkout.**
+- **Planner and couple trial is local (no Stripe objects) until paid Checkout.**
 - **Demo throttle thresholds live only in RPCs**; purge is Edge Function, not pg_cron.
 - **ONB-06: business accounts start with zero projects.**
 - **TMPL-01 clones structure only** (no dates/status/actuals/links).
 - **RSVP velocity throttle is real and RPC-owned** (0072).
-- (All prior "Decided" items from v35/v34/v33/v32/v31/v30/v29/v28 carry forward, except the
-  superseded $7+$92 couple trial and "no account-level seats" claims.)
+- **RSVP is gated-only** — no open/anonymous path; no fuzzy attendee-name match; household badge
+  is the shown status.
+- **Paid is ledger-only**; installment coverage is derived at read; budget filters never rewrite
+  the global headline.
+- **Partner-side stores a token** (`partner_1`/`partner_2`), never Bride/Groom or a name string.
+- **Relationship picklist is free-text / writer-guarded**, not a vendor-category vocabulary.
+- **No PDF library** — printable surfaces are HTML + `@media print`.
+- **Marketing copy never leads with "AI."**
 
 ---
 
 ## 15. Start here next (pick-up point)
 
-The couple product is feature-complete, shareable, and payable — Budget (v29), Guests (v30 + **GST-12**),
-Website + per-member seating (v31 + **SEAT-13**), Notes + in-page assistant + Calendar (v32 + **CAL-03**
-+ **CAL-04**), planner wedding cards / budget polish / Gmail reconnect (v33), demo + tours + 6-step
-onboarding + CON-04 + **Agreements (v34)**, **branding + WRITE-01 + throttles + planner billing +
-TMPL-01 + ONB-06 (v35)**, **couple local trial → Monthly/Lifetime + Team seats + venue plan +
-vendor cards + stale leads + Gmail threads + lock-group split + single-source overdue (v36)**, and
-**venue-intent signup shortcut + venue-upgrade trial + Checkout-return reconciliation + trial-guard
-fix (v37)**. Schema pastes for **0060–0083** still need confirmation unless Dom closed them. The planner
-product has a CRM
+The couple product is feature-complete, shareable, and payable. The planner/venue product has a CRM
 + collaborator invites + **account Team seats** + wedding archive + Vendor library **(card grid +
-detail/portfolio)** + **CoupleShell white-label + venue own-shell** + authorable Calendar +
-**wedding cards** + **template clone** + cross-project Contracts archive with templates **(+
-assistant-drafted templates)**. Plan is **couples-first launch**. Bible at **v37**. Schema through
-**0083** (on disk, unchanged from v36); next-free **0084**.
+detail/portfolio)** + **CoupleShell white-label + venue own-shell + accent picker** + authorable
+Calendar + **wedding cards** + **template clone** + cross-project Contracts archive with templates
+**(+ assistant-drafted templates)** + **venue first-class signup / copy / setup nudge**. Marketing
+is **planner/venue-first** (`/` + `/for-planners` + `/for-venues` + `/pricing`). Schema pastes for
+**0060–0083** still need confirmation unless Dom closed them. Plan is **couples-first launch** with
+B2B marketing. Bible at **v38**. Schema through **0083**; next-free **0084**. This document is
+self-contained — do not look for earlier bible files.
 
 **Do not** resume a Modern romantic / VND-01 layout pass; **do not** reorder website sections with
 @dnd-kit or pull @dnd-kit into the website editor; **do not** fork a second collapse affordance for the
@@ -2333,8 +2474,12 @@ Session (venue, planner, or couple) — the local-trial mechanism stays uniform 
 across every audience; **do not** treat a `subscriptions` row's mere existence as evidence of a real
 subscription in any new guard — check `status IS NOT NULL`, reusing TRIAL-GUARD-01's definition;
 **do not** let Checkout-return reconciliation write without verifying the session's
-customer/metadata against the authenticated account; **do not** scope the venue-intent link's
-visibility to a specific toggle selection — it must render unconditionally.
+customer/metadata against the authenticated account; **do not** demote venue back to a tertiary
+welcome link — it is a first-class equal-weight option; **do not** add `kind='venue'`; **do not**
+auto-fire `venue_branding_nudge` / `venue_team_nudge` as page tours; **do not** persist a brand
+preset id; **do not** hardcode PlannerShell "Leads"/"New wedding"/"Weddings" instead of `getCopy`;
+**do not** treat MKT-01/02/03, VENUE-06, WHITE-02, VENUE-07, or ONBOARD-NUDGE-01 as
+live-checkpoint-verified — they are code-shipped only until the itemized checkpoints are run.
 
 **A. Confirm hand-paste of 0060 → … → 0083** (in order) + apply demo seeds + deploy/schedule
 `purge-demo` (do **not** treat `charge-trial-balance` as required couple ops). Checkpoint: prior
@@ -2349,10 +2494,10 @@ assistant `getChecklist`, wedding cards, planner urgent, and calendar **task** o
 **B. Close the broad Soft stack + LAND-01/01a visual checkpoint** — still unwalked or newly shipped:
 Notes / AskAssistantPrompt / Vendor detail **+ card grid** / Calendar (**CAL-03 + CAL-04**), GST-12 /
 SEAT-13 / DASH-03, demo CTA + banner + throttle UX, page tours, 6-step onboarding, CON-04,
-**Agreements**, **Branding**, **lock screen (`(locked)` group)**, **couple local trial →
-Monthly/Lifetime**, **planner trial → paid**, **venue upgrade + own-shell**, **Team**,
-**stale-lead pills**, **View in Gmail**, **TMPL-01 New wedding clone**, **venue-intent shortcut**,
-**venue-upgrade trial**, planner
+**Agreements**, **Branding + accent picker**, **lock screen (`(locked)` group)**, **couple local trial →
+Monthly/Lifetime**, **planner trial → paid**, **venue upgrade + own-shell + venue copy + setup nudge**,
+**Team**, **stale-lead pills**, **View in Gmail**, **TMPL-01 New wedding clone**, **three-option
+welcome**, **venue-upgrade trial**, **`/for-planners` + `/for-venues`**, planner
 dashboard/leads/billing/Access, `/vendors`, `/calendar`, `/contracts`, landing, `/pricing`, login,
 `/invite/[token]`, `/invite/account/[token]`, `/w/[slug]` date hydration. Confirm no hydration
 mismatch. Fix only real regressions.

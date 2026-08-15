@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { VenueSetupNudge } from "@/components/account/venue-setup-nudge";
 import { VenueSubscribeButton } from "@/components/billing/couple-billing-actions";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -10,12 +11,18 @@ import { resolveBusinessAccountId } from "@/lib/billing/resolve-account";
 import { startPlannerTrial } from "@/lib/billing/start-planner-trial";
 import { reconcileCheckoutReturn } from "@/lib/billing/sync-subscription";
 import { shellLayoutClass } from "@/lib/density";
+import {
+  VENUE_BRANDING_NUDGE_KEY,
+  VENUE_NUDGE_KEYS,
+  VENUE_TEAM_NUDGE_KEY,
+} from "@/lib/tours/venue-nudge";
 import { createClient } from "@/utils/supabase/server";
 
 /**
  * VENUE-02 / VENUE-02b / VENUE-05: venue upgrade — local planner trial
- * plus Monthly/Annual Checkout. Linked from /account/billing (VENUE-03a)
- * and venue-intent onboarding (VENUE-04); not on public /pricing yet.
+ * plus Monthly/Annual Checkout. Linked from welcome (VENUE-06),
+ * /account/locked (business-kind), and /account/billing; not on public
+ * /pricing yet. Single Checkout landing — do not add a second entry.
  */
 export default async function VenueUpgradePage({
   searchParams,
@@ -33,12 +40,24 @@ export default async function VenueUpgradePage({
   const accountId = await resolveBusinessAccountId(supabase);
   await reconcileCheckoutReturn(accountId, { status, session_id });
 
-  const [{ data: row }, subscription] = await Promise.all([
+  const [{ data: row }, subscription, { data: nudgeRows }] = await Promise.all([
     supabase.from("accounts").select("plan").eq("id", accountId).maybeSingle(),
     getSubscriptionForAccount(supabase, accountId),
+    supabase
+      .from("user_tours")
+      .select("tour_key")
+      .in("tour_key", [...VENUE_NUDGE_KEYS]),
   ]);
 
   const isVenue = row?.plan === "venue";
+  const dismissedNudgeKeys = new Set(
+    (nudgeRows ?? []).map((entry) => entry.tour_key),
+  );
+  const showBrandingNudge =
+    isVenue && !dismissedNudgeKeys.has(VENUE_BRANDING_NUDGE_KEY);
+  const showTeamNudge =
+    isVenue && !dismissedNudgeKeys.has(VENUE_TEAM_NUDGE_KEY);
+  const showSetupNudge = showBrandingNudge || showTeamNudge;
   // Same eligibility as /account/locked — status null means never started.
   const showTrialCta = !isVenue && subscription.status === null;
   const shellClass = shellLayoutClass(account.kind, false, "reading");
@@ -65,6 +84,13 @@ export default async function VenueUpgradePage({
         <Card className="mt-6 border-hairline bg-surface px-4 py-3">
           <p className="text-[14px] text-muted">Checkout was cancelled.</p>
         </Card>
+      ) : null}
+
+      {showSetupNudge ? (
+        <VenueSetupNudge
+          showBranding={showBrandingNudge}
+          showTeam={showTeamNudge}
+        />
       ) : null}
 
       <Card className="mt-6 p-6">

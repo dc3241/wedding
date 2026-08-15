@@ -4,7 +4,14 @@ import { startDemo, type DemoAccountKind } from "@/lib/demo/start-demo";
 import { cn } from "@/lib/cn";
 import { useState } from "react";
 
-export function DemoCta({ kind }: { kind: DemoAccountKind }) {
+export function DemoCta({
+  kind,
+  compact = false,
+}: {
+  kind: DemoAccountKind;
+  /** Hero row: link only, no helper copy. */
+  compact?: boolean;
+}) {
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -39,13 +46,19 @@ export function DemoCta({ kind }: { kind: DemoAccountKind }) {
   }
 
   return (
-    <div className="mt-5 flex flex-col items-center gap-2">
+    <div
+      className={cn(
+        "flex flex-col gap-2",
+        compact ? "items-start" : "mt-5 items-center",
+      )}
+    >
       <button
         type="button"
         onClick={onClick}
         disabled={pending}
         className={cn(
           "inline-flex items-center gap-1.5 text-[14px] font-semibold text-accent",
+          compact && "text-[15px] md:text-[16px]",
           "transition-opacity hover:opacity-80",
           "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
           "disabled:cursor-wait disabled:opacity-60",
@@ -76,10 +89,12 @@ export function DemoCta({ kind }: { kind: DemoAccountKind }) {
           </>
         )}
       </button>
-      <p className="max-w-[40ch] text-[13px] leading-relaxed text-muted">
-        No signup required — explore a real workspace, then keep it if you like
-        it.
-      </p>
+      {compact ? null : (
+        <p className="max-w-[40ch] text-[13px] leading-relaxed text-muted">
+          No signup required — explore a real workspace, then keep it if you like
+          it.
+        </p>
+      )}
       {message ? (
         <p
           role="alert"

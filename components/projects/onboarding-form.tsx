@@ -7,7 +7,16 @@ import {
   bootstrapAccountWithVenueIntent,
 } from "@/app/(app)/projects/actions";
 
-type AccountKindChoice = "couple" | "planner";
+type AccountKindChoice = "couple" | "planner" | "venue";
+
+const KIND_OPTIONS: {
+  value: AccountKindChoice;
+  label: string;
+}[] = [
+  { value: "couple", label: "We're a couple" },
+  { value: "planner", label: "I'm a planner" },
+  { value: "venue", label: "I run a venue" },
+];
 
 function SubmitButton() {
   const { pending } = useFormStatus();
@@ -23,33 +32,25 @@ function SubmitButton() {
   );
 }
 
-function VenueIntentLink() {
-  const { pending } = useFormStatus();
-
-  return (
-    <button
-      type="submit"
-      formAction={bootstrapAccountWithVenueIntent}
-      formNoValidate
-      disabled={pending}
-      className="text-[13px] font-medium text-muted underline-offset-2 hover:text-accent hover:underline disabled:cursor-not-allowed disabled:opacity-60"
-    >
-      Running a venue instead?
-    </button>
-  );
-}
-
 export function OnboardingForm() {
   const [choice, setChoice] = useState<AccountKindChoice>("couple");
 
   const accountKind = choice === "couple" ? "personal" : "business";
   const nameLabel =
-    choice === "couple" ? "Your names" : "Business name";
+    choice === "couple"
+      ? "Your names"
+      : choice === "venue"
+        ? "Venue name"
+        : "Business name";
   const namePlaceholder =
-    choice === "couple" ? "Sarah & James" : "Bloom Wedding Co.";
+    choice === "couple"
+      ? "Sarah & James"
+      : choice === "venue"
+        ? "The Garden Estate"
+        : "Bloom Wedding Co.";
 
   return (
-    <div className="w-full max-w-md space-y-6">
+    <div className="w-full max-w-lg space-y-6">
       <div className="space-y-1 text-center">
         <h1 className="text-2xl font-semibold tracking-tight">
           Welcome
@@ -59,52 +60,41 @@ export function OnboardingForm() {
         </p>
       </div>
 
-      <form action={bootstrapAccountAndProject} className="space-y-5">
+      <form
+        action={
+          choice === "venue"
+            ? bootstrapAccountWithVenueIntent
+            : bootstrapAccountAndProject
+        }
+        className="space-y-5"
+      >
         <input type="hidden" name="accountKind" value={accountKind} />
 
         <fieldset className="space-y-2">
           <legend className="text-sm font-medium">
-            Are you planning your own wedding, or are you a planner managing
-            clients?
+            How will you use First Look?
           </legend>
-          <div className="grid grid-cols-2 gap-3">
-            <label
-              className={`cursor-pointer rounded-[var(--radius-inner)] border px-3 py-3 text-center text-sm font-medium transition-colors ${
-                choice === "couple"
-                  ? "border-accent bg-accent text-surface shadow-raised"
-                  : "border-ring bg-surface text-ink hover:bg-well"
-              }`}
-            >
-              <input
-                type="radio"
-                name="kindChoice"
-                value="couple"
-                checked={choice === "couple"}
-                onChange={() => setChoice("couple")}
-                className="sr-only"
-              />
-              My own wedding
-            </label>
-            <label
-              className={`cursor-pointer rounded-[var(--radius-inner)] border px-3 py-3 text-center text-sm font-medium transition-colors ${
-                choice === "planner"
-                  ? "border-accent bg-accent text-surface shadow-raised"
-                  : "border-ring bg-surface text-ink hover:bg-well"
-              }`}
-            >
-              <input
-                type="radio"
-                name="kindChoice"
-                value="planner"
-                checked={choice === "planner"}
-                onChange={() => setChoice("planner")}
-                className="sr-only"
-              />
-              I&apos;m a planner
-            </label>
-          </div>
-          <div className="flex justify-end pt-1">
-            <VenueIntentLink />
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            {KIND_OPTIONS.map((option) => (
+              <label
+                key={option.value}
+                className={`cursor-pointer rounded-[var(--radius-inner)] border px-3 py-3 text-center text-sm font-medium transition-colors ${
+                  choice === option.value
+                    ? "border-accent bg-accent text-surface shadow-raised"
+                    : "border-ring bg-surface text-ink hover:bg-well"
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="kindChoice"
+                  value={option.value}
+                  checked={choice === option.value}
+                  onChange={() => setChoice(option.value)}
+                  className="sr-only"
+                />
+                {option.label}
+              </label>
+            ))}
           </div>
         </fieldset>
 

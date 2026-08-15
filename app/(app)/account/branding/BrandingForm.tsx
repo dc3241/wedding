@@ -13,6 +13,8 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Wordmark } from "@/components/ui/topbar";
+import { BRAND_PRESET_COLORS } from "@/lib/brand-preset-colors";
+import { accentFailsWhiteContrast } from "@/lib/branding/contrast";
 import { BRAND_ACCENT_HEX, BRAND_NAME_MAX_LENGTH } from "@/lib/branding/types";
 import { cn } from "@/lib/cn";
 
@@ -20,15 +22,6 @@ type BrandingFormProps = {
   accountId: string;
   initial: UpdateAccountBrandingInput;
 };
-
-const PRESET_SWATCHES = [
-  "#C0396B",
-  "#A13F5C",
-  "#3D5A80",
-  "#2F6B54",
-  "#5C4B7A",
-  "#1F3A4C",
-] as const;
 
 export function BrandingForm({ accountId, initial }: BrandingFormProps) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -47,6 +40,12 @@ export function BrandingForm({ accountId, initial }: BrandingFormProps) {
   const accentValid = BRAND_ACCENT_HEX.test(brandAccentColor);
   const previewAccent = accentValid ? brandAccentColor : "#C0396B";
   const previewName = brandName.trim() || "Your business name";
+  const lowContrast = accentValid && accentFailsWhiteContrast(brandAccentColor);
+
+  function setAccent(hex: string) {
+    setBrandAccentColor(hex);
+    setSaved(false);
+  }
 
   function pickFile() {
     inputRef.current?.click();
@@ -267,49 +266,61 @@ export function BrandingForm({ accountId, initial }: BrandingFormProps) {
         </div>
 
         <div className="space-y-3">
-          <label
-            htmlFor="brand-accent"
-            className="block text-[14px] font-medium text-ink"
-          >
-            Accent color
-          </label>
+          <p className="text-[14px] font-medium text-ink">Accent color</p>
+          <div className="flex flex-wrap gap-2">
+            {BRAND_PRESET_COLORS.map((preset) => {
+              const selected =
+                brandAccentColor.toLowerCase() === preset.hex.toLowerCase();
+              return (
+                <button
+                  key={preset.hex}
+                  type="button"
+                  title={`${preset.label} (${preset.hex})`}
+                  aria-label={`Use ${preset.label}`}
+                  aria-pressed={selected}
+                  onClick={() => setAccent(preset.hex)}
+                  className={cn(
+                    "size-8 rounded-[var(--radius-inner)] border border-ring shadow-recessed hover:border-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
+                    selected && "outline-2 outline-offset-2 outline-accent",
+                  )}
+                  style={{ backgroundColor: preset.hex }}
+                />
+              );
+            })}
+          </div>
           <div className="flex flex-wrap items-center gap-3">
-            <span
-              className="size-9 shrink-0 rounded-[var(--radius-inner)] border border-ring shadow-recessed"
-              style={{ backgroundColor: previewAccent }}
-              aria-hidden
-            />
+            <label className="relative size-9 shrink-0 cursor-pointer overflow-hidden rounded-[var(--radius-inner)] border border-ring shadow-recessed focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-accent">
+              <span className="sr-only">Custom accent color</span>
+              <span
+                className="block size-full"
+                style={{ backgroundColor: previewAccent }}
+                aria-hidden
+              />
+              <input
+                type="color"
+                value={previewAccent}
+                onChange={(e) => setAccent(e.target.value)}
+                className="absolute inset-0 cursor-pointer opacity-0"
+              />
+            </label>
             <Input
               id="brand-accent"
               value={brandAccentColor}
               placeholder="#C0396B"
+              aria-label="Accent hex"
               className="max-w-[10rem] font-mono text-[14px]"
-              onChange={(e) => {
-                setBrandAccentColor(e.target.value);
-                setSaved(false);
-              }}
+              onChange={(e) => setAccent(e.target.value)}
             />
           </div>
-          <div className="flex flex-wrap gap-2">
-            {PRESET_SWATCHES.map((hex) => (
-              <button
-                key={hex}
-                type="button"
-                title={hex}
-                aria-label={`Use ${hex}`}
-                onClick={() => {
-                  setBrandAccentColor(hex);
-                  setSaved(false);
-                }}
-                className={cn(
-                  "size-8 rounded-[var(--radius-inner)] border border-ring transition-transform hover:scale-105",
-                  brandAccentColor.toLowerCase() === hex.toLowerCase() &&
-                    "outline-2 outline-offset-2 outline-accent",
-                )}
-                style={{ backgroundColor: hex }}
-              />
-            ))}
-          </div>
+          {lowContrast ? (
+            <p
+              className="rounded-[var(--radius-inner)] bg-clay-wash px-3 py-2 text-[13px] font-medium text-clay"
+              role="status"
+            >
+              This color may be hard to read against white. You can still save
+              it.
+            </p>
+          ) : null}
           <p className="text-[13px] text-muted">
             Hex only (<code className="text-[12px]">#RRGGBB</code>). Overrides
             selection and primary buttons — not status colors.

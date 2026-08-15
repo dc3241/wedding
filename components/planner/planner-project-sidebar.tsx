@@ -5,7 +5,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Eyebrow } from "@/components/ui/eyebrow";
+import type { AccountPlan } from "@/lib/account-context";
 import { cn } from "@/lib/cn";
+import { getCopy } from "@/lib/venue-copy";
 
 export type SidebarProject = {
   id: string;
@@ -48,8 +50,10 @@ const navLinkClass = (active: boolean) =>
 
 export function PlannerProjectSidebar({
   projects,
+  plan = "planner",
 }: {
   projects: SidebarProject[];
+  plan?: AccountPlan;
 }) {
   const pathname = usePathname();
   const activeProjectId = extractProjectId(pathname);
@@ -82,7 +86,7 @@ export function PlannerProjectSidebar({
             Calendar
           </Link>
           <Link href="/leads" className={navLinkClass(onLeads)}>
-            Leads
+            {getCopy("sidebarLeads", plan)}
           </Link>
           <Link href="/vendors" className={navLinkClass(onVendors)}>
             Vendors
@@ -105,7 +109,7 @@ export function PlannerProjectSidebar({
         </div>
         <div className="mb-3 h-px bg-hairline" />
         <div className="px-3.5 pb-3">
-          <Eyebrow>Active weddings</Eyebrow>
+          <Eyebrow>{getCopy("sidebarActiveProjects", plan)}</Eyebrow>
         </div>
         <nav className="flex flex-col gap-1.5 px-1.5 pb-1.5">
           {projects.map((project) => {

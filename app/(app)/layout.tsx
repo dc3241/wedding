@@ -65,7 +65,11 @@ export default async function AppLayout({
       <VendorSearchCacheProvider>
         {showDemoBanner ? <DemoBanner /> : null}
         {isPlanner ? (
-          <PlannerShell projects={plannerProjects} branding={plannerBranding}>
+          <PlannerShell
+            projects={plannerProjects}
+            branding={plannerBranding}
+            plan={account?.plan ?? "planner"}
+          >
             {children}
           </PlannerShell>
         ) : (

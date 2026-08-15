@@ -2,6 +2,17 @@ import { Eyebrow } from "@/components/ui/eyebrow";
 
 const GROUPS = [
   {
+    label: "For planners & venues",
+    items: [
+      "Lead pipeline & proposals",
+      "Proposals → signed contracts",
+      "Invite couples to their wedding",
+      "Every client in one book",
+      "White-labeled client workspace",
+      "Venue accounts: multiple seats, your own branding throughout",
+    ],
+  },
+  {
     label: "The plan",
     items: [
       "Starter plan from your date & budget",
@@ -53,17 +64,6 @@ const GROUPS = [
       "Photo gallery & wedding party",
       "Meal-aware online RSVP page",
       "Gift registry with guest claims",
-    ],
-  },
-  {
-    label: "For planners",
-    items: [
-      "Lead pipeline & proposals",
-      "Proposals → signed contracts",
-      "Invite couples to their wedding",
-      "Every client in one book",
-      "White-labeled client workspace",
-      "Venue accounts: multiple seats, your own branding throughout",
     ],
   },
   {
