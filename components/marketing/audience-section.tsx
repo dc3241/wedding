@@ -2,12 +2,18 @@
 
 import { DemoCta } from "@/components/demo/demo-cta";
 import { CoupleCollaboration } from "@/components/marketing/couple-collaboration";
+import {
+  PipelinePreview,
+  StalePreview,
+  TeamPreview,
+  WeddingsPreview,
+} from "@/components/marketing/planner-feature-previews";
 import { WhiteLabelShowcase } from "@/components/marketing/white-label-showcase";
 import { ButtonLink } from "@/components/ui/button";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { cn } from "@/lib/cn";
 import Link from "next/link";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState, type ComponentType, type ReactNode } from "react";
 
 type Audience = "couples" | "planners";
 
@@ -34,28 +40,37 @@ const COUPLES_CARDS = [
   },
 ] as const;
 
-const PLANNERS_CARDS = [
+const PLANNERS_CARDS: {
+  title: string;
+  body: string;
+  icon: ComponentType;
+  Preview: ComponentType;
+}[] = [
   {
     title: "All your weddings in one book",
     body: "Every client gets their own project. Switch between weddings without losing your place or mixing up details.",
     icon: BookIcon,
+    Preview: WeddingsPreview,
   },
   {
     title: "Leads to signed contracts",
     body: "Move prospects through your pipeline, send proposals, and turn an accepted proposal into a printable contract — without leaving the app.",
     icon: ContractIcon,
+    Preview: PipelinePreview,
   },
   {
     title: "Bring the couple and your team in",
     body: "Invite each couple into their own wedding, and add associates as collaborators on just the weddings they're helping with.",
     icon: TeamIcon,
+    Preview: TeamPreview,
   },
   {
     title: "Nothing goes stale",
     body: "Leads sitting untouched for two weeks get flagged automatically, so nobody falls through.",
     icon: StaleIcon,
+    Preview: StalePreview,
   },
-] as const;
+];
 
 function hashToAudience(hash: string): Audience | null {
   // Normalize "#couples#couples" → "couples" if a prior nav ever doubled the fragment.
@@ -194,10 +209,11 @@ export function AudienceSection() {
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5">
           {cards.map((card) => {
             const Icon = card.icon;
+            const Preview = "Preview" in card ? card.Preview : null;
             return (
               <article
                 key={card.title}
-                className="marketing-card-hover rounded-[var(--radius-card)] border border-ring bg-surface p-6 shadow-raised md:p-7"
+                className="marketing-card-hover flex h-full flex-col rounded-[var(--radius-card)] border border-ring bg-surface p-6 shadow-raised md:p-7"
               >
                 <div className="mb-4 flex size-10 items-center justify-center rounded-[var(--radius-inner)] bg-accent-wash text-accent">
                   <Icon />
@@ -205,9 +221,14 @@ export function AudienceSection() {
                 <h3 className="text-[17px] font-extrabold tracking-[-0.02em] text-ink md:text-[19px]">
                   {card.title}
                 </h3>
-                <p className="mt-2 text-[14px] leading-relaxed text-muted md:text-[15px]">
+                <p className="mt-2 flex-1 text-[14px] leading-relaxed text-muted md:text-[15px]">
                   {card.body}
                 </p>
+                {Preview ? (
+                  <div className="mt-5">
+                    <Preview />
+                  </div>
+                ) : null}
               </article>
             );
           })}
