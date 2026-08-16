@@ -21,6 +21,22 @@ import {
 } from "react";
 import type { AccountPlan } from "@/lib/account-context";
 
+function MenuIcon() {
+  return (
+    <svg
+      viewBox="0 0 20 20"
+      className="size-5"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      aria-hidden
+    >
+      <path d="M3.5 5.5h13M3.5 10h13M3.5 14.5h13" />
+    </svg>
+  );
+}
+
 function BrandMark({ branding }: { branding: ProjectBranding }) {
   const name = branding.brandName?.trim() || DEFAULT_BRAND_NAME;
 
@@ -128,12 +144,13 @@ export function PlannerShell({
       >
         <button
           type="button"
-          className="inline-flex shrink-0 items-center rounded-[var(--radius-inner)] px-3 py-2 text-[14px] font-semibold text-ink hover:bg-well lg:hidden"
+          className="inline-flex size-11 shrink-0 items-center justify-center rounded-[var(--radius-inner)] text-ink hover:bg-well lg:hidden"
+          aria-label="Menu"
           aria-expanded={navOpen}
           aria-controls={sidebarId}
           onClick={() => setNavOpen((open) => !open)}
         >
-          Menu
+          <MenuIcon />
         </button>
         <div className="min-w-0">
           {branding ? <BrandMark branding={branding} /> : <Wordmark />}

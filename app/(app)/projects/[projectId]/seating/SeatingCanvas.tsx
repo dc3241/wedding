@@ -149,6 +149,8 @@ function SeatingTableGraphic({
         style={{
           pointerEvents: interactive ? "auto" : "none",
           cursor: interactive ? "grab" : undefined,
+          // Keep table drags from competing with document scroll on iOS.
+          touchAction: interactive ? "none" : undefined,
         }}
         onPointerDown={onPointerDown}
         onClick={(event) => {
@@ -204,6 +206,7 @@ function SeatingTableGraphic({
               style={{
                 pointerEvents: interactive ? "auto" : "none",
                 cursor: interactive ? "pointer" : undefined,
+                touchAction: interactive ? "none" : undefined,
               }}
               onPointerDown={(event) => {
                 event.stopPropagation();
@@ -319,6 +322,7 @@ function SeatingTableGraphic({
               style={{
                 pointerEvents: interactive ? "auto" : "none",
                 cursor: interactive ? "pointer" : undefined,
+                touchAction: interactive ? "none" : undefined,
               }}
               onPointerDown={(event) => event.stopPropagation()}
               onClick={(event) => {
@@ -413,6 +417,12 @@ export function SeatingCanvas({
 
   const placing = armedShape !== null || armedDancefloor;
   const viewportGesturesEnabled = allowViewportInteraction && !placing;
+  const viewportIdentity =
+    viewport.scale === MIN_SCALE && viewport.x === 0 && viewport.y === 0;
+  const gestureEnabledRef = useRef(viewportGesturesEnabled);
+  const viewportStateRef = useRef(viewport);
+  gestureEnabledRef.current = viewportGesturesEnabled;
+  viewportStateRef.current = viewport;
 
   const renderOrder = [...tables].sort((a, b) => {
     const aFloor = isDancefloor(a.kind) ? 0 : 1;
@@ -476,8 +486,6 @@ export function SeatingCanvas({
         startClientY: event.clientY,
       };
       didDragRef.current = false;
-      setDragVisual({ id: table.id, posX: table.pos_x, posY: table.pos_y });
-      svg.setPointerCapture(event.pointerId);
     },
     [placing],
   );
@@ -490,23 +498,21 @@ export function SeatingCanvas({
       const svg = svgRef.current;
       if (!svg) return;
 
-      const { x, y } = clientToLogical(svg, event.clientX, event.clientY);
-      const dx = x - drag.startLogicalX;
-      const dy = y - drag.startLogicalY;
-
-      if (
-        Math.hypot(
+      if (!didDragRef.current) {
+        const dist = Math.hypot(
           event.clientX - drag.startClientX,
           event.clientY - drag.startClientY,
-        ) >= DRAG_THRESHOLD_PX
-      ) {
+        );
+        if (dist < DRAG_THRESHOLD_PX) return;
         didDragRef.current = true;
+        svg.setPointerCapture(event.pointerId);
       }
 
+      const { x, y } = clientToLogical(svg, event.clientX, event.clientY);
       setDragVisual({
         id: drag.id,
-        posX: drag.originPosX + dx,
-        posY: drag.originPosY + dy,
+        posX: drag.originPosX + (x - drag.startLogicalX),
+        posY: drag.originPosY + (y - drag.startLogicalY),
       });
     },
     [],
@@ -518,7 +524,8 @@ export function SeatingCanvas({
       if (!drag || drag.pointerId !== event.pointerId) return;
 
       const svg = svgRef.current;
-      if (svg?.hasPointerCapture(event.pointerId)) {
+      const captured = Boolean(svg?.hasPointerCapture(event.pointerId));
+      if (captured && svg) {
         svg.releasePointerCapture(event.pointerId);
       }
 
@@ -532,12 +539,12 @@ export function SeatingCanvas({
           drag.originPosY + (y - drag.startLogicalY),
         );
       } else if (event.type !== "pointercancel") {
-        // Click path: capture stole the <g> click — select here instead.
+        // Click path: if capture was taken, it stole the <g> click — select here.
         onTableClick(drag.id);
       }
 
       // Swallow the capture-retargeted SVG click that follows pointerup only.
-      if (event.type !== "pointercancel") {
+      if (event.type !== "pointercancel" && captured) {
         suppressCanvasClickRef.current = true;
       }
 
@@ -547,6 +554,78 @@ export function SeatingCanvas({
     [onTableClick, onTableMove],
   );
 
+  // Pinch must call preventDefault. React 19 registers touchmove as passive
+  // on the React root, so native listeners live on the canvas element only,
+  // and non-passive touchmove is attached only for an active two-finger
+  // pinch (never during one-finger page scroll).
+  useEffect(() => {
+    const node = viewportRef.current;
+    if (!node) return;
+
+    const onPinchMove = (event: TouchEvent) => {
+      if (!gestureEnabledRef.current) return;
+      if (event.touches.length !== 2 || !pinchStart.current) return;
+      event.preventDefault();
+
+      const first = event.touches[0];
+      const second = event.touches[1];
+      const distance = Math.hypot(
+        second.clientX - first.clientX,
+        second.clientY - first.clientY,
+      );
+      const nextScale = clampScale(
+        pinchStart.current.scale * (distance / pinchStart.current.distance),
+      );
+      const identity = nextScale <= MIN_SCALE;
+
+      setViewport({
+        scale: nextScale,
+        x: identity ? 0 : pinchStart.current.origin.x,
+        y: identity ? 0 : pinchStart.current.origin.y,
+      });
+    };
+
+    const detachPinchMove = () => {
+      node.removeEventListener("touchmove", onPinchMove);
+    };
+
+    const onTouchStart = (event: TouchEvent) => {
+      if (!gestureEnabledRef.current) return;
+      if (event.touches.length !== 2) return;
+
+      const first = event.touches[0];
+      const second = event.touches[1];
+      const current = viewportStateRef.current;
+      pinchStart.current = {
+        distance: Math.hypot(
+          second.clientX - first.clientX,
+          second.clientY - first.clientY,
+        ),
+        scale: current.scale,
+        origin: { x: current.x, y: current.y },
+      };
+      detachPinchMove();
+      node.addEventListener("touchmove", onPinchMove, { passive: false });
+    };
+
+    const onTouchEnd = (event: TouchEvent) => {
+      if (event.touches.length >= 2) return;
+      pinchStart.current = null;
+      detachPinchMove();
+    };
+
+    node.addEventListener("touchstart", onTouchStart, { passive: true });
+    node.addEventListener("touchend", onTouchEnd, { passive: true });
+    node.addEventListener("touchcancel", onTouchEnd, { passive: true });
+
+    return () => {
+      detachPinchMove();
+      node.removeEventListener("touchstart", onTouchStart);
+      node.removeEventListener("touchend", onTouchEnd);
+      node.removeEventListener("touchcancel", onTouchEnd);
+    };
+  }, [clampScale]);
+
   const onWheel = useCallback(
     (event: React.WheelEvent<HTMLDivElement>) => {
       if (!viewportGesturesEnabled) return;
@@ -554,17 +633,20 @@ export function SeatingCanvas({
       event.preventDefault();
 
       const delta = event.deltaY > 0 ? -0.08 : 0.08;
-      setViewport((current) => ({
-        ...current,
-        scale: clampScale(current.scale + delta),
-      }));
+      setViewport((current) => {
+        const nextScale = clampScale(current.scale + delta);
+        if (nextScale <= MIN_SCALE) {
+          return { scale: MIN_SCALE, x: 0, y: 0 };
+        }
+        return { ...current, scale: nextScale };
+      });
     },
     [clampScale, viewportGesturesEnabled],
   );
 
   const onPointerDown = useCallback(
     (event: React.PointerEvent<HTMLDivElement>) => {
-      if (!viewportGesturesEnabled) return;
+      if (!viewportGesturesEnabled || viewportIdentity) return;
       if (event.pointerType === "mouse" && event.button !== 0) return;
 
       panStart.current = {
@@ -576,7 +658,7 @@ export function SeatingCanvas({
       };
       event.currentTarget.setPointerCapture(event.pointerId);
     },
-    [viewport.x, viewport.y, viewportGesturesEnabled],
+    [viewport.x, viewport.y, viewportGesturesEnabled, viewportIdentity],
   );
 
   const onPointerMove = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
@@ -592,56 +674,10 @@ export function SeatingCanvas({
   const onPointerUp = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
     if (panStart.current?.pointerId === event.pointerId) {
       panStart.current = null;
-      event.currentTarget.releasePointerCapture(event.pointerId);
+      if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+        event.currentTarget.releasePointerCapture(event.pointerId);
+      }
     }
-  }, []);
-
-  const onTouchStart = useCallback(
-    (event: React.TouchEvent<HTMLDivElement>) => {
-      if (!viewportGesturesEnabled) return;
-      if (event.touches.length !== 2) return;
-
-      const [first, second] = Array.from(event.touches);
-      const distance = Math.hypot(
-        second.clientX - first.clientX,
-        second.clientY - first.clientY,
-      );
-
-      pinchStart.current = {
-        distance,
-        scale: viewport.scale,
-        origin: { x: viewport.x, y: viewport.y },
-      };
-    },
-    [viewport.scale, viewport.x, viewport.y, viewportGesturesEnabled],
-  );
-
-  const onTouchMove = useCallback(
-    (event: React.TouchEvent<HTMLDivElement>) => {
-      if (!viewportGesturesEnabled) return;
-      if (event.touches.length !== 2 || !pinchStart.current) return;
-      event.preventDefault();
-
-      const [first, second] = Array.from(event.touches);
-      const distance = Math.hypot(
-        second.clientX - first.clientX,
-        second.clientY - first.clientY,
-      );
-      const nextScale = clampScale(
-        pinchStart.current.scale * (distance / pinchStart.current.distance),
-      );
-
-      setViewport({
-        scale: nextScale,
-        x: pinchStart.current.origin.x,
-        y: pinchStart.current.origin.y,
-      });
-    },
-    [clampScale, viewportGesturesEnabled],
-  );
-
-  const onTouchEnd = useCallback(() => {
-    pinchStart.current = null;
   }, []);
 
   return (
@@ -653,7 +689,7 @@ export function SeatingCanvas({
         placing || assignMode || moveMode || pendingSeat || selectedId
           ? "cursor-crosshair"
           : "cursor-default",
-        viewportGesturesEnabled && "touch-pan-x touch-pan-y",
+        viewportGesturesEnabled && !viewportIdentity && "touch-none",
       )}
       style={{ aspectRatio: `${CANVAS_WIDTH} / ${CANVAS_HEIGHT}` }}
       onWheel={onWheel}
@@ -661,18 +697,19 @@ export function SeatingCanvas({
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerUp}
-      onTouchStart={onTouchStart}
-      onTouchMove={onTouchMove}
-      onTouchEnd={onTouchEnd}
     >
       <svg
         ref={svgRef}
         viewBox={`0 0 ${CANVAS_WIDTH} ${CANVAS_HEIGHT}`}
         className="h-full w-full"
-        style={{
-          transform: `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.scale})`,
-          transformOrigin: "center center",
-        }}
+        style={
+          viewportIdentity
+            ? undefined
+            : {
+                transform: `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.scale})`,
+                transformOrigin: "center center",
+              }
+        }
         preserveAspectRatio="xMidYMid meet"
         onClick={handleCanvasClick}
         onPointerMove={handleTableDragMove}

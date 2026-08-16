@@ -22,6 +22,7 @@ import {
 import { AskAssistantPrompt } from "@/components/assistant/AskAssistantPrompt";
 import { ASSISTANT_PREFILLS } from "@/components/assistant/prefills";
 import { Card } from "@/components/ui/card";
+import { CollapseSection } from "@/components/ui/collapse-section";
 import { TourHelpButton } from "@/components/tour/TourHelpButton";
 import { PageHeader } from "@/components/ui/page-header";
 import { getAccountContext } from "@/lib/account-context";
@@ -366,30 +367,39 @@ export default async function GuestsPage({
 
       {catererTally.length > 0 ? (
         <Card className="px-6 py-5">
-          <p className="text-[12px] font-semibold uppercase tracking-[0.09em] text-muted">
-            Catering
-          </p>
-          <h2 className="mt-1.5 font-display text-[19px] font-extrabold tracking-[-0.02em] text-ink">
-            Meal tally
-          </h2>
-          <p className="mt-1 text-[13px] text-muted">
-            Attending people on your guest list, grouped by meal.
-          </p>
-          <ul className="mt-4 space-y-2">
-            {catererTally.map((row) => (
-              <li
-                key={row.meal_option_id ?? "none"}
-                className="flex items-baseline justify-between gap-3 rounded-[var(--radius-inner)] bg-well px-4 py-3 shadow-recessed"
-              >
-                <span className="min-w-0 truncate text-[15px] font-medium text-ink">
-                  {row.label}
-                </span>
-                <span className="shrink-0 text-[15px] tabular-nums font-semibold text-ink">
-                  {row.count}
-                </span>
-              </li>
-            ))}
-          </ul>
+          <CollapseSection
+            defaultOpen
+            title={
+              <div>
+                <p className="text-[12px] font-semibold uppercase tracking-[0.09em] text-muted">
+                  Catering
+                </p>
+                <h2 className="mt-1.5 font-display text-[19px] font-extrabold tracking-[-0.02em] text-ink">
+                  Meal tally
+                </h2>
+              </div>
+            }
+            bodyClassName="mt-4"
+          >
+            <p className="text-[13px] text-muted">
+              Attending people on your guest list, grouped by meal.
+            </p>
+            <ul className="mt-4 space-y-2">
+              {catererTally.map((row) => (
+                <li
+                  key={row.meal_option_id ?? "none"}
+                  className="flex items-baseline justify-between gap-3 rounded-[var(--radius-inner)] bg-well px-4 py-3 shadow-recessed"
+                >
+                  <span className="min-w-0 truncate text-[15px] font-medium text-ink">
+                    {row.label}
+                  </span>
+                  <span className="shrink-0 text-[15px] tabular-nums font-semibold text-ink">
+                    {row.count}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </CollapseSection>
         </Card>
       ) : null}
 

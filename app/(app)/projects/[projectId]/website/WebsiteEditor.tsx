@@ -781,6 +781,7 @@ export function WebsiteEditor({
                 <label className="mb-1.5 block text-[13px] text-muted">Date (YYYY-MM-DD)</label>
                 <Input
                   type="date"
+                  className="box-border min-w-0 max-w-full"
                   value={content.hero.date}
                   onChange={(e) => updateHero("date", e.target.value)}
                 />
