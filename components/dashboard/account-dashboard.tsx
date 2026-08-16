@@ -36,7 +36,7 @@ export function AccountDashboard({
 }: AccountDashboardProps) {
   return (
     <div className="mx-auto w-full max-w-[900px]">
-      <div className="mb-8 flex items-start justify-between gap-4">
+      <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
         <PageHeader
           eyebrow="Planning"
           title="Dashboard"

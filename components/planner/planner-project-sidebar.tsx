@@ -51,9 +51,11 @@ const navLinkClass = (active: boolean) =>
 export function PlannerProjectSidebar({
   projects,
   plan = "planner",
+  className,
 }: {
   projects: SidebarProject[];
   plan?: AccountPlan;
+  className?: string;
 }) {
   const pathname = usePathname();
   const activeProjectId = extractProjectId(pathname);
@@ -76,7 +78,7 @@ export function PlannerProjectSidebar({
     pathname === "/account/team" || pathname.startsWith("/account/team?");
 
   return (
-    <aside className="w-[260px] shrink-0">
+    <aside className={cn("shrink-0", className ?? "w-[260px]")}>
       <Card className="p-2">
         <div className="mb-4 flex flex-col gap-0.5 px-1.5 pb-2 pt-1.5">
           <Link href="/dashboard" className={navLinkClass(onDashboard)}>

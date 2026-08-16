@@ -65,12 +65,12 @@ export function SlimHero({
   return (
     <div
       className={cn(
-        "mb-6 flex items-center justify-between gap-6 rounded-[var(--radius-card)] bg-surface px-6 py-4 shadow-raised",
+        "mb-6 flex flex-col items-start gap-3 rounded-[var(--radius-card)] bg-surface px-6 py-4 shadow-raised sm:flex-row sm:items-center sm:justify-between sm:gap-6",
         className,
       )}
     >
       <div className="flex min-w-0 flex-wrap items-baseline gap-x-4 gap-y-2">
-        <span className="font-display text-[22px] font-extrabold leading-none tracking-[-0.02em] text-ink">
+        <span className="font-display text-[22px] font-extrabold leading-none tracking-[-0.02em] break-words text-ink max-sm:leading-snug">
           {coupleNames}
         </span>
         {displayDate ? (

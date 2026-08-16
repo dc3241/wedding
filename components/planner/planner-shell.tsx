@@ -1,3 +1,5 @@
+"use client";
+
 import { PlannerProjectSidebar } from "@/components/planner/planner-project-sidebar";
 import type { SidebarProject } from "@/components/planner/planner-project-sidebar";
 import { Wordmark } from "@/components/ui/topbar";
@@ -6,7 +8,17 @@ import {
   DEFAULT_BRAND_NAME,
   type ProjectBranding,
 } from "@/lib/branding/types";
-import type { CSSProperties, ReactNode } from "react";
+import { cn } from "@/lib/cn";
+import { acquireScrollLock, releaseScrollLock } from "@/lib/scroll-lock";
+import { usePathname } from "next/navigation";
+import {
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+} from "react";
 import type { AccountPlan } from "@/lib/account-context";
 
 function BrandMark({ branding }: { branding: ProjectBranding }) {
@@ -55,13 +67,122 @@ export function PlannerShell({
     ? ({ ["--accent"]: accent } as CSSProperties)
     : undefined;
 
+  const pathname = usePathname();
+  const sidebarId = useId();
+  const headerRef = useRef<HTMLElement>(null);
+  const [navOpen, setNavOpen] = useState(false);
+  const [paneTop, setPaneTop] = useState(64);
+
+  useEffect(() => {
+    function update() {
+      const el = headerRef.current;
+      if (!el) return;
+      setPaneTop(el.getBoundingClientRect().bottom);
+    }
+
+    update();
+    window.addEventListener("resize", update);
+    window.addEventListener("scroll", update, { passive: true });
+    return () => {
+      window.removeEventListener("resize", update);
+      window.removeEventListener("scroll", update);
+    };
+  }, []);
+
+  useEffect(() => {
+    setNavOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 1024px)");
+    function onChange() {
+      if (mq.matches) setNavOpen(false);
+    }
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
+
+  useEffect(() => {
+    if (!navOpen) return;
+
+    function onKey(event: KeyboardEvent) {
+      if (event.key === "Escape") setNavOpen(false);
+    }
+
+    acquireScrollLock();
+    window.addEventListener("keydown", onKey);
+    return () => {
+      releaseScrollLock();
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [navOpen]);
+
   return (
-    <div className="flex min-h-full flex-col bg-canvas" style={style}>
-      <header className="sticky top-0 z-10 flex items-center border-b border-hairline bg-canvas px-8 py-[18px]">
-        {branding ? <BrandMark branding={branding} /> : <Wordmark />}
+    <div
+      className="flex min-h-full min-w-0 flex-col bg-canvas"
+      style={style}
+    >
+      <header
+        ref={headerRef}
+        className="sticky top-0 z-10 flex items-center gap-3 border-b border-hairline bg-canvas px-4 py-[18px] lg:px-8"
+      >
+        <button
+          type="button"
+          className="inline-flex shrink-0 items-center rounded-[var(--radius-inner)] px-3 py-2 text-[14px] font-semibold text-ink hover:bg-well lg:hidden"
+          aria-expanded={navOpen}
+          aria-controls={sidebarId}
+          onClick={() => setNavOpen((open) => !open)}
+        >
+          Menu
+        </button>
+        <div className="min-w-0">
+          {branding ? <BrandMark branding={branding} /> : <Wordmark />}
+        </div>
       </header>
-      <div className="flex flex-1 gap-6 px-8 py-7">
-        <PlannerProjectSidebar projects={projects} plan={plan} />
+      <div className="flex min-w-0 flex-1 gap-6 px-4 py-5 lg:px-8 lg:py-7">
+        <div className="hidden shrink-0 lg:block">
+          <PlannerProjectSidebar projects={projects} plan={plan} />
+        </div>
+
+        {navOpen ? (
+          <div
+            // Overlay stack (SHELL-MOBILE-01a): drawer dim z-30 / pane z-40;
+            // assistant dim z-50 / pane z-[60]; tour z-[80]. Assistant wins.
+            className="fixed inset-x-0 bottom-0 z-30 bg-ink/20 lg:hidden"
+            style={{ top: paneTop }}
+            onClick={() => setNavOpen(false)}
+            aria-hidden
+          />
+        ) : null}
+
+        <div
+          id={sidebarId}
+          className={cn(
+            "fixed bottom-0 left-0 z-40 w-[min(260px,85vw)] overflow-y-auto border-r border-hairline bg-canvas p-3 lg:hidden",
+            "transition-transform duration-200 motion-reduce:transition-none",
+            navOpen
+              ? "translate-x-0"
+              : "pointer-events-none -translate-x-full",
+          )}
+          style={{ top: paneTop }}
+          role={navOpen ? "dialog" : undefined}
+          aria-modal={navOpen ? true : undefined}
+          aria-label="Planner navigation"
+          aria-hidden={!navOpen}
+          inert={!navOpen}
+          onClick={(event) => {
+            if ((event.target as HTMLElement).closest("a")) {
+              setNavOpen(false);
+            }
+          }}
+        >
+          <PlannerProjectSidebar
+            projects={projects}
+            plan={plan}
+            className="w-full"
+          />
+        </div>
+
         <main className="min-w-0 flex-1">{children}</main>
       </div>
     </div>

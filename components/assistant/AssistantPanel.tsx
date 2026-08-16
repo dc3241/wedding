@@ -12,6 +12,7 @@ import { Eyebrow } from "@/components/ui/eyebrow";
 import { Textarea } from "@/components/ui/textarea";
 import type { AccountKind } from "@/lib/account-context";
 import { isPlannerAccount } from "@/lib/density";
+import { acquireScrollLock, releaseScrollLock } from "@/lib/scroll-lock";
 import { cn } from "@/lib/cn";
 
 type AssistantPanelProps = {
@@ -127,6 +128,12 @@ export function AssistantPanel({
     }
   }, [messages, open, isPending, historyLoading]);
 
+  useEffect(() => {
+    if (!open) return;
+    acquireScrollLock();
+    return () => releaseScrollLock();
+  }, [open]);
+
   function handleSend() {
     const text = input.trim();
     if (!text || isPending) return;
@@ -176,7 +183,9 @@ export function AssistantPanel({
     <>
       {open ? (
         <div
-          className="fixed inset-0 z-30 bg-ink/20"
+          // Overlay stack (SHELL-MOBILE-01a): drawer dim z-30 / pane z-40;
+          // assistant dim z-50 / pane z-[60]; tour z-[80]. Assistant wins.
+          className="fixed inset-0 z-50 bg-ink/20"
           onClick={closeAssistant}
           aria-hidden
         />
@@ -185,7 +194,7 @@ export function AssistantPanel({
       <aside
         id="assistant-panel"
         className={cn(
-          "fixed right-0 top-0 z-40 flex h-full w-full max-w-[400px] flex-col border-l border-hairline bg-canvas shadow-lg transition-transform duration-200",
+          "fixed right-0 top-0 z-[60] flex h-full w-full max-w-[400px] flex-col border-l border-hairline bg-canvas shadow-lg transition-transform duration-200",
           open ? "translate-x-0" : "translate-x-full pointer-events-none",
           isPlanner && "max-w-[380px]",
         )}

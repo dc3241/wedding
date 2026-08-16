@@ -369,7 +369,7 @@ export function CalendarWorkspace({
           : "lg:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)]",
       )}
     >
-      <Card className="overflow-hidden p-5 md:p-6">
+      <Card className="min-w-0 overflow-hidden p-5 md:p-6">
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
           <h2 className="font-display text-[19px] font-extrabold tracking-[-0.02em] text-ink">
             {formatMonthHeading(year, month)}
@@ -417,9 +417,10 @@ export function CalendarWorkspace({
           {WEEKDAYS.map((d) => (
             <div
               key={d}
-              className="px-1 text-center text-[12px] font-semibold uppercase tracking-[0.09em] text-muted"
+              className="min-w-0 truncate px-0.5 text-center text-[11px] font-semibold uppercase tracking-[0.04em] text-muted sm:px-1 sm:text-[12px] sm:tracking-[0.09em]"
             >
-              {d}
+              <span className="sm:hidden">{d.slice(0, 1)}</span>
+              <span className="hidden sm:inline">{d}</span>
             </div>
           ))}
         </div>
@@ -437,7 +438,7 @@ export function CalendarWorkspace({
                 key={cell.localDate}
                 onClick={() => setPanel({ type: "day", date: cell.localDate })}
                 className={cn(
-                  "flex min-h-[88px] cursor-pointer flex-col gap-1 rounded-[var(--radius-inner)] bg-well p-1.5 text-left shadow-recessed transition-colors",
+                  "flex min-h-[88px] min-w-0 cursor-pointer flex-col gap-1 rounded-[var(--radius-inner)] bg-well p-1.5 text-left shadow-recessed transition-colors",
                   "hover:bg-accent-wash/50",
                   !cell.inMonth && "opacity-45",
                   selected && "ring-2 ring-accent ring-offset-1 ring-offset-surface",
