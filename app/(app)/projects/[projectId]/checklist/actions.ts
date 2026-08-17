@@ -2,7 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { clampDueDateToToday } from "@/lib/date-months";
+import { clientForWrite } from "@/utils/supabase/for-write";
 import { createClient } from "@/utils/supabase/server";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   dueDateFromWedding,
   STARTER_TASKS,
@@ -19,8 +21,12 @@ function revalidateChecklist(projectId: string) {
   revalidatePath("/calendar");
 }
 
-async function maxPosition(projectId: string, phase: string | null) {
-  const supabase = await createClient();
+async function maxPosition(
+  projectId: string,
+  phase: string | null,
+  client?: SupabaseClient,
+) {
+  const supabase = await clientForWrite(client);
 
   let query = supabase
     .from("tasks")
@@ -41,18 +47,19 @@ export async function addTask(
   phase: string | null,
   title: string,
   dueDate?: string | null,
+  client?: SupabaseClient,
 ) {
   const trimmed = title.trim();
   if (!trimmed) return;
 
-  const supabase = await createClient();
+  const supabase = await clientForWrite(client);
 
   const { error } = await supabase.from("tasks").insert({
     project_id: projectId,
     title: trimmed,
     phase,
     due_date: dueDate ?? null,
-    position: await maxPosition(projectId, phase),
+    position: await maxPosition(projectId, phase, client),
   });
 
   if (error) throw error;
@@ -60,8 +67,12 @@ export async function addTask(
   revalidateChecklist(projectId);
 }
 
-export async function toggleTask(taskId: string, nextStatus: string) {
-  const supabase = await createClient();
+export async function toggleTask(
+  taskId: string,
+  nextStatus: string,
+  client?: SupabaseClient,
+) {
+  const supabase = await clientForWrite(client);
 
   const { data, error } = await supabase
     .from("tasks")

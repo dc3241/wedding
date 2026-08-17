@@ -9,6 +9,8 @@ import {
   type PartnerSideToken,
 } from "@/lib/partner-sides";
 import { createClient } from "@/utils/supabase/server";
+import { clientForWrite } from "@/utils/supabase/for-write";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   isGuestMemberType,
   type GuestMemberType,
@@ -71,6 +73,7 @@ export async function addGuest(
   options: {
     member_type?: string | null;
     primaryMemberId?: string | null;
+    client?: SupabaseClient;
   } = {},
 ) {
   const trimmedName = fullName.trim();
@@ -79,7 +82,7 @@ export async function addGuest(
   const memberType = normalizeMemberType(options.member_type);
   const primaryMemberId = options.primaryMemberId?.trim() || null;
 
-  const supabase = await createClient();
+  const supabase = await clientForWrite(options.client);
 
   // Associated path: join an existing unassociated-adult primary's household.
   // Structurally blocks chains (target must be adult + related_to IS NULL).
@@ -181,8 +184,12 @@ export async function addGuest(
   revalidatePath(guestsPath(projectId));
 }
 
-export async function updateRsvp(guestId: string, status: RsvpStatus) {
-  const supabase = await createClient();
+export async function updateRsvp(
+  guestId: string,
+  status: RsvpStatus,
+  client?: SupabaseClient,
+) {
+  const supabase = await clientForWrite(client);
 
   const { data, error } = await supabase
     .from("guests")

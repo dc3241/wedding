@@ -2,7 +2,7 @@
 
 import { AssistantPanel } from "@/components/assistant/AssistantPanel";
 import { AssistantProvider } from "@/components/assistant/assistant-context";
-import type { AssistantMessage } from "@/components/assistant/types";
+import type { AgentDraftPreview, AssistantMessage } from "@/components/assistant/types";
 import type { AccountKind } from "@/lib/account-context";
 import type { ReactNode } from "react";
 
@@ -11,11 +11,13 @@ export function AssistantWorkspace({
   projectId,
   accountKind,
   initialMessages,
+  pendingDrafts,
 }: {
   children: ReactNode;
   projectId: string;
   accountKind: AccountKind;
   initialMessages: AssistantMessage[];
+  pendingDrafts: AgentDraftPreview[];
 }) {
   return (
     <AssistantProvider>
@@ -24,6 +26,7 @@ export function AssistantWorkspace({
         projectId={projectId}
         accountKind={accountKind}
         initialMessages={initialMessages}
+        pendingDrafts={pendingDrafts}
       />
     </AssistantProvider>
   );

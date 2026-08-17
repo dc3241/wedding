@@ -6,13 +6,22 @@ type EmptyStateProps = {
   /** Optional action area (e.g. AskAssistantPrompt) — stays inside this raised surface */
   action?: ReactNode;
   className?: string;
+  /** Recessed well when this empty sits inside surface chrome, not on canvas. */
+  recessed?: boolean;
 };
 
-export function EmptyState({ children, action, className }: EmptyStateProps) {
+export function EmptyState({
+  children,
+  action,
+  className,
+  recessed = false,
+}: EmptyStateProps) {
   return (
     <div
       className={cn(
-        "rounded-[var(--radius-card)] bg-surface px-8 py-12 text-center shadow-raised",
+        recessed
+          ? "rounded-[var(--radius-inner)] bg-well px-4 py-6 text-center shadow-recessed"
+          : "rounded-[var(--radius-card)] bg-surface px-8 py-12 text-center shadow-raised",
         className,
       )}
     >

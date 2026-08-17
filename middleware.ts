@@ -42,9 +42,9 @@ export async function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     /*
-     * Skip static assets and fully-public wedding sites (/w/*) so guest
-     * traffic never pays for getUser() session refresh.
+     * Skip static assets and fully-public surfaces (/w/*, /vendor-confirm/*)
+     * so guest traffic never pays for getUser() session refresh.
      */
-    "/((?!_next/static|_next/image|favicon.ico|w/).*)",
+    "/((?!_next/static|_next/image|favicon.ico|w/|vendor-confirm/).*)",
   ],
 };

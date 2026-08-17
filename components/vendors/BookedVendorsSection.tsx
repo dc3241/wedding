@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRef, useState, useTransition } from "react";
+import { useRef, useState, useTransition, useEffect } from "react";
 import {
   addBudgetItem,
   setBudgetItemProjectVendor,
@@ -10,6 +10,7 @@ import {
 import {
   unlinkVendorFromTarget,
   removeProjectVendor,
+  updateProjectVendorDayOf,
 } from "@/app/(app)/projects/[projectId]/vendors/actions";
 import {
   PaymentLedgerWell,
@@ -37,7 +38,9 @@ import {
   validateFile,
 } from "@/components/files/types";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Pill } from "@/components/ui/pill";
+import { Textarea } from "@/components/ui/textarea";
 import { Select } from "@/components/ui/select";
 import { budgetItemDisplayName } from "@/lib/booked-vendor-money";
 import { cn } from "@/lib/cn";
@@ -95,6 +98,9 @@ export type BookedVendorObject = {
   nextDue: NextDueInstallment | null;
   pastDue: boolean | null;
   notes: string | null;
+  arrival_time: string | null;
+  scope_note: string | null;
+  confirmed_at: string | null;
   contracts: BookedContractFile[];
 };
 
@@ -616,6 +622,75 @@ function ContractPanel({
   );
 }
 
+function ArrivalScopeEditor({
+  projectVendorId,
+  arrivalTime,
+  scopeNote,
+}: {
+  projectVendorId: string;
+  arrivalTime: string | null;
+  scopeNote: string | null;
+}) {
+  const [arrival, setArrival] = useState(arrivalTime?.slice(0, 5) ?? "");
+  const [scope, setScope] = useState(scopeNote ?? "");
+  const [isPending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setArrival(arrivalTime?.slice(0, 5) ?? "");
+    setScope(scopeNote ?? "");
+  }, [arrivalTime, scopeNote]);
+
+  function handleSave(next?: { arrival?: string; scope?: string }) {
+    const arrivalValue = next?.arrival ?? arrival;
+    const scopeValue = next?.scope ?? scope;
+    startTransition(async () => {
+      setError(null);
+      const result = await updateProjectVendorDayOf(projectVendorId, {
+        arrival_time: arrivalValue,
+        scope_note: scopeValue,
+      });
+      if (!result.ok) setError(result.error);
+    });
+  }
+
+  return (
+    <div className="space-y-3 rounded-[var(--radius-inner)] bg-well px-4 py-3.5 shadow-recessed">
+      <p className="text-[12px] font-semibold uppercase tracking-[0.09em] text-muted">
+        Day-of
+      </p>
+      <div className="grid gap-3 sm:grid-cols-[minmax(0,10rem)_minmax(0,1fr)]">
+        <label className="block text-[13px] font-medium text-muted">
+          Arrival
+          <Input
+            type="time"
+            value={arrival}
+            disabled={isPending}
+            onChange={(e) => setArrival(e.target.value)}
+            onBlur={(e) => handleSave({ arrival: e.target.value })}
+            className="mt-1 bg-surface py-2"
+          />
+        </label>
+        <label className="block text-[13px] font-medium text-muted">
+          Scope
+          <Textarea
+            rows={2}
+            value={scope}
+            disabled={isPending}
+            onChange={(e) => setScope(e.target.value)}
+            onBlur={(e) => handleSave({ scope: e.target.value })}
+            placeholder="Ceremony, portraits, reception"
+            className="mt-1 bg-surface py-2 text-[14px]"
+          />
+        </label>
+      </div>
+      {error ? (
+        <p className="text-[13px] font-medium text-rosewood">{error}</p>
+      ) : null}
+    </div>
+  );
+}
+
 function BookedVendorCard({
   projectId,
   vendor,
@@ -680,13 +755,23 @@ function BookedVendorCard({
             pastDue={vendor.pastDue}
           />
         </div>
-        <Pill variant="sage" className="shrink-0">
-          Booked
-        </Pill>
+        <div className="flex shrink-0 flex-col items-end gap-1.5">
+          <Pill variant="sage">Booked</Pill>
+          {vendor.confirmed_at ? (
+            <Pill variant="sage">Confirmed</Pill>
+          ) : (
+            <Pill variant="clay">Pending</Pill>
+          )}
+        </div>
       </button>
 
       {open ? (
         <div className="space-y-4 px-5 pb-5">
+          <ArrivalScopeEditor
+            projectVendorId={vendor.projectVendorId}
+            arrivalTime={vendor.arrival_time}
+            scopeNote={vendor.scope_note}
+          />
           {!linked ? (
             <div className="space-y-3 rounded-[var(--radius-inner)] bg-well px-4 py-3.5 shadow-recessed">
               <p className="text-[14px] font-medium text-ink">

@@ -1,0 +1,16 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/payment-schedule-watch",
+      "schedule": "0 15 * * *"
+    },
+    {
+      "path": "/api/cron/countdown-confirmations",
+      "schedule": "5 15 * * *"
+    },
+    {
+      "path": "/api/cron/agent-review",
+      "schedule": "10 15 * * 1"
+    }
+  ]
+}

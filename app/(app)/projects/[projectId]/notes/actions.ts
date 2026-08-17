@@ -3,17 +3,26 @@
 import { revalidatePath } from "next/cache";
 import type { NoteActionStatus } from "./types";
 import { createClient } from "@/utils/supabase/server";
+import { clientForWrite } from "@/utils/supabase/for-write";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 function notesPath(projectId: string) {
   return `/projects/${projectId}/notes`;
 }
 
-export async function addNote(projectId: string) {
-  const supabase = await createClient();
+export async function addNote(
+  projectId: string,
+  client?: SupabaseClient,
+) {
+  const supabase = await clientForWrite(client);
 
   const { data, error } = await supabase
     .from("notes")
-    .insert({ project_id: projectId })
+    .insert(
+      client
+        ? { project_id: projectId, created_by: null }
+        : { project_id: projectId },
+    )
     .select("id")
     .single();
 
@@ -31,6 +40,7 @@ export async function updateNote(
     body?: string;
     action_status?: NoteActionStatus;
   },
+  client?: SupabaseClient,
 ) {
   const updates: Record<string, string | null> = {};
 
@@ -52,7 +62,7 @@ export async function updateNote(
 
   updates.updated_at = new Date().toISOString();
 
-  const supabase = await createClient();
+  const supabase = await clientForWrite(client);
 
   const { data, error } = await supabase
     .from("notes")

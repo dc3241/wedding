@@ -6,8 +6,9 @@ import {
   loadAssistantMessages,
   sendAssistantMessage,
 } from "@/components/assistant/actions";
-import type { AssistantMessage } from "@/components/assistant/types";
+import type { AgentDraftPreview, AssistantMessage } from "@/components/assistant/types";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { Textarea } from "@/components/ui/textarea";
 import type { AccountKind } from "@/lib/account-context";
@@ -19,6 +20,7 @@ type AssistantPanelProps = {
   projectId: string;
   accountKind: AccountKind;
   initialMessages: AssistantMessage[];
+  pendingDrafts: AgentDraftPreview[];
 };
 
 function formatMessageTime(iso: string) {
@@ -68,6 +70,7 @@ export function AssistantPanel({
   projectId,
   accountKind,
   initialMessages,
+  pendingDrafts,
 }: AssistantPanelProps) {
   const isPlanner = isPlannerAccount(accountKind);
   const { open, closeAssistant, pendingPrefill, clearPendingPrefill } =
@@ -226,6 +229,20 @@ export function AssistantPanel({
             Close
           </button>
         </header>
+
+        <section
+          className={cn(
+            "shrink-0 border-b border-hairline bg-surface px-5 py-4",
+            isPlanner && "px-4 py-3",
+          )}
+        >
+          <Eyebrow>Pending</Eyebrow>
+          {pendingDrafts.length === 0 ? (
+            <EmptyState recessed className="mt-3">
+              No drafts waiting for review.
+            </EmptyState>
+          ) : null}
+        </section>
 
         <div
           ref={listRef}

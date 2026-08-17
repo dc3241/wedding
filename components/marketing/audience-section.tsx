@@ -3,6 +3,10 @@
 import { DemoCta } from "@/components/demo/demo-cta";
 import { CoupleCollaboration } from "@/components/marketing/couple-collaboration";
 import {
+  CoupleBudgetPreview,
+  CoupleChecklistPreview,
+  CoupleGuestsPreview,
+  CoupleSitePreview,
   PipelinePreview,
   StalePreview,
   TeamPreview,
@@ -17,28 +21,37 @@ import { useEffect, useState, type ComponentType, type ReactNode } from "react";
 
 type Audience = "couples" | "planners";
 
-const COUPLES_CARDS = [
+const COUPLES_CARDS: {
+  title: string;
+  body: string;
+  icon: ComponentType;
+  Preview: ComponentType;
+}[] = [
   {
     title: "A plan ready on day one",
     body: "Answer a few questions and get a full checklist, budget, and vendor shortlist built around your date and budget — automatically, and yours to edit.",
     icon: PlanIcon,
+    Preview: CoupleChecklistPreview,
   },
   {
     title: "Guests, RSVPs, and meals",
     body: "Collect RSVPs with meal choices, track your real headcount, and keep your gift registry in the same place your guests already are.",
     icon: GuestsIcon,
+    Preview: CoupleGuestsPreview,
   },
   {
     title: "Your own wedding website",
     body: "A photo-led site with your story, wedding party, travel details, and RSVP built in — no separate website builder to learn.",
     icon: WebsiteIcon,
+    Preview: CoupleSitePreview,
   },
   {
     title: "Budget, vendors, and seating together",
     body: "See where the money goes, track vendor outreach and bookings, and build your seating chart — side by side, not scattered across spreadsheets.",
     icon: BudgetIcon,
+    Preview: CoupleBudgetPreview,
   },
-] as const;
+];
 
 const PLANNERS_CARDS: {
   title: string;

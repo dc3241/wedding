@@ -202,3 +202,142 @@ export function StalePreview() {
     </PreviewWell>
   );
 }
+
+function MiniCheck({ done }: { done?: boolean }) {
+  return (
+    <span
+      className={cn(
+        "flex size-3.5 shrink-0 items-center justify-center rounded-[var(--radius-pill)]",
+        done ? "bg-sage text-surface" : "border border-ring bg-surface",
+      )}
+      aria-hidden
+    >
+      {done ? <CheckGlyph /> : null}
+    </span>
+  );
+}
+
+/** Couples card 1 — mini checklist: sage-checked rows plus one open. */
+export function CoupleChecklistPreview() {
+  return (
+    <PreviewWell className="px-3.5 py-1">
+      <div className="flex items-center gap-2.5 border-b border-hairline py-2.5">
+        <MiniCheck done />
+        <span className="truncate text-[13px] font-medium text-muted line-through">
+          Book the venue
+        </span>
+      </div>
+      <div className="flex items-center gap-2.5 border-b border-hairline py-2.5">
+        <MiniCheck done />
+        <span className="truncate text-[13px] font-medium text-muted line-through">
+          Send save-the-dates
+        </span>
+      </div>
+      <div className="flex items-center gap-2.5 py-2.5">
+        <MiniCheck />
+        <span className="truncate text-[13px] font-medium text-ink">
+          Confirm florist
+        </span>
+      </div>
+    </PreviewWell>
+  );
+}
+
+/** Couples card 2 — guest rows with sage / clay RSVP badges. */
+export function CoupleGuestsPreview() {
+  return (
+    <PreviewWell className="px-3.5 py-1">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-hairline py-2.5">
+        <span className="min-w-0 truncate text-[13px] font-medium text-ink">
+          Jordan Hale
+        </span>
+        <span className="inline-flex shrink-0 items-center whitespace-nowrap rounded-[var(--radius-pill)] bg-surface px-2.5 py-1 text-[11px] font-bold text-sage">
+          Attending
+        </span>
+      </div>
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-hairline py-2.5">
+        <span className="min-w-0 truncate text-[13px] font-medium text-ink">
+          Priya &amp; Alex
+        </span>
+        <span className="inline-flex shrink-0 items-center whitespace-nowrap rounded-[var(--radius-pill)] bg-clay-wash px-2.5 py-1 text-[11px] font-bold text-clay">
+          Pending
+        </span>
+      </div>
+      <div className="flex flex-wrap items-center justify-between gap-2 py-2.5">
+        <span className="min-w-0 truncate text-[13px] font-medium text-ink">
+          Maya Chen
+        </span>
+        <span className="inline-flex shrink-0 items-center whitespace-nowrap rounded-[var(--radius-pill)] bg-surface px-2.5 py-1 text-[11px] font-bold text-sage">
+          Attending
+        </span>
+      </div>
+    </PreviewWell>
+  );
+}
+
+/** Couples card 3 — tiny site preview: photo block + couple-name line. */
+export function CoupleSitePreview() {
+  return (
+    <PreviewWell className="overflow-hidden p-0">
+      <div className="grid h-[72px] place-items-center bg-accent-wash">
+        <span className="text-[15px] font-extrabold tracking-[-0.02em] text-accent">
+          E &amp; J
+        </span>
+      </div>
+      <p className="truncate px-3.5 py-2.5 text-[13px] font-semibold tracking-[-0.01em] text-ink">
+        Elena &amp; Jonah
+      </p>
+    </PreviewWell>
+  );
+}
+
+function MiniBudgetRow({
+  label,
+  sagePct,
+  clayPct,
+  rosewoodPct,
+}: {
+  label: string;
+  sagePct: number;
+  clayPct: number;
+  rosewoodPct: number;
+}) {
+  return (
+    <div>
+      <p className="truncate text-[13px] font-semibold tracking-[-0.01em] text-ink">
+        {label}
+      </p>
+      <div
+        className="mt-1.5 flex h-1.5 overflow-hidden rounded-[var(--radius-pill)] bg-surface shadow-recessed"
+        role="presentation"
+      >
+        <div className="h-full bg-sage" style={{ width: `${sagePct}%` }} />
+        <div className="h-full bg-clay" style={{ width: `${clayPct}%` }} />
+        <div
+          className="h-full bg-rosewood"
+          style={{ width: `${rosewoodPct}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
+/** Couples card 4 — estimate / actual bar: sage, clay, rosewood. */
+export function CoupleBudgetPreview() {
+  return (
+    <PreviewWell className="flex flex-col gap-3 p-3.5">
+      <MiniBudgetRow
+        label="Venue"
+        sagePct={62}
+        clayPct={28}
+        rosewoodPct={0}
+      />
+      <MiniBudgetRow
+        label="Florals"
+        sagePct={40}
+        clayPct={22}
+        rosewoodPct={18}
+      />
+    </PreviewWell>
+  );
+}

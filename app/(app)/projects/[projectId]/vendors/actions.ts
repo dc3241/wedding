@@ -5,6 +5,8 @@ import { revalidatePath } from "next/cache";
 import { getVendorCategoryById } from "@/lib/vendor-categories";
 import { runVendorEnrichment } from "@/lib/vendor-enrichment";
 import { createClient } from "@/utils/supabase/server";
+import { clientForWrite } from "@/utils/supabase/for-write";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 export type DiscoveredPlace = {
   id: string;
@@ -348,6 +350,7 @@ export async function addVendorTarget(
   projectId: string,
   category: string,
   note?: string | null,
+  client?: SupabaseClient,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const resolved = getVendorCategoryById(category.trim());
   if (!resolved) {
@@ -358,7 +361,7 @@ export async function addVendorTarget(
     };
   }
 
-  const supabase = await createClient();
+  const supabase = await clientForWrite(client);
 
   const { data: existing } = await supabase
     .from("vendor_targets")
@@ -386,6 +389,47 @@ export async function addVendorTarget(
   }
 
   revalidatePath(vendorsPath(projectId));
+  return { ok: true };
+}
+
+function normalizeTime(value: string | null | undefined): string | null {
+  if (value === undefined || value === null) return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  return trimmed.length === 5 ? `${trimmed}:00` : trimmed;
+}
+
+export async function updateProjectVendorDayOf(
+  projectVendorId: string,
+  fields: { arrival_time?: string | null; scope_note?: string | null },
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const supabase = await createClient();
+
+  const payload: {
+    arrival_time?: string | null;
+    scope_note?: string | null;
+  } = {};
+  if (fields.arrival_time !== undefined) {
+    payload.arrival_time = normalizeTime(fields.arrival_time);
+  }
+  if (fields.scope_note !== undefined) {
+    const trimmed = fields.scope_note?.trim() ?? "";
+    payload.scope_note = trimmed ? trimmed : null;
+  }
+
+  const { data, error } = await supabase
+    .from("project_vendors")
+    .update(payload)
+    .eq("id", projectVendorId)
+    .select("project_id, vendor_id")
+    .single();
+
+  if (error || !data) {
+    return { ok: false, error: error?.message ?? "Could not save." };
+  }
+
+  revalidatePath(vendorsPath(data.project_id));
+  revalidatePath(vendorDetailPath(data.project_id, data.vendor_id));
   return { ok: true };
 }
 

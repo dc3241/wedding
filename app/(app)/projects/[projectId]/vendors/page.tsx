@@ -28,7 +28,7 @@ import { createClient } from "@/utils/supabase/server";
 export const dynamic = "force-dynamic";
 
 const PV_SELECT =
-  "id, status, quoted_price, notes, vendors(id, name, category, contact_email, contact_phone, address, website, notes, ai_overview, last_enriched_at)";
+  "id, status, quoted_price, notes, arrival_time, scope_note, confirmed_at, vendors(id, name, category, contact_email, contact_phone, address, website, notes, ai_overview, last_enriched_at)";
 
 function formatDefaultDate(date: string | null) {
   if (!date) return "";
@@ -80,6 +80,9 @@ type PvRow = {
   status: string;
   quoted_price: number | string | null;
   notes: string | null;
+  arrival_time: string | null;
+  scope_note: string | null;
+  confirmed_at: string | null;
   vendor: {
     id: string;
     name: string;
@@ -100,6 +103,9 @@ function mapPvRows(
     status: string;
     quoted_price: number | string | null;
     notes: string | null;
+    arrival_time: string | null;
+    scope_note: string | null;
+    confirmed_at: string | null;
     vendors: unknown;
   }[] | null,
 ): PvRow[] {
@@ -112,6 +118,9 @@ function mapPvRows(
         status: row.status,
         quoted_price: row.quoted_price,
         notes: row.notes ?? null,
+        arrival_time: row.arrival_time ?? null,
+        scope_note: row.scope_note ?? null,
+        confirmed_at: row.confirmed_at ?? null,
         vendor: vendor as PvRow["vendor"],
       },
     ];
@@ -369,6 +378,9 @@ export default async function VendorsPage({
       nextDue: money.nextDue,
       pastDue: money.pastDue,
       notes: money.notes,
+      arrival_time: row.arrival_time,
+      scope_note: row.scope_note,
+      confirmed_at: row.confirmed_at,
       contracts: contractsByPvId.get(row.id) ?? [],
     };
   });

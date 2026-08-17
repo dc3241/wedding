@@ -2,7 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { AssistantWorkspace } from "@/components/assistant/AssistantWorkspace";
 import { ASSISTANT_HISTORY_WINDOW } from "@/components/assistant/constants";
-import type { AssistantMessage } from "@/components/assistant/types";
+import type { AgentDraftPreview, AssistantMessage } from "@/components/assistant/types";
 import { TourProvider } from "@/components/tour/TourProvider";
 import { ProjectShell } from "@/components/projects/project-shell";
 import { ProjectWorkspaceNav } from "@/components/projects/project-workspace-nav";
@@ -73,34 +73,44 @@ export default async function ProjectLayout({
 
   // CAL-04: invited members pass kind=null; Calendar needs project_members.role
   // only in that path. Account owners never read role for tab gating.
-  const [messagesResult, toursResult, memberRoleResult] = await Promise.all([
-    // Last N only (desc + limit), then reverse so the panel seeds newest-last.
-    // A naive ascending .limit(N) would return the oldest N — wrong.
-    supabase
-      .from("assistant_messages")
-      .select("id, role, content, created_at")
-      .eq("project_id", projectId)
-      .order("created_at", { ascending: false })
-      .limit(ASSISTANT_HISTORY_WINDOW),
-    user
-      ? supabase
-          .from("user_tours")
-          .select("tour_key")
-          .eq("user_id", user.id)
-      : Promise.resolve({ data: [] as { tour_key: string }[] | null }),
-    tabAudience === null && user
-      ? supabase
-          .from("project_members")
-          .select("role")
-          .eq("project_id", projectId)
-          .eq("user_id", user.id)
-          .maybeSingle()
-      : Promise.resolve({ data: null as { role: string } | null }),
-  ]);
+  const [messagesResult, toursResult, memberRoleResult, draftsResult] =
+    await Promise.all([
+      // Last N only (desc + limit), then reverse so the panel seeds newest-last.
+      // A naive ascending .limit(N) would return the oldest N — wrong.
+      supabase
+        .from("assistant_messages")
+        .select("id, role, content, created_at")
+        .eq("project_id", projectId)
+        .order("created_at", { ascending: false })
+        .limit(ASSISTANT_HISTORY_WINDOW),
+      user
+        ? supabase
+            .from("user_tours")
+            .select("tour_key")
+            .eq("user_id", user.id)
+        : Promise.resolve({ data: [] as { tour_key: string }[] | null }),
+      tabAudience === null && user
+        ? supabase
+            .from("project_members")
+            .select("role")
+            .eq("project_id", projectId)
+            .eq("user_id", user.id)
+            .maybeSingle()
+        : Promise.resolve({ data: null as { role: string } | null }),
+      account
+        ? supabase
+            .from("agent_drafts")
+            .select("id, kind, subject, status")
+            .eq("account_id", account.accountId)
+            .eq("status", "pending")
+            .order("created_at", { ascending: false })
+        : Promise.resolve({ data: [] as AgentDraftPreview[] | null }),
+    ]);
 
   const initialMessages = (
     [...(messagesResult.data ?? [])].reverse() as AssistantMessage[]
   );
+  const pendingDrafts = (draftsResult.data ?? []) as AgentDraftPreview[];
   const dismissedTourKeys = (toursResult.data ?? []).map(
     (row) => row.tour_key,
   );
@@ -111,6 +121,7 @@ export default async function ProjectLayout({
       projectId={projectId}
       accountKind={accountKind}
       initialMessages={initialMessages}
+      pendingDrafts={pendingDrafts}
     >
       <TourProvider
         projectId={projectId}

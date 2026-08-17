@@ -2,6 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/utils/supabase/server";
+import { clientForWrite } from "@/utils/supabase/for-write";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 function timelinePath(projectId: string) {
   return `/projects/${projectId}/timeline`;
@@ -14,8 +16,8 @@ function normalizeTime(value: string | null | undefined): string | null {
   return trimmed.length === 5 ? `${trimmed}:00` : trimmed;
 }
 
-async function maxPosition(projectId: string) {
-  const supabase = await createClient();
+async function maxPosition(projectId: string, client?: SupabaseClient) {
+  const supabase = await clientForWrite(client);
 
   const { data } = await supabase
     .from("timeline_events")
@@ -36,11 +38,12 @@ export async function addEvent(
   description?: string | null,
   section?: string | null,
   owner?: string | null,
+  client?: SupabaseClient,
 ) {
   const trimmedTitle = title.trim();
   if (!trimmedTitle) return;
 
-  const supabase = await createClient();
+  const supabase = await clientForWrite(client);
 
   const { error } = await supabase.from("timeline_events").insert({
     project_id: projectId,
@@ -50,7 +53,7 @@ export async function addEvent(
     description: description?.trim() || null,
     section: section?.trim() || null,
     owner: owner?.trim() || null,
-    position: await maxPosition(projectId),
+    position: await maxPosition(projectId, client),
   });
 
   if (error) throw error;
@@ -81,13 +84,14 @@ function latestStartTime(times: (string | null)[]): string | null {
 export async function addEvents(
   projectId: string,
   events: TimelineEventFields[],
+  client?: SupabaseClient,
 ): Promise<AddEventsResult> {
   if (events.length === 0) {
     return { count: 0, latest_start_time: null };
   }
 
-  const supabase = await createClient();
-  let position = await maxPosition(projectId);
+  const supabase = await clientForWrite(client);
+  let position = await maxPosition(projectId, client);
 
   const rows = events.map((event) => {
     const row = {

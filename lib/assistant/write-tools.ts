@@ -21,7 +21,8 @@ import {
   wholeMonthsBetween,
 } from "@/lib/date-months";
 import { VENDOR_CATEGORIES } from "@/lib/vendor-categories";
-import { createClient } from "@/utils/supabase/server";
+import { clientForWrite } from "@/utils/supabase/for-write";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 const TASK_STATUSES = ["todo", "in_progress", "done"] as const;
 const RSVP_STATUSES = ["pending", "attending", "declined"] as const;
@@ -383,6 +384,7 @@ export async function executeWriteTool(
   projectId: string,
   toolName: WriteToolName,
   input: Record<string, unknown>,
+  client?: SupabaseClient,
 ): Promise<unknown> {
   switch (toolName) {
     case "add_task": {
@@ -391,7 +393,7 @@ export async function executeWriteTool(
 
       const dueDateRaw = asString(input.due_date)?.trim() ?? "";
       if (!dueDateRaw) {
-        await addTask(projectId, null, title, null);
+        await addTask(projectId, null, title, null, client);
         return {
           success: true,
           action: "add_task",
@@ -409,7 +411,7 @@ export async function executeWriteTool(
       const todayIso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
       const dueDate = clampDueDateToToday(dueDateRaw, todayIso)!;
 
-      const supabase = await createClient();
+      const supabase = await clientForWrite(client);
       const { data: project } = await supabase
         .from("projects")
         .select("wedding_date")
@@ -422,7 +424,7 @@ export async function executeWriteTool(
           ? phaseFromMonthsBefore(wholeMonthsBetween(dueDate, weddingDate))
           : null;
 
-      await addTask(projectId, phase, title, dueDate);
+      await addTask(projectId, phase, title, dueDate, client);
       return {
         success: true,
         action: "add_task",
@@ -440,7 +442,7 @@ export async function executeWriteTool(
         return toolError("status must be todo, in_progress, or done");
       }
 
-      await toggleTask(taskId, status);
+      await toggleTask(taskId, status, client);
       return { success: true, action: "update_task_status", task_id: taskId, status };
     }
 
@@ -461,6 +463,8 @@ export async function executeWriteTool(
         partySize,
         [],
         address,
+        {},
+        { client },
       );
       return {
         success: true,
@@ -481,7 +485,7 @@ export async function executeWriteTool(
         return toolError("status must be pending, attending, or declined");
       }
 
-      await updateRsvp(guestId, status);
+      await updateRsvp(guestId, status, client);
       return { success: true, action: "update_guest_rsvp", guest_id: guestId, status };
     }
 
@@ -491,7 +495,7 @@ export async function executeWriteTool(
         return toolError("amount must be a non-negative number");
       }
 
-      await setBudgetTarget(projectId, amount);
+      await setBudgetTarget(projectId, amount, client);
       return { success: true, action: "set_budget_target", amount };
     }
 
@@ -503,7 +507,15 @@ export async function executeWriteTool(
       }
 
       const category = asString(input.category) ?? "";
-      await addBudgetItem(projectId, category, label, plannedAmount);
+      await addBudgetItem(
+        projectId,
+        category,
+        label,
+        plannedAmount,
+        undefined,
+        undefined,
+        client,
+      );
       return {
         success: true,
         action: "add_budget_item",
@@ -518,7 +530,12 @@ export async function executeWriteTool(
       if (!category) return toolError("category is required");
 
       const note = asString(input.note);
-      const result = await addVendorTarget(projectId, category, note ?? null);
+      const result = await addVendorTarget(
+        projectId,
+        category,
+        note ?? null,
+        client,
+      );
       if (!result.ok) {
         return toolError(result.error);
       }
@@ -534,7 +551,7 @@ export async function executeWriteTool(
     case "add_note": {
       const title = asString(input.title);
       const body = asString(input.body);
-      const noteId = await addNote(projectId);
+      const noteId = await addNote(projectId, client);
 
       const fields: { title?: string; body?: string } = {};
       if (title !== undefined) {
@@ -544,7 +561,7 @@ export async function executeWriteTool(
       if (body !== undefined) fields.body = body;
 
       if (Object.keys(fields).length > 0) {
-        await updateNote(noteId, fields);
+        await updateNote(noteId, fields, client);
       }
 
       return {
@@ -581,6 +598,7 @@ export async function executeWriteTool(
         description ?? null,
         section ?? null,
         owner ?? null,
+        client,
       );
 
       return {
@@ -641,7 +659,7 @@ export async function executeWriteTool(
         });
       }
 
-      const result = await addEvents(projectId, parsedEvents);
+      const result = await addEvents(projectId, parsedEvents, client);
 
       return {
         success: true,
@@ -677,7 +695,7 @@ export async function executeWriteTool(
         });
       }
 
-      const result = await setWeddingWebsiteSchedule(projectId, items);
+      const result = await setWeddingWebsiteSchedule(projectId, items, client);
       if (!result.ok) {
         return toolError(result.error);
       }
@@ -712,11 +730,15 @@ export async function executeWriteTool(
         return toolError("Provide intro and/or at least one place");
       }
 
-      const result = await setWeddingWebsiteTravel(projectId, {
-        intro: intro ?? body,
-        body,
-        places,
-      });
+      const result = await setWeddingWebsiteTravel(
+        projectId,
+        {
+          intro: intro ?? body,
+          body,
+          places,
+        },
+        client,
+      );
       if (!result.ok) {
         return toolError(result.error);
       }

@@ -18,6 +18,15 @@ const ASSISTANT_TOOL_DEFINITIONS = [
 
 const MAX_TOOL_ITERATIONS = 8;
 
+export type AssistantRunOptions = {
+  /** Replaces the conversational chat system prompt. */
+  systemPrompt?: string;
+  /** Advertise and execute read tools only. Write tools are never called. */
+  readOnly?: boolean;
+  /** RLS-checked session for writes. Chat omits this (cookie client). */
+  writeClient?: SupabaseClient;
+};
+
 export type AssistantSideEffects = {
   timelineEventsAdded: number;
   latestTimelineStartTime: string | null;
@@ -216,6 +225,7 @@ function logAssistantUsage(usage: AnthropicUsage | undefined, messageCount: numb
 async function callClaude(
   systemText: string,
   messages: ClaudeMessage[],
+  tools: typeof ASSISTANT_TOOL_DEFINITIONS | typeof READ_TOOL_DEFINITIONS,
 ): Promise<
   | { ok: true; content: AnthropicContentBlock[] }
   | { ok: false; error: string }
@@ -240,7 +250,7 @@ async function callClaude(
         model: ANTHROPIC_MODEL,
         max_tokens: 2048,
         system: buildCachedSystem(systemText),
-        tools: ASSISTANT_TOOL_DEFINITIONS,
+        tools,
         messages,
       }),
     });
@@ -283,8 +293,12 @@ export async function runAssistantWithTools(
   history: { role: "user" | "assistant"; content: string }[],
   userText: string,
   context: AssistantContext,
+  options?: AssistantRunOptions,
 ): Promise<AssistantRunResult> {
-  const system = buildSystemPrompt(context);
+  const system = options?.systemPrompt ?? buildSystemPrompt(context);
+  const tools = options?.readOnly
+    ? READ_TOOL_DEFINITIONS
+    : ASSISTANT_TOOL_DEFINITIONS;
   const messages: ClaudeMessage[] = [
     ...history.map((message) => ({
       role: message.role,
@@ -295,7 +309,7 @@ export async function runAssistantWithTools(
   const sideEffects = emptySideEffects();
 
   for (let iteration = 0; iteration < MAX_TOOL_ITERATIONS; iteration++) {
-    const result = await callClaude(system, messages);
+    const result = await callClaude(system, messages, tools);
     if (!result.ok) return { ...result, status: "error" };
 
     const toolUses = result.content.filter(
@@ -319,17 +333,38 @@ export async function runAssistantWithTools(
     const toolResults: AnthropicToolResultBlock[] = [];
     for (const toolUse of toolUses) {
       try {
-        const data = isWriteTool(toolUse.name)
-          ? await executeWriteTool(projectId, toolUse.name, toolUse.input)
-          : await executeReadTool(
-              supabase,
-              projectId,
-              toolUse.name,
-              toolUse.input,
-            );
         if (isWriteTool(toolUse.name)) {
+          if (options?.readOnly) {
+            toolResults.push({
+              type: "tool_result",
+              tool_use_id: toolUse.id,
+              content: JSON.stringify({
+                success: false,
+                error: "Write tools are not available in this context.",
+              }),
+            });
+            continue;
+          }
+          const data = await executeWriteTool(
+            projectId,
+            toolUse.name,
+            toolUse.input,
+            options?.writeClient,
+          );
           trackWriteToolSideEffects(sideEffects, data);
+          toolResults.push({
+            type: "tool_result",
+            tool_use_id: toolUse.id,
+            content: JSON.stringify(data),
+          });
+          continue;
         }
+        const data = await executeReadTool(
+          supabase,
+          projectId,
+          toolUse.name,
+          toolUse.input,
+        );
         toolResults.push({
           type: "tool_result",
           tool_use_id: toolUse.id,

@@ -11,6 +11,7 @@ const NAV = [
   { id: "features", label: "Features", href: "/#features", hash: true },
   { id: "planners", label: "For planners", href: "/for-planners", hash: false },
   { id: "venues", label: "For venues", href: "/for-venues", hash: false },
+  { id: "couples", label: "For couples", href: "/#couples", hash: true },
   { id: "pricing", label: "Pricing", href: "/pricing", hash: false },
 ] as const;
 
@@ -78,7 +79,7 @@ export function MarketingTopbar() {
       return;
     }
 
-    // Features is the only remaining homepage hash target in the topbar.
+    // Homepage hash targets in the topbar: Features and For couples.
     const ids = NAV.filter((item) => item.hash).map((item) => item.id);
     const elements = ids
       .map((id) => document.getElementById(id))

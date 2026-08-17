@@ -97,8 +97,12 @@ file**. Migration index **0001–0083** is in **§5 of this file**.
   Monthly/Lifetime, View in Gmail, three-option welcome, venue-upgrade trial + setup nudge,
   `/for-planners` + `/for-venues`, accent picker. See §10 / §15.
 
-**Companion doc:** a separate **Launch Prep Runbook** exists (ops checklist for going to production).
-This bible covers product/architecture state; the runbook covers deployment. Keep both.
+**Companion docs:** a separate **Launch Prep Runbook** exists (ops checklist for going to production).
+A separate **Agentic Automation Architecture (v1)** lives at `AGENTIC_AUTOMATION_v1.md` (AGENT-01/02/03
++ AUTO-03 — trigger-based invocations of the existing assistant loop). Distinct from AUTO-01/02
+(rule-based, no LLM). This bible covers product/architecture state; the runbook covers deployment;
+the automation architecture covers scheduled/event-triggered assistant invocation. Keep all three.
+Do not restate the automation architecture in this file.
 
 ---
 
@@ -562,7 +566,7 @@ distinguishes sweetheart by **form + "SWEETHEART" label** (accent stroke), never
 Unchanged. Sole writer `set_project_archived(uuid, boolean)` — SECURITY DEFINER,
 `can_manage_project_access`-gated.
 
-### The six public (anon) surfaces (UNCHANGED count)
+### The seven public (anon) surfaces
 
 1. **Read:** `wedding_websites` anon `SELECT using (published = true)` (0022). Riders:
    `external_registry_links` (0035), `meal_service_style` (0038), `rsvp_access_mode` (0041 —
@@ -577,10 +581,14 @@ Unchanged. Sole writer `set_project_archived(uuid, boolean)` — SECURITY DEFINE
 4. **Write:** `registry_claims` anon `INSERT` gated to published sites (0036).
 5. **Read:** `meal_options` anon `SELECT` gated to a published site (0038).
 6. **Read (RPC):** `lookup_rsvp_household(...)` — definer, anon execute (0041; full-name in 0043).
+7. **Write (RPC):** `confirm_project_vendor(token)` — definer, anon execute (0085 / AUTO-02).
+   Token-gated one-click confirm on a `project_vendors` row. Returns vendor name + wedding
+   identifier only (`already_confirmed` for idempotent re-clicks). **No anon SELECT on
+   `project_vendors`.** Standing per-link token (`rsvp_token` generation, not invitation hashing).
 
 `rsvp_attendees` / `guest_members` / `guests` / `rsvp_submissions` / `project_invitations` /
 `account_invitations` / `calendar_events` / `contract_templates` / `budget_payments` /
-`payment_schedule` / `notes` / `user_tours` / `demo_start_attempts` / the seating tables have NO
+`payment_schedule` / `notes` / `user_tours` / `demo_start_attempts` / `project_vendors` / the seating tables have NO
 anon policy. Storage carve-outs:
 **0042 `website-media` public SELECT** (recorded, not counted); **0070 `brand-media` public SELECT**
 (same posture; recorded, not counted); **0061 `vendor-media` private bucket** — authenticated
@@ -1848,6 +1856,12 @@ proactive messages (Phase 5).
 > **Re-run this audit when any new write tool ships** (none shipped after ASSIST-BUD-01 — discovery/UI
 > + CON-04 / branding / billing / Team / venue / marketing are not chat write tools).
 
+**Agentic automation (not yet built):** scheduled / event-triggered invocation of this same loop is
+specified in `AGENTIC_AUTOMATION_v1.md`. Same tools, same cap, same RLS — new entry point. Distinct
+from AUTO-01/02 (fixed-cadence template reminders; no LLM). Read that doc before writing AGENT-01/02/03
+or AUTO-03 slices. The only new write tool contemplated is `create_agent_draft`; re-run this audit
+when it ships.
+
 ---
 
 ## 10. Design system — Soft stack (C1)
@@ -2055,6 +2069,14 @@ a code scan. Prefer section-level diffs.
 - Adding a second sweetheart without demoting (0064 + action enforce uniqueness).
 - Encoding table kind in a status colour (sweetheart uses form/text + accent stroke only).
 - Treating ASSIST-UI-01 as Phase 5 proactive assistant (it is discovery-only).
+- Writing AGENT-01/02/03 or AUTO-03 slices from this bible — read `AGENTIC_AUTOMATION_v1.md` first.
+- Folding agentic runs into the AUTO-01/02 cron dispatcher — separate route; different cost/failure
+  profile (LLM vs. plain SQL).
+- Treating AUTO-01/02 as agentic (they are rule-based, no LLM), or treating AGENT-01/02 send-to-self /
+  in-app autonomy as precedent for third-party auto-send (AGENT-03 / AUTO-03 always propose-then-approve).
+- Forking a second assistant tool-definition set for automated vs. chat runs.
+- Adding a DB-level event trigger (`pg_net`, Database Webhooks) for v1 agentic automation — scan-based
+  until a real lag complaint.
 - Inventing title-string heuristics to filter already-booked checklist tasks (architecturally ruled
   out — §3 / ONB-05).
 - Emitting `{{amount}}` from CON-04's generator (excluded by product decision).
@@ -2376,7 +2398,11 @@ are **shipped**.
 
 **Phase 4 — bridge:** lead→project conversion. **Re-audit every write policy when this ships.**
 
-**Phase 5 — automation:** PROACTIVE assistant. (ASSIST-UI-01 is discovery only — not Phase 5.)
+**Phase 5 — automation:** two tracks. **Rule-based** (AUTO-01 payment-schedule watch, AUTO-02
+countdown confirmations) — date math in, template email out, no LLM; stay that pattern. **Agentic**
+(AGENT-01/02/03, AUTO-03) — specified in `AGENTIC_AUTOMATION_v1.md`; same assistant tool loop,
+cron/webhook entry points. ASSIST-UI-01 is discovery only — not Phase 5. Do not write agentic slices
+from this bible.
 
 **Decided (current — code-verified):**
 - **Venue is a first-class welcome option** (VENUE-06) but still **not** a third `accounts.kind`.
@@ -2551,8 +2577,12 @@ optional post-create GST-12 association edit; **DASH-03a wedding-card blurb**; `
 decision; website caching; website-media orphan GC; currency-helper consolidation;
 **reconstruct 0050 `registry_teardown` + 0053 `files_vendor_link` rationale**; optional
 Soft stack `reference.html`; retire CSS aliases; font-load scoping; countdown + calendar +
-budget/guest-date hydration harden; Phase 5 proactive assistant; optional Calendar/Access/Timeline/
+budget/guest-date hydration harden; optional Calendar/Access/Timeline/
 Contracts/Team tours; append 0080–0083 into `supabase/deploy-batches/` when convenient.
+
+**M. Agentic automation (design landed, not built).** Spec is `AGENTIC_AUTOMATION_v1.md`. Foundation
+slice first (schema + dispatcher scaffold + empty review-inbox), then AGENT-01 alone for cost numbers,
+then AGENT-02 → AGENT-03 → AUTO-03. Distinct from AUTO-01/02. Do not start AGENT-01 from this bible.
 
 **Recommended path:** **re-read `reconcileCheckoutReturn` / `applyCheckoutSession` before building
 anything else on Checkout return handling** (CHECKOUT-RECONCILE-01 verified against disk in this
@@ -2560,4 +2590,6 @@ write-up; remaining gap is abandoned-Checkout-with-no-return) → **paste + chec
 demo seeds + `purge-demo` (A/D)** → **close the broad visual checkpoint + invite Jordyn (+ optional
 Team invite) (B/C)** → **MEAL-03a + due_date/rsvp_access_mode/traditions drops (E/F)** → **budget
 dashboard mockup (H)** → **Launch (I)** → optional `viewer` (G) → invoicing → INV-06 / CAL-01a /
-CON-03 / reconciled schedule / guest model B → conversion (J) → remaining L.
+CON-03 / reconciled schedule / guest model B → conversion (J) → remaining L. When picking up Phase 5
+agentic work, start at **M** / `AGENTIC_AUTOMATION_v1.md` (foundation slice, then AGENT-01 alone) —
+not from this bible, and not by folding into AUTO-01/02.

@@ -94,8 +94,9 @@ export default async function NotesPage({
         updated_at: row.updated_at,
         created_by: row.created_by,
         action_status: parseActionStatus(row.action_status),
-        author_email:
-          (row.created_by && emailByUserId.get(row.created_by)) || "Member",
+        author_email: row.created_by
+          ? emailByUserId.get(row.created_by) || "Member"
+          : "Assistant",
       }),
     ),
   );

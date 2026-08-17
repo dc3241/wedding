@@ -16,6 +16,8 @@ import { isValidWeddingTemplate } from "@/components/website/templates/registry"
 import { formatTimeOfDay } from "@/lib/timeline-aggregates";
 import { normalizeProductUrl } from "@/lib/registry";
 import { createClient } from "@/utils/supabase/server";
+import { clientForWrite } from "@/utils/supabase/for-write";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 function websitePath(projectId: string) {
   return `/projects/${projectId}/website`;
@@ -41,6 +43,7 @@ function normalizeScheduleItemTime(raw: string): string {
 export async function setWeddingWebsiteSchedule(
   projectId: string,
   items: Array<{ time: string; title: string; description?: string }>,
+  client?: SupabaseClient,
 ): Promise<
   | { ok: true; count: number; summary: string }
   | { ok: false; error: string }
@@ -55,7 +58,7 @@ export async function setWeddingWebsiteSchedule(
     };
   }
 
-  const supabase = await createClient();
+  const supabase = await clientForWrite(client);
 
   const { data: current, error: readError } = await supabase
     .from("wedding_websites")
@@ -98,14 +101,18 @@ export async function setWeddingWebsiteSchedule(
     normalized.push({ time, title, description });
   }
 
-  const result = await updateWeddingWebsite(projectId, {
-    content: {
-      schedule: {
-        items: normalized,
-        visible: content.schedule.visible,
+  const result = await updateWeddingWebsite(
+    projectId,
+    {
+      content: {
+        schedule: {
+          items: normalized,
+          visible: content.schedule.visible,
+        },
       },
     },
-  });
+    client,
+  );
 
   if (!result.ok) {
     return result;
@@ -245,6 +252,7 @@ function normalizeTravelFillPlaces(
 export async function setWeddingWebsiteTravel(
   projectId: string,
   input: TravelFillInput | string,
+  client?: SupabaseClient,
 ): Promise<
   | { ok: true; summary: string; visible: boolean }
   | { ok: false; error: string }
@@ -262,7 +270,7 @@ export async function setWeddingWebsiteTravel(
     };
   }
 
-  const supabase = await createClient();
+  const supabase = await clientForWrite(client);
 
   const { data: current, error: readError } = await supabase
     .from("wedding_websites")
@@ -294,11 +302,15 @@ export async function setWeddingWebsiteTravel(
     visible: content.travel.visible,
   };
 
-  const result = await updateWeddingWebsite(projectId, {
-    content: {
-      travel: nextTravel,
+  const result = await updateWeddingWebsite(
+    projectId,
+    {
+      content: {
+        travel: nextTravel,
+      },
     },
-  });
+    client,
+  );
 
   if (!result.ok) {
     return result;
@@ -393,8 +405,9 @@ export async function updateWeddingWebsite(
     template?: string;
     theme?: string;
   },
+  client?: SupabaseClient,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  const supabase = await createClient();
+  const supabase = await clientForWrite(client);
 
   const { data: current, error: readError } = await supabase
     .from("wedding_websites")

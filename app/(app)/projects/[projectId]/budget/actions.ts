@@ -2,6 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/utils/supabase/server";
+import { clientForWrite } from "@/utils/supabase/for-write";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 function budgetPath(projectId: string) {
   return `/projects/${projectId}/budget`;
@@ -31,8 +33,12 @@ function parseDateOnly(value: string): string | null {
   return trimmed;
 }
 
-export async function setBudgetTarget(projectId: string, amount: number | null) {
-  const supabase = await createClient();
+export async function setBudgetTarget(
+  projectId: string,
+  amount: number | null,
+  client?: SupabaseClient,
+) {
+  const supabase = await clientForWrite(client);
 
   const { error } = await supabase
     .from("projects")
@@ -51,6 +57,7 @@ export async function addBudgetItem(
   plannedAmount: number,
   actualAmount?: number | null,
   dueDate?: string | null,
+  client?: SupabaseClient,
 ) {
   const trimmedLabel = (label ?? "").trim() || null;
   const planned = Math.max(0, plannedAmount || 0);
@@ -63,7 +70,7 @@ export async function addBudgetItem(
     }
   }
 
-  const supabase = await createClient();
+  const supabase = await clientForWrite(client);
 
   // due_date is write-dead (BUD-SCHED-01) — first installment goes on payment_schedule.
   const { data: item, error } = await supabase
