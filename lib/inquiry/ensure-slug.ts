@@ -3,10 +3,15 @@ import "server-only";
 import { randomBytes } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { slugifyInquiryName } from "@/lib/inquiry/parse";
+import { createServiceRoleClient } from "@/utils/supabase/service-role";
 
 /**
  * Lazy-generate accounts.inquiry_slug on first relevant use.
  * Never populates personal accounts.
+ *
+ * Reads through the caller (RLS). Writes through service role —
+ * authenticated has SELECT on accounts but not UPDATE, so a member
+ * client update raises "permission denied for table accounts".
  */
 export async function ensureInquirySlug(
   supabase: SupabaseClient,
@@ -21,22 +26,22 @@ export async function ensureInquirySlug(
     .eq("id", accountId)
     .maybeSingle();
 
-  if (error) throw new Error(error.message);
-  if (!account || account.kind !== "business") return null;
+  if (error || !account || account.kind !== "business") return null;
   if (account.inquiry_slug) return account.inquiry_slug;
 
   const base = slugifyInquiryName(account.name);
   let candidate = base;
+  const admin = createServiceRoleClient();
 
   for (let attempt = 0; attempt < 8; attempt += 1) {
-    const { error: updateError } = await supabase
+    const { error: updateError } = await admin
       .from("accounts")
       .update({ inquiry_slug: candidate })
       .eq("id", accountId)
       .is("inquiry_slug", null);
 
     if (!updateError) {
-      const { data: saved } = await supabase
+      const { data: saved } = await admin
         .from("accounts")
         .select("inquiry_slug")
         .eq("id", accountId)
@@ -45,11 +50,13 @@ export async function ensureInquirySlug(
     }
 
     if (updateError.code !== "23505") {
-      throw new Error(updateError.message);
+      console.error("ensureInquirySlug update failed:", updateError.message);
+      return null;
     }
 
     candidate = `${base}-${randomBytes(2).toString("hex")}`;
   }
 
-  throw new Error("Could not allocate an inquiry slug.");
+  console.error("ensureInquirySlug could not allocate an inquiry slug.");
+  return null;
 }

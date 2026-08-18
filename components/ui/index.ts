@@ -6,6 +6,7 @@ export { EmptyState } from "./empty-state";
 export { Eyebrow } from "./eyebrow";
 export { FeatureRow } from "./feature-row";
 export { Input } from "./input";
+export { Modal } from "./modal";
 export { PageHeader } from "./page-header";
 export { Pill, type PillVariant } from "./pill";
 export { SectionHeader } from "./section-header";

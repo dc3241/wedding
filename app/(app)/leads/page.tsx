@@ -84,11 +84,16 @@ export default async function LeadsPage() {
     };
   }
 
-  const inquirySlug = await ensureInquirySlug(
-    supabase,
-    account.accountId,
-    account.kind,
-  );
+  let inquirySlug: string | null = null;
+  try {
+    inquirySlug = await ensureInquirySlug(
+      supabase,
+      account.accountId,
+      account.kind,
+    );
+  } catch {
+    inquirySlug = null;
+  }
 
   return (
     <div className="w-full">

@@ -78,28 +78,26 @@ function SortableLeadCard({
       style={style}
       className={cn("min-w-0", isDragging && "opacity-40")}
     >
-      <div className="relative min-w-0">
-        <button
-          type="button"
-          ref={setActivatorNodeRef}
-          {...attributes}
-          {...listeners}
-          aria-label={`Drag ${lead.couple_name}`}
-          className="absolute left-2 top-3 z-10 flex h-6 w-4 cursor-grab touch-none flex-col items-center justify-center gap-0.5 rounded text-muted hover:text-ink active:cursor-grabbing"
-        >
-          <span className="block h-0.5 w-2.5 rounded-full bg-current" />
-          <span className="block h-0.5 w-2.5 rounded-full bg-current" />
-          <span className="block h-0.5 w-2.5 rounded-full bg-current" />
-        </button>
-        <div className="min-w-0 pl-6">
-          <LeadRow
-            lead={lead}
-            onStageChange={onStageChange}
-            replyDraft={replyDraft}
-            onOpenReplyDraft={onOpenReplyDraft}
-          />
-        </div>
-      </div>
+      <LeadRow
+        lead={lead}
+        onStageChange={onStageChange}
+        replyDraft={replyDraft}
+        onOpenReplyDraft={onOpenReplyDraft}
+        dragHandle={
+          <button
+            type="button"
+            ref={setActivatorNodeRef}
+            {...attributes}
+            {...listeners}
+            aria-label={`Drag ${lead.couple_name}`}
+            className="mt-0.5 flex h-6 w-4 shrink-0 cursor-grab touch-none flex-col items-center justify-center gap-0.5 rounded text-muted hover:text-ink active:cursor-grabbing"
+          >
+            <span className="block h-0.5 w-2.5 rounded-full bg-current" />
+            <span className="block h-0.5 w-2.5 rounded-full bg-current" />
+            <span className="block h-0.5 w-2.5 rounded-full bg-current" />
+          </button>
+        }
+      />
     </div>
   );
 }
