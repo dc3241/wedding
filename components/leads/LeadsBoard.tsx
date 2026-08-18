@@ -76,9 +76,9 @@ function SortableLeadCard({
     <div
       ref={setNodeRef}
       style={style}
-      className={cn(isDragging && "opacity-40")}
+      className={cn("min-w-0", isDragging && "opacity-40")}
     >
-      <div className="relative">
+      <div className="relative min-w-0">
         <button
           type="button"
           ref={setActivatorNodeRef}
@@ -91,7 +91,7 @@ function SortableLeadCard({
           <span className="block h-0.5 w-2.5 rounded-full bg-current" />
           <span className="block h-0.5 w-2.5 rounded-full bg-current" />
         </button>
-        <div className="pl-6">
+        <div className="min-w-0 pl-6">
           <LeadRow
             lead={lead}
             onStageChange={onStageChange}
@@ -123,7 +123,7 @@ function LeadColumn({
     <section
       ref={setNodeRef}
       className={cn(
-        "flex w-[240px] shrink-0 flex-col rounded-[var(--radius-card)] border border-hairline bg-surface",
+        "flex w-[240px] min-w-0 shrink-0 flex-col rounded-[var(--radius-card)] border border-hairline bg-surface",
         isOver && "border-accent",
       )}
     >
@@ -135,9 +135,9 @@ function LeadColumn({
         items={leads.map((lead) => lead.id)}
         strategy={verticalListSortingStrategy}
       >
-        <ul className="flex min-h-[120px] flex-1 flex-col gap-2 p-2">
+        <ul className="flex min-h-[120px] min-w-0 flex-1 flex-col gap-2 p-2">
           {leads.map((lead) => (
-            <li key={lead.id}>
+            <li key={lead.id} className="min-w-0">
               <SortableLeadCard
                 lead={lead}
                 onStageChange={onStageChange}

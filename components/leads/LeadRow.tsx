@@ -24,7 +24,12 @@ import {
 } from "./types";
 
 const selectClasses =
-  "rounded-[var(--radius-inner)] border border-ring bg-surface px-2.5 py-1.5 text-[13px] text-ink outline-none transition-colors focus:border-accent disabled:opacity-50";
+  "min-w-0 max-w-full flex-1 rounded-[var(--radius-inner)] border border-ring bg-surface px-2 py-1.5 text-[13px] text-ink outline-none transition-colors focus:border-accent disabled:opacity-50";
+
+const fieldWrapClasses = "min-w-0 space-y-1.5";
+const fieldClasses = "w-full min-w-0";
+const compactButtonClasses =
+  "min-w-0 flex-1 whitespace-nowrap px-2 py-1.5 text-[13px]";
 
 export function LeadRow({
   lead,
@@ -120,10 +125,10 @@ export function LeadRow({
 
   if (editing) {
     return (
-      <Card className={cn("p-4", isPending && "opacity-60")}>
-        <form onSubmit={handleEditSubmit} className="space-y-4">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-1.5 sm:col-span-2">
+      <Card className={cn("min-w-0 p-3", isPending && "opacity-60")}>
+        <form onSubmit={handleEditSubmit} className="min-w-0 space-y-4">
+          <div className="grid min-w-0 grid-cols-1 gap-3">
+            <div className={fieldWrapClasses}>
               <label
                 htmlFor={`edit-couple-${lead.id}`}
                 className="text-sm font-medium text-ink"
@@ -137,9 +142,10 @@ export function LeadRow({
                 required
                 defaultValue={lead.couple_name}
                 disabled={isPending}
+                className={fieldClasses}
               />
             </div>
-            <div className="space-y-1.5">
+            <div className={fieldWrapClasses}>
               <label
                 htmlFor={`edit-email-${lead.id}`}
                 className="text-sm font-medium text-ink"
@@ -152,9 +158,10 @@ export function LeadRow({
                 type="email"
                 defaultValue={lead.contact_email ?? ""}
                 disabled={isPending}
+                className={fieldClasses}
               />
             </div>
-            <div className="space-y-1.5">
+            <div className={fieldWrapClasses}>
               <label
                 htmlFor={`edit-phone-${lead.id}`}
                 className="text-sm font-medium text-ink"
@@ -167,9 +174,10 @@ export function LeadRow({
                 type="tel"
                 defaultValue={lead.contact_phone ?? ""}
                 disabled={isPending}
+                className={fieldClasses}
               />
             </div>
-            <div className="space-y-1.5">
+            <div className={fieldWrapClasses}>
               <label
                 htmlFor={`edit-date-${lead.id}`}
                 className="text-sm font-medium text-ink"
@@ -182,9 +190,10 @@ export function LeadRow({
                 type="date"
                 defaultValue={lead.wedding_date ?? ""}
                 disabled={isPending}
+                className={cn(fieldClasses, "max-w-full")}
               />
             </div>
-            <div className="space-y-1.5">
+            <div className={fieldWrapClasses}>
               <label
                 htmlFor={`edit-budget-${lead.id}`}
                 className="text-sm font-medium text-ink"
@@ -203,9 +212,10 @@ export function LeadRow({
                     : String(lead.estimated_budget)
                 }
                 disabled={isPending}
+                className={fieldClasses}
               />
             </div>
-            <div className="space-y-1.5">
+            <div className={fieldWrapClasses}>
               <label
                 htmlFor={`edit-venue-${lead.id}`}
                 className="text-sm font-medium text-ink"
@@ -218,9 +228,10 @@ export function LeadRow({
                 type="text"
                 defaultValue={lead.venue ?? ""}
                 disabled={isPending}
+                className={fieldClasses}
               />
             </div>
-            <div className="space-y-1.5">
+            <div className={fieldWrapClasses}>
               <label
                 htmlFor={`edit-source-${lead.id}`}
                 className="text-sm font-medium text-ink"
@@ -233,9 +244,10 @@ export function LeadRow({
                 type="text"
                 defaultValue={lead.source ?? ""}
                 disabled={isPending}
+                className={fieldClasses}
               />
             </div>
-            <div className="space-y-1.5 sm:col-span-2">
+            <div className={fieldWrapClasses}>
               <label
                 htmlFor={`edit-notes-${lead.id}`}
                 className="text-sm font-medium text-ink"
@@ -248,20 +260,26 @@ export function LeadRow({
                 rows={3}
                 defaultValue={lead.notes ?? ""}
                 disabled={isPending}
+                className={fieldClasses}
               />
             </div>
           </div>
 
           {error ? <p className="text-[13px] text-rosewood">{error}</p> : null}
 
-          <div className="flex gap-2">
-            <Button type="submit" disabled={isPending}>
+          <div className="flex min-w-0 gap-2">
+            <Button
+              type="submit"
+              disabled={isPending}
+              className={compactButtonClasses}
+            >
               {isPending ? "Saving…" : "Save changes"}
             </Button>
             <Button
               type="button"
               variant="secondary"
               disabled={isPending}
+              className={compactButtonClasses}
               onClick={() => {
                 setEditing(false);
                 setError(null);
@@ -276,20 +294,20 @@ export function LeadRow({
   }
 
   return (
-    <Card className={cn("px-4 py-3", isPending && "opacity-60")}>
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
+    <Card className={cn("min-w-0 px-3 py-3", isPending && "opacity-60")}>
+      <div className="flex min-w-0 flex-col gap-2">
+        <div className="min-w-0">
           <Link
             href={`/leads/${lead.id}`}
-            className="text-[15px] font-medium text-ink no-underline hover:text-accent"
+            className="break-words text-[15px] font-medium text-ink no-underline hover:text-accent"
           >
             {lead.couple_name}
           </Link>
-          <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-[13px] text-muted">
+          <div className="mt-1 flex min-w-0 flex-wrap gap-x-3 gap-y-0.5 text-[13px] text-muted">
             {weddingDate ? <span>{weddingDate}</span> : null}
             {budget ? <span className="tabnum">{budget}</span> : null}
-            {lead.venue ? <span>{lead.venue}</span> : null}
-            {lead.source ? <span>via {lead.source}</span> : null}
+            {lead.venue ? <span className="break-words">{lead.venue}</span> : null}
+            {lead.source ? <span className="break-words">via {lead.source}</span> : null}
           </div>
           {replyDraft && onOpenReplyDraft ? (
             <div className="mt-1.5">
@@ -333,10 +351,12 @@ export function LeadRow({
             </div>
           ) : null}
           {contact ? (
-            <div className="mt-0.5 text-[13px] text-muted">{contact}</div>
+            <div className="mt-0.5 break-words text-[13px] text-muted">
+              {contact}
+            </div>
           ) : null}
           {lead.notes ? (
-            <p className="mt-2 line-clamp-2 text-[13px] text-muted">
+            <p className="mt-2 line-clamp-2 break-words text-[13px] text-muted">
               {lead.notes}
             </p>
           ) : null}
@@ -345,7 +365,7 @@ export function LeadRow({
           ) : null}
         </div>
 
-        <div className="flex shrink-0 flex-wrap items-center gap-2">
+        <div className="flex min-w-0 w-full items-center gap-1.5">
           <label className="sr-only" htmlFor={`stage-${lead.id}`}>
             Stage
           </label>
@@ -367,18 +387,29 @@ export function LeadRow({
             variant="default"
             disabled={isPending}
             onClick={() => setEditing(true)}
+            className="shrink-0 whitespace-nowrap px-3 py-1.5 text-[13px]"
           >
             Edit
           </Button>
-          <Button
+          <button
             type="button"
-            variant="ghost"
             disabled={isPending}
             onClick={handleDelete}
-            className="text-muted hover:text-rosewood"
+            aria-label={`Delete ${lead.couple_name}`}
+            className="shrink-0 rounded-[var(--radius-inner)] p-1.5 text-muted transition-colors hover:bg-rosewood-wash hover:text-rosewood focus-visible:bg-rosewood-wash focus-visible:text-rosewood focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rosewood disabled:opacity-50"
           >
-            Delete
-          </Button>
+            <svg
+              viewBox="0 0 16 16"
+              className="size-4"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              aria-hidden
+            >
+              <path d="M3.5 4.5h9M6.5 4.5V3.25a.75.75 0 0 1 .75-.75h1.5a.75.75 0 0 1 .75.75V4.5m1.5 0V12.5a1 1 0 0 1-1 1h-5a1 1 0 0 1-1-1V4.5" />
+              <path d="M7 7v4.5M9 7v4.5" />
+            </svg>
+          </button>
         </div>
       </div>
     </Card>
