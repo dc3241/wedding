@@ -315,8 +315,10 @@ declare
   v_mid uuid := 'b7c32347-722a-4c6d-8ba4-c98cd2eb77e8';
   v_late uuid := '7cb744b2-b207-4e76-b944-691798c8878c';
 begin
+  -- Fictional studio only. clone_demo_account copies accounts.name into
+  -- public demo workspaces, and the leads intake URL slugifies that name.
   update accounts
-  set name = 'Events by Jordyn',
+  set name = 'Lumen Planning',
       kind = 'business',
       is_demo = false,
       is_demo_template = true

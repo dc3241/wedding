@@ -5,9 +5,21 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { slugifyInquiryName } from "@/lib/inquiry/parse";
 import { createServiceRoleClient } from "@/utils/supabase/service-role";
 
+/** Public demo URLs must not slugify a live account's business name. */
+export const DEMO_INQUIRY_SLUG_BASE = "demo-studio";
+
+export function isDemoInquirySlug(slug: string | null | undefined): boolean {
+  if (!slug) return false;
+  return (
+    slug === DEMO_INQUIRY_SLUG_BASE ||
+    slug.startsWith(`${DEMO_INQUIRY_SLUG_BASE}-`)
+  );
+}
+
 /**
  * Lazy-generate accounts.inquiry_slug on first relevant use.
- * Never populates personal accounts.
+ * Never populates personal accounts. Demo clones always get a generic
+ * `demo-studio` slug — never a slug derived from the template's name.
  *
  * Reads through the caller (RLS). Writes through service role —
  * authenticated has SELECT on accounts but not UPDATE, so a member
@@ -22,23 +34,34 @@ export async function ensureInquirySlug(
 
   const { data: account, error } = await supabase
     .from("accounts")
-    .select("inquiry_slug, name, kind")
+    .select("inquiry_slug, name, kind, is_demo")
     .eq("id", accountId)
     .maybeSingle();
 
   if (error || !account || account.kind !== "business") return null;
-  if (account.inquiry_slug) return account.inquiry_slug;
 
-  const base = slugifyInquiryName(account.name);
-  let candidate = base;
+  const isDemo = account.is_demo === true;
+  if (account.inquiry_slug && (!isDemo || isDemoInquirySlug(account.inquiry_slug))) {
+    return account.inquiry_slug;
+  }
+
+  const base = isDemo
+    ? DEMO_INQUIRY_SLUG_BASE
+    : slugifyInquiryName(account.name);
+  const overwriteLeakedDemoSlug = isDemo && Boolean(account.inquiry_slug);
   const admin = createServiceRoleClient();
+  let candidate = base;
 
   for (let attempt = 0; attempt < 8; attempt += 1) {
-    const { error: updateError } = await admin
+    let query = admin
       .from("accounts")
       .update({ inquiry_slug: candidate })
-      .eq("id", accountId)
-      .is("inquiry_slug", null);
+      .eq("id", accountId);
+    if (!overwriteLeakedDemoSlug) {
+      query = query.is("inquiry_slug", null);
+    }
+
+    const { error: updateError } = await query;
 
     if (!updateError) {
       const { data: saved } = await admin

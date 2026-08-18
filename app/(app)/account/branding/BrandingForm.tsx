@@ -199,7 +199,7 @@ export function BrandingForm({ accountId, initial }: BrandingFormProps) {
             id="brand-name"
             value={brandName}
             maxLength={BRAND_NAME_MAX_LENGTH}
-            placeholder="Events by Jordyn"
+            placeholder="Lumen Planning"
             onChange={(e) => {
               setBrandName(e.target.value);
               setSaved(false);

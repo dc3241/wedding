@@ -1,6 +1,6 @@
 # Agentic Automation Subsystem — Architecture v1
 
-Companion to `PROJECT_BIBLE_v38.md`. Same posture as the Launch Prep Runbook — a **separate
+Companion to `PROJECT_BIBLE_v39.md`. Same posture as the Launch Prep Runbook — a **separate
 document**, not a fork of the bible. Read this before writing any slice prompt for AGENT-01,
 AGENT-02, AGENT-03, or AUTO-03.
 
