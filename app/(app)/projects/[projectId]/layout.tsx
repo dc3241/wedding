@@ -100,17 +100,49 @@ export default async function ProjectLayout({
       account
         ? supabase
             .from("agent_drafts")
-            .select("id, kind, subject, status")
+            .select("id, kind, subject, body, status, target_id")
             .eq("account_id", account.accountId)
-            .eq("status", "pending")
+            .eq("project_id", projectId)
+            .eq("kind", "vendor_outreach")
+            .in("status", ["pending", "approved"])
             .order("created_at", { ascending: false })
-        : Promise.resolve({ data: [] as AgentDraftPreview[] | null }),
+        : Promise.resolve({
+            data: [] as {
+              id: string;
+              kind: string;
+              subject: string | null;
+              body: string | null;
+              status: string;
+              target_id: string;
+            }[] | null,
+          }),
     ]);
 
   const initialMessages = (
     [...(messagesResult.data ?? [])].reverse() as AssistantMessage[]
   );
-  const pendingDrafts = (draftsResult.data ?? []) as AgentDraftPreview[];
+  const draftRows = draftsResult.data ?? [];
+  const vendorIds = [...new Set(draftRows.map((row) => row.target_id))];
+
+  const vendorNamesResult =
+    vendorIds.length > 0
+      ? await supabase.from("vendors").select("id, name").in("id", vendorIds)
+      : { data: [] as { id: string; name: string }[] | null };
+
+  const vendorNameById = new Map(
+    (vendorNamesResult.data ?? []).map((row) => [row.id, row.name]),
+  );
+
+  const pendingDrafts: AgentDraftPreview[] = draftRows.map((row) => ({
+    id: row.id,
+    kind: "vendor_outreach",
+    subject: row.subject,
+    body: row.body,
+    status: (row.status === "approved" ? "approved" : "pending") as
+      | "pending"
+      | "approved",
+    targetLabel: vendorNameById.get(row.target_id) ?? "Vendor",
+  }));
   const dismissedTourKeys = (toursResult.data ?? []).map(
     (row) => row.tour_key,
   );

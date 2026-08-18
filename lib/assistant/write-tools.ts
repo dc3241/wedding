@@ -1,4 +1,4 @@
-import { addTask, toggleTask } from "@/app/(app)/projects/[projectId]/checklist/actions";
+﻿import { addTask, toggleTask } from "@/app/(app)/projects/[projectId]/checklist/actions";
 import { addGuest, updateRsvp } from "@/app/(app)/projects/[projectId]/guests/actions";
 import type { RsvpStatus } from "@/app/(app)/projects/[projectId]/guests/types";
 import {
@@ -6,6 +6,8 @@ import {
   setBudgetTarget,
 } from "@/app/(app)/projects/[projectId]/budget/actions";
 import { addNote, updateNote } from "@/app/(app)/projects/[projectId]/notes/actions";
+import type { NoteActionStatus } from "@/app/(app)/projects/[projectId]/notes/types";
+import { createAgentDraft } from "@/lib/assistant/create-agent-draft";
 import { addVendorTarget } from "@/app/(app)/projects/[projectId]/vendors/actions";
 import {
   addEvent,
@@ -170,14 +172,37 @@ export const WRITE_TOOL_DEFINITIONS = [
   {
     name: "add_note",
     description:
-      "Add a project note. Use when the user clearly asks to save or jot down a note.",
+      "Add a project note. Use when the user clearly asks to save or jot down a note. Optional action_status pins (needs_action) or marks done; omit for an ordinary note.",
     input_schema: {
       type: "object" as const,
       properties: {
         title: { type: "string", description: "Optional note title" },
         body: { type: "string", description: "Optional note body" },
+        action_status: {
+          type: "string",
+          enum: ["needs_action", "done"],
+          description:
+            "Optional. needs_action pins the note with a needs-action indicator. done marks it completed. Omit for an ordinary note.",
+        },
       },
       required: [] as string[],
+    },
+  },
+  {
+    name: "create_agent_draft",
+    description:
+      "Queue a vendor follow-up email on the Pending review panel. Does not send. target_id is the account vendor UUID (vendors.id), not a project_vendors row. Only for a vendor already tracked on this wedding.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        target_id: {
+          type: "string",
+          description: "UUID of the account vendor (vendors.id)",
+        },
+        subject: { type: "string", description: "Email subject" },
+        body: { type: "string", description: "Email body, first person" },
+      },
+      required: ["target_id", "subject", "body"] as string[],
     },
   },
   {
@@ -380,6 +405,10 @@ function isRsvpStatus(value: string): value is RsvpStatus {
   return (RSVP_STATUSES as readonly string[]).includes(value);
 }
 
+function isNoteActionStatus(value: string): value is Exclude<NoteActionStatus, null> {
+  return value === "needs_action" || value === "done";
+}
+
 export async function executeWriteTool(
   projectId: string,
   toolName: WriteToolName,
@@ -551,7 +580,16 @@ export async function executeWriteTool(
     case "add_note": {
       const title = asString(input.title);
       const body = asString(input.body);
-      const noteId = await addNote(projectId, client);
+      const actionStatusRaw = asString(input.action_status)?.trim();
+      let actionStatus: NoteActionStatus | undefined;
+      if (actionStatusRaw) {
+        if (!isNoteActionStatus(actionStatusRaw)) {
+          return toolError("action_status must be needs_action or done");
+        }
+        actionStatus = actionStatusRaw;
+      }
+
+      const noteId = await addNote(projectId, client, actionStatus);
 
       const fields: { title?: string; body?: string } = {};
       if (title !== undefined) {
@@ -570,6 +608,32 @@ export async function executeWriteTool(
         note_id: noteId,
         title: fields.title ?? null,
         body: body?.trim() || null,
+        action_status: actionStatus ?? null,
+      };
+    }
+
+    case "create_agent_draft": {
+      const targetId = asString(input.target_id)?.trim();
+      const subject = asString(input.subject);
+      const body = asString(input.body);
+      if (!targetId) return toolError("target_id is required");
+      if (!subject?.trim()) return toolError("subject is required");
+      if (!body?.trim()) return toolError("body is required");
+
+      const result = await createAgentDraft(
+        projectId,
+        { targetId, subject, body },
+        client,
+      );
+      if (!result.ok) {
+        return toolError(result.error);
+      }
+
+      return {
+        success: true,
+        action: "create_agent_draft",
+        draft_id: result.draft_id,
+        target_id: targetId,
       };
     }
 

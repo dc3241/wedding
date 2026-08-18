@@ -36,7 +36,7 @@ testing.
   Checkout (PRICE-02). Customer Portal (PRICE-06) is for **any** account with a real Stripe
   Customer (planner Subscription **or** couple monthly) — not planner-only. Lifetime / local
   trial / seeded active have no Subscription id, so no Portal.
-- **Venue billing:** Monthly **$199** / Annual **$1,999** at `/account/venue-upgrade`
+- **Venue billing:** Monthly **$199** / Annual **$1,799** at `/account/venue-upgrade`
   (VENUE-02). Webhook (and CHECKOUT-RECONCILE-01 on return) flips `accounts.plan`. Public
   `/pricing` venue toggle is **cosmetic** — does not start Checkout.
 - **Welcome screen:** three equal-weight options — couple / planner / venue (VENUE-06). Venue
@@ -181,7 +181,7 @@ registry sub-page (under Website / public `/w/[slug]/registry` — **not** a pro
 - Stripe — billing for couples, planners, and venues (test mode). **Couple:** local 7-day free
   trial (no Stripe objects) then Monthly $10 Subscription **or** Lifetime $99 one-time Checkout
   (`charge_stage=couple_lifetime`). **Planner:** local 7-day free trial then Monthly $59 /
-  Annual $590 Subscription Checkout + Customer Portal. **Venue:** Monthly $199 / Annual $1,999
+  Annual $590 Subscription Checkout + Customer Portal. **Venue:** Monthly $199 / Annual $1,799
   Subscription Checkout (`/account/venue-upgrade`); webhook flips `accounts.plan`. PRICE-03/04/05
   $7+$92 path is **superseded** (schema + `charge-trial-balance` residual). **Checkout-return
   reconciliation (CHECKOUT-RECONCILE-01):** venue/planner/couple Checkout success URLs carry
@@ -294,9 +294,10 @@ In `.cursor/main.mdc` (architecture) + `.cursor/design.mdc` (Soft stack design).
   (e.g. `wedding_websites.song_requests_enabled`, 0057) are auto-readable **riders** — NOT new anon
   surfaces, no policy change.
 - **Anon WRITE = tightly-scoped INSERT-only RLS (or a definer RPC) + server-derived scope.** Public
-  writes are RSVP (`submit_rsvp` RPC) and registry claims (INSERT). **There are exactly SIX anon
-  surfaces** (three reads + one INSERT + two RPC executes) — see §4. **No new anon table
-  surfaces have been added since the six listed in §4** (RSVP-02 form-only; RSVP-THROTTLE-01 replaces `submit_rsvp` in place; `vendor-media`
+  writes are RSVP (`submit_rsvp` RPC), registry claims (INSERT), vendor confirm
+  (`confirm_project_vendor`), and inquiry capture (`submit_inquiry`). **There are exactly EIGHT anon
+  surfaces** (three reads + one INSERT + four RPC executes) — see §4. **No new anon table
+  surfaces have been added since the eight listed in §4** (RSVP-02 form-only; RSVP-THROTTLE-01 replaces `submit_rsvp` in place; `vendor-media`
   private; `brand-media` is a **public storage carve-out** like `website-media`, not a counted table
   surface; `get_project_branding` is authenticated-only; `account_invitations` is authenticated
   account-member only). **Demo uses Supabase anonymous auth + authenticated RPC** — not a new anon
@@ -346,7 +347,9 @@ In `.cursor/main.mdc` (architecture) + `.cursor/design.mdc` (Soft stack design).
   INSERT/UPDATE/DELETE `can_edit_project` since **0040** ("WRITE-01 day-one" in that migration);
   `rsvp_attendees` — SELECT `can_access_project` + UPDATE/DELETE `can_edit_project` since **0039**,
   **no INSERT policy** (`submit_rsvp` is the sole inserter). Still out of scope / unchanged:
-  `assistant_messages`, `outreach_messages`. **`calendar_events` exception:** one `FOR ALL` policy
+  `assistant_messages`. **`outreach_messages` (0090):** vendor rows stay
+  `can_access_project_vendor`; lead-recipient rows use `is_account_member` (exactly one of
+  `project_vendor_id` / `lead_id`). **`calendar_events` exception:** one `FOR ALL` policy
   (CAL-02 / 0071) — project branch uses `can_edit_project` for both `using` and `with_check`, so
   project-linked **reads and writes** tighten together. Offering `viewer` from Access remains a
   **product** deferral — see §13 / §15.
@@ -566,7 +569,7 @@ distinguishes sweetheart by **form + "SWEETHEART" label** (accent stroke), never
 Unchanged. Sole writer `set_project_archived(uuid, boolean)` — SECURITY DEFINER,
 `can_manage_project_access`-gated.
 
-### The seven public (anon) surfaces
+### The eight public (anon) surfaces
 
 1. **Read:** `wedding_websites` anon `SELECT using (published = true)` (0022). Riders:
    `external_registry_links` (0035), `meal_service_style` (0038), `rsvp_access_mode` (0041 —
@@ -585,10 +588,16 @@ Unchanged. Sole writer `set_project_archived(uuid, boolean)` — SECURITY DEFINE
    Token-gated one-click confirm on a `project_vendors` row. Returns vendor name + wedding
    identifier only (`already_confirmed` for idempotent re-clicks). **No anon SELECT on
    `project_vendors`.** Standing per-link token (`rsvp_token` generation, not invitation hashing).
+8. **Write (RPC):** `submit_inquiry(slug, name, email, message, honeypot, wedding_date, guest_count)`
+   — definer, anon execute (0089 / AUTO-03a). Resolves `account_id` from `accounts.inquiry_slug`
+   server-side (business-kind only). Honeypot + hashed-IP velocity throttle (3 / IP / account /
+   1 minute; constants only in the RPC). Inserts `leads` with `source = 'form'`. **No anon SELECT
+   or INSERT on `leads`.** The Resend inbound webhook is **not** this ledger — signature-verified
+   server-to-server, same as Stripe.
 
 `rsvp_attendees` / `guest_members` / `guests` / `rsvp_submissions` / `project_invitations` /
 `account_invitations` / `calendar_events` / `contract_templates` / `budget_payments` /
-`payment_schedule` / `notes` / `user_tours` / `demo_start_attempts` / `project_vendors` / the seating tables have NO
+`payment_schedule` / `notes` / `user_tours` / `demo_start_attempts` / `inquiry_form_attempts` / `project_vendors` / the seating tables have NO
 anon policy. Storage carve-outs:
 **0042 `website-media` public SELECT** (recorded, not counted); **0070 `brand-media` public SELECT**
 (same posture; recorded, not counted); **0061 `vendor-media` private bucket** — authenticated
@@ -664,8 +673,9 @@ must not be added to `TOUR_KEY_BY_SEGMENT` / `TourProvider` auto-fire. See §7.
 dot), or `done` (sage pill). CHECK: `action_status is null or action_status in ('needs_action','done')`.
 UI: preview-card grid → modal editor; list sort pins `needs_action` first, then `updated_at` desc.
 Deliberately a **tri-state annotation, not a second task system**. Assistant **`get_notes` / `get_note`
-return `action_status`** (pin-sort + needs-action count in summary). Assistant `add_note` does **not**
-set `action_status` (still title/body only — no note-status write tool).
+return `action_status`** (pin-sort + needs-action count in summary). Assistant `add_note` accepts an
+optional `action_status` (`needs_action` | `done`); omit for an ordinary note (default `null`). AGENT-02
+creates notes with `needs_action`.
 
 ### Calendar events RLS (CAL-02 / 0060 + WRITE-01 / 0071) — ON DISK; **0071 LIVE VERIFIED**
 
@@ -1238,7 +1248,8 @@ sets the household badge, and **rejects rapid-fire spam** (≤3 / household / 1 
 
 ### Account-scoped planner surfaces
 
-`/leads` (**LEAD-STALE-01** rosewood inactivity pill; venue copy **Inquiries** via VENUE-07),
+`/leads` (**LEAD-STALE-01** rosewood inactivity pill; **AUTO-03b** clay reply-ready badge on the
+card; venue copy **Inquiries** via VENUE-07),
 `/account/billing` (planner plan gets an equal-weight Upgrade-to-Venue card — VENUE-06),
 **`/account/team` (TEAM-01)**, **`/account/branding` (WHITE-01 + WHITE-02 picker/contrast)**,
 **`/account/venue-upgrade` (VENUE-02 / VENUE-05 / VENUE-06 / ONBOARD-NUDGE-01)**, `/vendors`
@@ -1326,8 +1337,8 @@ WEB-EDITOR-02 / WEB-STYLE-01 / RSVP-02 / FIX-02 (no schema) + SEAT-12 / **0059**
 #### NOTES-01 — Notes action lifecycle. Migration **0062** (on disk).
 
 `notes.action_status` optional (`null` | `needs_action` | `done`). Preview grid + modal editor; pin-sort
-needs-action; rosewood / sage chrome. Assistant `add_note` still title/body only; `get_notes`/`get_note`
-surface `action_status` (v33 confirm). Reconstructed intent: an optional annotation, **not** a second
+needs-action; rosewood / sage chrome. Assistant `add_note` accepts optional `action_status` (AGENT-02);
+`get_notes`/`get_note` surface `action_status` (v33 confirm). Reconstructed intent: an optional annotation, **not** a second
 task system.
 
 #### ASSIST-UI-01 — In-page assistant prompts. NO SCHEMA.
@@ -1603,7 +1614,7 @@ white-label on. Distinct from CoupleShell project branding.
 
 #### VENUE-02 / 02b — Venue Checkout + plan flip. NO SCHEMA.
 
-Monthly $199 / Annual $1,999 at `/account/venue-upgrade`. Webhook maps venue price ids →
+Monthly $199 / Annual $1,799 at `/account/venue-upgrade`. Webhook maps venue price ids →
 `accounts.plan` (`active`/`trialing` → venue; other known statuses → planner; unrecognized →
 planner + warn). Does not touch brand columns. CHECK failures must propagate.
 
@@ -1835,17 +1846,20 @@ proactive messages (Phase 5).
 > **The budget ledger / payment schedule gap closed in ASSIST-BUD-01** — see below. Website has a
 > narrow write (`set_website_travel`). The assistant has no vendor-removal tool and should not get one.
 > - **`get_notes` / `get_note` return `action_status`** (pin-sort needs-action; summary count) —
->   confirmed in `lib/assistant/read-tools.ts` (v33). **`add_note` still does NOT set `action_status`**
->   (no note-status write tool).
+>   confirmed in `lib/assistant/read-tools.ts` (v33). **`add_note` accepts optional `action_status`**
+>   (`needs_action` | `done`); omit → `null` (ordinary note). Available to chat and to AGENT-02.
+>   AGENT-02 always passes `needs_action`. Not a separate note-status write tool — same `add_note`.
 > - **ASSIST-BUD-01 (v35, NO SCHEMA)** — `get_budget` fixed (booked-vendor quote double-count into
 >   `allocated` removed; now reuses `computeBudgetAggregates()` / `deriveScheduleWaterfall()` from
 >   `lib/budget-aggregates.ts`, same helpers the live Budget UI uses). New `get_budget_payments` +
 >   `get_payment_schedule` read tools. Live-verified against the Budget tab (Dom).
 
-> **Assistant write-tool canonical audit.** Enforced-canonical: `add_task`, `update_task_status`,
-> `update_guest_rsvp`, `add_vendor_target`, `set_website_travel`. Free-text-by-design (correct, not a
+> **Assistant write-tool canonical audit (re-run AGENT-03).** Enforced-canonical: `add_task`, `update_task_status`,
+> `update_guest_rsvp`, `add_vendor_target`, `set_website_travel`, **`add_note.action_status`** (`needs_action` | `done` | omit),
+> **`create_agent_draft`** (queues `agent_drafts` vendor_outreach; `target_id` = `vendors.id`; validates account ownership + project link; does not send).
+> Free-text-by-design (correct, not a
 > gap): `add_budget_item` category, `add_timeline_event(s)` owner/section, note/guest text, website
-> schedule text.
+> schedule text, `create_agent_draft` subject/body.
 > - `update_guest_rsvp` shares `guests.rsvp_status` with `submit_rsvp` (0058) — one column, two writers,
 >   latest-wins (§3). Legitimate manual writer; no change needed.
 > - **⚠️ VERIFY: the assistant's guest-add path predates the guest rework** and still writes the OLD
@@ -1853,14 +1867,14 @@ proactive messages (Phase 5).
 >   `related_to_member_id`**). Not broken (new columns nullable / default adult), but out of sync with
 >   the couple-side form — update/retire before relying on assistant-created guests carrying the new
 >   fields.
-> **Re-run this audit when any new write tool ships** (none shipped after ASSIST-BUD-01 — discovery/UI
-> + CON-04 / branding / billing / Team / venue / marketing are not chat write tools).
+> **Re-run this audit when any new write tool ships.** `inquiry_reply` drafts are AUTO-03b
+> (cron `createAgentDraft`, not a new chat write tool); chat `create_agent_draft` remains
+> vendor_outreach only.
 
-**Agentic automation (not yet built):** scheduled / event-triggered invocation of this same loop is
+**Agentic automation:** scheduled / event-triggered invocation of this same loop is
 specified in `AGENTIC_AUTOMATION_v1.md`. Same tools, same cap, same RLS — new entry point. Distinct
-from AUTO-01/02 (fixed-cadence template reminders; no LLM). Read that doc before writing AGENT-01/02/03
-or AUTO-03 slices. The only new write tool contemplated is `create_agent_draft`; re-run this audit
-when it ships.
+from AUTO-01/02 (fixed-cadence template reminders; no LLM). AGENT-00/01/01a/02/03 and AUTO-03
+(capture + extract/compose/approve) are on disk.
 
 ---
 
@@ -1913,6 +1927,10 @@ raised-inside-raised.
 
 **Stale leads (LEAD-STALE-01 — Tier 1):** rosewood pill = going cold (wrong/inaction), never a
 kind color. Terminal booked/lost leads are not stale.
+
+**Inquiry reply drafts (AUTO-03b — Tier 1):** clay "Reply ready" / "Retry send" pill on the
+kanban card (in-flight, not a problem). Click opens a slide-over reusing Pending approve/reject.
+Do not mix clay with rosewood staleness.
 
 **Website editor (WEB-EDITOR-02 / WEB-STYLE-01 — Tier 1 chrome hosting a Tier 3 preview):**
 - **Sticky side preview** renders the Tier 3 site while the Tier 1 editor is in view; no serif/script
@@ -2128,6 +2146,12 @@ a code scan. Prefer section-level diffs.
   **auto-populates `guests.rsvp_status` in-transaction (0058)** via the definer function. **RSVP-02
   changed only the client form**; **RSVP-THROTTLE-01** replaces the RPC in place. **Collects guest
   PII** (names, songs, dietary; email now optional) → privacy policy.
+- **Public inquiry write:** `submit_inquiry` RPC only (0089 / AUTO-03a; 0090 persists
+  `estimated_guest_count`); `account_id` server-derived
+  from `inquiry_slug`; honeypot + hashed-IP throttle (3 / account / 1 minute). Collects inquirer
+  PII (name, email, optional date/count, message). The Resend inbound webhook is signature-verified
+  service-role, **not** an anon surface. AUTO-03b drafts and extraction writes use an impersonated
+  RLS session, never service-role.
 - **Anon grant sharp edge:** the table GRANT on `guests` includes UPDATE to anon, but RLS blocks any
   direct anon write — the definer RPC is the only anon-reachable badge writer. WRITE-01 did not change
   this belt-and-suspenders item.
@@ -2248,7 +2272,8 @@ posture already applied elsewhere in this document to CHECKOUT-RECONCILE-01.
 - **CON-03 deferred**; CAL-01a deferred; contract category axis vendor-only; `{{amount}}` no project
   source (CON-04 generator deliberately excludes it).
 - **`projects` has NO DELETE policy** (silent-no-op shape, unreached).
-- **`assistant_messages` / `outreach_messages` out of WRITE-01 scope** by design.
+- **`assistant_messages` out of WRITE-01 scope** by design. **`outreach_messages` dual-gated in
+  0090** (vendor = `can_access_project_vendor`; lead = `is_account_member`).
 - **`guest_members.attending` default true, inert as shown status** — the badge is authoritative.
 - **`website-media` / `brand-media` public SELECT have no published gate** — intentional.
   **`vendor-media` has no anon SELECT** — intentional.
@@ -2480,7 +2505,7 @@ count source; **do not** auto-match RSVP attendee names to `guest_members`; **do
 when the toggle is off; **do not** drop the 0072 RSVP throttle when replacing `submit_rsvp`; **do not**
 add anon SELECT on `registry_claims` / `rsvp_attendees` / `guest_members` / `guests` /
 `rsvp_submissions` / `budget_payments` / `payment_schedule` / `notes` / `user_tours` /
-`demo_start_attempts` / `account_invitations` / the seating tables / **`vendor-media`**; **do not**
+`demo_start_attempts` / `inquiry_form_attempts` / `account_invitations` / the seating tables / **`vendor-media`**; **do not**
 add a published gate to `website-media` / `brand-media` SELECT; **do not** white-label ordinary
 planner chrome or public websites (venue own-shell is the only PlannerShell exception); **do not**
 reuse `project_invitations` for Team seats or parse `/invite/account/` as a project token; **do not**
@@ -2571,8 +2596,7 @@ account-role hierarchy (not implied by TEAM-01).
 **K. Seating — remaining (OPTIONAL).** SEAT-07 assistant mock-up; per-seat UI depth.
 
 **L (other rounding-out):** moodboard; assistant tools for leads/proposals/RSVP/seating/invitations/
-calendar/templates/team (re-run the §9 write-tool audit when any ship); optional note
-`action_status` write tool; **update/retire the assistant guest-add path for GST-07/GST-12 fields**;
+calendar/templates/team (re-run the §9 write-tool audit when any ship); **update/retire the assistant guest-add path for GST-07/GST-12 fields**;
 optional post-create GST-12 association edit; **DASH-03a wedding-card blurb**; `projects` DELETE policy
 decision; website caching; website-media orphan GC; currency-helper consolidation;
 **reconstruct 0050 `registry_teardown` + 0053 `files_vendor_link` rationale**; optional
@@ -2580,9 +2604,9 @@ Soft stack `reference.html`; retire CSS aliases; font-load scoping; countdown + 
 budget/guest-date hydration harden; optional Calendar/Access/Timeline/
 Contracts/Team tours; append 0080–0083 into `supabase/deploy-batches/` when convenient.
 
-**M. Agentic automation (design landed, not built).** Spec is `AGENTIC_AUTOMATION_v1.md`. Foundation
-slice first (schema + dispatcher scaffold + empty review-inbox), then AGENT-01 alone for cost numbers,
-then AGENT-02 → AGENT-03 → AUTO-03. Distinct from AUTO-01/02. Do not start AGENT-01 from this bible.
+**M. Agentic automation.** Spec is `AGENTIC_AUTOMATION_v1.md`. AGENT-00/01/01a/02/03 and AUTO-03
+(a+b: capture, extract, compose, approve) are on disk. Distinct from AUTO-01/02. Do not start
+remaining slices from this bible.
 
 **Recommended path:** **re-read `reconcileCheckoutReturn` / `applyCheckoutSession` before building
 anything else on Checkout return handling** (CHECKOUT-RECONCILE-01 verified against disk in this

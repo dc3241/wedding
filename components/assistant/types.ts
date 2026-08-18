@@ -10,7 +10,9 @@ export type AgentDraftPreview = {
   id: string;
   kind: "vendor_outreach" | "inquiry_reply";
   subject: string | null;
+  body: string | null;
   status: "pending" | "approved" | "rejected" | "sent";
+  targetLabel: string;
 };
 
 export type SendAssistantResult =

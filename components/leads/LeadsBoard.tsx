@@ -22,11 +22,13 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { reorderLeads } from "@/app/(app)/leads/actions";
+import type { AgentDraftPreview } from "@/components/assistant/types";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { Pill } from "@/components/ui/pill";
 import type { AccountPlan } from "@/lib/account-context";
 import { cn } from "@/lib/cn";
 import { getCopy } from "@/lib/venue-copy";
+import { InquiryReplyDrawer } from "./InquiryReplyDrawer";
 import { LeadRow } from "./LeadRow";
 import {
   buildReorderBatch,
@@ -47,9 +49,13 @@ import {
 function SortableLeadCard({
   lead,
   onStageChange,
+  replyDraft,
+  onOpenReplyDraft,
 }: {
   lead: Lead;
   onStageChange: (id: string, stage: LeadStage) => void;
+  replyDraft?: AgentDraftPreview | null;
+  onOpenReplyDraft?: () => void;
 }) {
   const {
     attributes,
@@ -86,7 +92,12 @@ function SortableLeadCard({
           <span className="block h-0.5 w-2.5 rounded-full bg-current" />
         </button>
         <div className="pl-6">
-          <LeadRow lead={lead} onStageChange={onStageChange} />
+          <LeadRow
+            lead={lead}
+            onStageChange={onStageChange}
+            replyDraft={replyDraft}
+            onOpenReplyDraft={onOpenReplyDraft}
+          />
         </div>
       </div>
     </div>
@@ -96,11 +107,15 @@ function SortableLeadCard({
 function LeadColumn({
   stage,
   leads,
+  replyDraftsByLeadId,
   onStageChange,
+  onOpenReplyDraft,
 }: {
   stage: LeadStage;
   leads: Lead[];
+  replyDraftsByLeadId: Record<string, AgentDraftPreview>;
   onStageChange: (id: string, stage: LeadStage) => void;
+  onOpenReplyDraft: (leadId: string) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: stage });
 
@@ -123,7 +138,12 @@ function LeadColumn({
         <ul className="flex min-h-[120px] flex-1 flex-col gap-2 p-2">
           {leads.map((lead) => (
             <li key={lead.id}>
-              <SortableLeadCard lead={lead} onStageChange={onStageChange} />
+              <SortableLeadCard
+                lead={lead}
+                onStageChange={onStageChange}
+                replyDraft={replyDraftsByLeadId[lead.id]}
+                onOpenReplyDraft={() => onOpenReplyDraft(lead.id)}
+              />
             </li>
           ))}
         </ul>
@@ -135,14 +155,17 @@ function LeadColumn({
 export function LeadsBoard({
   initialLeads,
   plan = "planner",
+  replyDraftsByLeadId = {},
 }: {
   initialLeads: Lead[];
   plan?: AccountPlan;
+  replyDraftsByLeadId?: Record<string, AgentDraftPreview>;
 }) {
   const [columns, setColumns] = useState<LeadColumns>(() =>
     groupLeadsByStage(initialLeads),
   );
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [reviewLeadId, setReviewLeadId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const snapshotRef = useRef<LeadColumns | null>(null);
   const dragSourceStageRef = useRef<LeadStage | null>(null);
@@ -150,6 +173,12 @@ export function LeadsBoard({
   useEffect(() => {
     setColumns(groupLeadsByStage(initialLeads));
   }, [initialLeads]);
+
+  useEffect(() => {
+    if (reviewLeadId && !replyDraftsByLeadId[reviewLeadId]) {
+      setReviewLeadId(null);
+    }
+  }, [reviewLeadId, replyDraftsByLeadId]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -350,7 +379,9 @@ export function LeadsBoard({
                 key={stage}
                 stage={stage}
                 leads={columns[stage]}
+                replyDraftsByLeadId={replyDraftsByLeadId}
                 onStageChange={handleStageChange}
+                onOpenReplyDraft={setReviewLeadId}
               />
             ))}
           </div>
@@ -359,11 +390,26 @@ export function LeadsBoard({
         <DragOverlay dropAnimation={null}>
           {activeLead ? (
             <div className="w-[240px] rotate-1 opacity-95">
-              <LeadRow lead={activeLead} />
+              <LeadRow
+                lead={activeLead}
+                replyDraft={replyDraftsByLeadId[activeLead.id]}
+              />
             </div>
           ) : null}
         </DragOverlay>
       </DndContext>
+
+      <InquiryReplyDrawer
+        draft={reviewLeadId ? replyDraftsByLeadId[reviewLeadId] ?? null : null}
+        coupleName={
+          reviewLeadId
+            ? (LEAD_STAGES.flatMap((stage) => columns[stage]).find(
+                (lead) => lead.id === reviewLeadId,
+              )?.couple_name ?? null)
+            : null
+        }
+        onClose={() => setReviewLeadId(null)}
+      />
     </div>
   );
 }

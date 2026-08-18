@@ -6,7 +6,9 @@ import { createClient } from "@supabase/supabase-js";
  * Used for public reads where RLS (e.g. published = true) is the access gate.
  * Never use the service-role key here.
  */
-export function createAnonServerClient() {
+export function createAnonServerClient(options?: {
+  headers?: Record<string, string>;
+}) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
@@ -19,5 +21,6 @@ export function createAnonServerClient() {
       autoRefreshToken: false,
       persistSession: false,
     },
+    global: options?.headers ? { headers: options.headers } : undefined,
   });
 }

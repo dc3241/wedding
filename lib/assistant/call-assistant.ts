@@ -8,6 +8,7 @@ import {
   executeWriteTool,
   isWriteTool,
   WRITE_TOOL_DEFINITIONS,
+  type WriteToolName,
 } from "@/lib/assistant/write-tools";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -25,6 +26,21 @@ export type AssistantRunOptions = {
   readOnly?: boolean;
   /** RLS-checked session for writes. Chat omits this (cookie client). */
   writeClient?: SupabaseClient;
+  /**
+   * Advertise/execute only these write tools. Chat omits this (all writes).
+   * AGENT-02 passes `["add_note"]`.
+   */
+  allowedWriteTools?: WriteToolName[];
+  /**
+   * Queue write-tool calls instead of executing them. The caller runs them
+   * after a completed pass so a cap never leaves a partial write.
+   */
+  deferWrites?: boolean;
+};
+
+export type PendingWrite = {
+  name: WriteToolName;
+  input: Record<string, unknown>;
 };
 
 export type AssistantSideEffects = {
@@ -33,14 +49,20 @@ export type AssistantSideEffects = {
 };
 
 export type AssistantRunResult =
-  | { ok: true; reply: string; status: "completed" }
+  | { ok: true; reply: string; status: "completed"; pendingWrites: PendingWrite[] }
   | {
       ok: true;
       reply: string;
       status: "cap_hit_with_side_effects";
       sideEffects: AssistantSideEffects;
+      pendingWrites: PendingWrite[];
     }
-  | { ok: false; error: string; status: "cap_hit" | "error" };
+  | {
+      ok: false;
+      error: string;
+      status: "cap_hit" | "error";
+      pendingWrites: PendingWrite[];
+    };
 
 type AnthropicTextBlock = { type: "text"; text: string };
 type AnthropicToolUseBlock = {
@@ -109,7 +131,7 @@ The couple's wedding website is built in First Look on the Website tab. That tab
 
 You can search for nearby hotels, airports, and restaurants near the couple's venue via search_nearby_places (read-only Google Places results). Use set_website_travel to FILL an EMPTY Travel & Stay section — prefer a short intro plus structured places (kind stay|getting_there|other, name, detail, optional url/note) from those results; no internal planning detail. It never overwrites existing Travel & Stay content (same fill-if-empty rule as Schedule). If Travel & Stay already has content, say so and point them to the Website tab — do not overwrite. If search_nearby_places returns needsLocation, ASK the couple where their venue is (or to pass a location) — never invent a location. After a successful set_website_travel fill, tell the couple the section is filled but may still be hidden — they can toggle it visible on the Website tab (visible is preserved, never force-enabled).
 
-You can answer questions using read tools and take actions using write tools when the user clearly asks. Available actions: add a checklist task, update a task's status, add a guest, update a guest's RSVP, set the budget target, add a budget line item, add a vendor category to book, add a note, add a single day-of timeline event, add multiple day-of timeline events in one batch (the wedding-day run sheet — not the long-range checklist), fill an empty wedding-website Schedule from curated timeline items (set_website_schedule), and fill an empty Travel & Stay section from curated nearby-place results (set_website_travel). Only call a write tool when the user clearly requests that specific action — otherwise suggest what they could do but do not act. After taking an action, confirm in plain prose exactly what you did.
+You can answer questions using read tools and take actions using write tools when the user clearly asks. Available actions: add a checklist task, update a task's status, add a guest, update a guest's RSVP, set the budget target, add a budget line item, add a vendor category to book, add a note (optional action_status: needs_action to pin it, or done; omit for an ordinary note), queue a vendor follow-up draft for the Pending panel (create_agent_draft — does not send), add a single day-of timeline event, add multiple day-of timeline events in one batch (the wedding-day run sheet — not the long-range checklist), fill an empty wedding-website Schedule from curated timeline items (set_website_schedule), and fill an empty Travel & Stay section from curated nearby-place results (set_website_travel). Only call a write tool when the user clearly requests that specific action — otherwise suggest what they could do but do not act. After taking an action, confirm in plain prose exactly what you did.
 
 When adding multiple timeline events (for example, generating a full day-of run sheet), gather the needed details first, then call add_timeline_events once with the full list. Use add_timeline_event only for a genuine single event — do not add events one at a time.
 
@@ -287,6 +309,16 @@ async function callClaude(
   }
 }
 
+function toolsForRun(options?: AssistantRunOptions) {
+  if (options?.readOnly) return READ_TOOL_DEFINITIONS;
+  if (!options?.allowedWriteTools) return ASSISTANT_TOOL_DEFINITIONS;
+  const allowed = new Set(options.allowedWriteTools);
+  return [
+    ...READ_TOOL_DEFINITIONS,
+    ...WRITE_TOOL_DEFINITIONS.filter((tool) => allowed.has(tool.name)),
+  ];
+}
+
 export async function runAssistantWithTools(
   supabase: SupabaseClient,
   projectId: string,
@@ -296,9 +328,10 @@ export async function runAssistantWithTools(
   options?: AssistantRunOptions,
 ): Promise<AssistantRunResult> {
   const system = options?.systemPrompt ?? buildSystemPrompt(context);
-  const tools = options?.readOnly
-    ? READ_TOOL_DEFINITIONS
-    : ASSISTANT_TOOL_DEFINITIONS;
+  const tools = toolsForRun(options);
+  const allowedWrites = options?.allowedWriteTools
+    ? new Set(options.allowedWriteTools)
+    : null;
   const messages: ClaudeMessage[] = [
     ...history.map((message) => ({
       role: message.role,
@@ -307,10 +340,13 @@ export async function runAssistantWithTools(
     { role: "user" as const, content: userText },
   ];
   const sideEffects = emptySideEffects();
+  const pendingWrites: PendingWrite[] = [];
 
   for (let iteration = 0; iteration < MAX_TOOL_ITERATIONS; iteration++) {
     const result = await callClaude(system, messages, tools);
-    if (!result.ok) return { ...result, status: "error" };
+    if (!result.ok) {
+      return { ...result, status: "error", pendingWrites };
+    }
 
     const toolUses = result.content.filter(
       (block): block is AnthropicToolUseBlock => block.type === "tool_use",
@@ -318,14 +354,20 @@ export async function runAssistantWithTools(
 
     if (toolUses.length === 0) {
       const reply = extractText(result.content);
-      if (!reply) {
+      if (!reply && pendingWrites.length === 0) {
         return {
           ok: false,
           status: "error",
           error: "The assistant returned an empty response. Please try again.",
+          pendingWrites,
         };
       }
-      return { ok: true, reply, status: "completed" };
+      return {
+        ok: true,
+        reply: reply || "",
+        status: "completed",
+        pendingWrites,
+      };
     }
 
     messages.push({ role: "assistant", content: result.content });
@@ -334,13 +376,29 @@ export async function runAssistantWithTools(
     for (const toolUse of toolUses) {
       try {
         if (isWriteTool(toolUse.name)) {
-          if (options?.readOnly) {
+          if (options?.readOnly || (allowedWrites && !allowedWrites.has(toolUse.name))) {
             toolResults.push({
               type: "tool_result",
               tool_use_id: toolUse.id,
               content: JSON.stringify({
                 success: false,
                 error: "Write tools are not available in this context.",
+              }),
+            });
+            continue;
+          }
+          if (options?.deferWrites) {
+            pendingWrites.push({
+              name: toolUse.name,
+              input: toolUse.input,
+            });
+            toolResults.push({
+              type: "tool_result",
+              tool_use_id: toolUse.id,
+              content: JSON.stringify({
+                success: true,
+                queued: true,
+                action: toolUse.name,
               }),
             });
             continue;
@@ -392,6 +450,7 @@ export async function runAssistantWithTools(
       status: "cap_hit_with_side_effects",
       sideEffects,
       reply: buildCapHitReplyWithSideEffects(sideEffects),
+      pendingWrites,
     };
   }
 
@@ -400,5 +459,6 @@ export async function runAssistantWithTools(
     status: "cap_hit",
     error:
       "The assistant needed too many lookups for that question. Try asking something more specific.",
+    pendingWrites,
   };
 }

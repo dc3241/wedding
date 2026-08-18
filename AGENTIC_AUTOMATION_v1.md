@@ -38,6 +38,12 @@ AUTO-03 kept its name from the conversation that spec'd it, despite the prefix m
 AGENT-01/02/03 — not worth renaming something already agreed. All four live under this one
 architecture regardless of prefix.
 
+**Shipped on disk:** AGENT-00, AGENT-01, AGENT-01a, AGENT-02, AGENT-03 (`create_agent_draft`, weekly
+`outreach_scan`, Pending-panel approve/reject). AUTO-03a (capture: `submit_inquiry` + Resend inbound
+webhook). AUTO-03b (extract / compose / approve — 10-minute `inquiry` cron, clay badge on the Leads
+kanban). AUTO-03b is CON-04-style single-shot JSON generation, not the project tool loop — there is
+no project to reason across yet. AUTO-03 is complete.
+
 ---
 
 ## 2. Core principle
@@ -77,7 +83,7 @@ don't relitigate it per-feature.
 | Tier | Automations | Destination | Approval required? |
 |---|---|---|---|
 | **Autonomous, send-to-self** | AGENT-01 | The account owner's own inbox | No — same posture as AUTO-01/02. Reaching the user who owns the data isn't a third-party risk. |
-| **Autonomous, in-app write** | AGENT-02 | A note, visible in-app, dismissible | No — reuses the existing `add_note` write tool unmodified. Visible and reversible; never leaves the app. |
+| **Autonomous, in-app write** | AGENT-02 | A note, visible in-app, dismissible | No — reuses `add_note` (optional `action_status`; AGENT-02 always passes `needs_action`). Visible and reversible; never leaves the app. |
 | **Propose-then-approve** | AGENT-03, AUTO-03 | A vendor / a prospective client — a real third party | **Yes, always.** A human clicks send. No exceptions in v1. |
 
 The line is **"does this reach someone who isn't the account holder."** A bad synthesis email

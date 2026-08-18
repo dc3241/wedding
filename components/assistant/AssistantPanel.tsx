@@ -6,6 +6,7 @@ import {
   loadAssistantMessages,
   sendAssistantMessage,
 } from "@/components/assistant/actions";
+import { PendingDraftList } from "@/components/assistant/PendingDraftList";
 import type { AgentDraftPreview, AssistantMessage } from "@/components/assistant/types";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -241,7 +242,12 @@ export function AssistantPanel({
             <EmptyState recessed className="mt-3">
               No drafts waiting for review.
             </EmptyState>
-          ) : null}
+          ) : (
+            <PendingDraftList
+              drafts={pendingDrafts}
+              connectReturnTo={`/projects/${projectId}/vendors/outreach`}
+            />
+          )}
         </section>
 
         <div

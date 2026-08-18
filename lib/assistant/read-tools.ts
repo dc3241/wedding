@@ -622,7 +622,9 @@ async function getVendors(supabase: SupabaseClient, projectId: string) {
 
   const trimmed = vendors.map((row) => ({
     id: row.id,
+    vendor_id: row.vendor.id,
     name: row.vendor.name,
+    category: row.vendor.category,
     status: row.status,
     quote: row.quoted_price,
     primary_contact: row.vendor.contact_email ?? row.vendor.website ?? null,

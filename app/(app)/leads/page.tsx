@@ -1,9 +1,13 @@
 import { redirect } from "next/navigation";
+import type { AgentDraftPreview } from "@/components/assistant/types";
 import { AddLeadForm } from "@/components/leads/AddLeadForm";
+import { InquiryIntakeCard } from "@/components/leads/InquiryIntakeCard";
 import { LeadsBoard } from "@/components/leads/LeadsBoard";
 import type { Lead, LeadStage } from "@/components/leads/types";
 import { PageHeader } from "@/components/ui/page-header";
 import { getAccountContext } from "@/lib/account-context";
+import { ensureInquirySlug } from "@/lib/inquiry/ensure-slug";
+import { inquiryInboundDomain } from "@/lib/inquiry/parse";
 import { isLeadStale, leadInactiveDays } from "@/lib/lead-staleness";
 import { getCopy } from "@/lib/venue-copy";
 import { createClient } from "@/utils/supabase/server";
@@ -23,13 +27,21 @@ export default async function LeadsPage() {
     redirect("/projects");
   }
 
-  const { data: rows } = await supabase
-    .from("leads")
-    .select(
-      "id, couple_name, contact_email, contact_phone, wedding_date, estimated_budget, venue, source, stage, notes, position, created_at, updated_at",
-    )
-    .order("position", { ascending: true })
-    .order("created_at", { ascending: true });
+  const [{ data: rows }, { data: draftRows }] = await Promise.all([
+    supabase
+      .from("leads")
+      .select(
+        "id, couple_name, contact_email, contact_phone, wedding_date, estimated_budget, venue, source, stage, notes, position, created_at, updated_at",
+      )
+      .order("position", { ascending: true })
+      .order("created_at", { ascending: true }),
+    supabase
+      .from("agent_drafts")
+      .select("id, kind, subject, body, status, target_id")
+      .eq("account_id", account.accountId)
+      .eq("kind", "inquiry_reply")
+      .in("status", ["pending", "approved"]),
+  ]);
 
   const leads: Lead[] = (rows ?? []).map((row) => {
     const stage = row.stage as LeadStage;
@@ -57,6 +69,27 @@ export default async function LeadsPage() {
     };
   });
 
+  const coupleNameById = new Map(
+    leads.map((lead) => [lead.id, lead.couple_name]),
+  );
+  const replyDraftsByLeadId: Record<string, AgentDraftPreview> = {};
+  for (const row of draftRows ?? []) {
+    replyDraftsByLeadId[row.target_id] = {
+      id: row.id,
+      kind: "inquiry_reply",
+      subject: row.subject,
+      body: row.body,
+      status: row.status === "approved" ? "approved" : "pending",
+      targetLabel: coupleNameById.get(row.target_id)?.trim() || "Inquiry",
+    };
+  }
+
+  const inquirySlug = await ensureInquirySlug(
+    supabase,
+    account.accountId,
+    account.kind,
+  );
+
   return (
     <div className="w-full">
       <div className="mb-6">
@@ -68,7 +101,18 @@ export default async function LeadsPage() {
         />
       </div>
 
-      <LeadsBoard initialLeads={leads} plan={account.plan} />
+      {inquirySlug ? (
+        <InquiryIntakeCard
+          slug={inquirySlug}
+          inboundDomain={inquiryInboundDomain()}
+        />
+      ) : null}
+
+      <LeadsBoard
+        initialLeads={leads}
+        plan={account.plan}
+        replyDraftsByLeadId={replyDraftsByLeadId}
+      />
     </div>
   );
 }

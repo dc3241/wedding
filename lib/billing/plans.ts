@@ -54,7 +54,7 @@ export const BILLING_PLANS = {
     annual: {
       priceId: process.env.STRIPE_PRICE_VENUE_ANNUAL ?? "",
       label: "Annual",
-      amountLabel: "$1,999/yr",
+      amountLabel: "$1,799/yr",
     },
   },
 } as const;

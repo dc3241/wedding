@@ -10,12 +10,17 @@
  * neither advertised nor executed.
  */
 import { NextResponse } from "next/server";
-import type { AccountKind } from "@/lib/account-context";
 import { runAssistantWithTools } from "@/lib/assistant/call-assistant";
 import {
   buildSynthesisSystemPrompt,
   SYNTHESIS_USER_TEXT,
 } from "@/lib/assistant/synthesis-prompt";
+import {
+  accountKindFromEmbed,
+  asOne,
+  loadEligibleActiveProjects,
+  type CronProjectRow,
+} from "@/lib/cron/active-projects";
 import { cronAuthorized, unauthorizedCronResponse } from "@/lib/cron/authorize";
 import { resolveAccountEmails } from "@/lib/cron/resolve-account-emails";
 import { sendEmail } from "@/lib/email/send";
@@ -30,29 +35,13 @@ const TRIGGER_KIND = "synthesis" as const;
 /** Duplicate Vercel Cron delivery window — not a weekly-dedup of facts. */
 const RETRY_WINDOW_MS = 24 * 60 * 60 * 1000;
 
-type AccountEmbed = { id: string; is_demo: boolean; kind: AccountKind };
-
-type ProjectRow = {
-  id: string;
-  name: string;
-  wedding_date: string | null;
-  created_at: string;
-  account_id: string;
-  accounts: AccountEmbed | AccountEmbed[] | null;
-};
-
 type OkLogRow = {
   project_id: string;
   summary: string | null;
 };
 
-function asOne<T>(value: T | T[] | null | undefined): T | null {
-  if (value == null) return null;
-  return Array.isArray(value) ? (value[0] ?? null) : value;
-}
-
 /** Same convention as dashboard: soonest wedding first, undated last. */
-function compareWeddingDate(a: ProjectRow, b: ProjectRow): number {
+function compareWeddingDate(a: CronProjectRow, b: CronProjectRow): number {
   if (a.wedding_date !== b.wedding_date) {
     if (a.wedding_date == null) return 1;
     if (b.wedding_date == null) return -1;
@@ -70,48 +59,6 @@ function escapeHtml(value: string): string {
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;");
-}
-
-function accountKindFromEmbed(kind: string | null | undefined): AccountKind {
-  return kind === "business" ? "business" : "personal";
-}
-
-async function loadActiveNonDemoProjects(
-  supabase: ReturnType<typeof createServiceRoleClient>,
-): Promise<ProjectRow[]> {
-  const rows: ProjectRow[] = [];
-  let from = 0;
-
-  for (;;) {
-    const to = from + PROJECT_PAGE_SIZE - 1;
-    const { data, error } = await supabase
-      .from("projects")
-      .select(
-        `
-        id,
-        name,
-        wedding_date,
-        created_at,
-        account_id,
-        accounts!inner(id, is_demo, kind)
-      `,
-      )
-      .is("archived_at", null)
-      .eq("accounts.is_demo", false)
-      .order("id", { ascending: true })
-      .range(from, to);
-
-    if (error) {
-      throw new Error(error.message);
-    }
-
-    const page = (data ?? []) as ProjectRow[];
-    rows.push(...page);
-    if (page.length < PROJECT_PAGE_SIZE) break;
-    from += PROJECT_PAGE_SIZE;
-  }
-
-  return rows;
 }
 
 async function loadOkSummariesThisWindow(
@@ -209,11 +156,7 @@ export async function GET(request: Request) {
   const windowStartIso = new Date(Date.now() - RETRY_WINDOW_MS).toISOString();
 
   try {
-    const projects = await loadActiveNonDemoProjects(supabase);
-    const eligible = projects.filter((project) => {
-      const account = asOne(project.accounts);
-      return Boolean(account) && account?.is_demo !== true;
-    });
+    const eligible = await loadEligibleActiveProjects(supabase);
 
     const okSummaryByProject = await loadOkSummariesThisWindow(
       supabase,
@@ -311,7 +254,7 @@ export async function GET(request: Request) {
     ]);
 
     let digestsSent = 0;
-    const byAccount = new Map<string, ProjectRow[]>();
+    const byAccount = new Map<string, CronProjectRow[]>();
     for (const project of eligible) {
       if (!accountsWithNewOk.has(project.account_id)) continue;
       const list = byAccount.get(project.account_id) ?? [];

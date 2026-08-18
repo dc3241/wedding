@@ -7,6 +7,7 @@ import {
   updateLead,
   updateLeadStage,
 } from "@/app/(app)/leads/actions";
+import type { AgentDraftPreview } from "@/components/assistant/types";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -28,9 +29,13 @@ const selectClasses =
 export function LeadRow({
   lead,
   onStageChange,
+  replyDraft,
+  onOpenReplyDraft,
 }: {
   lead: Lead;
   onStageChange?: (id: string, stage: LeadStage) => void;
+  replyDraft?: AgentDraftPreview | null;
+  onOpenReplyDraft?: () => void;
 }) {
   const [editing, setEditing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -286,6 +291,33 @@ export function LeadRow({
             {lead.venue ? <span>{lead.venue}</span> : null}
             {lead.source ? <span>via {lead.source}</span> : null}
           </div>
+          {replyDraft && onOpenReplyDraft ? (
+            <div className="mt-1.5">
+              <button
+                type="button"
+                onPointerDown={(event) => event.stopPropagation()}
+                onClick={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  onOpenReplyDraft();
+                }}
+                className="rounded-[var(--radius-pill)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+              >
+                <Pill
+                  variant="clay"
+                  className="gap-1.5 normal-case tracking-normal"
+                >
+                  <span
+                    className="size-1.5 shrink-0 rounded-full bg-clay"
+                    aria-hidden
+                  />
+                  {replyDraft.status === "approved"
+                    ? "Retry send"
+                    : "Reply ready"}
+                </Pill>
+              </button>
+            </div>
+          ) : null}
           {lead.isStale ? (
             <div className="mt-1.5">
               <Pill

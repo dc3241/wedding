@@ -11,6 +11,18 @@
     {
       "path": "/api/cron/agent-review",
       "schedule": "10 15 * * 1"
+    },
+    {
+      "path": "/api/cron/agent-implication-scan",
+      "schedule": "15 15 * * *"
+    },
+    {
+      "path": "/api/cron/agent-outreach-scan",
+      "schedule": "20 15 * * 1"
+    },
+    {
+      "path": "/api/cron/agent-inquiry-scan",
+      "schedule": "*/10 * * * *"
     }
   ]
 }

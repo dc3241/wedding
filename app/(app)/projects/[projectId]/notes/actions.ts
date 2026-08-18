@@ -13,16 +13,26 @@ function notesPath(projectId: string) {
 export async function addNote(
   projectId: string,
   client?: SupabaseClient,
+  actionStatus?: NoteActionStatus,
 ) {
   const supabase = await clientForWrite(client);
 
+  const row: {
+    project_id: string;
+    created_by?: null;
+    action_status?: "needs_action" | "done";
+  } = { project_id: projectId };
+
+  if (client) {
+    row.created_by = null;
+  }
+  if (actionStatus === "needs_action" || actionStatus === "done") {
+    row.action_status = actionStatus;
+  }
+
   const { data, error } = await supabase
     .from("notes")
-    .insert(
-      client
-        ? { project_id: projectId, created_by: null }
-        : { project_id: projectId },
-    )
+    .insert(row)
     .select("id")
     .single();
 
