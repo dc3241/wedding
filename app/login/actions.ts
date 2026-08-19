@@ -62,7 +62,9 @@ export async function signup(formData: FormData) {
   });
 
   if (error) {
-    redirect(`/login?error=${encodeURIComponent(error.message)}`);
+    redirect(
+      `/login?mode=signup&error=${encodeURIComponent(error.message)}`,
+    );
   }
 
   redirect("/login?message=Check your email to confirm your account.");

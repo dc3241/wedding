@@ -108,7 +108,7 @@ export function OnboardingForm() {
             type="text"
             required
             placeholder={namePlaceholder}
-            className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-zinc-500"
+            className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm"
           />
         </div>
 
@@ -123,7 +123,7 @@ export function OnboardingForm() {
               type="text"
               required
               placeholder="Sarah & James — Oct 2026"
-              className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-zinc-500"
+              className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm"
             />
           </div>
         ) : null}

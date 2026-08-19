@@ -118,7 +118,7 @@ export function TotalBudgetEditor({
         disabled={isPending}
         aria-label="Budget target"
         placeholder="0"
-        className="w-[7.5rem] rounded-[var(--radius-inner)] border border-ring bg-surface px-2.5 py-2 text-right text-[14px] font-medium tabular-nums text-ink outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-50"
+        className="w-[7.5rem] rounded-[var(--radius-inner)] border border-ring bg-surface px-2.5 py-2 text-right text-[14px] font-medium tabular-nums text-ink disabled:opacity-50"
       />
       <Button
         type="button"

@@ -124,7 +124,7 @@ export function TravelEditorFields({
                           kind: e.target.value as TravelPlaceKind,
                         })
                       }
-                      className="w-full rounded-[var(--radius-inner)] border border-ring bg-surface px-3 py-2 text-[15px] text-ink outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                      className="w-full rounded-[var(--radius-inner)] border border-ring bg-surface px-3 py-2 text-[15px] text-ink"
                     >
                       {TRAVEL_PLACE_KINDS.map((kind) => (
                         <option key={kind.value} value={kind.value}>

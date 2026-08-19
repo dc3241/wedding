@@ -8,18 +8,10 @@ import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/cn";
+import { friendlyLeadError } from "./friendly-lead-error";
 import type { Lead } from "./types";
 
-export function friendlyLeadError(message: string) {
-  if (
-    /permission denied|row-level security|violates|postgrest|postgres|pgrst|jwt/i.test(
-      message,
-    )
-  ) {
-    return "Something went wrong. Please try again.";
-  }
-  return message;
-}
+export { friendlyLeadError };
 
 function Field({
   id,

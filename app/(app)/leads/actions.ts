@@ -1,9 +1,10 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { friendlyLeadError } from "@/components/leads/friendly-lead-error";
+import { LEAD_STAGES, type LeadStage } from "@/components/leads/types";
 import { dispatchLeadAutomation } from "@/lib/automations/run";
 import { createClient } from "@/utils/supabase/server";
-import { LEAD_STAGES, type LeadStage } from "@/components/leads/types";
 
 const LEADS_PATH = "/leads";
 
@@ -44,65 +45,74 @@ function parseBudget(value: number | null | undefined) {
 export async function createLead(
   input: LeadInput,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  const coupleName = input.couple_name.trim();
-  if (!coupleName) {
-    return { ok: false, error: "Couple name is required." };
+  try {
+    const coupleName = input.couple_name.trim();
+    if (!coupleName) {
+      return { ok: false, error: "Couple name is required." };
+    }
+
+    const supabase = await createClient();
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      return { ok: false, error: "No business account found." };
+    }
+
+    const { data: membership, error: membershipError } = await supabase
+      .from("account_members")
+      .select("account_id, accounts!inner(kind)")
+      .eq("user_id", user.id)
+      .eq("accounts.kind", "business")
+      .limit(1)
+      .maybeSingle();
+
+    if (membershipError) {
+      return { ok: false, error: friendlyLeadError(membershipError.message) };
+    }
+
+    if (!membership) {
+      return { ok: false, error: "No business account found." };
+    }
+
+    const { data: created, error } = await supabase
+      .from("leads")
+      .insert({
+        account_id: membership.account_id,
+        couple_name: coupleName,
+        contact_email: trimOrNull(input.contact_email),
+        contact_phone: trimOrNull(input.contact_phone),
+        wedding_date: trimOrNull(input.wedding_date),
+        estimated_budget: parseBudget(input.estimated_budget),
+        venue: trimOrNull(input.venue),
+        source: trimOrNull(input.source),
+        notes: trimOrNull(input.notes),
+      })
+      .select("id")
+      .single();
+
+    if (error || !created) {
+      return {
+        ok: false,
+        error: friendlyLeadError(error?.message ?? "Couldn't create lead."),
+      };
+    }
+
+    await dispatchLeadAutomation({
+      accountId: membership.account_id,
+      leadId: created.id,
+      triggerKind: "lead_created",
+    });
+
+    revalidatePath(LEADS_PATH);
+    return { ok: true };
+  } catch (err) {
+    const message =
+      err instanceof Error ? err.message : "Couldn't create lead.";
+    return { ok: false, error: friendlyLeadError(message) };
   }
-
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return { ok: false, error: "No business account found." };
-  }
-
-  const { data: membership, error: membershipError } = await supabase
-    .from("account_members")
-    .select("account_id, accounts!inner(kind)")
-    .eq("user_id", user.id)
-    .eq("accounts.kind", "business")
-    .limit(1)
-    .maybeSingle();
-
-  if (membershipError) {
-    return { ok: false, error: membershipError.message };
-  }
-
-  if (!membership) {
-    return { ok: false, error: "No business account found." };
-  }
-
-  const { data: created, error } = await supabase
-    .from("leads")
-    .insert({
-      account_id: membership.account_id,
-      couple_name: coupleName,
-      contact_email: trimOrNull(input.contact_email),
-      contact_phone: trimOrNull(input.contact_phone),
-      wedding_date: trimOrNull(input.wedding_date),
-      estimated_budget: parseBudget(input.estimated_budget),
-      venue: trimOrNull(input.venue),
-      source: trimOrNull(input.source),
-      notes: trimOrNull(input.notes),
-    })
-    .select("id")
-    .single();
-
-  if (error || !created) {
-    return { ok: false, error: error?.message ?? "Couldn't create lead." };
-  }
-
-  await dispatchLeadAutomation({
-    accountId: membership.account_id,
-    leadId: created.id,
-    triggerKind: "lead_created",
-  });
-
-  revalidatePath(LEADS_PATH);
-  return { ok: true };
 }
 
 export async function updateLead(

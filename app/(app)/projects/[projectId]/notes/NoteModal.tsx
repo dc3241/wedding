@@ -112,7 +112,7 @@ export function NoteModal({
                 if (e.key === "Enter") e.currentTarget.blur();
               }}
               aria-label="Note title"
-              className="w-full bg-transparent font-display text-[19px] font-extrabold tracking-[-0.02em] text-ink outline-none placeholder:text-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+              className="w-full bg-transparent font-display text-[19px] font-extrabold tracking-[-0.02em] text-ink placeholder:text-muted"
             />
             <p className="mt-1 truncate text-[13px] text-muted">
               {note.author_email}
@@ -140,7 +140,7 @@ export function NoteModal({
               aria-label="Note body"
               rows={10}
               placeholder="Meeting notes, ideas, reminders…"
-              className="mb-0 min-h-[12rem] resize-y border-0 bg-transparent px-0 py-0 shadow-none focus:border-transparent focus:outline-none"
+              className="mb-0 min-h-[12rem] resize-y border-0 bg-transparent px-0 py-0 shadow-none"
             />
           </div>
         </div>

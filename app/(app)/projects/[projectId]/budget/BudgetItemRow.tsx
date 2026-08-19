@@ -471,7 +471,7 @@ export function BudgetItemRow({
               value={item.project_vendor_id ?? ""}
               onChange={(e) => handleVendorChange(e.target.value)}
               disabled={isPending}
-              className="h-9 max-w-full rounded-[var(--radius-inner)] border border-ring bg-surface px-2.5 text-[13px] font-medium text-ink outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-50"
+              className="h-9 max-w-full rounded-[var(--radius-inner)] border border-ring bg-surface px-2.5 text-[13px] font-medium text-ink disabled:opacity-50"
             >
               <option value="">Not linked</option>
               {projectVendors.map((vendor) => (

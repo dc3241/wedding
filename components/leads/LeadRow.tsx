@@ -20,7 +20,7 @@ import {
 } from "./types";
 
 const selectClasses =
-  "min-w-0 max-w-full flex-1 rounded-[var(--radius-inner)] border border-ring bg-surface px-2 py-1.5 text-[13px] text-ink outline-none transition-colors focus:border-accent disabled:opacity-50";
+  "min-w-0 max-w-full flex-1 rounded-[var(--radius-inner)] border border-ring bg-surface px-2 py-1.5 text-[13px] text-ink transition-colors disabled:opacity-50";
 
 export function LeadRow({
   lead,

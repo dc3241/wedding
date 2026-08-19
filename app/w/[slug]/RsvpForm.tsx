@@ -276,7 +276,7 @@ export function RsvpForm({
   const attendingReady = response !== "yes" || attendingCount >= 1;
 
   const inputClass =
-    "w-full rounded-lg border px-3 py-2.5 text-[15px] outline-none focus-visible:ring-2 focus-visible:ring-offset-1";
+    "w-full rounded-lg border px-3 py-2.5 text-[15px]";
   const inputStyle = {
     borderColor: "var(--ws-border)",
     background: "var(--ws-surface)",

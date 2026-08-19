@@ -142,7 +142,7 @@ export function RunSheetDocument({
           <select
             value={ownerFilter ?? "all"}
             onChange={(e) => onOwnerChange(e.target.value)}
-            className="rounded border border-stone bg-surface px-2.5 py-1.5 text-[13px] text-ink outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-plum"
+            className="rounded border border-stone bg-surface px-2.5 py-1.5 text-[13px] text-ink"
           >
             <option value="all">All owners</option>
             {owners.map((owner) => (

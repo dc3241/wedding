@@ -270,7 +270,7 @@ export function PlanPreviewStep({
                           onChange={(event) =>
                             updateChecklistItem(index, "phase", event.target.value)
                           }
-                          className="rounded-[var(--radius-inner)] border border-ring bg-surface px-2 py-1.5 text-sm text-ink outline-none focus:border-accent"
+                          className="rounded-[var(--radius-inner)] border border-ring bg-surface px-2 py-1.5 text-sm text-ink"
                           aria-label="Task phase"
                         >
                           {PHASE_OPTIONS.map((phase) => (

@@ -228,7 +228,7 @@ export function PaymentScheduleWell({
                 value={dueOn}
                 onChange={(e) => setDueOn(e.target.value)}
                 required
-                className="h-9 w-full rounded-[var(--radius-inner)] border border-ring bg-surface px-2.5 text-[13px] font-medium tabular-nums text-ink outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                className="h-9 w-full rounded-[var(--radius-inner)] border border-ring bg-surface px-2.5 text-[13px] font-medium tabular-nums text-ink"
               />
             </div>
             <div className="space-y-1">
@@ -245,7 +245,7 @@ export function PaymentScheduleWell({
                 value={label}
                 onChange={(e) => setLabel(e.target.value)}
                 placeholder="Deposit"
-                className="h-9 w-full rounded-[var(--radius-inner)] border border-ring bg-surface px-2.5 text-[13px] font-medium text-ink outline-none placeholder:text-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                className="h-9 w-full rounded-[var(--radius-inner)] border border-ring bg-surface px-2.5 text-[13px] font-medium text-ink placeholder:text-muted"
               />
             </div>
           </div>
@@ -423,7 +423,7 @@ export function PaymentLedgerWell({
                 value={paidOn}
                 onChange={(e) => setPaidOn(e.target.value)}
                 required
-                className="h-9 w-full rounded-[var(--radius-inner)] border border-ring bg-surface px-2.5 text-[13px] font-medium tabular-nums text-ink outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                className="h-9 w-full rounded-[var(--radius-inner)] border border-ring bg-surface px-2.5 text-[13px] font-medium tabular-nums text-ink"
               />
             </div>
             <div className="space-y-1">
@@ -440,7 +440,7 @@ export function PaymentLedgerWell({
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
                 placeholder="Deposit"
-                className="h-9 w-full rounded-[var(--radius-inner)] border border-ring bg-surface px-2.5 text-[13px] font-medium text-ink outline-none placeholder:text-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                className="h-9 w-full rounded-[var(--radius-inner)] border border-ring bg-surface px-2.5 text-[13px] font-medium text-ink placeholder:text-muted"
               />
             </div>
           </div>

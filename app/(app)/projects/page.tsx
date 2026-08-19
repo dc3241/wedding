@@ -135,7 +135,7 @@ export default async function ProjectsPage({
                 type="text"
                 required
                 placeholder="Sarah & James — Oct 2026"
-                className="w-full rounded-[var(--radius-inner)] border border-ring bg-surface px-3 py-2 text-sm text-ink outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+                className="w-full rounded-[var(--radius-inner)] border border-ring bg-surface px-3 py-2 text-sm text-ink"
               />
             </div>
             <button

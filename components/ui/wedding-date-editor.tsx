@@ -88,7 +88,7 @@ export function WeddingDateEditor({
           onChange={(e) => setValue(e.target.value)}
           disabled={isPending}
           aria-label="Wedding date"
-          className="rounded-[var(--radius-inner)] border border-ring bg-surface px-3 py-2 text-[14px] font-medium text-ink outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-50"
+          className="rounded-[var(--radius-inner)] border border-ring bg-surface px-3 py-2 text-[14px] font-medium text-ink disabled:opacity-50"
         />
         <Button
           type="button"
