@@ -64,6 +64,8 @@ export function PlannerProjectSidebar({
   const onCalendar =
     pathname === "/calendar" || pathname.startsWith("/calendar?");
   const onLeads = pathname === "/leads" || pathname.startsWith("/leads?");
+  const onAutomations =
+    pathname === "/automations" || pathname.startsWith("/automations?");
   const onVendors =
     pathname === "/vendors" || pathname.startsWith("/vendors?");
   const onContracts =
@@ -89,6 +91,9 @@ export function PlannerProjectSidebar({
           </Link>
           <Link href="/leads" className={navLinkClass(onLeads)}>
             {getCopy("sidebarLeads", plan)}
+          </Link>
+          <Link href="/automations" className={navLinkClass(onAutomations)}>
+            Automations
           </Link>
           <Link href="/vendors" className={navLinkClass(onVendors)}>
             Vendors

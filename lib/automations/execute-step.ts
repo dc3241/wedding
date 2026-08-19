@@ -3,11 +3,16 @@ import "server-only";
 import { addTask } from "@/app/(app)/projects/[projectId]/checklist/actions";
 import { addNote, updateNote } from "@/app/(app)/projects/[projectId]/notes/actions";
 import { LEAD_STAGES, type LeadStage } from "@/components/leads/types";
+import { createAgentDraft } from "@/lib/assistant/create-agent-draft";
+import {
+  formatWorkflowWeddingDate,
+  renderWorkflowEmailTokens,
+} from "@/lib/automations/render-email-tokens";
 import type { AutomationActionKind, JsonObject } from "@/lib/automations/types";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 export type StepExecution = {
-  outcome: "ok" | "error";
+  outcome: "ok" | "error" | "skipped";
   detail: string;
 };
 
@@ -127,6 +132,108 @@ async function executeCreateTask(
   return { outcome: "ok", detail: `task ${title}` };
 }
 
+function asAccountName(
+  accounts:
+    | { name: string | null }
+    | { name: string | null }[]
+    | null
+    | undefined,
+): string {
+  if (!accounts) return "";
+  const row = Array.isArray(accounts) ? accounts[0] : accounts;
+  return row?.name?.trim() ?? "";
+}
+
+async function executeSendEmail(
+  client: SupabaseClient,
+  leadId: string,
+  config: JsonObject,
+): Promise<StepExecution> {
+  const subjectTemplate = asString(config.subject);
+  const bodyTemplate = asString(config.body);
+  if (!subjectTemplate?.trim() || !bodyTemplate?.trim()) {
+    return {
+      outcome: "error",
+      detail: "send_email requires subject and body.",
+    };
+  }
+
+  const { data: lead, error: loadError } = await client
+    .from("leads")
+    .select("id, account_id, couple_name, wedding_date, accounts(name)")
+    .eq("id", leadId)
+    .maybeSingle();
+
+  if (loadError) {
+    return { outcome: "error", detail: loadError.message };
+  }
+  if (!lead) {
+    return { outcome: "error", detail: "Lead not found for send_email." };
+  }
+
+  const { data: existing, error: existingError } = await client
+    .from("agent_drafts")
+    .select("id")
+    .eq("account_id", lead.account_id)
+    .eq("kind", "workflow_email")
+    .eq("target_id", leadId)
+    .eq("status", "pending")
+    .limit(1)
+    .maybeSingle();
+
+  if (existingError) {
+    return { outcome: "error", detail: existingError.message };
+  }
+  if (existing) {
+    return {
+      outcome: "skipped",
+      detail: "pending draft already exists",
+    };
+  }
+
+  const values = {
+    couple_name: (lead.couple_name ?? "").trim(),
+    account_name: asAccountName(
+      lead.accounts as
+        | { name: string | null }
+        | { name: string | null }[]
+        | null,
+    ),
+    wedding_date: formatWorkflowWeddingDate(lead.wedding_date),
+  };
+  const subject = renderWorkflowEmailTokens(subjectTemplate, values).trim();
+  const body = renderWorkflowEmailTokens(bodyTemplate, values).trim();
+  if (!subject || !body) {
+    return {
+      outcome: "error",
+      detail: "send_email subject and body must be non-empty after tokens.",
+    };
+  }
+
+  const written = await createAgentDraft(
+    null,
+    {
+      kind: "workflow_email",
+      targetId: leadId,
+      subject,
+      body,
+    },
+    client,
+  );
+
+  if (!written.ok) {
+    if (/already exists/i.test(written.error)) {
+      return {
+        outcome: "skipped",
+        detail: "pending draft already exists",
+      };
+    }
+    return { outcome: "error", detail: written.error };
+  }
+
+  return { outcome: "ok", detail: "email drafted" };
+}
+
 export async function executeAutomationStep(
   client: SupabaseClient,
   actionKind: AutomationActionKind,
@@ -155,6 +262,15 @@ export async function executeAutomationStep(
     }
     if (actionKind === "create_task") {
       return await executeCreateTask(client, actionConfig);
+    }
+    if (actionKind === "send_email") {
+      if (targetKind !== "lead") {
+        return {
+          outcome: "error",
+          detail: "send_email only supports lead targets",
+        };
+      }
+      return await executeSendEmail(client, targetId, actionConfig);
     }
     return { outcome: "error", detail: `Unknown action_kind ${actionKind}` };
   } catch (err) {

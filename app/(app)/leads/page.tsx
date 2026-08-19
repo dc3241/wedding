@@ -1,5 +1,8 @@
 import { redirect } from "next/navigation";
-import type { AgentDraftPreview } from "@/components/assistant/types";
+import {
+  isLeadEmailDraftKind,
+  type AgentDraftPreview,
+} from "@/components/assistant/types";
 import { AddLeadForm } from "@/components/leads/AddLeadForm";
 import { InquiryIntakeCard } from "@/components/leads/InquiryIntakeCard";
 import { LeadsBoard } from "@/components/leads/LeadsBoard";
@@ -38,7 +41,7 @@ export default async function LeadsPage() {
       .from("agent_drafts")
       .select("id, kind, subject, body, status, target_id")
       .eq("account_id", account.accountId)
-      .eq("kind", "inquiry_reply")
+      .in("kind", ["inquiry_reply", "workflow_email"])
       .in("status", ["pending", "approved"]),
   ]);
 
@@ -73,9 +76,10 @@ export default async function LeadsPage() {
   );
   const replyDraftsByLeadId: Record<string, AgentDraftPreview> = {};
   for (const row of draftRows ?? []) {
+    if (!isLeadEmailDraftKind(row.kind)) continue;
     replyDraftsByLeadId[row.target_id] = {
       id: row.id,
-      kind: "inquiry_reply",
+      kind: row.kind,
       subject: row.subject,
       body: row.body,
       status: row.status === "approved" ? "approved" : "pending",

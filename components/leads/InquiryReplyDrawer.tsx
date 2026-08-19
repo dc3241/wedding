@@ -54,7 +54,9 @@ export function InquiryReplyDrawer({
               id="inquiry-reply-title"
               className="mt-1 text-[20px] font-medium text-ink"
             >
-              Inquiry reply
+              {draft.kind === "workflow_email"
+                ? "Workflow email"
+                : "Inquiry reply"}
             </h2>
             <p className="mt-1 text-[13px] text-muted">
               {coupleName
@@ -66,7 +68,11 @@ export function InquiryReplyDrawer({
             type="button"
             onClick={onClose}
             className="shrink-0 rounded-[var(--radius-inner)] border border-transparent px-2 py-1 text-[13px] text-muted hover:border-hairline hover:bg-accent-wash hover:text-ink"
-            aria-label="Close reply draft"
+            aria-label={
+              draft.kind === "workflow_email"
+                ? "Close workflow email draft"
+                : "Close reply draft"
+            }
           >
             Close
           </button>

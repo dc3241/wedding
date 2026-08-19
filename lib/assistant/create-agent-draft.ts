@@ -6,7 +6,10 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-export type AgentDraftKind = "vendor_outreach" | "inquiry_reply";
+export type AgentDraftKind =
+  | "vendor_outreach"
+  | "inquiry_reply"
+  | "workflow_email";
 
 export type CreateAgentDraftResult =
   | { ok: true; draft_id: string }
@@ -19,10 +22,17 @@ export type CreateAgentDraftInput = {
   kind?: AgentDraftKind;
 };
 
+function isLeadDraftKind(
+  kind: AgentDraftKind,
+): kind is "inquiry_reply" | "workflow_email" {
+  return kind === "inquiry_reply" || kind === "workflow_email";
+}
+
 /**
  * Insert an agent_drafts row. target_id has no FK — validation is the backstop.
  * vendor_outreach: target is vendors.id, must be tracked on projectId.
- * inquiry_reply: target is leads.id, project_id stays null.
+ * inquiry_reply / workflow_email: target is leads.id, project_id stays null.
+ * Never sends.
  */
 export async function createAgentDraft(
   projectId: string | null,
@@ -37,10 +47,9 @@ export async function createAgentDraft(
   if (!UUID_RE.test(targetId)) {
     return {
       ok: false,
-      error:
-        kind === "inquiry_reply"
-          ? "target_id must be a lead UUID."
-          : "target_id must be a vendor UUID.",
+      error: isLeadDraftKind(kind)
+        ? "target_id must be a lead UUID."
+        : "target_id must be a vendor UUID.",
     };
   }
   if (!subject) {
@@ -50,8 +59,8 @@ export async function createAgentDraft(
     return { ok: false, error: "body is required." };
   }
 
-  if (kind === "inquiry_reply") {
-    return insertInquiryReply(targetId, subject, body, client);
+  if (isLeadDraftKind(kind)) {
+    return insertLeadDraft(kind, targetId, subject, body, client);
   }
 
   if (!projectId) {
@@ -60,7 +69,8 @@ export async function createAgentDraft(
   return insertVendorOutreach(projectId, targetId, subject, body, client);
 }
 
-async function insertInquiryReply(
+async function insertLeadDraft(
+  kind: "inquiry_reply" | "workflow_email",
   leadId: string,
   subject: string,
   body: string,
@@ -84,11 +94,14 @@ async function insertInquiryReply(
   return insertDraft(supabase, {
     accountId: lead.account_id,
     projectId: null,
-    kind: "inquiry_reply",
+    kind,
     targetId: leadId,
     subject,
     body,
-    duplicateMessage: "A draft already exists for this inquiry.",
+    duplicateMessage:
+      kind === "workflow_email"
+        ? "A pending draft already exists for this lead."
+        : "A draft already exists for this inquiry.",
   });
 }
 

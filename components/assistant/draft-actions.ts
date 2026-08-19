@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { isLeadEmailDraftKind } from "@/components/assistant/types";
 import { sendOutreachMessage } from "@/lib/send-outreach";
 import { createClient } from "@/utils/supabase/server";
 
@@ -37,7 +38,7 @@ async function loadDraft(
 }
 
 function revalidateDraftSurfaces(draft: DraftRow) {
-  if (draft.kind === "inquiry_reply") {
+  if (isLeadEmailDraftKind(draft.kind)) {
     revalidatePath("/leads");
     revalidatePath(`/leads/${draft.target_id}`);
     return;
@@ -63,7 +64,7 @@ export async function approveAgentDraft(
   if (!loaded.ok) return loaded;
   const draft = loaded.draft;
 
-  if (draft.kind !== "vendor_outreach" && draft.kind !== "inquiry_reply") {
+  if (draft.kind !== "vendor_outreach" && !isLeadEmailDraftKind(draft.kind)) {
     return { ok: false, error: "This draft cannot be sent from here yet." };
   }
   if (draft.status !== "pending" && draft.status !== "approved") {
@@ -106,7 +107,7 @@ export async function approveAgentDraft(
     status: string;
   };
 
-  if (draft.kind === "inquiry_reply") {
+  if (isLeadEmailDraftKind(draft.kind)) {
     outreachInsert = {
       lead_id: draft.target_id,
       project_vendor_id: null,
