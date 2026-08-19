@@ -1,6 +1,11 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { getAccountContext } from "@/lib/account-context";
+import {
+  getAutomationTemplate,
+  isAutomationTemplateKey,
+} from "@/lib/automations/templates";
 import {
   AUTOMATION_ACTION_KINDS,
   AUTOMATION_TRIGGER_KINDS,
@@ -76,6 +81,7 @@ export async function createAutomationWorkflow(
       trigger_kind: input.trigger_kind,
       trigger_config: asConfig(input.trigger_config),
       enabled: input.enabled ?? true,
+      template_key: input.template_key ?? null,
     })
     .select("id")
     .single();
@@ -88,6 +94,82 @@ export async function createAutomationWorkflow(
   return { ok: true, id: data.id };
 }
 
+export async function toggleAutomationTemplate(
+  templateKey: string,
+  on: boolean,
+): Promise<AutomationWriteResult> {
+  if (!isAutomationTemplateKey(templateKey)) {
+    return { ok: false, error: "Unknown template." };
+  }
+
+  const template = getAutomationTemplate(templateKey);
+  if (!template) {
+    return { ok: false, error: "Unknown template." };
+  }
+
+  const supabase = await createClient();
+  const account = await getAccountContext(supabase);
+  if (!account || account.kind !== "business") {
+    return { ok: false, error: "Templates are for business accounts." };
+  }
+
+  const { data: existing, error: existingError } = await supabase
+    .from("automation_workflows")
+    .select("id, enabled")
+    .eq("account_id", account.accountId)
+    .eq("template_key", templateKey)
+    .maybeSingle();
+
+  if (existingError) {
+    return { ok: false, error: existingError.message };
+  }
+
+  if (!on) {
+    if (!existing) return { ok: true };
+    return updateAutomationWorkflow(existing.id, { enabled: false });
+  }
+
+  if (existing) {
+    if (existing.enabled) return { ok: true };
+    return updateAutomationWorkflow(existing.id, { enabled: true });
+  }
+
+  const created = await createAutomationWorkflow(account.accountId, {
+    name: template.name,
+    trigger_kind: template.trigger_kind,
+    trigger_config: template.trigger_config,
+    enabled: true,
+    template_key: template.key,
+  });
+
+  if (!created.ok) {
+    const { data: raced, error: raceError } = await supabase
+      .from("automation_workflows")
+      .select("id, enabled")
+      .eq("account_id", account.accountId)
+      .eq("template_key", templateKey)
+      .maybeSingle();
+    if (raceError) return { ok: false, error: raceError.message };
+    if (raced) {
+      if (raced.enabled) return { ok: true };
+      return updateAutomationWorkflow(raced.id, { enabled: true });
+    }
+    return created;
+  }
+
+  for (const [index, step] of template.steps.entries()) {
+    const added = await addAutomationStep(created.id, {
+      ...step,
+      position: index,
+    });
+    if (!added.ok) {
+      return { ok: false, error: added.error };
+    }
+  }
+
+  return { ok: true };
+}
+
 export async function listAutomationWorkflows(
   accountId: string,
 ): Promise<AutomationWorkflowListItem[]> {
@@ -95,7 +177,7 @@ export async function listAutomationWorkflows(
   const { data, error } = await supabase
     .from("automation_workflows")
     .select(
-      "id, name, trigger_kind, trigger_config, enabled, updated_at, automation_steps(count), automation_runs(count)",
+      "id, name, trigger_kind, trigger_config, enabled, template_key, updated_at, automation_steps(count), automation_runs(count)",
     )
     .eq("account_id", accountId)
     .order("updated_at", { ascending: false });
@@ -110,6 +192,8 @@ export async function listAutomationWorkflows(
     trigger_kind: row.trigger_kind,
     trigger_config: asJsonObject(row.trigger_config),
     enabled: Boolean(row.enabled),
+    template_key:
+      typeof row.template_key === "string" ? row.template_key : null,
     updated_at: row.updated_at,
     step_count: nestedCount(
       row.automation_steps as { count: number }[] | { count: number } | null,

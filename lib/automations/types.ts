@@ -42,6 +42,7 @@ export type CreateAutomationWorkflowInput = {
   trigger_kind: AutomationTriggerKind;
   trigger_config?: JsonObject;
   enabled?: boolean;
+  template_key?: string | null;
 };
 
 export type UpdateAutomationWorkflowFields = {
@@ -110,6 +111,7 @@ export type AutomationWorkflowListItem = {
   trigger_kind: string;
   trigger_config: JsonObject;
   enabled: boolean;
+  template_key: string | null;
   updated_at: string;
   step_count: number;
   run_count: number;

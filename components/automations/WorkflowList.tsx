@@ -59,7 +59,7 @@ export function WorkflowList({
   if (workflows.length === 0) {
     return (
       <EmptyState>
-        No workflows yet. Create one to run steps when a lead changes stage.
+        No custom workflows yet. Use a template above, or create your own.
       </EmptyState>
     );
   }
