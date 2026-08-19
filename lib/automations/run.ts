@@ -9,12 +9,15 @@ import type {
 import {
   mintUnattendedWriteSession,
   resolveUnattendedActorUserId,
+  type UnattendedWriteSession,
 } from "@/lib/assistant/unattended-write-session";
 import { createServiceRoleClient } from "@/utils/supabase/service-role";
 import { revalidatePath } from "next/cache";
 
 const LEADS_PATH = "/leads";
 const DAY_MS = 24 * 60 * 60 * 1000;
+/** Match AUTO-03b's per-invocation cap (inquiry scan uses 8; delay resume is cheaper). */
+export const AUTOMATION_RUNS_PER_INVOCATION = 20;
 
 export type LeadAutomationEvent = {
   accountId: string;
@@ -26,6 +29,8 @@ export type LeadAutomationEvent = {
   fromStage?: string | null;
   toStage?: string | null;
 };
+
+type AdminClient = ReturnType<typeof createServiceRoleClient>;
 
 type WorkflowRow = {
   id: string;
@@ -41,6 +46,26 @@ type StepRow = {
   action_kind: string;
   action_config: JsonObject | null;
   delay_days: number;
+};
+
+type RunRow = {
+  id: string;
+  workflow_id: string;
+  account_id: string;
+  target_kind: "lead" | "project";
+  target_id: string;
+  current_step_position: number | null;
+};
+
+export type AdvanceOutcome = "completed" | "pending" | "failed";
+
+export type DueDispatchResult = {
+  scanned: number;
+  resumed: number;
+  completed: number;
+  halted: number;
+  failed: number;
+  errors: string[];
 };
 
 function asConfig(value: JsonObject | null | undefined): JsonObject {
@@ -65,7 +90,7 @@ function triggerMatches(
 }
 
 async function writeRunLog(
-  admin: ReturnType<typeof createServiceRoleClient>,
+  admin: AdminClient,
   runId: string,
   stepId: string | null,
   outcome: "ok" | "error" | "skipped",
@@ -83,8 +108,181 @@ async function writeRunLog(
   }
 }
 
+function delayDueAt(delayDays: number): string {
+  return new Date(Date.now() + delayDays * DAY_MS).toISOString();
+}
+
+/**
+ * Walk steps for a run.
+ *
+ * current_step_position:
+ *   - After a successful execute: the step just completed.
+ *   - On delay halt: the delayed step that has NOT run yet (next to run).
+ *
+ * mode "start": honor delay_days on every step, including the first.
+ * mode "resume": the step at current_step_position is due (delay already
+ * elapsed) — execute it; honor delay_days on later steps only.
+ */
+export async function advanceAutomationRun(
+  admin: AdminClient,
+  run: RunRow,
+  mode: "start" | "resume",
+): Promise<AdvanceOutcome> {
+  try {
+    const { data: stepRows, error: stepsError } = await admin
+      .from("automation_steps")
+      .select("id, position, action_kind, action_config, delay_days")
+      .eq("workflow_id", run.workflow_id)
+      .order("position", { ascending: true });
+
+    if (stepsError) {
+      throw new Error(stepsError.message);
+    }
+
+    const steps = (stepRows ?? []) as StepRow[];
+    if (steps.length === 0) {
+      await admin
+        .from("automation_runs")
+        .update({
+          status: "completed",
+          completed_at: new Date().toISOString(),
+          next_due_at: null,
+        })
+        .eq("id", run.id);
+      return "completed";
+    }
+
+    const resumeFrom =
+      mode === "resume" ? (run.current_step_position ?? 0) : Number.NEGATIVE_INFINITY;
+    const remaining = steps.filter((step) => step.position >= resumeFrom);
+
+    if (remaining.length === 0) {
+      await admin
+        .from("automation_runs")
+        .update({
+          status: "completed",
+          completed_at: new Date().toISOString(),
+          current_step_position: steps[steps.length - 1].position,
+          next_due_at: null,
+        })
+        .eq("id", run.id);
+      return "completed";
+    }
+
+    if (mode === "resume" && run.target_kind === "lead") {
+      const { data: lead, error: leadError } = await admin
+        .from("leads")
+        .select("id")
+        .eq("id", run.target_id)
+        .maybeSingle();
+      if (leadError) {
+        throw new Error(leadError.message);
+      }
+      if (!lead) {
+        await writeRunLog(
+          admin,
+          run.id,
+          null,
+          "error",
+          "Lead no longer exists.",
+        );
+        await admin
+          .from("automation_runs")
+          .update({
+            status: "failed",
+            completed_at: new Date().toISOString(),
+            next_due_at: null,
+          })
+          .eq("id", run.id);
+        return "failed";
+      }
+    }
+
+    let session: UnattendedWriteSession | null = null;
+    async function writeClient() {
+      if (!session) {
+        const userId = await resolveUnattendedActorUserId(
+          run.account_id,
+          admin,
+        );
+        session = await mintUnattendedWriteSession(userId);
+      }
+      return session.client;
+    }
+
+    let firstRemaining = true;
+    for (const step of remaining) {
+      const delayAlreadyElapsed = mode === "resume" && firstRemaining;
+      firstRemaining = false;
+
+      if (step.delay_days > 0 && !delayAlreadyElapsed) {
+        await admin
+          .from("automation_runs")
+          .update({
+            status: "pending",
+            current_step_position: step.position,
+            next_due_at: delayDueAt(step.delay_days),
+          })
+          .eq("id", run.id);
+        return "pending";
+      }
+
+      const result = await executeAutomationStep(
+        await writeClient(),
+        step.action_kind as AutomationActionKind,
+        asConfig(step.action_config),
+        run.target_kind,
+        run.target_id,
+      );
+
+      await writeRunLog(admin, run.id, step.id, result.outcome, result.detail);
+
+      if (result.outcome === "error") {
+        await admin
+          .from("automation_runs")
+          .update({
+            status: "failed",
+            current_step_position: step.position,
+            completed_at: new Date().toISOString(),
+            next_due_at: null,
+          })
+          .eq("id", run.id);
+        return "failed";
+      }
+
+      await admin
+        .from("automation_runs")
+        .update({ current_step_position: step.position, next_due_at: null })
+        .eq("id", run.id);
+    }
+
+    await admin
+      .from("automation_runs")
+      .update({
+        status: "completed",
+        completed_at: new Date().toISOString(),
+        current_step_position: remaining[remaining.length - 1].position,
+        next_due_at: null,
+      })
+      .eq("id", run.id);
+    return "completed";
+  } catch (err) {
+    const detail = err instanceof Error ? err.message : "Run failed.";
+    await writeRunLog(admin, run.id, null, "error", detail);
+    await admin
+      .from("automation_runs")
+      .update({
+        status: "failed",
+        completed_at: new Date().toISOString(),
+        next_due_at: null,
+      })
+      .eq("id", run.id);
+    return "failed";
+  }
+}
+
 async function runWorkflow(
-  admin: ReturnType<typeof createServiceRoleClient>,
+  admin: AdminClient,
   workflow: WorkflowRow,
   event: LeadAutomationEvent,
 ) {
@@ -107,97 +305,91 @@ async function runWorkflow(
     throw new Error(runError?.message ?? "Couldn't create automation run.");
   }
 
-  const runId = run.id as string;
+  await advanceAutomationRun(
+    admin,
+    {
+      id: run.id as string,
+      workflow_id: workflow.id,
+      account_id: event.accountId,
+      target_kind: "lead",
+      target_id: event.leadId,
+      current_step_position: 0,
+    },
+    "start",
+  );
+}
 
-  try {
-    const { data: stepRows, error: stepsError } = await admin
-      .from("automation_steps")
-      .select("id, position, action_kind, action_config, delay_days")
-      .eq("workflow_id", workflow.id)
-      .order("position", { ascending: true });
+/**
+ * Resume pending runs whose delay has elapsed.
+ * Safe no-op when nothing is due. One failed target does not abort the batch.
+ */
+export async function dispatchDueAutomationRuns(
+  admin: AdminClient = createServiceRoleClient(),
+): Promise<DueDispatchResult> {
+  const nowIso = new Date().toISOString();
+  const { data, error } = await admin
+    .from("automation_runs")
+    .select(
+      "id, workflow_id, account_id, target_kind, target_id, current_step_position",
+    )
+    .eq("status", "pending")
+    .lte("next_due_at", nowIso)
+    .order("next_due_at", { ascending: true })
+    .limit(AUTOMATION_RUNS_PER_INVOCATION);
 
-    if (stepsError) {
-      throw new Error(stepsError.message);
-    }
+  if (error) {
+    throw new Error(error.message);
+  }
 
-    const steps = (stepRows ?? []) as StepRow[];
-    if (steps.length === 0) {
+  const due = (data ?? []) as RunRow[];
+  const result: DueDispatchResult = {
+    scanned: due.length,
+    resumed: 0,
+    completed: 0,
+    halted: 0,
+    failed: 0,
+    errors: [],
+  };
+
+  for (const run of due) {
+    try {
+      const { data: claimed, error: claimError } = await admin
+        .from("automation_runs")
+        .update({ status: "running" })
+        .eq("id", run.id)
+        .eq("status", "pending")
+        .select("id")
+        .maybeSingle();
+
+      if (claimError) {
+        throw new Error(claimError.message);
+      }
+      if (!claimed) {
+        continue;
+      }
+
+      result.resumed += 1;
+      const outcome = await advanceAutomationRun(admin, run, "resume");
+      if (outcome === "completed") result.completed += 1;
+      else if (outcome === "pending") result.halted += 1;
+      else result.failed += 1;
+    } catch (err) {
+      const detail = err instanceof Error ? err.message : "Dispatch failed.";
+      result.failed += 1;
+      result.errors.push(`run ${run.id}: ${detail}`);
+      await writeRunLog(admin, run.id, null, "error", detail);
       await admin
         .from("automation_runs")
         .update({
-          status: "completed",
+          status: "failed",
           completed_at: new Date().toISOString(),
+          next_due_at: null,
         })
-        .eq("id", runId);
-      return;
+        .eq("id", run.id);
     }
-
-    const userId = await resolveUnattendedActorUserId(event.accountId, admin);
-    const session = await mintUnattendedWriteSession(userId);
-
-    for (const step of steps) {
-      if (step.delay_days > 0) {
-        const nextDue = new Date(
-          Date.now() + step.delay_days * DAY_MS,
-        ).toISOString();
-        await admin
-          .from("automation_runs")
-          .update({
-            status: "pending",
-            current_step_position: step.position,
-            next_due_at: nextDue,
-          })
-          .eq("id", runId);
-        return;
-      }
-
-      const result = await executeAutomationStep(
-        session.client,
-        step.action_kind as AutomationActionKind,
-        asConfig(step.action_config),
-        "lead",
-        event.leadId,
-      );
-
-      await writeRunLog(admin, runId, step.id, result.outcome, result.detail);
-
-      if (result.outcome === "error") {
-        await admin
-          .from("automation_runs")
-          .update({
-            status: "failed",
-            current_step_position: step.position,
-            completed_at: new Date().toISOString(),
-          })
-          .eq("id", runId);
-        return;
-      }
-
-      await admin
-        .from("automation_runs")
-        .update({ current_step_position: step.position })
-        .eq("id", runId);
-    }
-
-    await admin
-      .from("automation_runs")
-      .update({
-        status: "completed",
-        completed_at: new Date().toISOString(),
-        current_step_position: steps[steps.length - 1].position,
-      })
-      .eq("id", runId);
-  } catch (err) {
-    const detail = err instanceof Error ? err.message : "Run failed.";
-    await writeRunLog(admin, runId, null, "error", detail);
-    await admin
-      .from("automation_runs")
-      .update({
-        status: "failed",
-        completed_at: new Date().toISOString(),
-      })
-      .eq("id", runId);
   }
+
+  return result;
 }
 
 /**

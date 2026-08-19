@@ -165,11 +165,17 @@ export function LeadsBoard({
   const [activeId, setActiveId] = useState<string | null>(null);
   const [reviewLeadId, setReviewLeadId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const columnsRef = useRef(columns);
   const snapshotRef = useRef<LeadColumns | null>(null);
   const dragSourceStageRef = useRef<LeadStage | null>(null);
 
+  function replaceColumns(next: LeadColumns) {
+    columnsRef.current = next;
+    setColumns(next);
+  }
+
   useEffect(() => {
-    setColumns(groupLeadsByStage(initialLeads));
+    replaceColumns(groupLeadsByStage(initialLeads));
   }, [initialLeads]);
 
   useEffect(() => {
@@ -202,9 +208,20 @@ export function LeadsBoard({
     const batch = buildReorderBatch(nextColumns, affectedStages);
     if (batch.length === 0) return;
 
+    const snapshotBatch = buildReorderBatch(snapshot, affectedStages);
+    const unchanged =
+      batch.length === snapshotBatch.length &&
+      batch.every(
+        (item, index) =>
+          item.id === snapshotBatch[index]?.id &&
+          item.stage === snapshotBatch[index]?.stage &&
+          item.position === snapshotBatch[index]?.position,
+      );
+    if (unchanged) return;
+
     const result = await reorderLeads(batch);
     if (!result.ok) {
-      setColumns(snapshot);
+      replaceColumns(snapshot);
       setError(result.error);
     }
   }
@@ -212,9 +229,12 @@ export function LeadsBoard({
   function handleDragStart(event: DragStartEvent) {
     setError(null);
     snapshotRef.current = groupLeadsByStage(
-      LEAD_STAGES.flatMap((stage) => columns[stage]),
+      LEAD_STAGES.flatMap((stage) => columnsRef.current[stage]),
     );
-    dragSourceStageRef.current = findLeadContainer(String(event.active.id), columns);
+    dragSourceStageRef.current = findLeadContainer(
+      String(event.active.id),
+      columnsRef.current,
+    );
     setActiveId(String(event.active.id));
   }
 
@@ -222,27 +242,29 @@ export function LeadsBoard({
     const { active, over } = event;
     if (!over) return;
 
-    const activeContainer = findLeadContainer(String(active.id), columns);
-    const overContainer = findLeadContainer(String(over.id), columns);
+    const current = columnsRef.current;
+    const activeId = String(active.id);
+    const overId = String(over.id);
+    const activeContainer = findLeadContainer(activeId, current);
+    const overContainer = findLeadContainer(overId, current);
 
     if (!activeContainer || !overContainer || activeContainer === overContainer) {
       return;
     }
 
-    setColumns((prev) => {
-      const overItems = prev[overContainer];
-      const overIndex = overItems.findIndex((lead) => lead.id === over.id);
-      const insertIndex = overIndex >= 0 ? overIndex : overItems.length;
+    const overItems = current[overContainer];
+    const overIndex = overItems.findIndex((lead) => lead.id === overId);
+    const insertIndex = overIndex >= 0 ? overIndex : overItems.length;
+    const moved = moveLeadBetweenStages(
+      current,
+      activeId,
+      overContainer,
+      insertIndex,
+    );
 
-      const moved = moveLeadBetweenStages(
-        prev,
-        String(active.id),
-        overContainer,
-        insertIndex,
-      );
-
-      return moved?.next ?? prev;
-    });
+    if (moved) {
+      replaceColumns(moved.next);
+    }
   }
 
   async function handleDragEnd(event: DragEndEvent) {
@@ -257,65 +279,62 @@ export function LeadsBoard({
     if (!snapshot) return;
 
     if (!over) {
-      setColumns(snapshot);
+      replaceColumns(snapshot);
       return;
     }
 
     const activeLeadId = String(active.id);
     const overLeadId = String(over.id);
-    const activeContainer = findLeadContainer(activeLeadId, snapshot);
-    const overContainer = LEAD_STAGES.includes(overLeadId as LeadStage)
-      ? (overLeadId as LeadStage)
-      : findLeadContainer(overLeadId, snapshot);
+    const current = columnsRef.current;
+    const activeContainer = findLeadContainer(activeLeadId, current);
+    const overContainer = findLeadContainer(overLeadId, current);
 
     if (!activeContainer || !overContainer) {
-      setColumns(snapshot);
+      replaceColumns(snapshot);
       return;
     }
 
-    let nextColumns: LeadColumns;
+    let nextColumns = current;
 
-    if (activeContainer === overContainer) {
+    if (activeContainer !== overContainer) {
+      const overIndex = current[overContainer].findIndex(
+        (lead) => lead.id === overLeadId,
+      );
+      const insertIndex =
+        overIndex >= 0 ? overIndex : current[overContainer].length;
+      const moved = moveLeadBetweenStages(
+        current,
+        activeLeadId,
+        overContainer,
+        insertIndex,
+      );
+
+      if (!moved) {
+        replaceColumns(snapshot);
+        return;
+      }
+
+      nextColumns = moved.next;
+      replaceColumns(nextColumns);
+    } else if (activeLeadId !== overLeadId) {
       const reordered = reorderWithinStage(
-        snapshot,
+        current,
         activeContainer,
         activeLeadId,
         overLeadId,
       );
 
-      if (!reordered) {
-        setColumns(snapshot);
-        return;
+      if (reordered) {
+        nextColumns = reordered;
+        replaceColumns(nextColumns);
       }
-
-      nextColumns = reordered;
-      setColumns(nextColumns);
-      await persistColumns(nextColumns, [activeContainer], snapshot);
-      return;
     }
 
-    const overIndex = snapshot[overContainer].findIndex(
-      (lead) => lead.id === overLeadId,
-    );
-    const insertIndex = overIndex >= 0 ? overIndex : snapshot[overContainer].length;
-    const moved = moveLeadBetweenStages(
-      snapshot,
-      activeLeadId,
-      overContainer,
-      insertIndex,
-    );
-
-    if (!moved) {
-      setColumns(snapshot);
-      return;
-    }
-
-    nextColumns = moved.next;
-    setColumns(nextColumns);
-
+    const destStage =
+      findLeadContainer(activeLeadId, nextColumns) ?? overContainer;
     const affectedStages = [
       ...new Set(
-        [sourceStage, overContainer].filter(
+        [sourceStage, destStage].filter(
           (stage): stage is LeadStage => stage !== null,
         ),
       ),
@@ -326,7 +345,7 @@ export function LeadsBoard({
 
   function handleDragCancel() {
     if (snapshotRef.current) {
-      setColumns(snapshotRef.current);
+      replaceColumns(snapshotRef.current);
     }
     setActiveId(null);
     snapshotRef.current = null;
@@ -334,19 +353,20 @@ export function LeadsBoard({
   }
 
   async function handleStageChange(id: string, newStage: LeadStage) {
+    const current = columnsRef.current;
     const snapshot = groupLeadsByStage(
-      LEAD_STAGES.flatMap((stage) => columns[stage]),
+      LEAD_STAGES.flatMap((stage) => current[stage]),
     );
-    const sourceStage = findLeadContainer(id, columns);
+    const sourceStage = findLeadContainer(id, current);
 
     if (!sourceStage || sourceStage === newStage) return;
 
     setError(null);
 
-    const moved = moveLeadBetweenStages(columns, id, newStage);
+    const moved = moveLeadBetweenStages(current, id, newStage);
     if (!moved) return;
 
-    setColumns(moved.next);
+    replaceColumns(moved.next);
     await persistColumns(moved.next, [sourceStage, newStage], snapshot);
   }
 
