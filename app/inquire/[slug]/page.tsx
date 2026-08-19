@@ -1,9 +1,13 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { InquireForm } from "@/app/inquire/[slug]/InquireForm";
+import { AccountBrandMark } from "@/components/branding/account-brand-mark";
 import { Card } from "@/components/ui/card";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { Wordmark } from "@/components/ui/topbar";
+import { brandAccentStyle } from "@/lib/branding/accent-style";
+import type { ProjectBranding } from "@/lib/branding/types";
+import { getInquiryBranding } from "@/lib/inquiry/get-branding";
 import { isInquirySlug } from "@/lib/inquiry/parse";
 
 export const metadata: Metadata = {
@@ -13,16 +17,38 @@ export const metadata: Metadata = {
 
 export const dynamic = "force-dynamic";
 
-function InquireShell({ children }: { children: React.ReactNode }) {
+function InquireShell({
+  children,
+  branding = null,
+}: {
+  children: React.ReactNode;
+  branding?: ProjectBranding | null;
+}) {
+  const whiteLabeled = Boolean(branding);
+
   return (
-    <div className="flex min-h-full flex-col bg-canvas text-ink">
+    <div
+      className="flex min-h-full flex-col bg-canvas text-ink"
+      style={brandAccentStyle(branding)}
+    >
       <header className="border-b border-hairline px-6 py-[18px] md:px-8">
-        <Link href="/" className="inline-block no-underline">
-          <Wordmark />
-        </Link>
+        {whiteLabeled && branding ? (
+          <AccountBrandMark branding={branding} />
+        ) : (
+          <Link href="/" className="inline-block no-underline">
+            <Wordmark />
+          </Link>
+        )}
       </header>
       <div className="mx-auto flex w-full max-w-[760px] flex-1 flex-col px-6 py-12 md:px-8">
         {children}
+        {whiteLabeled ? (
+          <p className="mt-auto pt-10 text-center text-[13px] text-muted">
+            <Link href="/" className="text-muted no-underline hover:text-ink">
+              Powered by First Look
+            </Link>
+          </p>
+        ) : null}
       </div>
     </div>
   );
@@ -44,8 +70,18 @@ export default async function InquirePage({
     );
   }
 
+  const result = await getInquiryBranding(slug);
+
+  if (!result.accountFound) {
+    return (
+      <InquireShell>
+        <InvalidLink />
+      </InquireShell>
+    );
+  }
+
   return (
-    <InquireShell>
+    <InquireShell branding={result.branding}>
       <div className="rounded-[28px] bg-deep px-8 py-10 text-center shadow-[0_18px_44px_-14px_rgba(61,36,48,0.45)]">
         <p className="text-[12px] font-semibold uppercase tracking-[0.09em] text-[var(--deep-eyebrow)]">
           Inquiry

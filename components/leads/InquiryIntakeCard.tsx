@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Eyebrow } from "@/components/ui/eyebrow";
 
+const INQUIRE_ORIGIN = "https://www.usefirstlook.app";
+
 function CopyRow({ label, value }: { label: string; value: string }) {
   const [copied, setCopied] = useState(false);
 
@@ -43,13 +45,7 @@ function CopyRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-export function InquiryIntakeCard({
-  slug,
-  inboundDomain,
-}: {
-  slug: string;
-  inboundDomain: string | null;
-}) {
+export function InquiryIntakeCard({ slug }: { slug: string }) {
   const [origin, setOrigin] = useState<string | null>(null);
 
   useEffect(() => {
@@ -57,25 +53,18 @@ export function InquiryIntakeCard({
   }, []);
 
   const formUrl = origin ? `${origin}/inquire/${slug}` : `/inquire/${slug}`;
-  const inboundAddress = inboundDomain ? `${slug}@${inboundDomain}` : null;
+  const embedSnippet = `<iframe src="${INQUIRE_ORIGIN}/inquire/${slug}" width="100%" height="720" style="border:0;" title="Inquiry form"></iframe>`;
 
   return (
     <Card className="mb-6 p-5">
       <Eyebrow>Inquiry intake</Eyebrow>
       <p className="mt-2 text-[15px] font-medium text-muted">
-        Share the form link, or have couples email the inbound address. Both
-        land here as a new inquiry — nothing sends until you approve a reply.
+        Share the form link, or embed the form on your site. Both land here as
+        a new inquiry — nothing sends until you approve a reply.
       </p>
       <div className="mt-4 space-y-4">
         <CopyRow label="Form link" value={formUrl} />
-        {inboundAddress ? (
-          <CopyRow label="Inbound email" value={inboundAddress} />
-        ) : (
-          <p className="text-[13px] text-muted">
-            Inbound email is not live yet — the receiving domain still needs
-            DNS in Resend.
-          </p>
-        )}
+        <CopyRow label="Embed on your site" value={embedSnippet} />
       </div>
     </Card>
   );

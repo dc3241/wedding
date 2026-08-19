@@ -27,8 +27,8 @@ export default async function BrandingPage() {
   const shellClass = shellLayoutClass(account.kind, false, "reading");
   const isVenue = row?.plan === "venue";
   const description = isVenue
-    ? "Show your logo, name, and accent color across your planner dashboard and to invited couples."
-    : "Show invited couples and collaborators your logo, name, and accent color inside the app. Your planner chrome stays First Look.";
+    ? "Show your logo, name, and accent color across your planner dashboard, to invited couples, and on the public inquiry embed."
+    : "Show invited couples and collaborators your logo, name, and accent color inside the app and on the public inquiry embed. Your planner chrome stays First Look.";
 
   return (
     <div className={shellClass}>

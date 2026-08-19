@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { dispatchLeadAutomation } from "@/lib/automations/run";
 import { createClient } from "@/utils/supabase/server";
 import { LEAD_STAGES, type LeadStage } from "@/components/leads/types";
 
@@ -74,21 +75,31 @@ export async function createLead(
     return { ok: false, error: "No business account found." };
   }
 
-  const { error } = await supabase.from("leads").insert({
-    account_id: membership.account_id,
-    couple_name: coupleName,
-    contact_email: trimOrNull(input.contact_email),
-    contact_phone: trimOrNull(input.contact_phone),
-    wedding_date: trimOrNull(input.wedding_date),
-    estimated_budget: parseBudget(input.estimated_budget),
-    venue: trimOrNull(input.venue),
-    source: trimOrNull(input.source),
-    notes: trimOrNull(input.notes),
-  });
+  const { data: created, error } = await supabase
+    .from("leads")
+    .insert({
+      account_id: membership.account_id,
+      couple_name: coupleName,
+      contact_email: trimOrNull(input.contact_email),
+      contact_phone: trimOrNull(input.contact_phone),
+      wedding_date: trimOrNull(input.wedding_date),
+      estimated_budget: parseBudget(input.estimated_budget),
+      venue: trimOrNull(input.venue),
+      source: trimOrNull(input.source),
+      notes: trimOrNull(input.notes),
+    })
+    .select("id")
+    .single();
 
-  if (error) {
-    return { ok: false, error: error.message };
+  if (error || !created) {
+    return { ok: false, error: error?.message ?? "Couldn't create lead." };
   }
+
+  await dispatchLeadAutomation({
+    accountId: membership.account_id,
+    leadId: created.id,
+    triggerKind: "lead_created",
+  });
 
   revalidatePath(LEADS_PATH);
   return { ok: true };
@@ -153,6 +164,19 @@ export async function updateLeadStage(
 
   const supabase = await createClient();
 
+  const { data: before, error: loadError } = await supabase
+    .from("leads")
+    .select("account_id, stage")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (loadError) {
+    return { ok: false, error: loadError.message };
+  }
+  if (!before) {
+    return { ok: false, error: "Lead not found." };
+  }
+
   const { error } = await supabase
     .from("leads")
     .update({ stage, updated_at: new Date().toISOString() })
@@ -160,6 +184,16 @@ export async function updateLeadStage(
 
   if (error) {
     return { ok: false, error: error.message };
+  }
+
+  if (before.stage !== stage) {
+    await dispatchLeadAutomation({
+      accountId: before.account_id,
+      leadId: id,
+      triggerKind: "lead_stage_changed",
+      fromStage: before.stage,
+      toStage: stage,
+    });
   }
 
   revalidatePath(LEADS_PATH);
@@ -196,8 +230,28 @@ export async function reorderLeads(
     }
   }
 
+  if (items.length === 0) {
+    return { ok: true };
+  }
+
   const supabase = await createClient();
   const updatedAt = new Date().toISOString();
+
+  const { data: existingRows, error: loadError } = await supabase
+    .from("leads")
+    .select("id, account_id, stage")
+    .in(
+      "id",
+      items.map((item) => item.id),
+    );
+
+  if (loadError) {
+    return { ok: false, error: loadError.message };
+  }
+
+  const beforeById = new Map(
+    (existingRows ?? []).map((row) => [row.id as string, row]),
+  );
 
   for (const item of items) {
     const { error } = await supabase
@@ -212,6 +266,21 @@ export async function reorderLeads(
     if (error) {
       return { ok: false, error: error.message };
     }
+  }
+
+  const dispatched = new Set<string>();
+  for (const item of items) {
+    const before = beforeById.get(item.id);
+    if (!before || before.stage === item.stage) continue;
+    if (dispatched.has(item.id)) continue;
+    dispatched.add(item.id);
+    await dispatchLeadAutomation({
+      accountId: before.account_id,
+      leadId: item.id,
+      triggerKind: "lead_stage_changed",
+      fromStage: before.stage,
+      toStage: item.stage,
+    });
   }
 
   revalidatePath(LEADS_PATH);

@@ -7,7 +7,6 @@ import type { Lead, LeadStage } from "@/components/leads/types";
 import { PageHeader } from "@/components/ui/page-header";
 import { getAccountContext } from "@/lib/account-context";
 import { ensureInquirySlug } from "@/lib/inquiry/ensure-slug";
-import { inquiryInboundDomain } from "@/lib/inquiry/parse";
 import { isLeadStale, leadInactiveDays } from "@/lib/lead-staleness";
 import { getCopy } from "@/lib/venue-copy";
 import { createClient } from "@/utils/supabase/server";
@@ -107,10 +106,7 @@ export default async function LeadsPage() {
       </div>
 
       {inquirySlug ? (
-        <InquiryIntakeCard
-          slug={inquirySlug}
-          inboundDomain={inquiryInboundDomain()}
-        />
+        <InquiryIntakeCard slug={inquirySlug} />
       ) : null}
 
       <LeadsBoard

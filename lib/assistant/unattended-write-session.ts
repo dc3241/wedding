@@ -64,7 +64,8 @@ export type UnattendedWriteSession = {
 
 /**
  * Short-lived authenticated client for one unattended write.
- * Not a general-purpose impersonation helper — agent writes only.
+ * Not a general-purpose impersonation helper — agent and
+ * automation-engine writes only.
  *
  * Signs an HS256 user JWT with SUPABASE_JWT_SECRET (Project Settings → API).
  * Does not call generateLink / verifyOtp — no email, no auth.sessions row,

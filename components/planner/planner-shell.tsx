@@ -1,24 +1,15 @@
 "use client";
 
+import { AccountBrandMark } from "@/components/branding/account-brand-mark";
 import { PlannerProjectSidebar } from "@/components/planner/planner-project-sidebar";
 import type { SidebarProject } from "@/components/planner/planner-project-sidebar";
 import { Wordmark } from "@/components/ui/topbar";
-import {
-  BRAND_ACCENT_HEX,
-  DEFAULT_BRAND_NAME,
-  type ProjectBranding,
-} from "@/lib/branding/types";
+import { brandAccentStyle } from "@/lib/branding/accent-style";
+import type { ProjectBranding } from "@/lib/branding/types";
 import { cn } from "@/lib/cn";
 import { acquireScrollLock, releaseScrollLock } from "@/lib/scroll-lock";
 import { usePathname } from "next/navigation";
-import {
-  useEffect,
-  useId,
-  useRef,
-  useState,
-  type CSSProperties,
-  type ReactNode,
-} from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import type { AccountPlan } from "@/lib/account-context";
 
 function MenuIcon() {
@@ -37,30 +28,6 @@ function MenuIcon() {
   );
 }
 
-function BrandMark({ branding }: { branding: ProjectBranding }) {
-  const name = branding.brandName?.trim() || DEFAULT_BRAND_NAME;
-
-  return (
-    <div className="flex min-w-0 items-center gap-3">
-      {branding.brandLogoUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element -- public brand-media URL
-        <img
-          src={branding.brandLogoUrl}
-          alt={name}
-          className="h-7 w-auto max-w-[180px] object-contain"
-        />
-      ) : (
-        <Wordmark />
-      )}
-      {branding.brandName?.trim() ? (
-        <span className="truncate text-[15px] font-semibold tracking-[-0.01em] text-ink">
-          {branding.brandName.trim()}
-        </span>
-      ) : null}
-    </div>
-  );
-}
-
 export function PlannerShell({
   children,
   projects,
@@ -73,15 +40,7 @@ export function PlannerShell({
   plan?: AccountPlan;
 }) {
   // Same --accent override mechanism as CoupleShell (inline CSS var).
-  const accent =
-    branding?.brandAccentColor &&
-    BRAND_ACCENT_HEX.test(branding.brandAccentColor)
-      ? branding.brandAccentColor
-      : null;
-
-  const style = accent
-    ? ({ ["--accent"]: accent } as CSSProperties)
-    : undefined;
+  const style = brandAccentStyle(branding);
 
   const pathname = usePathname();
   const sidebarId = useId();
@@ -153,7 +112,7 @@ export function PlannerShell({
           <MenuIcon />
         </button>
         <div className="min-w-0">
-          {branding ? <BrandMark branding={branding} /> : <Wordmark />}
+          {branding ? <AccountBrandMark branding={branding} /> : <Wordmark />}
         </div>
       </header>
       <div className="flex min-w-0 flex-1 gap-6 px-4 py-5 lg:px-8 lg:py-7">
