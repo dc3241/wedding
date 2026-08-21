@@ -70,6 +70,27 @@ export async function signup(formData: FormData) {
   redirect("/login?message=Check your email to confirm your account.");
 }
 
+export async function signInWithGoogle() {
+  const supabase = await createClient();
+  const headersList = await headers();
+  const origin = headersList.get("origin") ?? "";
+
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: "google",
+    options: {
+      redirectTo: `${origin}/auth/callback`,
+    },
+  });
+
+  if (error || !data.url) {
+    redirect(
+      `/login?error=${encodeURIComponent(error?.message ?? "Could not start Google sign-in")}`,
+    );
+  }
+
+  redirect(data.url);
+}
+
 export async function logout() {
   const supabase = await createClient();
 

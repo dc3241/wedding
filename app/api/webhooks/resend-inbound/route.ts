@@ -1,10 +1,13 @@
 /**
  * AUTO-03a — Resend inbound capture.
- * Signature-verified, service-role insert. No LLM.
+ * CONTACT-ROUTE-01 — admin@ relay onto CONTACT_NOTIFY_EMAIL (same webhook).
+ * Signature-verified. Inquiry path inserts via service-role. No LLM.
  */
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
+import { sendEmail } from "@/lib/email/send";
 import {
+  extractEmailAddress,
   inquiryInboundDomain,
   parseFromHeader,
   slugFromRecipientAddresses,
@@ -49,16 +52,22 @@ export async function POST(req: Request) {
     return NextResponse.json({ received: true });
   }
 
+  const recipients = [
+    ...(event.data.to ?? []),
+    ...(event.data.received_for ?? []),
+  ];
+
+  const adminAddress = process.env.ADMIN_INBOUND_ADDRESS?.trim().toLowerCase();
+  if (adminAddress && recipientsIncludeAddress(recipients, adminAddress)) {
+    return forwardAdminInbound(event, resend, adminAddress);
+  }
+
   const domain = inquiryInboundDomain();
   if (!domain) {
     console.info("resend-inbound: INQUIRY_INBOUND_DOMAIN unset; ignoring.");
     return NextResponse.json({ received: true, ignored: "domain_unconfigured" });
   }
 
-  const recipients = [
-    ...(event.data.to ?? []),
-    ...(event.data.received_for ?? []),
-  ];
   const slug = slugFromRecipientAddresses(recipients, domain);
   if (!slug) {
     console.info("resend-inbound: no matching inbound recipient; ignoring.");
@@ -145,4 +154,76 @@ export async function POST(req: Request) {
   }
 
   return NextResponse.json({ received: true });
+}
+
+function recipientsIncludeAddress(
+  recipients: string[],
+  address: string,
+): boolean {
+  const target = address.trim().toLowerCase();
+  if (!target.includes("@")) return false;
+  return recipients.some((raw) => extractEmailAddress(raw) === target);
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+async function forwardAdminInbound(
+  event: { data: { email_id: string; from: string; subject: string } },
+  resend: Resend,
+  adminAddress: string,
+): Promise<NextResponse> {
+  const notifyTo = process.env.CONTACT_NOTIFY_EMAIL?.trim();
+  if (!notifyTo) {
+    console.info("resend-inbound: CONTACT_NOTIFY_EMAIL unset; ignoring admin inbound.");
+    return NextResponse.json({ received: true, ignored: "notify_unconfigured" });
+  }
+
+  const fromParsed = parseFromHeader(event.data.from);
+  const subject = `[${adminAddress}] ${event.data.subject.trim()}`.trim();
+  const note = `Forwarded from ${adminAddress}.`;
+
+  let originalText = "";
+  let originalHtml = "";
+  const emailId = event.data.email_id;
+  if (emailId) {
+    try {
+      const { data: received, error: receiveError } =
+        await resend.emails.receiving.get(emailId);
+      if (receiveError) {
+        console.error("resend-inbound: admin receiving.get", receiveError.message);
+      } else {
+        originalText = (received?.text || "").trim();
+        originalHtml = (received?.html || "").trim();
+      }
+    } catch (err) {
+      console.error("resend-inbound: admin receiving.get", err);
+    }
+  }
+
+  const text = [note, originalText || originalHtml].filter(Boolean).join("\n\n");
+  const htmlBody =
+    originalHtml ||
+    (originalText ? `<pre>${escapeHtml(originalText)}</pre>` : "");
+  const html = `<p>${escapeHtml(note)}</p>${htmlBody ? `\n${htmlBody}` : ""}`;
+
+  const sent = await sendEmail({
+    to: notifyTo,
+    subject,
+    text,
+    html,
+    ...(fromParsed.email ? { replyTo: fromParsed.email } : {}),
+  });
+
+  if (!sent.ok) {
+    console.error("resend-inbound: admin forward failed", sent.error);
+    return NextResponse.json({ error: "Forward failed." }, { status: 500 });
+  }
+
+  return NextResponse.json({ received: true, forwarded: true });
 }
