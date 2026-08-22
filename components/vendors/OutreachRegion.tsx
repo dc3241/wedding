@@ -190,37 +190,39 @@ export function OutreachRegion({
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setShowAdd((v) => !v)}
-              aria-expanded={showAdd}
-              className="rounded-[var(--radius-pill)] px-3 py-1.5 text-[13px] font-semibold text-accent transition-colors hover:bg-accent-wash focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-            >
-              {showAdd ? "Hide add" : "+ Add manually"}
-            </button>
-            <ButtonLink
-              href={`/projects/${projectId}/vendors/outreach`}
-              variant="default"
-              className="text-[13px]"
-            >
-              Review drafts
-            </ButtonLink>
-            <Button
-              type="button"
-              variant="primary"
-              disabled={selectedToContactIds.length === 0 || isDraftPending}
-              onClick={() => {
-                setDraftError(null);
-                setShowDraftForm(true);
-              }}
-              className="text-[13px]"
-            >
-              Draft outreach
-              {selectedToContactIds.length > 0
-                ? ` (${selectedToContactIds.length})`
-                : ""}
-            </Button>
+          <div className="min-w-0 max-w-full basis-full overflow-x-auto overflow-y-hidden [-webkit-overflow-scrolling:touch] [scrollbar-width:none] touch-pan-x [&::-webkit-scrollbar]:hidden sm:max-w-none sm:basis-auto sm:overflow-visible">
+            <div className="flex w-max flex-nowrap items-center gap-1 sm:w-fit sm:gap-2">
+              <button
+                type="button"
+                onClick={() => setShowAdd((v) => !v)}
+                aria-expanded={showAdd}
+                className="shrink-0 whitespace-nowrap rounded-[var(--radius-pill)] px-2.5 py-1.5 text-[13px] font-semibold text-accent transition-colors hover:bg-accent-wash focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent sm:px-3"
+              >
+                {showAdd ? "Hide add" : "+ Add manually"}
+              </button>
+              <ButtonLink
+                href={`/projects/${projectId}/vendors/outreach`}
+                variant="default"
+                className="w-fit shrink-0 whitespace-nowrap !px-2.5 !py-1.5 text-[13px] sm:!px-5 sm:!py-2.5"
+              >
+                Review drafts
+              </ButtonLink>
+              <Button
+                type="button"
+                variant="primary"
+                disabled={selectedToContactIds.length === 0 || isDraftPending}
+                onClick={() => {
+                  setDraftError(null);
+                  setShowDraftForm(true);
+                }}
+                className="w-fit shrink-0 whitespace-nowrap !px-2.5 !py-1.5 text-[13px] sm:!px-5 sm:!py-2.5"
+              >
+                Draft outreach
+                {selectedToContactIds.length > 0
+                  ? ` (${selectedToContactIds.length})`
+                  : ""}
+              </Button>
+            </div>
           </div>
         </div>
 
@@ -357,7 +359,7 @@ export function OutreachRegion({
               <div
                 role="tablist"
                 aria-label="Filter by outreach status"
-                className="flex flex-wrap gap-1 rounded-[var(--radius-pill)] bg-well p-1 shadow-recessed"
+                className="flex w-fit max-w-full flex-nowrap gap-0.5 overflow-x-auto overflow-y-hidden rounded-[var(--radius-pill)] bg-well p-1 shadow-recessed [-webkit-overflow-scrolling:touch] [scrollbar-width:none] touch-pan-x [&::-webkit-scrollbar]:hidden sm:gap-1 sm:overflow-visible"
               >
                 {FILTER_OPTIONS.map((option) => {
                   const active = statusFilter === option.id;
@@ -369,7 +371,7 @@ export function OutreachRegion({
                       aria-selected={active}
                       onClick={() => setStatusFilter(option.id)}
                       className={cn(
-                        "cursor-pointer rounded-[var(--radius-pill)] border-none px-3.5 py-1.5 text-[13px] font-semibold transition-colors",
+                        "shrink-0 cursor-pointer whitespace-nowrap rounded-[var(--radius-pill)] border-none px-2.5 py-1.5 text-[13px] font-semibold transition-colors sm:px-3.5",
                         active
                           ? "bg-accent-wash text-accent"
                           : "bg-transparent text-muted hover:text-ink",
