@@ -3,6 +3,11 @@
 import Link from "next/link";
 import { useState } from "react";
 import { AddTask } from "@/components/checklist/AddTask";
+import {
+  formatRoleLabel,
+  groupAssignees,
+  type ProjectAssignee,
+} from "@/components/checklist/assignee-utils";
 import { TaskRow, type ChecklistTask } from "@/components/checklist/TaskRow";
 import { Card } from "@/components/ui/card";
 import { Eyebrow } from "@/components/ui/eyebrow";
@@ -30,6 +35,8 @@ type ChecklistBoardProps = {
   weddingDate: string | null;
   aggregates: ChecklistAggregates;
   sections: ChecklistSection[];
+  assignees: ProjectAssignee[];
+  currentUserId: string;
 };
 
 function formatEyebrowDate(iso: string) {
@@ -216,19 +223,26 @@ function OpenNowRail({ tasks }: { tasks: UpNextTask[] }) {
 function PhaseSection({
   section,
   projectId,
+  assignees,
   hideDone,
+  assignedFilter,
   open,
   onToggle,
 }: {
   section: ChecklistSection;
   projectId: string;
+  assignees: ProjectAssignee[];
   hideDone: boolean;
+  assignedFilter: string;
   open: boolean;
   onToggle: () => void;
 }) {
-  const visible = hideDone
-    ? section.tasks.filter((t) => t.status !== "done")
-    : section.tasks;
+  const visible = section.tasks.filter((t) => {
+    if (hideDone && t.status === "done") return false;
+    if (assignedFilter === "all") return true;
+    if (assignedFilter === "unassigned") return t.assigned_to == null;
+    return t.assigned_to === assignedFilter;
+  });
 
   const meta = [
     `${section.done} of ${section.total} done`,
@@ -261,7 +275,12 @@ function PhaseSection({
         {visible.length > 0 ? (
           <ul>
             {visible.map((task) => (
-              <TaskRow key={task.id} task={task} />
+              <TaskRow
+                key={task.id}
+                task={task}
+                projectId={projectId}
+                assignees={assignees}
+              />
             ))}
           </ul>
         ) : null}
@@ -277,8 +296,12 @@ export function ChecklistBoard({
   weddingDate,
   aggregates,
   sections,
+  assignees,
+  currentUserId,
 }: ChecklistBoardProps) {
   const [hideDone, setHideDone] = useState(false);
+  const [assignedFilter, setAssignedFilter] = useState("all");
+  const mineActive = assignedFilter === currentUserId;
   const [openPhases, setOpenPhases] = useState<Record<string, boolean>>(() => {
     const initial: Record<string, boolean> = {};
     for (const section of sections) {
@@ -311,19 +334,65 @@ export function ChecklistBoard({
         <p className="text-[14px] font-medium text-muted">
           {aggregates.remaining} open · {aggregates.done} done
         </p>
-        <button
-          type="button"
-          aria-pressed={hideDone}
-          onClick={() => setHideDone((v) => !v)}
-          className={cn(
-            "rounded-[var(--radius-pill)] px-4 py-2.5 text-[14px] font-semibold transition-colors",
-            hideDone
-              ? "bg-accent text-surface"
-              : "bg-accent-wash text-accent",
-          )}
-        >
-          {hideDone ? "Show done" : "Hide done"}
-        </button>
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            aria-pressed={mineActive}
+            onClick={() =>
+              setAssignedFilter((current) =>
+                current === currentUserId ? "all" : currentUserId,
+              )
+            }
+            className={cn(
+              "rounded-[var(--radius-pill)] px-3.5 py-2 text-[13px] font-semibold shadow-recessed transition-colors",
+              "cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
+              mineActive
+                ? "bg-well text-ink"
+                : "bg-well text-muted hover:text-ink",
+            )}
+          >
+            Assigned to me
+          </button>
+          <label className="flex items-center gap-2">
+            <span className="text-[13px] font-semibold text-muted">
+              Assigned to
+            </span>
+            <select
+              value={assignedFilter}
+              onChange={(e) => setAssignedFilter(e.target.value)}
+              aria-label="Filter by assignee"
+              className="rounded-[var(--radius-inner)] border-0 bg-well px-3 py-2 text-[13px] font-semibold text-ink shadow-recessed outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            >
+              <option value="all">All</option>
+              <option value="unassigned">Unassigned</option>
+              {groupAssignees(assignees).map((group) => (
+                <optgroup
+                  key={group.roleLabel}
+                  label={formatRoleLabel(group.roleLabel)}
+                >
+                  {group.people.map((person) => (
+                    <option key={person.userId} value={person.userId}>
+                      {person.email}
+                    </option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
+          </label>
+          <button
+            type="button"
+            aria-pressed={hideDone}
+            onClick={() => setHideDone((v) => !v)}
+            className={cn(
+              "rounded-[var(--radius-pill)] px-4 py-2.5 text-[14px] font-semibold transition-colors",
+              hideDone
+                ? "bg-accent text-surface"
+                : "bg-accent-wash text-accent",
+            )}
+          >
+            {hideDone ? "Show done" : "Hide done"}
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_300px] lg:items-start">
@@ -336,6 +405,8 @@ export function ChecklistBoard({
                 section={section}
                 projectId={projectId}
                 hideDone={hideDone}
+                assignedFilter={assignedFilter}
+                assignees={assignees}
                 open={openPhases[key] ?? true}
                 onToggle={() => togglePhase(key)}
               />

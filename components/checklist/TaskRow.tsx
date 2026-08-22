@@ -6,6 +6,8 @@ import {
   toggleTask,
   updateTaskTitle,
 } from "@/app/(app)/projects/[projectId]/checklist/actions";
+import { AssigneeChip } from "@/components/checklist/AssigneeChip";
+import type { ProjectAssignee } from "@/components/checklist/assignee-utils";
 import { Select } from "@/components/ui/select";
 import { cn } from "@/lib/cn";
 
@@ -14,6 +16,7 @@ export type ChecklistTask = {
   title: string;
   status: "todo" | "in_progress" | "done";
   due_date: string | null;
+  assigned_to: string | null;
 };
 
 const TASK_STATUSES: ChecklistTask["status"][] = [
@@ -37,7 +40,15 @@ function formatDueDate(date: string | null) {
   });
 }
 
-export function TaskRow({ task }: { task: ChecklistTask }) {
+export function TaskRow({
+  task,
+  projectId,
+  assignees,
+}: {
+  task: ChecklistTask;
+  projectId: string;
+  assignees: ProjectAssignee[];
+}) {
   const [title, setTitle] = useState(task.title);
   const [status, setStatus] = useState(task.status);
   const [isPending, startTransition] = useTransition();
@@ -138,6 +149,13 @@ export function TaskRow({ task }: { task: ChecklistTask }) {
           </p>
         ) : null}
       </div>
+
+      <AssigneeChip
+        taskId={task.id}
+        projectId={projectId}
+        assignedTo={task.assigned_to}
+        assignees={assignees}
+      />
 
       <Select
         value={status}

@@ -1,6 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import type { ProjectAssignee } from "@/components/checklist/assignee-utils";
+import { friendlyLeadError } from "@/components/leads/friendly-lead-error";
 import { clampDueDateToToday } from "@/lib/date-months";
 import { clientForWrite } from "@/utils/supabase/for-write";
 import { createClient } from "@/utils/supabase/server";
@@ -9,6 +11,12 @@ import {
   dueDateFromWedding,
   STARTER_TASKS,
 } from "./starter-tasks";
+
+export type { ProjectAssignee };
+
+export type AssignTaskResult =
+  | { ok: true }
+  | { ok: false; error: string };
 
 function checklistPath(projectId: string) {
   return `/projects/${projectId}/checklist`;
@@ -74,6 +82,7 @@ export async function toggleTask(
 ) {
   const supabase = await clientForWrite(client);
 
+  // assigned_to is not writable here — assignTask is the only path.
   const { data, error } = await supabase
     .from("tasks")
     .update({ status: nextStatus })
@@ -107,6 +116,7 @@ export async function updateTaskTitle(taskId: string, title: string) {
 
   const supabase = await createClient();
 
+  // assigned_to is not writable here — assignTask is the only path.
   const { data, error } = await supabase
     .from("tasks")
     .update({ title: trimmed })
@@ -117,6 +127,67 @@ export async function updateTaskTitle(taskId: string, title: string) {
   if (error) throw error;
 
   revalidateChecklist(data.project_id);
+}
+
+export async function getProjectAssignees(
+  projectId: string,
+): Promise<ProjectAssignee[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("list_project_assignees", {
+    p_project_id: projectId,
+  });
+
+  if (error) throw error;
+
+  return (data ?? []).map(
+    (row: { user_id: string; email: string | null; role_label: string }) => ({
+      userId: row.user_id,
+      email: row.email ?? "",
+      roleLabel: row.role_label,
+    }),
+  );
+}
+
+export async function assignTask(
+  taskId: string,
+  projectId: string,
+  userId: string | null,
+): Promise<AssignTaskResult> {
+  try {
+    const supabase = await createClient();
+
+    if (userId !== null) {
+      const assignees = await getProjectAssignees(projectId);
+      if (!assignees.some((person) => person.userId === userId)) {
+        return {
+          ok: false,
+          error: "That person isn't on this project.",
+        };
+      }
+    }
+
+    const { data, error } = await supabase
+      .from("tasks")
+      .update({ assigned_to: userId })
+      .eq("id", taskId)
+      .eq("project_id", projectId)
+      .select("id")
+      .maybeSingle();
+
+    if (error) {
+      return { ok: false, error: friendlyLeadError(error.message) };
+    }
+    if (!data) {
+      return { ok: false, error: "Task not found." };
+    }
+
+    revalidateChecklist(projectId);
+    return { ok: true };
+  } catch (err) {
+    const message =
+      err instanceof Error ? err.message : "Couldn't update assignment.";
+    return { ok: false, error: friendlyLeadError(message) };
+  }
 }
 
 export async function generateStarterChecklist(projectId: string) {

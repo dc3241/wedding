@@ -1,3 +1,4 @@
+import { getProjectAssignees } from "@/app/(app)/projects/[projectId]/checklist/actions";
 import { ChecklistBoard } from "@/components/checklist/ChecklistBoard";
 import { GenerateStarterChecklist } from "@/components/checklist/GenerateStarterChecklist";
 import type { ChecklistTask } from "@/components/checklist/TaskRow";
@@ -20,6 +21,7 @@ import { createClient } from "@/utils/supabase/server";
 
 type TaskRow = AggregateTask & {
   vendor_id: string | null;
+  assigned_to: string | null;
 };
 
 function groupByPhase(tasks: TaskRow[]) {
@@ -32,6 +34,7 @@ function groupByPhase(tasks: TaskRow[]) {
       title: task.title,
       status: task.status,
       due_date: task.due_date,
+      assigned_to: task.assigned_to,
     });
     groups.set(task.phase, bucket);
   }
@@ -130,19 +133,22 @@ export default async function ChecklistPage({
   const account = await getAccountContext(supabase);
   const stackClass = sectionStackClass(account?.kind ?? "personal");
 
-  const [{ data: tasks }, { data: project }] = await Promise.all([
-    supabase
-      .from("tasks")
-      .select("id, title, status, phase, due_date, vendor_id, position")
-      .eq("project_id", projectId)
-      .order("phase", { ascending: true })
-      .order("position", { ascending: true }),
-    supabase
-      .from("projects")
-      .select("name, wedding_date")
-      .eq("id", projectId)
-      .maybeSingle(),
-  ]);
+  const [{ data: tasks }, { data: project }, assignees, { data: auth }] =
+    await Promise.all([
+      supabase
+        .from("tasks")
+        .select("id, title, status, phase, due_date, vendor_id, position, assigned_to")
+        .eq("project_id", projectId)
+        .order("phase", { ascending: true })
+        .order("position", { ascending: true }),
+      supabase
+        .from("projects")
+        .select("name, wedding_date")
+        .eq("id", projectId)
+        .maybeSingle(),
+      getProjectAssignees(projectId),
+      supabase.auth.getUser(),
+    ]);
 
   const taskList = (tasks ?? []) as TaskRow[];
   const weddingDate = project?.wedding_date ?? null;
@@ -173,6 +179,8 @@ export default async function ChecklistPage({
           weddingDate={weddingDate}
           aggregates={aggregates}
           sections={sections}
+          assignees={assignees}
+          currentUserId={auth.user?.id ?? ""}
         />
       )}
     </div>

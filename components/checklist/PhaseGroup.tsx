@@ -1,6 +1,7 @@
 "use client";
 
 import { AddTask } from "./AddTask";
+import type { ProjectAssignee } from "./assignee-utils";
 import { TaskRow, type ChecklistTask } from "./TaskRow";
 import { useAccountKind } from "@/components/account-density-provider";
 import { phaseSectionClass } from "@/lib/density";
@@ -11,12 +12,14 @@ export function PhaseGroup({
   phase,
   tasks,
   projectId,
+  assignees,
   isLast = false,
 }: {
   label: string;
   phase: string | null;
   tasks: ChecklistTask[];
   projectId: string;
+  assignees: ProjectAssignee[];
   isLast?: boolean;
 }) {
   const accountKind = useAccountKind();
@@ -41,7 +44,12 @@ export function PhaseGroup({
       {tasks.length > 0 ? (
         <ul className={cn("divide-y divide-hairline", isPlanner ? "mt-2" : "mt-3")}>
           {tasks.map((task) => (
-            <TaskRow key={task.id} task={task} />
+            <TaskRow
+              key={task.id}
+              task={task}
+              projectId={projectId}
+              assignees={assignees}
+            />
           ))}
         </ul>
       ) : null}
