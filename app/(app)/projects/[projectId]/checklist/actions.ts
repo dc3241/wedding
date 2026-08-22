@@ -12,9 +12,7 @@ import {
   STARTER_TASKS,
 } from "./starter-tasks";
 
-export type { ProjectAssignee };
-
-export type AssignTaskResult =
+type AssignTaskResult =
   | { ok: true }
   | { ok: false; error: string };
 
