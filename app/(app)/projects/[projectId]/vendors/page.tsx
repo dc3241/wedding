@@ -28,7 +28,7 @@ import { createClient } from "@/utils/supabase/server";
 export const dynamic = "force-dynamic";
 
 const PV_SELECT =
-  "id, status, quoted_price, notes, arrival_time, scope_note, confirmed_at, vendors(id, name, category, contact_email, contact_phone, address, website, notes, ai_overview, last_enriched_at)";
+  "id, status, quoted_price, notes, arrival_time, scope_note, confirm_token, confirmed_at, vendors(id, name, category, contact_email, contact_phone, address, website, notes, ai_overview, last_enriched_at)";
 
 function formatDefaultDate(date: string | null) {
   if (!date) return "";
@@ -82,6 +82,7 @@ type PvRow = {
   notes: string | null;
   arrival_time: string | null;
   scope_note: string | null;
+  confirm_token: string;
   confirmed_at: string | null;
   vendor: {
     id: string;
@@ -105,6 +106,7 @@ function mapPvRows(
     notes: string | null;
     arrival_time: string | null;
     scope_note: string | null;
+    confirm_token: string;
     confirmed_at: string | null;
     vendors: unknown;
   }[] | null,
@@ -120,6 +122,7 @@ function mapPvRows(
         notes: row.notes ?? null,
         arrival_time: row.arrival_time ?? null,
         scope_note: row.scope_note ?? null,
+        confirm_token: row.confirm_token,
         confirmed_at: row.confirmed_at ?? null,
         vendor: vendor as PvRow["vendor"],
       },
@@ -380,6 +383,7 @@ export default async function VendorsPage({
       notes: money.notes,
       arrival_time: row.arrival_time,
       scope_note: row.scope_note,
+      confirm_token: row.confirm_token,
       confirmed_at: row.confirmed_at,
       contracts: contractsByPvId.get(row.id) ?? [],
     };

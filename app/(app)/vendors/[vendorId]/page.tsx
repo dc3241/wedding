@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import { DeleteAccountVendorControl } from "@/components/vendors/DeleteAccountVendorControl";
+import { UsedOnProjectRow } from "@/components/vendors/UsedOnProjectRow";
 import {
   VendorLibraryDetail,
   type LibraryDetailVendor,
@@ -10,7 +12,6 @@ import {
 } from "@/components/vendors/VendorPortfolioGallery";
 import { Card } from "@/components/ui/card";
 import { Eyebrow } from "@/components/ui/eyebrow";
-import { Pill } from "@/components/ui/pill";
 import { vendorStatusPill } from "@/components/vendors/vendor-status";
 import {
   VENDOR_MEDIA_BUCKET,
@@ -187,25 +188,26 @@ export default async function VendorLibraryDetailPage({
 
               return (
                 <li key={item.id}>
-                  <Link
+                  <UsedOnProjectRow
+                    projectVendorId={item.id}
                     href={`/projects/${item.projectId}/vendors/${vendor.id}`}
-                    className="flex flex-wrap items-center justify-between gap-2 rounded-[var(--radius-inner)] bg-well px-4 py-3 text-[15px] font-medium text-ink no-underline shadow-recessed transition-colors hover:text-accent"
-                  >
-                    <span className="min-w-0 truncate">{item.projectName}</span>
-                    <span className="flex flex-wrap items-center gap-2">
-                      <Pill variant={variant}>{label}</Pill>
-                      {meta ? (
-                        <span className="text-[13px] font-normal text-muted tabular-nums">
-                          {meta}
-                        </span>
-                      ) : null}
-                    </span>
-                  </Link>
+                    projectName={item.projectName}
+                    vendorName={vendor.name}
+                    statusVariant={variant}
+                    statusLabel={label}
+                    meta={meta}
+                  />
                 </li>
               );
             })}
           </ul>
         )}
+
+        <DeleteAccountVendorControl
+          vendorId={vendor.id}
+          vendorName={vendor.name}
+          linkCount={usage.length}
+        />
       </Card>
     </div>
   );

@@ -45,6 +45,7 @@ import { Select } from "@/components/ui/select";
 import { budgetItemDisplayName } from "@/lib/booked-vendor-money";
 import { cn } from "@/lib/cn";
 import { formatCurrency } from "@/lib/format-currency";
+import { vendorConfirmUrl } from "@/lib/vendors/confirm-url";
 import {
   vendorCategoryLabel,
 } from "@/lib/vendor-categories";
@@ -100,6 +101,7 @@ export type BookedVendorObject = {
   notes: string | null;
   arrival_time: string | null;
   scope_note: string | null;
+  confirm_token: string;
   confirmed_at: string | null;
   contracts: BookedContractFile[];
 };
@@ -626,32 +628,56 @@ function ArrivalScopeEditor({
   projectVendorId,
   arrivalTime,
   scopeNote,
+  confirmToken,
 }: {
   projectVendorId: string;
   arrivalTime: string | null;
   scopeNote: string | null;
+  confirmToken: string;
 }) {
   const [arrival, setArrival] = useState(arrivalTime?.slice(0, 5) ?? "");
   const [scope, setScope] = useState(scopeNote ?? "");
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     setArrival(arrivalTime?.slice(0, 5) ?? "");
     setScope(scopeNote ?? "");
   }, [arrivalTime, scopeNote]);
 
+  useEffect(() => {
+    if (!copied) return;
+    const timeout = window.setTimeout(() => setCopied(false), 2000);
+    return () => window.clearTimeout(timeout);
+  }, [copied]);
+
   function handleSave(next?: { arrival?: string; scope?: string }) {
     const arrivalValue = next?.arrival ?? arrival;
     const scopeValue = next?.scope ?? scope;
     startTransition(async () => {
       setError(null);
+      setSaved(false);
       const result = await updateProjectVendorDayOf(projectVendorId, {
         arrival_time: arrivalValue,
         scope_note: scopeValue,
       });
-      if (!result.ok) setError(result.error);
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      setSaved(true);
     });
+  }
+
+  async function handleCopyConfirmLink() {
+    try {
+      await navigator.clipboard.writeText(vendorConfirmUrl(confirmToken));
+      setCopied(true);
+    } catch {
+      setCopied(false);
+    }
   }
 
   return (
@@ -666,7 +692,10 @@ function ArrivalScopeEditor({
             type="time"
             value={arrival}
             disabled={isPending}
-            onChange={(e) => setArrival(e.target.value)}
+            onChange={(e) => {
+              setArrival(e.target.value);
+              setSaved(false);
+            }}
             onBlur={(e) => handleSave({ arrival: e.target.value })}
             className="mt-1 bg-surface py-2"
           />
@@ -677,12 +706,26 @@ function ArrivalScopeEditor({
             rows={2}
             value={scope}
             disabled={isPending}
-            onChange={(e) => setScope(e.target.value)}
+            onChange={(e) => {
+              setScope(e.target.value);
+              setSaved(false);
+            }}
             onBlur={(e) => handleSave({ scope: e.target.value })}
             placeholder="Ceremony, portraits, reception"
             className="mt-1 bg-surface py-2 text-[14px]"
           />
         </label>
+      </div>
+      <div className="flex flex-wrap items-center gap-3">
+        <Button
+          type="button"
+          variant="default"
+          onClick={handleCopyConfirmLink}
+          className="px-3 py-1.5 text-[13px]"
+        >
+          {copied ? "Copied" : "Copy confirm link"}
+        </Button>
+        {saved ? <p className="text-[13px] text-sage">Saved</p> : null}
       </div>
       {error ? (
         <p className="text-[13px] font-medium text-rosewood">{error}</p>
@@ -771,6 +814,7 @@ function BookedVendorCard({
             projectVendorId={vendor.projectVendorId}
             arrivalTime={vendor.arrival_time}
             scopeNote={vendor.scope_note}
+            confirmToken={vendor.confirm_token}
           />
           {!linked ? (
             <div className="space-y-3 rounded-[var(--radius-inner)] bg-well px-4 py-3.5 shadow-recessed">

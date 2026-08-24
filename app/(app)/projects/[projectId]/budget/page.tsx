@@ -5,6 +5,10 @@ import {
   type ProjectVendorOption,
 } from "@/lib/budget-aggregates";
 import { toLocalDateKey } from "@/app/(app)/calendar/calendar-source";
+import {
+  buildNextPayment,
+  type OverviewVendor,
+} from "@/components/dashboard/overview-data";
 import { getAccountContext } from "@/lib/account-context";
 import { sectionStackClass } from "@/lib/density";
 import { createClient } from "@/utils/supabase/server";
@@ -137,6 +141,29 @@ export default async function BudgetPage({
     })),
   );
 
+  const overviewVendors: OverviewVendor[] = projectVendors.map((pv) => ({
+    id: pv.id,
+    status: pv.status as OverviewVendor["status"],
+    quoted_price: pv.quoted_price,
+    vendor: {
+      id: pv.id,
+      name: pv.name,
+      category: null,
+      contact_email: null,
+      website: null,
+      ai_overview: null,
+      last_enriched_at: null,
+    },
+  }));
+
+  const { nextPayment, allCovered: allInstallmentsCovered } = buildNextPayment(
+    budgetItems,
+    payments,
+    schedule,
+    overviewVendors,
+    todayKey,
+  );
+
   return (
     <div className={stackClass}>
       <BudgetBoard
@@ -145,6 +172,9 @@ export default async function BudgetPage({
         weddingDate={project?.wedding_date ?? null}
         aggregates={aggregates}
         projectVendors={projectVendors}
+        nextPayment={nextPayment}
+        allInstallmentsCovered={allInstallmentsCovered}
+        todayKey={todayKey}
       />
     </div>
   );

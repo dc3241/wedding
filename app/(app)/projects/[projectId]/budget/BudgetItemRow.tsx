@@ -222,17 +222,22 @@ export function BudgetItemRow({
   const nextDuePast =
     item.nextDue != null && item.nextDue.due_on < todayKey;
 
-  // Paid / Actual ramp — display only; Actual null → neutral empty bar.
-  // Actual === 0 → sage full (avoid /0 → NaN). Else clamp(paid/Actual).
+  // Paid / Actual ramp — display only. Denominator: actual when set, else
+  // planned (Estimate). Actual null + planned 0 → empty (untracked). Denom 0
+  // with actual set → sage full (avoid /0 → NaN).
+  const rampDenom =
+    item.actual_amount !== null
+      ? Number(item.actual_amount)
+      : Number(item.planned_amount);
+  const rampTracked = item.actual_amount !== null || rampDenom > 0;
   let paidFillPct = 0;
   let paidFillTone: "rosewood" | "clay" | "sage" | null = null;
-  if (hasActual) {
-    const actual = item.actual_amount as number;
-    if (actual === 0) {
+  if (rampTracked) {
+    if (rampDenom === 0) {
       paidFillPct = 100;
       paidFillTone = "sage";
     } else {
-      const fraction = Math.min(1, Math.max(0, item.paid / actual));
+      const fraction = Math.min(1, Math.max(0, item.paid / rampDenom));
       paidFillPct = fraction * 100;
       paidFillTone =
         fraction < 0.5 ? "rosewood" : fraction < 1 ? "clay" : "sage";
@@ -380,8 +385,8 @@ export function BudgetItemRow({
         aria-valuemax={100}
         aria-valuenow={Math.round(paidFillPct)}
         aria-label={
-          !hasActual
-            ? `Payment progress for ${rowName} · no actual set`
+          !rampTracked
+            ? `Payment progress for ${rowName} · no amount set`
             : `Payment progress for ${rowName} · ${Math.round(paidFillPct)}% paid`
         }
       >

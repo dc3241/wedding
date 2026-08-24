@@ -1,7 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState, useTransition } from "react";
-import { getDownloadUrl } from "@/components/files/actions";
+import { deleteFile, getDownloadUrl } from "@/components/files/actions";
 import { formatUploadedDate } from "@/components/files/types";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -33,7 +34,7 @@ const STATUS_PILL: Record<
 
 /** Shared so header and rows keep identical track widths. */
 const ARCHIVE_COLS =
-  "md:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_minmax(0,0.7fr)_minmax(0,0.7fr)_5.5rem_6.5rem]";
+  "md:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_minmax(0,0.7fr)_minmax(0,0.7fr)_5.5rem_minmax(8.5rem,auto)]";
 
 /** Local calendar date key (YYYY-MM-DD) from a timestamptz ISO string. */
 function createdDateKey(iso: string): string {
@@ -41,7 +42,13 @@ function createdDateKey(iso: string): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-function ContractDownloadButton({ fileId }: { fileId: string }) {
+function ContractRowActions({
+  fileId,
+  fileName,
+}: {
+  fileId: string;
+  fileName: string;
+}) {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
@@ -57,19 +64,43 @@ function ContractDownloadButton({ fileId }: { fileId: string }) {
     });
   }
 
+  function handleDelete() {
+    if (!window.confirm(`Delete "${fileName}"? This cannot be undone.`)) return;
+    setError(null);
+    startTransition(async () => {
+      try {
+        await deleteFile(fileId);
+      } catch (err) {
+        setError(
+          err instanceof Error ? err.message : "Could not delete file.",
+        );
+      }
+    });
+  }
+
   return (
     <div className="flex flex-col items-end gap-1">
-      <Button
-        type="button"
-        variant="default"
-        onClick={handleDownload}
-        disabled={isPending}
-        className="px-3 py-1.5 text-[13px]"
-      >
-        {isPending ? "Opening…" : "Download"}
-      </Button>
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        <Button
+          type="button"
+          variant="default"
+          onClick={handleDownload}
+          disabled={isPending}
+          className="px-3 py-1.5 text-[13px]"
+        >
+          Download
+        </Button>
+        <button
+          type="button"
+          onClick={handleDelete}
+          disabled={isPending}
+          className="px-2 text-[13px] font-medium text-muted transition-colors hover:text-rosewood disabled:opacity-50"
+        >
+          Delete
+        </button>
+      </div>
       {error ? (
-        <p className="max-w-[160px] text-right text-[11px] text-rosewood">
+        <p className="max-w-[200px] text-right text-[11px] text-rosewood">
           {error}
         </p>
       ) : null}
@@ -233,7 +264,7 @@ export function ContractsArchive({
               <span className="text-[12px] font-semibold uppercase tracking-[0.09em] text-muted">
                 Status
               </span>
-              <span className="sr-only">Download</span>
+              <span className="sr-only">Actions</span>
             </div>
             <ul className="list-none">
               {filtered.map((row) => {
@@ -242,6 +273,7 @@ export function ContractsArchive({
                 const categoryLabel = row.category
                   ? vendorCategoryLabel(row.category)
                   : "Uncategorized";
+                const bookingContractsHref = `/projects/${row.project_id}/contracts`;
                 return (
                   <li
                     key={row.id}
@@ -264,6 +296,12 @@ export function ContractsArchive({
                           {formatUploadedDate(row.created_at)}
                         </span>
                       </p>
+                      <Link
+                        href={bookingContractsHref}
+                        className="mt-1 inline-block text-[13px] font-medium text-accent hover:underline"
+                      >
+                        Edit in {row.project_name}
+                      </Link>
                     </div>
                     <p className="hidden truncate text-[14px] font-medium text-ink md:block">
                       {row.project_name}
@@ -278,7 +316,10 @@ export function ContractsArchive({
                       <Pill variant={chip.variant}>{chip.label}</Pill>
                     </div>
                     <div className="mt-3 md:mt-0 md:justify-self-end">
-                      <ContractDownloadButton fileId={row.id} />
+                      <ContractRowActions
+                        fileId={row.id}
+                        fileName={row.name}
+                      />
                     </div>
                   </li>
                 );

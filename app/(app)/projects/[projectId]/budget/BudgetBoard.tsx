@@ -7,7 +7,6 @@ import {
   BudgetFilterBar,
   itemMatchesStatus,
   statusMatchLabel,
-  todayLocalDateKey,
   type BudgetStatusFilter,
 } from "./BudgetFilterBar";
 import { BudgetQuickAdd } from "./BudgetQuickAdd";
@@ -23,6 +22,10 @@ import type {
 import { formatCurrency } from "@/lib/format-currency";
 import { AskAssistantPrompt } from "@/components/assistant/AskAssistantPrompt";
 import { ASSISTANT_PREFILLS } from "@/components/assistant/prefills";
+import {
+  overviewDuePill,
+  type OverviewNextPayment,
+} from "@/components/dashboard/overview-data";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { TourHelpButton } from "@/components/tour/TourHelpButton";
@@ -36,7 +39,79 @@ type BudgetBoardProps = {
   weddingDate: string | null;
   aggregates: BudgetAggregates;
   projectVendors: ProjectVendorOption[];
+  nextPayment: OverviewNextPayment;
+  allInstallmentsCovered: boolean;
+  todayKey: string;
 };
+
+function formatShortDate(iso: string) {
+  return new Date(iso + "T00:00:00").toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+function NextDueSummary({
+  nextPayment,
+  allInstallmentsCovered,
+  todayKey,
+}: {
+  nextPayment: OverviewNextPayment;
+  allInstallmentsCovered: boolean;
+  todayKey: string;
+}) {
+  return (
+    <Card className="px-6 py-[22px]">
+      <p className="text-[12px] font-semibold uppercase tracking-[0.09em] text-muted">
+        Next due
+      </p>
+      {nextPayment ? (
+        <div className="mt-3 flex flex-wrap items-center gap-4 rounded-[var(--radius-inner)] bg-well px-4 py-3.5 shadow-recessed">
+          <div className="min-w-0 flex-1">
+            <p className="text-[15px] font-medium text-ink">
+              {nextPayment.primary}
+            </p>
+            <p className="mt-0.5 text-[13px] font-medium text-muted">
+              {nextPayment.label?.trim()
+                ? `${nextPayment.label.trim()} · `
+                : ""}
+              due {formatShortDate(nextPayment.due_on)}
+            </p>
+          </div>
+          <p className="font-display text-[28px] font-extrabold tracking-[-0.03em] tabular-nums text-ink">
+            {formatCurrency(nextPayment.amount)}
+          </p>
+          {(() => {
+            const pill = overviewDuePill(
+              nextPayment.due_on,
+              todayKey,
+              nextPayment.pastDue,
+            );
+            return (
+              <span
+                className={cn(
+                  "rounded-[var(--radius-pill)] px-3 py-1.5 text-[12px] font-bold uppercase tracking-[0.04em]",
+                  pill.urgent
+                    ? "bg-rosewood-wash text-rosewood"
+                    : "bg-clay-wash text-clay",
+                )}
+              >
+                {pill.label}
+              </span>
+            );
+          })()}
+        </div>
+      ) : (
+        <p className="mt-3 text-[15px] font-medium text-muted">
+          {allInstallmentsCovered
+            ? "All installments covered."
+            : "No payments scheduled."}
+        </p>
+      )}
+    </Card>
+  );
+}
 
 function formatEyebrowDate(iso: string) {
   return new Date(iso + "T00:00:00").toLocaleDateString("en-US", {
@@ -208,21 +283,21 @@ function formatSignedCurrency(amount: number) {
   return abs;
 }
 
-/** Paid / Actual ramp — full-group paidTotal vs actualTotal. Over-plan is NOT on the bar. */
+/** Paid / Actual ramp — paidTotal vs rampTotal (actual, else planned per item). Over-plan is NOT on the bar. */
 function CategoryBar({
   category,
-  actualTotal,
+  rampTotal,
   paidTotal,
 }: {
   category: string;
-  actualTotal: number;
+  rampTotal: number;
   paidTotal: number;
 }) {
   let fillPct = 0;
   let fillTone: "rosewood" | "clay" | "sage" | null = null;
 
-  if (actualTotal > 0) {
-    const fraction = Math.min(1, Math.max(0, paidTotal / actualTotal));
+  if (rampTotal > 0) {
+    const fraction = Math.min(1, Math.max(0, paidTotal / rampTotal));
     fillPct = fraction * 100;
     fillTone =
       fraction < 0.5 ? "rosewood" : fraction < 1 ? "clay" : "sage";
@@ -237,7 +312,7 @@ function CategoryBar({
       aria-valuemax={100}
       aria-valuenow={Math.round(fillPct)}
       aria-label={
-        actualTotal === 0
+        rampTotal === 0
           ? `${category} · nothing tracked`
           : `${category} · ${Math.round(fillPct)}% paid`
       }
@@ -280,6 +355,14 @@ function CategorySection({
 }) {
   // Full-group ledger sum — never visibleItems (filter must not move the bar).
   const paidTotal = group.items.reduce((sum, item) => sum + item.paid, 0);
+  // Ramp denom: actual when set, else planned — mirrors item-row BUD-PAIDRAMP-01.
+  const rampTotal = group.items.reduce((sum, item) => {
+    const denom =
+      item.actual_amount != null
+        ? Number(item.actual_amount)
+        : Number(item.planned_amount);
+    return sum + denom;
+  }, 0);
   const hasActual = group.actualTotal > 0;
   const difference = group.plannedTotal - group.actualTotal;
   const differenceTone =
@@ -327,7 +410,7 @@ function CategorySection({
         {/* (b) Paid / Actual progress ramp */}
         <CategoryBar
           category={group.category}
-          actualTotal={group.actualTotal}
+          rampTotal={rampTotal}
           paidTotal={paidTotal}
         />
 
@@ -577,6 +660,9 @@ export function BudgetBoard({
   weddingDate,
   aggregates,
   projectVendors,
+  nextPayment,
+  allInstallmentsCovered,
+  todayKey,
 }: BudgetBoardProps) {
   const [showAdd, setShowAdd] = useState(false);
   const [statusFilter, setStatusFilter] = useState<BudgetStatusFilter>("all");
@@ -591,7 +677,6 @@ export function BudgetBoard({
     setOpenCategory((prev) => (prev === key ? null : key));
   }
 
-  const todayKey = todayLocalDateKey();
   const empty = aggregates.perCategory.length === 0;
   const allItems = aggregates.perCategory.flatMap((group) => group.items);
   const categoryOptions = aggregates.perCategory.map((group) => group.category);
@@ -625,6 +710,12 @@ export function BudgetBoard({
         title="Budget"
         eyebrow={eyebrow}
         actions={<TourHelpButton tourKey="budget" />}
+      />
+
+      <NextDueSummary
+        nextPayment={nextPayment}
+        allInstallmentsCovered={allInstallmentsCovered}
+        todayKey={todayKey}
       />
 
       <AllocationBand projectId={projectId} aggregates={aggregates} />

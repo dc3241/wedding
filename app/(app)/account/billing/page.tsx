@@ -32,6 +32,13 @@ function formatRenewalDate(iso: string | null) {
   });
 }
 
+function resolveVenueCadence(priceId: string | null) {
+  const venue = BILLING_PLANS.venue;
+  if (priceId && priceId === venue.monthly.priceId) return venue.monthly;
+  if (priceId && priceId === venue.annual.priceId) return venue.annual;
+  return null;
+}
+
 const FREE_COPY: Record<AccountKind, string> = {
   personal:
     "Start your 7-day free trial to unlock the full couple experience.",
@@ -66,6 +73,9 @@ export default async function BillingPage({
     : isPlanner
       ? BILLING_PLANS.planner.label
       : BILLING_PLANS.couple.label;
+  const venueCadence = isVenuePlan
+    ? resolveVenueCadence(subscription.priceId)
+    : null;
   const renewalDate = formatRenewalDate(subscription.currentPeriodEnd);
   const shellClass = shellLayoutClass(account.kind, false, "reading");
 
@@ -114,7 +124,7 @@ export default async function BillingPage({
 
       <div
         className={
-          isPlanner && !isVenuePlan
+          isPlanner
             ? "mt-6 grid items-stretch gap-4 md:grid-cols-2"
             : "mt-6"
         }
@@ -206,6 +216,20 @@ export default async function BillingPage({
             </div>
           </div>
         </Card>
+
+        {/* VENUE-08: venue subscribers see plan + cadence pricing (not the upgrade CTA). */}
+        {isVenuePlan ? (
+          <Card className="flex flex-col p-6">
+            <h2 className="text-[15px] font-medium text-ink">
+              Current plan: {BILLING_PLANS.venue.label}
+            </h2>
+            <p className="mt-2 text-[13px] text-muted">
+              {venueCadence
+                ? `${venueCadence.label} ${venueCadence.amountLabel}`
+                : `${BILLING_PLANS.venue.monthly.amountLabel} or ${BILLING_PLANS.venue.annual.amountLabel}`}
+            </p>
+          </Card>
+        ) : null}
 
         {/* VENUE-06: planner → venue at equal weight with the current plan card. */}
         {isPlanner && !isVenuePlan ? (

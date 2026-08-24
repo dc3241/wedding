@@ -11,6 +11,7 @@ import {
 import { cronAuthorized, unauthorizedCronResponse } from "@/lib/cron/authorize";
 import { sendEmail } from "@/lib/email/send";
 import { formatTimeOfDay } from "@/lib/timeline-aggregates";
+import { vendorConfirmUrl } from "@/lib/vendors/confirm-url";
 import { createServiceRoleClient } from "@/utils/supabase/service-role";
 
 export const runtime = "nodejs";
@@ -85,17 +86,6 @@ function escapeHtml(value: string): string {
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;");
-}
-
-function appOrigin(): string {
-  const explicit = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "");
-  if (explicit) return explicit;
-  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
-  return "http://localhost:3000";
-}
-
-function confirmUrl(token: string): string {
-  return `${appOrigin()}/vendor-confirm/${encodeURIComponent(token)}`;
 }
 
 async function loadDatedActiveProjects(
@@ -264,7 +254,7 @@ export async function GET(request: Request) {
           kind,
           arrivalTime: row.arrival_time,
           scopeNote: row.scope_note,
-          link: confirmUrl(row.confirm_token),
+          link: vendorConfirmUrl(row.confirm_token),
         });
 
         const sent = await sendEmail({

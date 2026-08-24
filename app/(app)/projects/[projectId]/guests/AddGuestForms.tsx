@@ -92,7 +92,7 @@ export function AddGuestForms({
   return (
     <Card data-tour="guests-add" className="px-6 py-5">
       <CollapseSection
-        defaultOpen={false}
+        defaultOpen
         title={
           <div>
             <Eyebrow>Add guest</Eyebrow>
@@ -127,7 +127,7 @@ export function AddGuestForms({
                 className="text-[14px] font-medium text-ink"
                 id="guest-member-type-label"
               >
-                Type
+                Adult / Child
               </p>
               <SegmentedToggle
                 aria-labelledby="guest-member-type-label"

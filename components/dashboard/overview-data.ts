@@ -157,7 +157,7 @@ function paidTone(paid: number, quote: number | null): OverviewPaidTone {
   return "none";
 }
 
-function buildNextPayment(
+export function buildNextPayment(
   budgetItems: OverviewBudgetItem[],
   payments: OverviewPayment[],
   scheduleRows: OverviewScheduleRow[],

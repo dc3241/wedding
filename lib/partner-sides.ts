@@ -24,20 +24,32 @@ function stripTrailingYear(part: string): string {
 }
 
 /**
+ * Strip everything from the first em-dash, en-dash, or " - " sequence onward
+ * ("Noah — just started" → "Noah"). Hyphens inside names (Mary-Jane) stay.
+ */
+function stripTrailingDashSuffix(value: string): string {
+  return value.replace(/\s*[—–].*$| - .*$/, "").trim();
+}
+
+function cleanPartnerPart(part: string): string {
+  return stripTrailingYear(stripTrailingDashSuffix(part));
+}
+
+/**
  * Split a project title into two partner names on "&" / "and".
  * Returns null when fewer or more than two usable parts.
  */
 export function splitProjectNameIntoPartners(
   projectName: string | null | undefined,
 ): [string, string] | null {
-  const raw = projectName?.trim();
+  const raw = stripTrailingDashSuffix(projectName?.trim() ?? "");
   if (!raw) return null;
 
   const match = raw.match(/^(.+?)\s+(?:&|and)\s+(.+)$/i);
   if (!match) return null;
 
-  const left = stripTrailingYear(match[1] ?? "");
-  const right = stripTrailingYear(match[2] ?? "");
+  const left = cleanPartnerPart(match[1] ?? "");
+  const right = cleanPartnerPart(match[2] ?? "");
   if (!left || !right) return null;
   return [left, right];
 }

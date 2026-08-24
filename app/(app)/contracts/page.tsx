@@ -104,7 +104,7 @@ export default async function AccountContractsPage({
         <PageHeader
           eyebrow="Library"
           title="Contracts"
-          description="Archive of uploaded contracts across weddings, plus reusable templates."
+          description="Uploaded contracts across weddings, plus reusable templates."
         />
       </div>
       <ContractsWorkspace

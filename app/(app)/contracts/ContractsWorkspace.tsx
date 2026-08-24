@@ -33,7 +33,7 @@ export function ContractsWorkspace({
       >
         {(
           [
-            { id: "archive", label: "Archive" },
+            { id: "archive", label: "All Contracts" },
             { id: "templates", label: "Templates" },
           ] as const
         ).map(({ id, label }) => {
