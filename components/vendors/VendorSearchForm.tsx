@@ -8,10 +8,7 @@ import {
 import { VENDOR_CATEGORIES } from "@/lib/vendor-categories";
 import { PlaceResultCard } from "./PlaceResultCard";
 import { useVendorSearchCache } from "./VendorSearchCacheProvider";
-import {
-  VendorSearchRail,
-  type NeededVendorTarget,
-} from "./VendorSearchRail";
+import { VendorSearchRail } from "./VendorSearchRail";
 import {
   applyResultsFilters,
   createDefaultResultsFilters,
@@ -27,13 +24,11 @@ export function VendorSearchForm({
   projectId,
   defaultLocation = "",
   initialAddedPlaceIds = [],
-  neededTargets = [],
   initialOnListByCategoryId = {},
 }: {
   projectId: string;
   defaultLocation?: string;
   initialAddedPlaceIds?: string[];
-  neededTargets?: NeededVendorTarget[];
   initialOnListByCategoryId?: Record<string, number>;
 }) {
   const searchCache = useVendorSearchCache();
@@ -50,9 +45,6 @@ export function VendorSearchForm({
   );
   const [location, setLocation] = useState(
     () => cached?.params.location ?? defaultLocation,
-  );
-  const [refinement, setRefinement] = useState(
-    () => cached?.params.refinement ?? "",
   );
   const [composedQuery, setComposedQuery] = useState<string | null>(
     () => cached?.composedQuery ?? null,
@@ -96,7 +88,6 @@ export function VendorSearchForm({
         projectId,
         nextCategoryId,
         trimmedLocation,
-        refinement,
       );
 
       if (!response.ok) {
@@ -114,7 +105,6 @@ export function VendorSearchForm({
         params: {
           categoryId: nextCategoryId,
           location: trimmedLocation,
-          refinement: refinement.trim(),
         },
         results: response.results,
         composedQuery: response.composedQuery,
@@ -126,11 +116,6 @@ export function VendorSearchForm({
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     runSearch(categoryId);
-  }
-
-  function handleRailCategory(nextCategoryId: string) {
-    setCategoryId(nextCategoryId);
-    runSearch(nextCategoryId);
   }
 
   function handleOptimisticAdd(placeId: string) {
@@ -164,9 +149,7 @@ export function VendorSearchForm({
   ) : null;
 
   const showRail =
-    Boolean(filterSlot) ||
-    neededTargets.length > 0 ||
-    (onListCount > 0 && Boolean(categoryId));
+    Boolean(filterSlot) || (onListCount > 0 && Boolean(categoryId));
 
   const searchCard = (
     <Card data-tour="vendors-search" className="px-6 py-5">
@@ -204,40 +187,20 @@ export function VendorSearchForm({
           </div>
         </fieldset>
 
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="space-y-1.5">
-            <label htmlFor="location" className="text-sm font-medium text-ink">
-              Location
-            </label>
-            <Input
-              id="location"
-              name="location"
-              type="text"
-              required
-              value={location}
-              onChange={(e) => setLocation(e.target.value)}
-              placeholder="e.g. Scottsdale, AZ"
-              disabled={isPending}
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <label
-              htmlFor="refinement"
-              className="text-sm font-medium text-ink"
-            >
-              Refinement (optional)
-            </label>
-            <Input
-              id="refinement"
-              name="refinement"
-              type="text"
-              value={refinement}
-              onChange={(e) => setRefinement(e.target.value)}
-              placeholder="e.g. outdoor, bilingual"
-              disabled={isPending}
-            />
-          </div>
+        <div className="space-y-1.5">
+          <label htmlFor="location" className="text-sm font-medium text-ink">
+            Location
+          </label>
+          <Input
+            id="location"
+            name="location"
+            type="text"
+            required
+            value={location}
+            onChange={(e) => setLocation(e.target.value)}
+            placeholder="e.g. Scottsdale, AZ"
+            disabled={isPending}
+          />
         </div>
 
         <Button
@@ -350,16 +313,13 @@ export function VendorSearchForm({
   const contextRail = (
     <VendorSearchRail
       projectId={projectId}
-      neededTargets={neededTargets}
       activeCategoryId={categoryId}
       onListCount={onListCount}
-      disabled={isPending}
-      onSelectCategory={handleRailCategory}
       filterSlot={filterSlot}
     />
   );
 
-  // Photo-led results: filter/still-needed rail on the left (mockup hierarchy).
+  // Photo-led results: filter / on-your-list rail on the left (mockup hierarchy).
   if (hasResults) {
     return (
       <div className="space-y-6">

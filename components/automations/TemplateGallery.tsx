@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Card } from "@/components/ui/card";
-import { Pill } from "@/components/ui/pill";
+import { Select } from "@/components/ui/select";
 import { toggleAutomationTemplate } from "@/lib/automations/actions";
 import {
   AUTOMATION_TEMPLATES,
@@ -72,19 +72,20 @@ export function TemplateGallery({
                   {template.description}
                 </p>
               </div>
-              <button
-                type="button"
-                role="switch"
-                aria-checked={on}
-                aria-label={`${on ? "Turn off" : "Turn on"} ${template.name}`}
+              <Select
+                value={on ? "on" : "off"}
                 disabled={busy}
-                onClick={() => handleToggle(template.key, !on)}
-                className="shrink-0 self-start rounded-[var(--radius-pill)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-50"
+                aria-label={`${template.name} status`}
+                className="!w-auto min-w-[6.5rem] shrink-0 self-start py-1.5 text-[13px]"
+                onChange={(event) => {
+                  const nextOn = event.target.value === "on";
+                  if (nextOn === on) return;
+                  handleToggle(template.key, nextOn);
+                }}
               >
-                <Pill variant={on ? "sage" : "default"}>
-                  {on ? "On" : "Off"}
-                </Pill>
-              </button>
+                <option value="off">Off</option>
+                <option value="on">On</option>
+              </Select>
             </div>
           </Card>
         );

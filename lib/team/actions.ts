@@ -3,6 +3,8 @@
 import { createHash, randomBytes } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { resolveBusinessAccountId } from "@/lib/billing/resolve-account";
+import { appOrigin } from "@/lib/url";
+import { sendEmailBestEffort } from "@/lib/email/send-best-effort";
 import type {
   AcceptAccountInvitationResult,
   CreateAccountInvitationResult,
@@ -13,10 +15,45 @@ import { TEAM_BUSINESS_ONLY_MESSAGE } from "@/lib/team/types";
 import { createClient } from "@/utils/supabase/server";
 
 const INVITE_TTL_MS = 14 * 24 * 60 * 60 * 1000;
+const INVITE_TTL_DAYS = 14;
 const TEAM_PATH = "/account/team";
 
 function hashToken(raw: string) {
   return createHash("sha256").update(raw).digest("hex");
+}
+
+function accountInviteUrl(token: string): string {
+  return `${appOrigin()}/invite/account/${encodeURIComponent(token)}`;
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function buildAccountInviteEmail(inviteUrl: string): {
+  subject: string;
+  text: string;
+  html: string;
+} {
+  const subject = "You're invited to a First Look team";
+  const text = [
+    "You've been invited to join a planner team on First Look.",
+    "",
+    `Accept the invitation: ${inviteUrl}`,
+    "",
+    `This link expires in ${INVITE_TTL_DAYS} days.`,
+    "",
+  ].join("\n");
+  const html = [
+    "<p>You've been invited to join a planner team on First Look.</p>",
+    `<p><a href="${escapeHtml(inviteUrl)}">Accept the invitation</a></p>`,
+    `<p>This link expires in ${INVITE_TTL_DAYS} days.</p>`,
+  ].join("");
+  return { subject, text, html };
 }
 
 function mapAcceptError(message: string): AcceptAccountInvitationResult {
@@ -133,8 +170,26 @@ export async function createAccountInvitation(
     return { ok: false, error: message };
   }
 
+  // Best-effort delivery — the row is committed; never fail the invite on send.
+  const inviteUrl = accountInviteUrl(rawToken);
+  const body = buildAccountInviteEmail(inviteUrl);
+  const emailSent = await sendEmailBestEffort(
+    {
+      to: trimmed,
+      subject: body.subject,
+      text: body.text,
+      html: body.html,
+    },
+    "createAccountInvitation",
+  );
+
   revalidatePath(TEAM_PATH);
-  return { ok: true, token: rawToken, invitationId: data.id };
+  return {
+    ok: true,
+    token: rawToken,
+    invitationId: data.id,
+    emailSent,
+  };
 }
 
 /** Soft-revoke a pending account invitation. */

@@ -929,7 +929,7 @@ function EmptyBookedSlotCard({
   connectableVendors: ConnectableBookedVendor[];
 }) {
   const categoryLabel = vendorCategoryLabel(slot.category);
-  const addHref = `/projects/${projectId}/vendors?category=${encodeURIComponent(slot.category)}#add-vendor`;
+  const addHref = `/projects/${projectId}/vendors?tab=outreach&category=${encodeURIComponent(slot.category)}#add-vendor`;
 
   return (
     <article className="overflow-hidden rounded-[var(--radius-inner)] bg-well px-5 py-4 shadow-recessed">

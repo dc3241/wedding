@@ -27,3 +27,10 @@ export type RsvpSubmission = {
   matched_guest_name: string | null;
   attendees: RsvpAttendee[];
 };
+
+/** Compiled song row for SongRequestsCard (derived from RSVP payload). */
+export type SongRequestEntry = {
+  song: string;
+  guestName: string;
+  submittedAt: string;
+};

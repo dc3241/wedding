@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { toLocalDateKey } from "@/app/(app)/calendar/calendar-source";
 import { getAddedPlaceIds } from "@/app/(app)/projects/[projectId]/vendors/actions";
 import {
@@ -10,7 +11,6 @@ import type { ConnectableBookedVendor } from "@/components/vendors/ConnectExisti
 import { GmailConnection } from "@/components/vendors/GmailConnection";
 import { OutreachRegion } from "@/components/vendors/OutreachRegion";
 import { VendorSearchForm } from "@/components/vendors/VendorSearchForm";
-import type { NeededVendorTarget } from "@/components/vendors/VendorSearchRail";
 import {
   VendorsToBookSection,
   type VendorTargetRow,
@@ -20,12 +20,44 @@ import { TourHelpButton } from "@/components/tour/TourHelpButton";
 import { PageHeader } from "@/components/ui/page-header";
 import { getAccountContext } from "@/lib/account-context";
 import { deriveBookedVendorMoney } from "@/lib/booked-vendor-money";
+import {
+  mapBudgetCategoryToVendorCategory,
+  type VendorCategoryId,
+} from "@/lib/budget-vendor-category-map";
+import { cn } from "@/lib/cn";
 import { sectionStackClass } from "@/lib/density";
 import { getGmailConnectionEmail } from "@/lib/gmail-connection-status";
-import { VENDOR_CATEGORIES } from "@/lib/vendor-categories";
+import {
+  getVendorCategoryById,
+  VENDOR_CATEGORIES,
+  vendorCategoryLabel,
+} from "@/lib/vendor-categories";
 import { createClient } from "@/utils/supabase/server";
 
 export const dynamic = "force-dynamic";
+
+const VENDOR_TABS = ["search", "outreach", "booked"] as const;
+type VendorTab = (typeof VENDOR_TABS)[number];
+
+function parseVendorTab(raw: string | undefined): VendorTab {
+  if (raw && (VENDOR_TABS as readonly string[]).includes(raw)) {
+    return raw as VendorTab;
+  }
+  return "search";
+}
+
+function vendorsTabHref(
+  projectId: string,
+  tab: VendorTab,
+  categoryPrefill?: string | null,
+) {
+  const params = new URLSearchParams();
+  params.set("tab", tab);
+  if (tab === "outreach" && categoryPrefill) {
+    params.set("category", categoryPrefill);
+  }
+  return `/projects/${projectId}/vendors?${params.toString()}`;
+}
 
 const PV_SELECT =
   "id, status, quoted_price, notes, arrival_time, scope_note, confirm_token, confirmed_at, vendors(id, name, category, contact_email, contact_phone, address, website, notes, ai_overview, last_enriched_at)";
@@ -159,6 +191,7 @@ export default async function VendorsPage({
     gmail_error?: string;
     gmail_connected?: string;
     category?: string;
+    tab?: string;
   }>;
 }) {
   const { projectId } = await params;
@@ -166,12 +199,14 @@ export default async function VendorsPage({
     gmail_error: gmailError,
     gmail_connected: gmailConnected,
     category: categoryPrefill,
+    tab: tabParam,
   } = await searchParams;
+  const activeTab = parseVendorTab(tabParam);
   const supabase = await createClient();
   const account = await getAccountContext(supabase);
   const stackClass = sectionStackClass(account?.kind ?? "personal");
   const connectedEmail = await getGmailConnectionEmail();
-  const returnTo = `/projects/${projectId}/vendors`;
+  const returnTo = `/projects/${projectId}/vendors?tab=outreach`;
 
   const [
     { data: project },
@@ -186,6 +221,7 @@ export default async function VendorsPage({
     { data: paymentRows },
     { data: scheduleRows },
     { data: contractRows },
+    { data: ignoredCategoryRows },
   ] = await Promise.all([
     supabase
       .from("projects")
@@ -250,6 +286,11 @@ export default async function VendorsPage({
       .eq("kind", "contract")
       .not("project_vendor_id", "is", null)
       .order("created_at", { ascending: false }),
+    supabase
+      .from("ignored_vendor_categories")
+      .select("category")
+      .eq("project_id", projectId)
+      .order("created_at", { ascending: true }),
   ]);
 
   const defaultDate = formatDefaultDate(project?.wedding_date ?? null);
@@ -275,14 +316,6 @@ export default async function VendorsPage({
     project_vendor_id: row.project_vendor_id ?? null,
   }));
 
-  const neededTargets: NeededVendorTarget[] = vendorTargets
-    .filter((t) => t.status === "needed")
-    .map((t) => ({
-      id: t.id,
-      category: t.category,
-      note: t.note,
-    }));
-
   const defaultLocation = profileResult.data?.location?.trim() ?? "";
   const initialOnListByCategoryId = buildOnListByCategoryId(
     allProjectVendorCategories ?? [],
@@ -300,6 +333,42 @@ export default async function VendorsPage({
         : Number(row.actual_amount),
     notes: row.notes ?? null,
     project_vendor_id: row.project_vendor_id ?? null,
+  }));
+
+  const bookedCategoryIds = new Set<VendorCategoryId>();
+  for (const row of bookedPv) {
+    const raw = row.vendor.category?.trim();
+    if (!raw) continue;
+    if (getVendorCategoryById(raw)) {
+      bookedCategoryIds.add(raw as VendorCategoryId);
+    }
+  }
+
+  const ignoredCategoryIds = new Set<VendorCategoryId>();
+  for (const row of ignoredCategoryRows ?? []) {
+    const raw = row.category?.trim();
+    if (!raw || !getVendorCategoryById(raw)) continue;
+    ignoredCategoryIds.add(raw as VendorCategoryId);
+  }
+
+  const fromBudgetIds = new Set<VendorCategoryId>();
+  for (const item of budgetItems) {
+    const mapped = mapBudgetCategoryToVendorCategory(item.category ?? "");
+    if (mapped) fromBudgetIds.add(mapped);
+  }
+
+  const toBookCandidates = [...fromBudgetIds]
+    .filter(
+      (id) => !bookedCategoryIds.has(id) && !ignoredCategoryIds.has(id),
+    )
+    .map((categoryId) => ({
+      categoryId,
+      label: vendorCategoryLabel(categoryId),
+    }));
+
+  const ignoredCandidates = [...ignoredCategoryIds].map((categoryId) => ({
+    categoryId,
+    label: vendorCategoryLabel(categoryId),
   }));
 
   const payments = (paymentRows ?? []).map((row) => ({
@@ -440,6 +509,12 @@ export default async function VendorsPage({
     }),
   );
 
+  const tabItems: { id: VendorTab; label: string }[] = [
+    { id: "search", label: "Search" },
+    { id: "outreach", label: "Outreach" },
+    { id: "booked", label: "Booked" },
+  ];
+
   return (
     <div className={stackClass}>
       <PageHeader
@@ -449,41 +524,76 @@ export default async function VendorsPage({
         actions={<TourHelpButton tourKey="vendors" />}
       />
 
-      <GmailConnection
-        connectedEmail={connectedEmail}
-        returnTo={returnTo}
-        errorMessage={gmailError ?? null}
-        justConnected={gmailConnected === "1"}
-      />
+      <nav
+        className="flex flex-wrap gap-2"
+        aria-label="Vendors sections"
+      >
+        {tabItems.map((item) => {
+          const active = item.id === activeTab;
+          return (
+            <Link
+              key={item.id}
+              href={vendorsTabHref(projectId, item.id, categoryPrefill)}
+              data-tour={
+                item.id === "outreach" ? "vendors-outreach" : undefined
+              }
+              className={cn(
+                "rounded-[var(--radius-pill)] px-3.5 py-2 text-[13px] font-semibold transition-colors",
+                active
+                  ? "bg-accent text-surface"
+                  : "bg-well text-muted hover:text-ink",
+              )}
+              aria-current={active ? "page" : undefined}
+            >
+              {item.label}
+            </Link>
+          );
+        })}
+      </nav>
 
-      <VendorSearchForm
-        projectId={projectId}
-        defaultLocation={defaultLocation}
-        initialAddedPlaceIds={addedPlaceIds}
-        neededTargets={neededTargets}
-        initialOnListByCategoryId={initialOnListByCategoryId}
-      />
+      {activeTab === "search" ? (
+        <VendorSearchForm
+          projectId={projectId}
+          defaultLocation={defaultLocation}
+          initialAddedPlaceIds={addedPlaceIds}
+          initialOnListByCategoryId={initialOnListByCategoryId}
+        />
+      ) : null}
 
-      <BookedVendorsSection
-        projectId={projectId}
-        vendors={bookedVendors}
-        emptySlots={emptyBookedSlots}
-        slotTargets={slotOptions}
-        connectableVendors={connectableVendors}
-        linkableItems={linkableItems}
-      />
+      {activeTab === "outreach" ? (
+        <>
+          <GmailConnection
+            connectedEmail={connectedEmail}
+            returnTo={returnTo}
+            errorMessage={gmailError ?? null}
+            justConnected={gmailConnected === "1"}
+          />
+          <VendorsToBookSection
+            candidates={toBookCandidates}
+            ignored={ignoredCandidates}
+          />
+          <OutreachRegion
+            projectId={projectId}
+            items={outreachList}
+            declinedItems={declinedList}
+            defaultDate={defaultDate}
+            existingVendors={existingVendors}
+            categoryTargets={slotOptions}
+            defaultCategoryId={categoryPrefill ?? null}
+          />
+        </>
+      ) : null}
 
-      <VendorsToBookSection targets={vendorTargets} />
-
-      <OutreachRegion
-        projectId={projectId}
-        items={outreachList}
-        declinedItems={declinedList}
-        defaultDate={defaultDate}
-        existingVendors={existingVendors}
-        categoryTargets={slotOptions}
-        defaultCategoryId={categoryPrefill ?? null}
-      />
+      {activeTab === "booked" ? (
+        <BookedVendorsSection
+          projectId={projectId}
+          vendors={bookedVendors}
+          emptySlots={emptyBookedSlots}
+          slotTargets={slotOptions}
+          connectableVendors={connectableVendors}
+          linkableItems={linkableItems}
+        />
+      ) : null}
     </div>
   );
 }

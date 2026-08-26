@@ -26,24 +26,31 @@ function mapInviteError(message: string): string {
 export function TeamInviteForm({ accountId }: { accountId: string }) {
   const [email, setEmail] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [inviteUrl, setInviteUrl] = useState<string | null>(null);
+  const [inviteSuccess, setInviteSuccess] = useState<{
+    email: string;
+    url: string;
+    emailSent: boolean;
+  } | null>(null);
   const [isPending, startTransition] = useTransition();
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    setInviteUrl(null);
+    setInviteSuccess(null);
 
+    const invitedEmail = email.trim();
     startTransition(async () => {
-      const result = await createAccountInvitation(accountId, email);
+      const result = await createAccountInvitation(accountId, invitedEmail);
       if (!result.ok) {
         setError(mapInviteError(result.error));
         return;
       }
 
-      setInviteUrl(
-        `${window.location.origin}/invite/account/${result.token}`,
-      );
+      setInviteSuccess({
+        email: invitedEmail,
+        url: `${window.location.origin}/invite/account/${result.token}`,
+        emailSent: result.emailSent,
+      });
       setEmail("");
     });
   }
@@ -88,14 +95,18 @@ export function TeamInviteForm({ accountId }: { accountId: string }) {
         ) : null}
       </form>
 
-      {inviteUrl ? (
+      {inviteSuccess ? (
         <div className="space-y-2 rounded-[var(--radius-inner)] bg-well p-4 shadow-recessed">
-          <p className="text-[13px] font-medium text-ink">Invite link</p>
+          <p className="text-[13px] font-medium text-ink">
+            {inviteSuccess.emailSent
+              ? `Invite sent to ${inviteSuccess.email}`
+              : "Invite created — email didn't send, share this link"}
+          </p>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
             <p className="min-w-0 flex-1 break-all text-[13px] text-muted">
-              {inviteUrl}
+              {inviteSuccess.url}
             </p>
-            <CopyInviteLink url={inviteUrl} />
+            <CopyInviteLink url={inviteSuccess.url} />
           </div>
           <p className="text-[13px] text-muted">
             This link is shown once and cannot be retrieved later. If it is lost,

@@ -142,8 +142,7 @@ export default async function AccessPage({
               Invite the couple
             </h2>
             <p className="mt-1 text-[13px] text-muted">
-              Send a link to the couple&apos;s email. They get couple access to
-              this wedding only.
+              Invite them by email. They get couple access to this wedding only.
             </p>
             <div className="mt-4">
               <InviteForm

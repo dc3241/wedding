@@ -8,7 +8,7 @@ import {
 } from "./meal-types";
 import { RsvpSubmissionsPanel } from "./RsvpSubmissionsPanel";
 import { SongRequestsCard } from "./SongRequestsCard";
-import type { RsvpSubmission } from "./rsvp-submissions";
+import type { RsvpSubmission, SongRequestEntry } from "./rsvp-submissions";
 import {
   RSVP_STATUSES,
   countPeopleByHouseholdStatus,
@@ -281,6 +281,28 @@ export default async function GuestsPage({
     },
   );
 
+  const songRequests: SongRequestEntry[] = [];
+  for (const submission of rsvpSubmissions) {
+    const householdLabel =
+      submission.matched_guest_name?.trim() ||
+      submission.name.trim() ||
+      null;
+    for (const attendee of submission.attendees) {
+      const song = attendee.song_request?.trim();
+      if (!song) continue;
+      const guestName =
+        attendee.name?.trim() || householdLabel || "Guest";
+      songRequests.push({
+        song,
+        guestName,
+        submittedAt: submission.created_at,
+      });
+    }
+  }
+  songRequests.sort((a, b) =>
+    a.submittedAt < b.submittedAt ? 1 : a.submittedAt > b.submittedAt ? -1 : 0,
+  );
+
   const catererTally = tallyAttendingMeals(
     allPeople.map((person) => person.member),
     optionNameById,
@@ -420,6 +442,7 @@ export default async function GuestsPage({
         <SongRequestsCard
           projectId={projectId}
           songRequestsEnabled={songRequestsEnabled}
+          songRequests={songRequests}
         />
       </div>
 

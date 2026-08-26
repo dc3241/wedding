@@ -1,13 +1,17 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import { useState, useTransition } from "react";
-import { setVendorTargetStatus } from "@/app/(app)/projects/[projectId]/vendors/actions";
+import { useTransition } from "react";
+import {
+  ignoreVendorCategory,
+  unignoreVendorCategory,
+} from "@/app/(app)/projects/[projectId]/vendors/actions";
 import { Button, ButtonLink } from "@/components/ui/button";
-import { Pill, type PillVariant } from "@/components/ui/pill";
-import { vendorCategoryLabel } from "@/lib/vendor-categories";
-import { cn } from "@/lib/cn";
+import { Card } from "@/components/ui/card";
+import { CollapseSection } from "@/components/ui/collapse-section";
+import type { VendorCategoryId } from "@/lib/budget-vendor-category-map";
 
+/** Still used by vendors/page.tsx for vendor_targets → Booked / Outreach / slots. */
 export type VendorTargetRow = {
   id: string;
   category: string;
@@ -16,35 +20,15 @@ export type VendorTargetRow = {
   project_vendor_id: string | null;
 };
 
-const STATUS_LABELS: Record<"needed" | "skipped", string> = {
-  needed: "To book",
-  skipped: "Skipped",
+export type ToBookCandidate = {
+  categoryId: VendorCategoryId;
+  label: string;
 };
 
-const STATUS_VARIANTS: Record<"needed" | "skipped", PillVariant> = {
-  needed: "default",
-  skipped: "default",
+export type IgnoredVendorCategory = {
+  categoryId: VendorCategoryId;
+  label: string;
 };
-
-const STATUS_SORT: Record<"needed" | "skipped", number> = {
-  needed: 0,
-  skipped: 1,
-};
-
-function CheckIcon() {
-  return (
-    <svg
-      viewBox="0 0 12 12"
-      className="size-3"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2.5"
-      aria-hidden
-    >
-      <path d="M2.5 6l2.5 2.5 4.5-5" />
-    </svg>
-  );
-}
 
 function SearchIcon() {
   return (
@@ -62,160 +46,145 @@ function SearchIcon() {
   );
 }
 
-function TargetActions({
-  target,
+function ToBookCard({
+  candidate,
   projectId,
 }: {
-  target: VendorTargetRow;
+  candidate: ToBookCandidate;
   projectId: string;
 }) {
   const [isPending, startTransition] = useTransition();
-
-  function setStatus(status: VendorTargetRow["status"]) {
-    startTransition(async () => {
-      await setVendorTargetStatus(target.id, status);
-    });
-  }
-
-  const searchHref = `/projects/${projectId}/vendors#discover`;
+  const searchHref = `/projects/${projectId}/vendors?tab=search#discover`;
 
   return (
-    <div
-      className="flex flex-wrap items-center gap-2"
-      onClick={(e) => e.stopPropagation()}
-    >
-      {target.status === "needed" ? (
-        <>
-          <Button
-            type="button"
-            variant="secondary"
-            disabled={isPending}
-            onClick={() => setStatus("booked")}
-            className="gap-2"
-          >
-            <CheckIcon />
-            Mark booked
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            disabled={isPending}
-            onClick={() => setStatus("skipped")}
-            className="text-muted"
-          >
-            Skip
-          </Button>
+    <div className="rounded-[var(--radius-inner)] bg-well px-4 py-3.5 shadow-recessed">
+      <div className="flex items-start justify-between gap-3">
+        <span className="min-w-0 truncate text-[15px] font-medium text-ink">
+          {candidate.label}
+        </span>
+        <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
           <ButtonLink href={searchHref} variant="secondary" className="gap-2">
             <SearchIcon />
             Find vendors
           </ButtonLink>
-        </>
-      ) : null}
-
-      {target.status === "skipped" ? (
-        <Button
-          type="button"
-          variant="secondary"
-          disabled={isPending}
-          onClick={() => setStatus("needed")}
-        >
-          Mark to book
-        </Button>
-      ) : null}
+          <Button
+            type="button"
+            variant="ghost"
+            disabled={isPending}
+            className="text-muted"
+            onClick={() => {
+              startTransition(async () => {
+                await ignoreVendorCategory(projectId, candidate.categoryId);
+              });
+            }}
+          >
+            Ignore
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }
 
-/** Empty / skipped slots — quieter than the Booked band. */
-export function VendorsToBookSection({
-  targets,
+function IgnoredList({
+  items,
+  projectId,
 }: {
-  targets: VendorTargetRow[];
+  items: IgnoredVendorCategory[];
+  projectId: string;
+}) {
+  const [isPending, startTransition] = useTransition();
+
+  return (
+    <ul className="space-y-2">
+      {items.map((item) => (
+        <li
+          key={item.categoryId}
+          className="flex items-center justify-between gap-3"
+        >
+          <span className="min-w-0 truncate text-[14px] font-medium text-ink">
+            {item.label}
+          </span>
+          <Button
+            type="button"
+            variant="ghost"
+            disabled={isPending}
+            className="shrink-0 text-muted"
+            onClick={() => {
+              startTransition(async () => {
+                await unignoreVendorCategory(projectId, item.categoryId);
+              });
+            }}
+          >
+            Un-ignore
+          </Button>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** Budget-sourced categories still to book — quieter than the Booked band. */
+export function VendorsToBookSection({
+  candidates,
+  ignored,
+}: {
+  candidates: ToBookCandidate[];
+  ignored: IgnoredVendorCategory[];
 }) {
   const params = useParams<{ projectId: string }>();
   const projectId = params.projectId;
-  const [openId, setOpenId] = useState<string | null>(null);
 
-  const stillOpen = targets.filter(
-    (t): t is VendorTargetRow & { status: "needed" | "skipped" } =>
-      t.status === "needed" || t.status === "skipped",
-  );
-
-  if (stillOpen.length === 0) {
+  if (candidates.length === 0 && ignored.length === 0) {
     return null;
   }
 
-  const sorted = [...stillOpen].sort(
-    (a, b) => STATUS_SORT[a.status] - STATUS_SORT[b.status],
+  const sortedCandidates = [...candidates].sort((a, b) =>
+    a.label.localeCompare(b.label),
+  );
+  const sortedIgnored = [...ignored].sort((a, b) =>
+    a.label.localeCompare(b.label),
   );
 
-  function toggle(id: string) {
-    setOpenId((prev) => (prev === id ? null : id));
-  }
-
   return (
-    <section className="space-y-4">
+    <Card className="space-y-4 px-6 py-5">
       <p className="text-[12px] font-semibold uppercase tracking-[0.09em] text-muted">
         Still to book
       </p>
-      <div
-        className="grid gap-3"
-        style={{
-          gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
-        }}
-      >
-        {sorted.map((target) => {
-          const open = openId === target.id;
-          const skipped = target.status === "skipped";
 
-          return (
-            <details
-              key={target.id}
-              className={cn(
-                "overflow-hidden rounded-[var(--radius-inner)] bg-well shadow-recessed",
-                open && "[grid-column:1/-1]",
-                skipped && "opacity-70",
-              )}
-              open={open}
-            >
-              <summary
-                className="cursor-pointer list-none px-4 py-3.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-accent [&::-webkit-details-marker]:hidden"
-                onClick={(e) => {
-                  e.preventDefault();
-                  toggle(target.id);
-                }}
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <span className="min-w-0 truncate text-[15px] font-medium text-ink">
-                    {vendorCategoryLabel(target.category)}
-                  </span>
-                  <span className="shrink-0">
-                    <Pill variant={STATUS_VARIANTS[target.status]}>
-                      {STATUS_LABELS[target.status]}
-                    </Pill>
-                  </span>
-                </div>
-                {target.note && !open ? (
-                  <p className="mt-2 truncate text-[13px] text-muted">
-                    {target.note}
-                  </p>
-                ) : null}
-              </summary>
+      {sortedCandidates.length > 0 ? (
+        <div
+          className="grid gap-3"
+          style={{
+            gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+          }}
+        >
+          {sortedCandidates.map((candidate) => (
+            <ToBookCard
+              key={candidate.categoryId}
+              candidate={candidate}
+              projectId={projectId}
+            />
+          ))}
+        </div>
+      ) : null}
 
-              {open ? (
-                <div className="space-y-4 px-4 pb-4">
-                  {target.note ? (
-                    <p className="text-[13px] leading-relaxed text-muted">
-                      {target.note}
-                    </p>
-                  ) : null}
-                  <TargetActions target={target} projectId={projectId} />
-                </div>
-              ) : null}
-            </details>
-          );
-        })}
-      </div>
-    </section>
+      {sortedIgnored.length > 0 ? (
+        <div className="rounded-[var(--radius-inner)] bg-well px-4 py-3 shadow-recessed">
+          <CollapseSection
+            title={
+              <span className="text-[12px] font-semibold uppercase tracking-[0.09em] text-muted">
+                Ignored ({sortedIgnored.length})
+              </span>
+            }
+            headerClassName="py-1"
+            bodyClassName="pt-3"
+            defaultOpen={false}
+          >
+            <IgnoredList items={sortedIgnored} projectId={projectId} />
+          </CollapseSection>
+        </div>
+      ) : null}
+    </Card>
   );
 }

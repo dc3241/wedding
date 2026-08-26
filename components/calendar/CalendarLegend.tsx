@@ -22,6 +22,8 @@ export function CalendarLegend({
   audience,
   weddings = [],
 }: CalendarLegendProps) {
+  const weddingIds = weddings.map((w) => w.id);
+
   return (
     <div className="mt-4 flex flex-col gap-2.5 border-t border-hairline pt-3.5">
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
@@ -54,7 +56,7 @@ export function CalendarLegend({
               <span
                 className="size-[11px] shrink-0 rounded-[3px]"
                 style={{
-                  background: `var(${weddingHue(wedding.id)})`,
+                  background: `var(${weddingHue(wedding.id, weddingIds)})`,
                 }}
                 aria-hidden
               />

@@ -203,7 +203,7 @@ export const TOUR_CONFIGS: Record<string, TourConfig> = {
       {
         target: "vendors-outreach",
         title: "Outreach pipeline",
-        body: "Vendors linked to the project live here — move them through to contact, contacted, replied, and booked.",
+        body: "Open Outreach to manage your shortlist — draft emails, track replies, and move vendors through to booked.",
       },
     ],
   },

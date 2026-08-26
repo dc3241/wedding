@@ -62,10 +62,23 @@ export const CALENDAR_KIND_LEGEND: ReadonlyArray<{
 }));
 
 /**
- * Stable hash of a project UUID → categorical hue CSS var NAME.
+ * Categorical hue CSS var NAME for a wedding.
+ * When `activeIds` is provided, hues are unique across that set (sorted by id,
+ * then `index % 5`) so four or five open weddings never collide. Falls back to
+ * a stable per-id hash when the project is not in the set.
  * Deterministic across sessions; not stored.
  */
-export function weddingHue(projectId: string): CalWeddingHue {
+export function weddingHue(
+  projectId: string,
+  activeIds?: readonly string[],
+): CalWeddingHue {
+  if (activeIds && activeIds.length > 0) {
+    const unique = [...new Set(activeIds)].sort();
+    const idx = unique.indexOf(projectId);
+    if (idx >= 0) {
+      return CAL_WEDDING_HUES[idx % CAL_WEDDING_HUES.length]!;
+    }
+  }
   let hash = 0;
   for (let i = 0; i < projectId.length; i++) {
     hash = (hash * 31 + projectId.charCodeAt(i)) >>> 0;

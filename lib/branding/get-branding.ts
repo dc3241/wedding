@@ -1,4 +1,5 @@
 import "server-only";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { resolveBusinessAccountId } from "@/lib/billing/resolve-account";
 import type { ProjectBranding } from "@/lib/branding/types";
 import { createClient } from "@/utils/supabase/server";
@@ -36,20 +37,15 @@ export async function getBrandingForProject(
 }
 
 /**
- * Own-shell branding for PlannerShell (VENUE-01).
- * Separate from getBrandingForProject — answers "my account's chrome,"
- * not "a project I'm viewing's owner's chrome."
+ * VENUE-01 own-shell gate — pure account-row read.
  * Returns null unless plan = 'venue' AND white_label_enabled.
+ * No cookie / auth lookups — callers supply client + accountId.
  */
-export async function getOwnAccountBranding(): Promise<ProjectBranding | null> {
-  const supabase = await createClient();
-
-  let accountId: string;
-  try {
-    accountId = await resolveBusinessAccountId(supabase);
-  } catch {
-    return null;
-  }
+async function loadOwnAccountBranding(
+  supabase: SupabaseClient,
+  accountId: string,
+): Promise<ProjectBranding | null> {
+  if (!accountId) return null;
 
   const { data, error } = await supabase
     .from("accounts")
@@ -72,6 +68,36 @@ export async function getOwnAccountBranding(): Promise<ProjectBranding | null> {
     brandLogoUrl: data.brand_logo_url,
     brandAccentColor: data.brand_accent_color,
   };
+}
+
+/**
+ * Own-shell branding for PlannerShell (VENUE-01).
+ * Separate from getBrandingForProject — answers "my account's chrome,"
+ * not "a project I'm viewing's owner's chrome."
+ * Returns null unless plan = 'venue' AND white_label_enabled.
+ */
+export async function getOwnAccountBranding(): Promise<ProjectBranding | null> {
+  const supabase = await createClient();
+
+  let accountId: string;
+  try {
+    accountId = await resolveBusinessAccountId(supabase);
+  } catch {
+    return null;
+  }
+
+  return loadOwnAccountBranding(supabase, accountId);
+}
+
+/**
+ * Own-shell branding for service-role / cron callers (EMAIL-BRAND-01).
+ * Same VENUE-01 gate as getOwnAccountBranding — no cookie session required.
+ */
+export async function getOwnAccountBrandingForAccount(
+  supabase: SupabaseClient,
+  accountId: string,
+): Promise<ProjectBranding | null> {
+  return loadOwnAccountBranding(supabase, accountId);
 }
 
 /** Extract `/projects/{uuid}` from a pathname (middleware `x-pathname`). */

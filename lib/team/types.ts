@@ -2,7 +2,7 @@ export const TEAM_BUSINESS_ONLY_MESSAGE =
   "Team invitations are only available for business accounts.";
 
 export type CreateAccountInvitationResult =
-  | { ok: true; token: string; invitationId: string }
+  | { ok: true; token: string; invitationId: string; emailSent: boolean }
   | { ok: false; error: string };
 
 export type RevokeAccountInvitationResult =

@@ -20,13 +20,14 @@
   --deep: #3D2430;
   --deep-eyebrow: #E8B4C4;
 
-  /* Calendar categorical hues — identity / kind tint ONLY (CAL-03).
-     Deliberately separate from status tokens (--sage / --clay / --rosewood). */
-  --cal-w-1: #5661a8;
-  --cal-w-2: #2f8a86;
-  --cal-w-3: #8a54a6;
-  --cal-w-4: #52739a;
-  --cal-w-5: #b06a4f;
+  /* Calendar categorical hues — identity / kind tint ONLY (CAL-03 / CAL-05).
+     Not status tokens (--sage / --clay / --rosewood) and not --accent.
+     Spread ≥50° around the wheel so five weddings read as distinct at a glance. */
+  --cal-w-1: #423dc2; /* indigo  hsl(242, 52%, 50%) */
+  --cal-w-2: #2f8693; /* teal    hsl(188, 52%, 38%) */
+  --cal-w-3: #b540b1; /* violet  hsl(302, 48%, 48%) */
+  --cal-w-4: #699339; /* olive   hsl(88, 44%, 40%) — was slate-blue, too close to w-1 */
+  --cal-w-5: #bd5732; /* copper  hsl(16, 58%, 47%) */
 
   --radius-card: 22px;
   --radius-inner: 14px;

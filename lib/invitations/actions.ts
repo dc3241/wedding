@@ -2,6 +2,8 @@
 
 import { createHash, randomBytes } from "node:crypto";
 import { revalidatePath } from "next/cache";
+import { appOrigin } from "@/lib/url";
+import { sendEmailBestEffort } from "@/lib/email/send-best-effort";
 import { PROJECT_INVITE_ROLES } from "@/lib/invitations/constants";
 import type {
   AcceptInvitationResult,
@@ -10,9 +12,11 @@ import type {
   RemoveProjectMemberResult,
   RevokeInvitationResult,
 } from "@/lib/invitations/types";
+import { tabsForAccountKind } from "@/lib/project-tabs";
 import { createClient } from "@/utils/supabase/server";
 
 const INVITE_TTL_MS = 14 * 24 * 60 * 60 * 1000;
+const INVITE_TTL_DAYS = 14;
 
 function isProjectInviteRole(role: string): role is ProjectInviteRole {
   return (PROJECT_INVITE_ROLES as readonly string[]).includes(role);
@@ -24,6 +28,57 @@ function accessPath(projectId: string) {
 
 function hashToken(raw: string) {
   return createHash("sha256").update(raw).digest("hex");
+}
+
+function projectInviteUrl(token: string): string {
+  return `${appOrigin()}/invite/${encodeURIComponent(token)}`;
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function formatTabList(labels: string[]): string {
+  if (labels.length === 0) return "";
+  if (labels.length === 1) return labels[0]!;
+  if (labels.length === 2) return `${labels[0]} and ${labels[1]}`;
+  return `${labels.slice(0, -1).join(", ")}, and ${labels[labels.length - 1]}`;
+}
+
+function workspaceTabLabels(role: ProjectInviteRole): string[] {
+  // Invited members have no account — same filter as CoupleShell (§6 / CAL-04).
+  return tabsForAccountKind(null, role).map((tab) => tab.label);
+}
+
+function buildProjectInviteEmail(args: {
+  inviteUrl: string;
+  role: ProjectInviteRole;
+  projectName: string;
+}): { subject: string; text: string; html: string } {
+  const tabList = formatTabList(workspaceTabLabels(args.role));
+  const roleNoun = args.role === "collaborator" ? "a collaborator" : "the couple";
+  const subject = `You're invited to ${args.projectName} on First Look`;
+  const text = [
+    `You've been invited as ${roleNoun} on ${args.projectName}.`,
+    "",
+    `You'll see the wedding workspace: ${tabList}.`,
+    "",
+    `Accept the invitation: ${args.inviteUrl}`,
+    "",
+    `This link expires in ${INVITE_TTL_DAYS} days.`,
+    "",
+  ].join("\n");
+  const html = [
+    `<p>You've been invited as ${escapeHtml(roleNoun)} on ${escapeHtml(args.projectName)}.</p>`,
+    `<p>You'll see the wedding workspace: ${escapeHtml(tabList)}.</p>`,
+    `<p><a href="${escapeHtml(args.inviteUrl)}">Accept the invitation</a></p>`,
+    `<p>This link expires in ${INVITE_TTL_DAYS} days.</p>`,
+  ].join("");
+  return { subject, text, html };
 }
 
 function mapAcceptError(message: string): AcceptInvitationResult {
@@ -72,6 +127,13 @@ export async function createProjectInvitation(
     return { ok: false, error: "You must be logged in." };
   }
 
+  const { data: project } = await supabase
+    .from("projects")
+    .select("name")
+    .eq("id", projectId)
+    .maybeSingle();
+  const projectName = project?.name?.trim() || "a wedding";
+
   const rawToken = randomBytes(32).toString("base64url");
   const tokenHash = hashToken(rawToken);
   const expiresAt = new Date(Date.now() + INVITE_TTL_MS).toISOString();
@@ -93,8 +155,30 @@ export async function createProjectInvitation(
     return { ok: false, error: error.message };
   }
 
+  // Best-effort delivery — the row is committed; never fail the invite on send.
+  const inviteUrl = projectInviteUrl(rawToken);
+  const body = buildProjectInviteEmail({
+    inviteUrl,
+    role,
+    projectName,
+  });
+  const emailSent = await sendEmailBestEffort(
+    {
+      to: trimmed,
+      subject: body.subject,
+      text: body.text,
+      html: body.html,
+    },
+    "createProjectInvitation",
+  );
+
   revalidatePath(accessPath(projectId));
-  return { ok: true, token: rawToken, invitationId: data.id };
+  return {
+    ok: true,
+    token: rawToken,
+    invitationId: data.id,
+    emailSent,
+  };
 }
 
 /** Soft-revoke a pending invitation. */

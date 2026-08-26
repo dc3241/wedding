@@ -478,3 +478,51 @@ export async function setVendorTargetStatus(
 
   revalidatePath(vendorsPath(data.project_id));
 }
+
+export async function ignoreVendorCategory(
+  projectId: string,
+  category: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const categoryId = category.trim();
+  if (!getVendorCategoryById(categoryId)) {
+    return { ok: false, error: "Choose a valid vendor category." };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("ignored_vendor_categories").insert({
+    project_id: projectId,
+    category: categoryId,
+  });
+
+  // Unique (project_id, category) — already ignored is a no-op success.
+  if (error && error.code !== "23505") {
+    return { ok: false, error: error.message };
+  }
+
+  revalidatePath(vendorsPath(projectId));
+  return { ok: true };
+}
+
+export async function unignoreVendorCategory(
+  projectId: string,
+  category: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const categoryId = category.trim();
+  if (!getVendorCategoryById(categoryId)) {
+    return { ok: false, error: "Choose a valid vendor category." };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("ignored_vendor_categories")
+    .delete()
+    .eq("project_id", projectId)
+    .eq("category", categoryId);
+
+  if (error) {
+    return { ok: false, error: error.message };
+  }
+
+  revalidatePath(vendorsPath(projectId));
+  return { ok: true };
+}

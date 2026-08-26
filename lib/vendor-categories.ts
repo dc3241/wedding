@@ -131,9 +131,6 @@ export function vendorCategoryLabel(category: string): string {
 export function composeVendorTextQuery(
   category: VendorCategory,
   location: string,
-  refinement?: string,
 ): string {
-  const base = category.queryTemplate.replace("{location}", location.trim());
-  const trimmed = refinement?.trim();
-  return trimmed ? `${base} ${trimmed}` : base;
+  return category.queryTemplate.replace("{location}", location.trim());
 }

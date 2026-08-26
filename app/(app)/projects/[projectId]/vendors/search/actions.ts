@@ -37,7 +37,6 @@ export async function searchPlaces(
   projectId: string,
   categoryId: string,
   location: string,
-  refinement = "",
 ): Promise<SearchPlacesResponse> {
   const trimmedLocation = location.trim();
   if (!trimmedLocation) {
@@ -60,7 +59,7 @@ export async function searchPlaces(
     return { ok: false, error: "Project not found." };
   }
 
-  const textQuery = composeVendorTextQuery(category, trimmedLocation, refinement);
+  const textQuery = composeVendorTextQuery(category, trimmedLocation);
 
   const requestBody: Record<string, unknown> = {
     textQuery,

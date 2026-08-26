@@ -2,15 +2,18 @@
 
 import { useState, useTransition } from "react";
 import { setSongRequestsEnabled } from "./meal-actions";
+import type { SongRequestEntry } from "./rsvp-submissions";
 import { Card } from "@/components/ui/card";
 import { Eyebrow } from "@/components/ui/eyebrow";
 
 export function SongRequestsCard({
   projectId,
   songRequestsEnabled,
+  songRequests,
 }: {
   projectId: string;
   songRequestsEnabled: boolean;
+  songRequests: SongRequestEntry[];
 }) {
   const [songsOn, setSongsOn] = useState(songRequestsEnabled);
   const [songsMessage, setSongsMessage] = useState<string | null>(null);
@@ -26,6 +29,11 @@ export function SongRequestsCard({
       setSongsOn(songRequestsEnabled);
     });
   }
+
+  // Empty copy follows the live toggle; the list itself is historical and
+  // still renders when the toggle is off but songs already exist.
+  const showEmpty = songRequests.length === 0 && songsOn;
+  const showList = songRequests.length > 0;
 
   return (
     <Card className="px-6 py-5">
@@ -57,6 +65,30 @@ export function SongRequestsCard({
           </p>
         ) : null}
       </div>
+
+      {showList || showEmpty ? (
+        <div className="mt-6 space-y-3">
+          <p className="text-[12px] font-semibold uppercase tracking-[0.09em] text-muted">
+            Requested so far
+          </p>
+
+          {showEmpty ? (
+            <p className="text-[13px] text-muted">No song requests yet.</p>
+          ) : (
+            <ul className="space-y-2">
+              {songRequests.map((entry, index) => (
+                <li
+                  key={`${entry.submittedAt}-${entry.song}-${entry.guestName}-${index}`}
+                  className="rounded-[var(--radius-inner)] bg-well px-4 py-3 shadow-recessed"
+                >
+                  <p className="text-[15px] font-medium text-ink">{entry.song}</p>
+                  <p className="mt-0.5 text-[13px] text-muted">{entry.guestName}</p>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      ) : null}
     </Card>
   );
 }

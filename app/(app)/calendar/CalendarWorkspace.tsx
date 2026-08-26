@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState, type ReactNode } from "react";
+import { CalendarEventDetailModal } from "./CalendarEventDetailModal";
 import {
   CalendarEventPanel,
   type CalendarEventMutations,
@@ -101,16 +102,18 @@ function OverlayIcon({
 function EventChip({
   item,
   audience,
-  onClick,
+  onOpen,
+  weddingIds,
 }: {
   item: CalendarItem;
   audience: "planner" | "couple";
-  onClick?: () => void;
+  onOpen: (item: CalendarItem) => void;
+  weddingIds: readonly string[];
 }) {
   const kindKey = itemKindKey(item);
   const hueVar =
     audience === "planner" && item.projectId
-      ? weddingHue(item.projectId)
+      ? weddingHue(item.projectId, weddingIds)
       : kindHue(kindKey);
 
   return (
@@ -120,21 +123,18 @@ function EventChip({
       hueVar={hueVar}
       timeLabel={item.timeLabel}
       status={itemChipStatus(item)}
-      href={item.href}
-      onClick={
-        item.source === "authored" && onClick ? onClick : undefined
-      }
+      onClick={() => onOpen(item)}
     />
   );
 }
 
 function ItemRow({
   item,
-  onEdit,
+  onOpen,
   hideProjectName,
 }: {
   item: CalendarItem;
-  onEdit: (event: CalendarEventRow) => void;
+  onOpen: (item: CalendarItem) => void;
   hideProjectName?: boolean;
 }) {
   const isWedding = item.source === "wedding";
@@ -148,95 +148,55 @@ function ItemRow({
       ? `${formatCurrency(item.amount)} · ${item.title}`
       : item.title;
 
-  const body = (
-    <div className="flex items-start justify-between gap-2">
-      <div className="min-w-0">
-        <div className="flex flex-wrap items-center gap-1.5">
-          {isOverlay ? (
-            <OverlayIcon
-              source={item.source as "wedding" | "payment" | "task"}
-              pastDue={pastDue}
-            />
-          ) : null}
-          <span
-            className={cn(
-              "truncate text-[15px] font-semibold",
-              pastDue ? "text-rosewood" : "text-ink",
-            )}
-          >
-            {title}
-          </span>
-        </div>
-        <div className="mt-1.5 flex flex-wrap gap-1.5">
-          {item.kind ? (
-            <Pill variant="default">{formatKindLabel(item.kind)}</Pill>
-          ) : null}
-          {isWedding ? <Pill variant="sage">Wedding day</Pill> : null}
-          {isPayment ? (
-            <Pill variant={pastDue ? "rosewood" : "default"}>Payment due</Pill>
-          ) : null}
-          {isTask ? (
-            <Pill variant={pastDue ? "rosewood" : "default"}>Task due</Pill>
-          ) : null}
-          {!hideProjectName && !isWedding && item.projectName ? (
-            <Pill variant="default">{item.projectName}</Pill>
-          ) : null}
-          {item.timeLabel ? (
-            <span className="text-[13px] tabular-nums text-muted">
-              {item.timeLabel}
-            </span>
-          ) : item.allDay && !isOverlay ? (
-            <span className="text-[13px] text-muted">All day</span>
-          ) : null}
-        </div>
-      </div>
-    </div>
-  );
-
-  if (isPayment || isTask) {
-    if (item.href) {
-      return (
-        <Link
-          href={item.href}
-          className="block rounded-[var(--radius-inner)] bg-well px-3.5 py-3 shadow-recessed hover:bg-accent-wash/40"
-        >
-          {body}
-        </Link>
-      );
-    }
-    return (
-      <div className="rounded-[var(--radius-inner)] bg-well px-3.5 py-3 shadow-recessed">
-        {body}
-      </div>
-    );
-  }
-
   return (
-    <div
-      className={cn(
-        "rounded-[var(--radius-inner)] bg-well px-3.5 py-3 shadow-recessed",
-        !isWedding && "cursor-pointer hover:bg-accent-wash/60",
-      )}
-      role={isWedding ? undefined : "button"}
-      tabIndex={isWedding ? undefined : 0}
-      onClick={
-        isWedding || !item.authored
-          ? undefined
-          : () => onEdit(item.authored!)
-      }
-      onKeyDown={
-        isWedding || !item.authored
-          ? undefined
-          : (e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                onEdit(item.authored!);
-              }
-            }
-      }
+    <button
+      type="button"
+      onClick={() => onOpen(item)}
+      className="block w-full rounded-[var(--radius-inner)] bg-well px-3.5 py-3 text-left shadow-recessed hover:bg-accent-wash/40"
     >
-      {body}
-    </div>
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-1.5">
+            {isOverlay ? (
+              <OverlayIcon
+                source={item.source as "wedding" | "payment" | "task"}
+                pastDue={pastDue}
+              />
+            ) : null}
+            <span
+              className={cn(
+                "truncate text-[15px] font-semibold",
+                pastDue ? "text-rosewood" : "text-ink",
+              )}
+            >
+              {title}
+            </span>
+          </div>
+          <div className="mt-1.5 flex flex-wrap gap-1.5">
+            {item.kind ? (
+              <Pill variant="default">{formatKindLabel(item.kind)}</Pill>
+            ) : null}
+            {isWedding ? <Pill variant="sage">Wedding day</Pill> : null}
+            {isPayment ? (
+              <Pill variant={pastDue ? "rosewood" : "default"}>Payment due</Pill>
+            ) : null}
+            {isTask ? (
+              <Pill variant={pastDue ? "rosewood" : "default"}>Task due</Pill>
+            ) : null}
+            {!hideProjectName && !isWedding && item.projectName ? (
+              <Pill variant="default">{item.projectName}</Pill>
+            ) : null}
+            {item.timeLabel ? (
+              <span className="text-[13px] tabular-nums text-muted">
+                {item.timeLabel}
+              </span>
+            ) : item.allDay && !isOverlay ? (
+              <span className="text-[13px] text-muted">All day</span>
+            ) : null}
+          </div>
+        </div>
+      </div>
+    </button>
   );
 }
 
@@ -299,6 +259,7 @@ export function CalendarWorkspace({
   railWidth?: "fluid" | "fixed";
 }) {
   const [panel, setPanel] = useState<PanelState>(null);
+  const [detailItem, setDetailItem] = useState<CalendarItem | null>(null);
   // Client-only "today" avoids SSR/client day-boundary mismatch.
   const [todayKey] = useState(() => toLocalDateKey(new Date()));
   const [showWeddings, setShowWeddings] = useState(true);
@@ -308,6 +269,7 @@ export function CalendarWorkspace({
   const audience: "planner" | "couple" = lockedProjectId
     ? "couple"
     : "planner";
+  const weddingIds = useMemo(() => weddings.map((w) => w.id), [weddings]);
 
   function monthHref(y: number, m: number) {
     const ym = `${y}-${String(m).padStart(2, "0")}`;
@@ -464,15 +426,8 @@ export function CalendarWorkspace({
                       key={item.id}
                       item={item}
                       audience={audience}
-                      onClick={
-                        item.source === "authored" && item.authored
-                          ? () =>
-                              setPanel({
-                                type: "edit",
-                                event: item.authored!,
-                              })
-                          : undefined
-                      }
+                      weddingIds={weddingIds}
+                      onOpen={setDetailItem}
                     />
                   ))}
                   {overflow > 0 ? (
@@ -525,7 +480,7 @@ export function CalendarWorkspace({
                     key={item.id}
                     item={item}
                     hideProjectName={hideProjectName}
-                    onEdit={(event) => setPanel({ type: "edit", event })}
+                    onOpen={setDetailItem}
                   />
                 ))
               )}
@@ -563,7 +518,7 @@ export function CalendarWorkspace({
                       key={item.id}
                       item={item}
                       hideProjectName={hideProjectName}
-                      onEdit={(event) => setPanel({ type: "edit", event })}
+                      onOpen={setDetailItem}
                     />
                   ))}
                 </div>
@@ -572,6 +527,23 @@ export function CalendarWorkspace({
           </div>
         </Card>
       </div>
+
+      {detailItem ? (
+        <CalendarEventDetailModal
+          item={detailItem}
+          hideProjectName={hideProjectName}
+          onClose={() => setDetailItem(null)}
+          onEdit={
+            detailItem.authored
+              ? () => {
+                  const event = detailItem.authored!;
+                  setDetailItem(null);
+                  setPanel({ type: "edit", event });
+                }
+              : undefined
+          }
+        />
+      ) : null}
     </div>
   );
 }

@@ -1,4 +1,3 @@
-import Link from "next/link";
 import type { CSSProperties, ReactNode } from "react";
 import { cn } from "@/lib/cn";
 
@@ -11,14 +10,15 @@ type CalendarEventChipProps = {
   hueVar: string;
   timeLabel?: string | null;
   status?: CalendarChipStatus;
-  href?: string | null;
   onClick?: () => void;
   className?: string;
 };
 
 /**
- * Soft-stack calendar cell chip (CAL-03).
+ * Soft-stack calendar cell chip (CAL-03 / CAL-05).
  * Tint = identity/kind via `--hue`; status colour only on the dot / done glyph.
+ * Title sits on its own row (full chip width), wraps at word boundaries, clamps
+ * to two lines; `title` exposes the full string on hover / long-press.
  */
 export function CalendarEventChip({
   title,
@@ -26,7 +26,6 @@ export function CalendarEventChip({
   hueVar,
   timeLabel,
   status,
-  href,
   onClick,
   className,
 }: CalendarEventChipProps) {
@@ -35,32 +34,34 @@ export function CalendarEventChip({
 
   const style = {
     ["--hue" as string]: `var(${hueVar})`,
-    background: "color-mix(in srgb, var(--hue) 13%, white)",
+    background: "color-mix(in srgb, var(--hue) 20%, white)",
   } as CSSProperties;
 
   const body: ReactNode = (
     <>
-      {overdue ? (
+      <span className="flex min-w-0 items-center gap-1">
+        {overdue ? (
+          <span
+            className="size-1.5 shrink-0 rounded-full bg-rosewood"
+            aria-hidden
+          />
+        ) : null}
         <span
-          className="size-1.5 shrink-0 rounded-full bg-rosewood"
+          className={cn(
+            "shrink-0 text-[10px] opacity-85",
+            done && "text-sage opacity-100",
+          )}
           aria-hidden
-        />
-      ) : null}
-      <span
-        className={cn(
-          "shrink-0 text-[10px] opacity-85",
-          done && "text-sage opacity-100",
-        )}
-        aria-hidden
-      >
-        {glyph}
+        >
+          {glyph}
+        </span>
+        {timeLabel ? (
+          <span className="min-w-0 font-semibold tabular-nums">{timeLabel}</span>
+        ) : null}
       </span>
-      {timeLabel ? (
-        <span className="shrink-0 font-semibold tabular-nums">{timeLabel}</span>
-      ) : null}
       <span
         className={cn(
-          "min-w-0 flex-1 truncate font-medium",
+          "min-w-0 font-medium hyphens-none [overflow-wrap:break-word] [word-break:normal] line-clamp-2",
           done && "line-through decoration-sage/60",
         )}
       >
@@ -70,25 +71,11 @@ export function CalendarEventChip({
   );
 
   const chipClass = cn(
-    "flex w-full min-w-0 items-center gap-1 overflow-hidden border-l-[2.5px] border-l-[var(--hue)] py-0.5 pr-1.5 pl-1 text-left text-[11px] leading-tight text-ink",
+    "flex w-full min-w-0 flex-col items-stretch gap-0 overflow-hidden border-l-[2.5px] border-l-[var(--hue)] py-0.5 pr-1.5 pl-1 text-left text-[11px] leading-snug text-ink",
     "rounded-[var(--radius-inner)]",
     done && "opacity-[0.62]",
     className,
   );
-
-  if (href) {
-    return (
-      <Link
-        href={href}
-        onClick={(e) => e.stopPropagation()}
-        className={chipClass}
-        style={style}
-        title={title}
-      >
-        {body}
-      </Link>
-    );
-  }
 
   if (onClick) {
     return (

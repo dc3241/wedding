@@ -12,7 +12,6 @@ import type { PlaceResult } from "@/app/(app)/projects/[projectId]/vendors/searc
 export type VendorSearchCacheParams = {
   categoryId: string;
   location: string;
-  refinement: string;
 };
 
 export type VendorSearchCacheEntry = {

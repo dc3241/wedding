@@ -8,6 +8,9 @@
  *
  * Read-only: the loop is invoked with readOnly:true — write tools are
  * neither advertised nor executed.
+ *
+ * EMAIL-BRAND-01: JSON synthesis (summary + highlights) + branded HTML shell;
+ * venue own-brand via getOwnAccountBrandingForAccount (same VENUE-01 gate).
  */
 import { NextResponse } from "next/server";
 import { runAssistantWithTools } from "@/lib/assistant/call-assistant";
@@ -15,6 +18,8 @@ import {
   buildSynthesisSystemPrompt,
   SYNTHESIS_USER_TEXT,
 } from "@/lib/assistant/synthesis-prompt";
+import { getOwnAccountBrandingForAccount } from "@/lib/branding/get-branding";
+import type { ProjectBranding } from "@/lib/branding/types";
 import {
   accountKindFromEmbed,
   asOne,
@@ -23,6 +28,10 @@ import {
 } from "@/lib/cron/active-projects";
 import { cronAuthorized, unauthorizedCronResponse } from "@/lib/cron/authorize";
 import { resolveAccountEmails } from "@/lib/cron/resolve-account-emails";
+import {
+  renderBrandedDigestEmail,
+  type DigestSection,
+} from "@/lib/email/render-digest";
 import { sendEmail } from "@/lib/email/send";
 import { createServiceRoleClient } from "@/utils/supabase/service-role";
 
@@ -40,6 +49,11 @@ type OkLogRow = {
   summary: string | null;
 };
 
+type SynthesisPayload = {
+  summary: string;
+  highlights: string[];
+};
+
 /** Same convention as dashboard: soonest wedding first, undated last. */
 function compareWeddingDate(a: CronProjectRow, b: CronProjectRow): number {
   if (a.wedding_date !== b.wedding_date) {
@@ -53,20 +67,57 @@ function compareWeddingDate(a: CronProjectRow, b: CronProjectRow): number {
   return a.id.localeCompare(b.id);
 }
 
-function escapeHtml(value: string): string {
-  return value
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;");
+/**
+ * Parse model final text as { summary, highlights }.
+ * On any failure: raw text as summary, highlights: [] — never throw.
+ */
+function parseSynthesisPayload(raw: string): SynthesisPayload {
+  const trimmed = raw.trim();
+  if (!trimmed) {
+    return { summary: "", highlights: [] };
+  }
+
+  try {
+    const parsed: unknown = JSON.parse(trimmed);
+    if (
+      parsed &&
+      typeof parsed === "object" &&
+      !Array.isArray(parsed) &&
+      "summary" in parsed &&
+      typeof (parsed as { summary: unknown }).summary === "string" &&
+      "highlights" in parsed &&
+      Array.isArray((parsed as { highlights: unknown }).highlights) &&
+      (parsed as { highlights: unknown[] }).highlights.every(
+        (item) => typeof item === "string",
+      )
+    ) {
+      const summary = (parsed as { summary: string }).summary.trim();
+      const highlights = (parsed as { highlights: string[] }).highlights
+        .map((item) => item.trim())
+        .filter(Boolean)
+        .slice(0, 5);
+      return { summary, highlights };
+    }
+  } catch {
+    // fall through — treat as plain prose
+  }
+
+  return { summary: trimmed, highlights: [] };
+}
+
+function serializeOkSummary(payload: SynthesisPayload): string {
+  return JSON.stringify({
+    summary: payload.summary,
+    highlights: payload.highlights,
+  });
 }
 
 async function loadOkSummariesThisWindow(
   supabase: ReturnType<typeof createServiceRoleClient>,
   projectIds: string[],
   windowStartIso: string,
-): Promise<Map<string, string>> {
-  const byProject = new Map<string, string>();
+): Promise<Map<string, SynthesisPayload>> {
+  const byProject = new Map<string, SynthesisPayload>();
   if (projectIds.length === 0) return byProject;
 
   for (let i = 0; i < projectIds.length; i += PROJECT_PAGE_SIZE) {
@@ -84,9 +135,11 @@ async function loadOkSummariesThisWindow(
     }
 
     for (const row of (data ?? []) as OkLogRow[]) {
-      const summary = row.summary?.trim();
-      if (!summary) continue;
-      byProject.set(row.project_id, summary);
+      const raw = row.summary?.trim();
+      if (!raw) continue;
+      const payload = parseSynthesisPayload(raw);
+      if (!payload.summary) continue;
+      byProject.set(row.project_id, payload);
     }
   }
 
@@ -115,7 +168,8 @@ async function writeRunLog(
 }
 
 function buildDigest(
-  items: { projectName: string; summary: string }[],
+  items: DigestSection[],
+  branding?: ProjectBranding | null,
 ): { subject: string; text: string; html: string } {
   const subject =
     items.length === 1
@@ -123,20 +177,30 @@ function buildDigest(
       : "This week across your weddings";
 
   const textParts: string[] = [];
-  const htmlParts: string[] = [];
-
   for (const item of items) {
-    textParts.push(item.projectName, item.summary, "");
-    htmlParts.push(
-      `<p><strong>${escapeHtml(item.projectName)}</strong></p>`,
-      `<p>${escapeHtml(item.summary)}</p>`,
-    );
+    textParts.push(item.projectName, item.summary);
+    for (const highlight of item.highlights) {
+      textParts.push(`- ${highlight}`);
+    }
+    textParts.push("");
   }
+
+  const html = renderBrandedDigestEmail({
+    title: subject,
+    sections: items,
+    branding: branding
+      ? {
+          brandName: branding.brandName,
+          brandLogoUrl: branding.brandLogoUrl,
+          brandAccentColor: branding.brandAccentColor,
+        }
+      : undefined,
+  });
 
   return {
     subject,
     text: textParts.join("\n").trimEnd(),
-    html: htmlParts.join(""),
+    html,
   };
 }
 
@@ -204,6 +268,7 @@ export async function GET(request: Request) {
       const completedAt = new Date().toISOString();
       let outcome: "ok" | "capped" | "error";
       let summary: string;
+      let payload: SynthesisPayload | null = null;
 
       if (result.ok && result.status === "completed") {
         const text = result.reply.trim();
@@ -211,8 +276,15 @@ export async function GET(request: Request) {
           outcome = "error";
           summary = "empty synthesis";
         } else {
-          outcome = "ok";
-          summary = text;
+          payload = parseSynthesisPayload(text);
+          if (!payload.summary) {
+            outcome = "error";
+            summary = "empty synthesis";
+            payload = null;
+          } else {
+            outcome = "ok";
+            summary = serializeOkSummary(payload);
+          }
         }
       } else if (
         result.status === "cap_hit" ||
@@ -237,8 +309,8 @@ export async function GET(request: Request) {
         errors.push(`project ${project.id}: log insert ${logError}`);
       }
 
-      if (outcome === "ok") {
-        okSummaryByProject.set(project.id, summary);
+      if (outcome === "ok" && payload) {
+        okSummaryByProject.set(project.id, payload);
         accountsWithNewOk.add(project.account_id);
         synthesesProduced += 1;
       } else if (outcome === "capped") {
@@ -263,13 +335,17 @@ export async function GET(request: Request) {
     }
 
     for (const [accountId, accountProjects] of byAccount) {
-      const items = [...accountProjects]
+      const items: DigestSection[] = [...accountProjects]
         .filter((project) => okSummaryByProject.has(project.id))
         .sort(compareWeddingDate)
-        .map((project) => ({
-          projectName: project.name,
-          summary: okSummaryByProject.get(project.id)!,
-        }));
+        .map((project) => {
+          const payload = okSummaryByProject.get(project.id)!;
+          return {
+            projectName: project.name,
+            summary: payload.summary,
+            highlights: payload.highlights,
+          };
+        });
 
       if (items.length === 0) continue;
 
@@ -279,7 +355,16 @@ export async function GET(request: Request) {
         continue;
       }
 
-      const digest = buildDigest(items);
+      let branding: ProjectBranding | null = null;
+      try {
+        branding = await getOwnAccountBrandingForAccount(supabase, accountId);
+      } catch (err) {
+        // Do not fail the digest — First Look defaults via the render helper.
+        console.error(`agent-review branding ${accountId}:`, err);
+        branding = null;
+      }
+
+      const digest = buildDigest(items, branding);
       const sent = await sendEmail({
         to: recipients,
         subject: digest.subject,

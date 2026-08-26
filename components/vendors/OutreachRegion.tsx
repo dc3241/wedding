@@ -178,7 +178,7 @@ export function OutreachRegion({
   }
 
   return (
-    <div data-tour="vendors-outreach" className="space-y-4">
+    <div className="space-y-4">
       <Card className="px-5 py-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">

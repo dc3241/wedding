@@ -3,7 +3,7 @@ import { PROJECT_INVITE_ROLES } from "./constants";
 export type ProjectInviteRole = (typeof PROJECT_INVITE_ROLES)[number];
 
 export type CreateInvitationResult =
-  | { ok: true; token: string; invitationId: string }
+  | { ok: true; token: string; invitationId: string; emailSent: boolean }
   | { ok: false; error: string };
 
 export type RevokeInvitationResult =
