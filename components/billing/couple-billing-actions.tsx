@@ -101,7 +101,7 @@ export function VenueSubscribeButton({ accountId }: { accountId: string }) {
           onClick={() => setInterval("monthly")}
           className="px-3 py-1 text-[12px] font-semibold"
         >
-          Monthly · $199
+          Monthly · $149
         </SegmentedToggleItem>
         <SegmentedToggleItem
           type="button"
@@ -110,7 +110,7 @@ export function VenueSubscribeButton({ accountId }: { accountId: string }) {
           onClick={() => setInterval("annual")}
           className="px-3 py-1 text-[12px] font-semibold"
         >
-          Annual · $1,799
+          Annual · $1,499
         </SegmentedToggleItem>
       </SegmentedToggle>
       {interval === "annual" ? (

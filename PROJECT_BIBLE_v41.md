@@ -44,7 +44,7 @@ testing.
   Checkout (PRICE-02). Customer Portal (PRICE-06) is for **any** account with a real Stripe
   Customer (planner Subscription **or** couple monthly) — not planner-only. Lifetime / local
   trial / seeded active have no Subscription id, so no Portal.
-- **Venue billing:** Monthly **$199** / Annual **$1,799** at `/account/venue-upgrade`
+- **Venue billing:** Monthly **$149** / Annual **$1,499** at `/account/venue-upgrade`
   (VENUE-02). Webhook (and CHECKOUT-RECONCILE-01 on return) flips `accounts.plan`. Public
   `/pricing` venue toggle is **cosmetic** — does not start Checkout. **VENUE-08:** a paid
   venue plan already on the account sees a cadence pricing card on Billing instead of the
@@ -158,7 +158,8 @@ testing.
 |---|---|---|
 | **TASK-ASSIGN-01** | Checklist `tasks.assigned_to` + `list_project_assignees` RPC; board filter by assignee; clones null assignees. | **0097** |
 | **TMPL-02** | `clone_project_template` copies budget category/label only — `planned_amount` always `0`. | **0098** |
-| **VND-13 / VND-13b** | Vendors Search / Outreach / Booked tabs; budget-driven Still to book + `ignored_vendor_categories`. | **0099** |
+| **VND-13** | Vendors Search / Outreach / Booked tabs (`?tab=`). | **NONE** |
+| **VND-13b** | Budget-driven Still to book + `ignored_vendor_categories`. | **0099** |
 | **VND-LIB-01** | Library detail: delete unused account vendor; unlink from a booking. | **NONE** |
 | **CON-ARCHIVE-01** | Contracts archive: delete file + Edit-in-project jump. | **NONE** |
 | **VND-16** | Booked card "Copy confirm link" via shared `vendorConfirmUrl`. | **NONE** |
@@ -196,7 +197,8 @@ file**. Migration index **0001–0099** is in **§5 of this file**.
   LEAD-STALE, OVERDUE-01, CHECKOUT-RECONCILE-01, TRIAL-GUARD-01, MKT-01/02/03,
   ONBOARD-NUDGE-01, AUTO-01/02, AGENT-00/01/01a/02/03, AUTO-03a/03b, ACCT-GRANT-01,
   LEAD-EDIT-01, INQUIRY-EMBED-01, WORKFLOW-00…05, AUTH-GOOGLE-01, CONTACT-ROUTE-01,
-  TASK-ASSIGN-01, VND-LIB-01, CON-ARCHIVE-01, VND-16, INV-06, TEAM-EMAIL-01, EMAIL-BRAND-01.
+  TASK-ASSIGN-01, VND-LIB-01, CON-ARCHIVE-01, VND-16, INV-06, TEAM-EMAIL-01, EMAIL-BRAND-01,
+  VND-OUTREACH-MOBILE-01.
   **PRICE-03/04/05 product path is superseded** (schema residual).
 - **Still open (human gate):** confirm remaining **0060–0070 / 0072–0099** pastes (+ demo seeds);
   deploy/schedule `purge-demo` (do **not** treat `charge-trial-balance` as the live couple path);
@@ -304,7 +306,7 @@ a **public inquiry form** (`/inquire/[slug]`) **with embed snippet + optional wh
 - Stripe — billing for couples, planners, and venues (test mode). **Couple:** local 7-day free
   trial (no Stripe objects) then Monthly $10 Subscription **or** Lifetime $99 one-time Checkout
   (`charge_stage=couple_lifetime`). **Planner:** local 7-day free trial then Monthly $59 /
-  Annual $590 Subscription Checkout + Customer Portal. **Venue:** Monthly $199 / Annual $1,799
+  Annual $590 Subscription Checkout + Customer Portal. **Venue:** Monthly $149 / Annual $1,499
   Subscription Checkout (`/account/venue-upgrade`); webhook flips `accounts.plan`. PRICE-03/04/05
   $7+$92 path is **superseded** (schema + `charge-trial-balance` residual). **Checkout-return
   reconciliation (CHECKOUT-RECONCILE-01):** venue/planner/couple Checkout success URLs carry
@@ -2218,7 +2220,7 @@ white-label on. Distinct from CoupleShell project branding.
 
 #### VENUE-02 / 02b — Venue Checkout + plan flip. NO SCHEMA.
 
-Monthly $199 / Annual $1,799 at `/account/venue-upgrade`. Webhook maps venue price ids →
+Monthly $149 / Annual $1,499 at `/account/venue-upgrade`. Webhook maps venue price ids →
 `accounts.plan` (`active`/`trialing` → venue; other known statuses → planner; unrecognized →
 planner + warn). Does not touch brand columns. CHECK failures must propagate.
 
@@ -2688,7 +2690,8 @@ Remove becomes icon-only on small screens so vendor names stay readable.
 
 Chip/list open `CalendarEventDetailModal` (when, wedding, overdue, location, notes, Go to
 task/budget/vendor, Edit for authored events). Wedding hue palette retuned for >=50 degree
-spread (`globals.css` + `lib/calendar-hues.ts`).
+spread (`globals.css` + `lib/calendar-hues.ts`). **`calendar_events.location` and `.notes` have
+existed since 0045 (CAL-01)** — CAL-05 only surfaces them; no schema mislabel.
 
 #### INV-06 / TEAM-EMAIL-01 — Invite email delivery. NO SCHEMA.
 
@@ -2970,7 +2973,7 @@ didn't work?* If the answer is "the same," it's decoration.
 
 **Cursor-freeform work still needs the gate.** Product work includes freeform Cursor batches.
 The promotion bar is still a live pass — and any migration still needs the §5 landed-confirmation.
-**0060–0096 pastes remain unconfirmed** unless Dom closed them; **0068–0069 claimed LIVE VERIFIED**;
+**0060–0099 pastes remain unconfirmed** unless Dom closed them; **0068–0069 claimed LIVE VERIFIED**;
 **0071 LIVE VERIFIED**. 0059 DDL is reconstructed.
 
 **This file is the canonical Project Bible.** A new chat must be able to work from **this document
@@ -2991,7 +2994,7 @@ scan is a **findings list** for factual drift only (migration numbers, columns, 
 10. **A "next-free" migration number from Cursor — or from THIS bible — is a claim to verify, not a
     fact.** 0053 surfaced during GST-04 Step 0; later numbers were taken while a stale next-free
     claim in this document was still circulating (0059 seating, 0060–0062, 0063–0064, 0065–0069,
-    0070–0079, 0080–0083, 0084–0091, 0092–0096). Grep `supabase/migrations/` before trusting a number. **Next-free today is 0100.**
+    0070–0079, 0080–0083, 0084–0091, 0092–0096, 0097–0099). Grep `supabase/migrations/` before trusting a number. **Next-free today is 0100.**
 11. **A checkpoint only tests what Step 0 thought to ask.** TRIAL-GUARD-01's bug (a null-status stub
     soft-locking trial eligibility) existed since PRICE-01/PRICE-07 shipped but surfaced only once
     VENUE-05 added a second call site and real Checkout-abandonment testing happened. Absence of a
@@ -3197,8 +3200,8 @@ a code scan. Prefer section-level diffs.
   messaging; advance `to_contact` → `contacted` on successful send.
 - **Signup:** `auth.signUp` only; no tenant created at signup.
 - **Production infra:** prod belongs in a **separate Supabase org on Pro**. Fresh prod project,
-  migrations **0001–0096** applied by hand once each in order (NEVER `db push`; deploy-batches OK for
-  greenfield **then paste 0080–0096** — batches do not yet include them), storage buckets
+  migrations **0001–0099** applied by hand once each in order (NEVER `db push`; deploy-batches OK for
+  greenfield **then paste 0080–0099** — batches do not yet include them), storage buckets
   (`project-files` + `website-media` + **`vendor-media`** + **`brand-media`**) + policies recreated,
   Edge Function `purge-demo` deployed + scheduled, **Vercel Cron env** (`CRON_SECRET`, Resend,
   `SUPABASE_JWT_SECRET`, `INQUIRY_INBOUND_DOMAIN`, `RESEND_INBOUND_WEBHOOK_SECRET`), real SMTP,
@@ -3742,7 +3745,7 @@ offering, update Access allowlist + constants comment and smoke a read-only invi
 **H. Budget dashboard overhaul (mockup-first).** Aesthetic; data model complete.
 
 **I. Launch (after paste confirmation + visual QA).** Separate prod Supabase org on Pro + migrations
-**0001–0096** (+ 0100 if MEAL-03a / drops shipped) by hand — never `db push` — + storage buckets
+**0001–0099** (+ 0100 if MEAL-03a / drops shipped) by hand — never `db push` — + storage buckets
 (`project-files` + `website-media` + **`vendor-media`** + **`brand-media`**) + `purge-demo` + SMTP +
 **demo template seeds**; Vercel + domain + env (**incl. `CRON_SECRET`, Resend, `SUPABASE_JWT_SECRET`,
 `INQUIRY_INBOUND_DOMAIN`, `RESEND_INBOUND_WEBHOOK_SECRET`**); Stripe live + webhook + Portal + Tax +
@@ -3773,7 +3776,7 @@ decision; website caching; website-media orphan GC; currency-helper consolidatio
 **reconstruct 0050 `registry_teardown` + 0053 `files_vendor_link` rationale**; optional
 Soft stack `reference.html`; retire CSS aliases; font-load scoping; countdown + calendar +
 budget/guest-date hydration harden; optional Calendar/Access/Timeline/
-Contracts/Team tours; append 0080–0096 into `supabase/deploy-batches/` when convenient;
+Contracts/Team tours; append 0080–0099 into `supabase/deploy-batches/` when convenient;
 surface `estimated_guest_count` on lead Edit; retire `ensureInquirySlug` service-role write after
 0091 is live; wire builder UI for `lead_created` / `project_created`; time-based quiet-lead
 template (cron-scan family).
@@ -3785,7 +3788,7 @@ paste + Cron env + live checkpoints, not a greenfield build. Agentic spec compan
 either. Do not auto-send to third parties. Do not route workflow stage changes through
 `updateLeadStage`.
 
-**Recommended path:** **paste + checkpoint 0060–0096 + demo seeds + `purge-demo` + Cron/Resend/JWT
+**Recommended path:** **paste + checkpoint 0060–0099 + demo seeds + `purge-demo` + Cron/Resend/JWT
 env (A/D)** → **close the broad visual checkpoint + invite Jordyn (+ optional Team invite) (B/C)**
 → **MEAL-03a + due_date/rsvp_access_mode/traditions drops (E/F)** → **budget dashboard mockup (H)**
 → **Launch (I)** → optional `viewer` (G) → invoicing → CAL-01a / CON-03 / reconciled

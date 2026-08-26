@@ -49,12 +49,12 @@ export const BILLING_PLANS = {
     monthly: {
       priceId: process.env.STRIPE_PRICE_VENUE_MONTHLY ?? "",
       label: "Monthly",
-      amountLabel: "$199/mo",
+      amountLabel: "$149/mo",
     },
     annual: {
       priceId: process.env.STRIPE_PRICE_VENUE_ANNUAL ?? "",
       label: "Annual",
-      amountLabel: "$1,799/yr",
+      amountLabel: "$1,499/yr",
     },
   },
 } as const;

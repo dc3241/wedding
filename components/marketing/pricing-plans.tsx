@@ -46,8 +46,8 @@ const PLANNER_FEATURES = [
 ] as const;
 
 /** Venue list prices — presentation only; Checkout is post-login on /account/venue-upgrade. */
-const VENUE_MONTHLY_PRICE = 199;
-const VENUE_ANNUAL_PRICE = 1799;
+const VENUE_MONTHLY_PRICE = 149;
+const VENUE_ANNUAL_PRICE = 1499;
 const VENUE_ANNUAL_SAVINGS = VENUE_MONTHLY_PRICE * 12 - VENUE_ANNUAL_PRICE;
 
 const VENUE_FEATURES = [
