@@ -1,26 +1,30 @@
-# Wedding Planning SaaS — Project Bible (v40)
+# Wedding Planning SaaS — Project Bible (v41)
 
 Canonical **current-state** document for this repo. Self-contained — every fact a new chat
 needs is in **this** document. Drop this into Project instructions/knowledge so any new chat
-picks up cold. Lives in-repo at `PROJECT_BIBLE_v40.md`. The repo's `.cursor/design.mdc`,
+picks up cold. Lives in-repo at `PROJECT_BIBLE_v41.md`. The repo's `.cursor/design.mdc`,
 `app/globals.css`, and `supabase/migrations/` remain the live source of truth; this
 summarizes them and the decisions behind them.
 
-**Current through migration 0096** (on disk). **Next-free migration is 0097.** **v40 ships
-schema 0092–0096** (demo-name anonymize, public inquiry branding, and the account-scoped CRM
-workflow engine + send_email + templates). Fresh-install SQL bundles live under
+**Current through migration 0099** (on disk). **Next-free migration is 0100.** **v41 ships
+schema 0097–0099** (task assignment, template clone without dollar amounts, and budget-driven
+To Book ignore list) plus NO-SCHEMA product work: Google sign-in, admin inbound mail relay,
+Vendors Search/Outreach/Booked tabs, calendar event detail, invite email delivery, library
+vendor/contract manage, branded AGENT-01 digests. Fresh-install SQL bundles live under
 `supabase/deploy-batches/` (batch1–4) — convenience only; hand-paste of numbered migrations
-remains canonical for incremental applies. Deploy-batches do **not** yet include 0080–0096 —
-incremental paste of those seventeen is required after a batch install.
+remains canonical for incremental applies. Deploy-batches do **not** yet include 0080–0099 —
+incremental paste of those twenty is required after a batch install.
 
 **Git (migrations):** **0070–0083 are committed** (0070–0078 in `3d50a3d` / `97c234a` /
 `4d5bbcd` / `9a0e267`; **0079** in `b2bf8fc`; **0080–0083** in `ca4131f`). ENT-01a /
 CHECKOUT-RECONCILE-01 / TRIAL-GUARD-01 / VENUE-04/05 landed in `2d195c4` on `staging`. v38
 product work (MKT-01…03, VENUE-06/07, WHITE-02, ONBOARD-NUDGE-01) is on disk. **0084–0096
 are on disk** (AUTO-01/02, AGENT-00/01a/03, AUTO-03a/b, ACCT-GRANT-01, DEMO-ANON-01,
-WHITE-03, WORKFLOW-00/03/05). Confirm remaining git commits + live pastes. Lead-edit modal,
-inquiry embed snippet, workflow builder UI, and template gallery are on disk (NO SCHEMA
-except 0094–0096).
+WHITE-03, WORKFLOW-00/03/05). **0097–0099 are on disk** (TASK-ASSIGN-01, TMPL-02, VND-13b)
+in commits `b453dd8` / `ce46099` / `9e50770`. Confirm remaining git commits + live pastes.
+Lead-edit modal, inquiry embed snippet, workflow builder UI, template gallery, Google OAuth
+login, Vendors three-tab workspace, and invite emails are on disk (NO SCHEMA except where
+noted).
 
 **Dev-ops note:** `STRIPE_SECRET_KEY` was briefly live-mode in local `.env.local` during
 testing, producing one real live venue subscription — confirmed cancelled directly in the
@@ -42,12 +46,20 @@ testing.
   trial / seeded active have no Subscription id, so no Portal.
 - **Venue billing:** Monthly **$199** / Annual **$1,799** at `/account/venue-upgrade`
   (VENUE-02). Webhook (and CHECKOUT-RECONCILE-01 on return) flips `accounts.plan`. Public
-  `/pricing` venue toggle is **cosmetic** — does not start Checkout.
+  `/pricing` venue toggle is **cosmetic** — does not start Checkout. **VENUE-08:** a paid
+  venue plan already on the account sees a cadence pricing card on Billing instead of the
+  Upgrade CTA.
 - **Welcome screen:** three equal-weight options — couple / planner / venue (VENUE-06). Venue
   is still `accounts.kind = 'business'` plus a request-only `venueIntent` flag; there is **no**
   `kind='venue'`. `accounts.plan` stays `'planner'` until a paid venue subscription.
+- **Auth:** email/password **and** **Continue with Google** (AUTH-GOOGLE-01) on login and
+  signup (`signInWithOAuth` → `/auth/callback`). Distinct from Gmail OAuth (`gmail.send`) used
+  for outreach.
 - **Team seats exist** (TEAM-01) for business accounts — flat, no roles. Parallel to project
   invitations (0028): two tables, two cookies, two accept paths. Do not collapse them.
+  **INV-06 / TEAM-EMAIL-01:** both invite paths send best-effort Resend email after the DB
+  write; one-time link copy remains the fallback when send fails. Gmail OAuth is **not** used
+  for invitations.
 - **White-label:** CoupleShell for invited project viewers (WHITE-01). PlannerShell own-shell
   only when `plan = 'venue' AND white_label_enabled` (VENUE-01). Ordinary planner chrome stays
   First Look. Accent picker + contrast guard is WHITE-02 (still one free-text hex).
@@ -55,19 +67,31 @@ testing.
   **`(app)/layout` must not branch on pathname.**
 - **`isTaskPastDue`** (`lib/task-overdue.ts`) is the **single source** for task overdue
   (OVERDUE-01). Budget/schedule `due_on < today` is a different predicate.
+- **Checklist tasks can be assigned** (`tasks.assigned_to` — TASK-ASSIGN-01 / 0097) to any
+  account member or project member (`list_project_assignees`). Template + demo clones **never**
+  copy assignees.
+- **New Booking template clone** (TMPL-01 / 0079 + **TMPL-02 / 0098**): structure only —
+  checklist title/phase/position, budget **category + label with `planned_amount = 0`**,
+  vendor_targets category. Never copy dates, status, actuals, vendor links, assignees, or
+  dollar estimates.
+- **Vendors workspace is three tabs** (VND-13): Search / Outreach / Booked (`?tab=`).
+  **Still to book** (on Outreach) is **budget-mapped** categories not yet booked and not in
+  `ignored_vendor_categories` (0099) — **not** `vendor_targets` status. Vocabularies stay
+  separate; `mapBudgetCategoryToVendorCategory` is read-time only.
 - **`getAccountContext` includes `plan`** (VENUE-07) and **must filter `account_members` by
   `user_id`** (TEAM-01 fellow-member SELECT).
 - **A `subscriptions` row with `status = null` is Checkout-initiation debris, not a
   subscription** (TRIAL-GUARD-01). Guards check `status IS NOT NULL`, not row existence.
-- **Deferred destructive drops are 0097+:** MEAL-03a (`guests.meal_choice` +
+- **Deferred destructive drops are 0100+:** MEAL-03a (`guests.meal_choice` +
   `guests.party_size`), `budget_items.due_date`, `rsvp_access_mode`, optional
   `wedding_profile.traditions`, DASH-03a `projects.description`, optional PRICE-03/04/05
-  residual drop. **0092–0096 are taken** (DEMO-ANON-01, WHITE-03, WORKFLOW-00/03/05).
+  residual drop. **0092–0099 are taken.**
 - **Rule-based automation is live on disk:** AUTO-01 payment-schedule watch (0084) and AUTO-02
   booked-vendor countdown confirmations (0085). Date math in, Resend template email out, **no LLM**.
   Distinct from agentic runs — different cron routes, different cost/failure profile.
-- **Agentic automation is live on disk:** AGENT-00 plumbing (0086), AGENT-01 weekly synthesis,
-  AGENT-01a unattended-write impersonation (0087), AGENT-02 daily implication notes, AGENT-03
+- **Agentic automation is live on disk:** AGENT-00 plumbing (0086), AGENT-01 weekly synthesis
+  (**EMAIL-BRAND-01** branded HTML digest + JSON `{summary, highlights}`), AGENT-01a
+  unattended-write impersonation (0087), AGENT-02 daily implication notes, AGENT-03
   vendor-outreach drafts (0088). Same assistant tool loop; cron entry point. Third-party
   sends stay **propose-then-approve**. Architecture companion: `AGENTIC_AUTOMATION_v1.md`.
 - **Inquiry capture → extract → draft → approve is live on disk (AUTO-03 complete):** public
@@ -75,7 +99,9 @@ testing.
   facts + composes a reply draft (0090; CON-04-style JSON, not the project tool loop); human
   approves from the Leads kanban. `accounts.inquiry_slug` is lazy-generated. **INQUIRY-EMBED-01**
   added a copyable iframe snippet and dropped inbound-DNS copy from the intake card. **WHITE-03**
-  brands the public form when white-label is on (`get_inquiry_branding`).
+  brands the public form when white-label is on (`get_inquiry_branding`). **CONTACT-ROUTE-01:**
+  the same inbound webhook relays mail to `ADMIN_INBOUND_ADDRESS` onward to
+  `CONTACT_NOTIFY_EMAIL` (still not an anon surface).
 - **Authenticated members have table-level UPDATE on `accounts` (0091).** 0070 added the
   "members update own account" RLS policy but never GRANTed UPDATE, so branding / inquiry-slug
   writes failed with "permission denied for table accounts" **before RLS ran**.
@@ -87,7 +113,8 @@ testing.
   **Lumen Planning**; inquiry slugs are `demo-studio` (never slugified from the template name).
 - **There are exactly NINE anon surfaces** (three reads + one INSERT + five RPC executes) —
   see §4. AUTO-02 added `confirm_project_vendor`; AUTO-03a added `submit_inquiry`; WHITE-03
-  added `get_inquiry_branding`. The Resend inbound webhook is **not** an anon surface.
+  added `get_inquiry_branding`. The Resend inbound webhook (inquiry + admin relay) is **not**
+  an anon surface. Google OAuth is not an anon surface.
 
 | Slice (v38 — all NO SCHEMA) | What | Schema |
 |---|---|---|
@@ -124,11 +151,27 @@ testing.
 | **WORKFLOW-03** | `send_email` action + `agent_drafts.kind = workflow_email`. Dispatcher never sends; human Approve via existing Gmail path. Tokens `{{couple_name}}` / `{{account_name}}` / `{{wedding_date}}`. | **0095** |
 | **WORKFLOW-04** | Builder UI at `/automations`. Create / edit / reorder (up/down, not @dnd-kit) / enable / disable / delete. Trigger UI is `lead_stage_changed` + optional `to_stage`. | **NONE** |
 | **WORKFLOW-05** | One-click templates (`booking_confirmation`, `proposal_followup_note`, `lost_lead_note`). Nullable `template_key`; at most one row per `(account, template)`. | **0096** |
+| **AUTH-GOOGLE-01** | Continue with Google on login + signup (`signInWithOAuth` → `/auth/callback`). | **NONE** |
+| **CONTACT-ROUTE-01** | Same Resend inbound webhook: mail to `ADMIN_INBOUND_ADDRESS` → forward to `CONTACT_NOTIFY_EMAIL`. | **NONE** |
 
-Full per-slice narratives for the entire product (foundation through v40) are in **§7 of this
-file**. Migration index **0001–0096** is in **§5 of this file**.
+| Slice (v41) | What | Schema |
+|---|---|---|
+| **TASK-ASSIGN-01** | Checklist `tasks.assigned_to` + `list_project_assignees` RPC; board filter by assignee; clones null assignees. | **0097** |
+| **TMPL-02** | `clone_project_template` copies budget category/label only — `planned_amount` always `0`. | **0098** |
+| **VND-13 / VND-13b** | Vendors Search / Outreach / Booked tabs; budget-driven Still to book + `ignored_vendor_categories`. | **0099** |
+| **VND-LIB-01** | Library detail: delete unused account vendor; unlink from a booking. | **NONE** |
+| **CON-ARCHIVE-01** | Contracts archive: delete file + Edit-in-project jump. | **NONE** |
+| **VND-16** | Booked card "Copy confirm link" via shared `vendorConfirmUrl`. | **NONE** |
+| **VENUE-08** | Paid venue Billing shows cadence card (not Upgrade CTA). | **NONE** |
+| **CAL-05** | Calendar event detail modal + wedding-hue retune (≥50° spread). | **NONE** |
+| **INV-06 / TEAM-EMAIL-01** | Best-effort Resend on project + Team invites; link copy fallback. | **NONE** |
+| **EMAIL-BRAND-01** | AGENT-01 digest: JSON synthesis + branded HTML shell (own-brand when venue white-label). | **NONE** |
+| **VND-OUTREACH-MOBILE-01** | Outreach actions + filters stay on one mobile line. | **NONE** |
 
-> **Numbering note:** **0070–0096 are taken.** Next-free is **0097.** Do not `db push`. **`viewer`
+Full per-slice narratives for the entire product (foundation through v41) are in **§7 of this
+file**. Migration index **0001–0099** is in **§5 of this file**.
+
+> **Numbering note:** **0070–0099 are taken.** Next-free is **0100.** Do not `db push`. **`viewer`
 > invite remains deferred by product choice** (WRITE-01 write gates are done). **CON-03** (real PDF
 > bytes) remains **DEFERRED by choice**. **Marketing copy policy:** do not promote or lead with
 > "AI"; frame as the app / "automatically" / "the assistant." CON-04's UI label "Generate with the
@@ -141,26 +184,30 @@ file**. Migration index **0001–0096** is in **§5 of this file**.
 - **0060–0069** — ON DISK. **0068–0069 claimed LIVE VERIFIED** (Dom) — re-confirm if unsure.
 - **0070–0083** — ON DISK **and committed in git**. Confirm remaining hand-pastes + Edge Function
   deploys + schedules. **0071 LIVE VERIFIED** (`pg_policies`).
-- **0084–0096** — ON DISK. Confirm hand-pastes + Vercel Cron env (`CRON_SECRET`, Resend,
-  `SUPABASE_JWT_SECRET`, `INQUIRY_INBOUND_DOMAIN`, `RESEND_INBOUND_WEBHOOK_SECRET`) + schedules
-  in `vercel.json`. **0091 GRANT is the live gate for member writes to `accounts`.**
+- **0084–0099** — ON DISK. Confirm hand-pastes + Vercel Cron env (`CRON_SECRET`, Resend,
+  `SUPABASE_JWT_SECRET`, `INQUIRY_INBOUND_DOMAIN`, `RESEND_INBOUND_WEBHOOK_SECRET`,
+  `ADMIN_INBOUND_ADDRESS`, `CONTACT_NOTIFY_EMAIL`) + Google OAuth provider in Supabase Auth +
+  schedules in `vercel.json`. **0091 GRANT is the live gate for member writes to `accounts`.**
   **WORKFLOW-01** was claimed live-verified in production (a real `lead_stage_changed` run
-  executed two zero-delay steps) — re-confirm 0094–0096 pastes independently.
+  executed two zero-delay steps) — re-confirm 0094–0099 pastes independently.
 - Shipped in code (residual pastes + Edge Function ops + Cron env are the human gate): WHITE-01/02/03,
-  WRITE-01, CAL-04, ONB-06, ENT-01/01a, PRICE-01/02/06/07/08, TMPL-01, AGR-01, HYG-01/01a,
-  WEB-REVAL, DEMO-04/04b, DEMO-ANON-01, RSVP-THROTTLE, TEAM-01, VENUE-01…07, GMAIL-THREAD, VND-12,
+  WRITE-01, CAL-04/05, ONB-06, ENT-01/01a, PRICE-01/02/06/07/08, TMPL-01/02, AGR-01, HYG-01/01a,
+  WEB-REVAL, DEMO-04/04b, DEMO-ANON-01, RSVP-THROTTLE, TEAM-01, VENUE-01…08, GMAIL-THREAD, VND-12/13,
   LEAD-STALE, OVERDUE-01, CHECKOUT-RECONCILE-01, TRIAL-GUARD-01, MKT-01/02/03,
   ONBOARD-NUDGE-01, AUTO-01/02, AGENT-00/01/01a/02/03, AUTO-03a/03b, ACCT-GRANT-01,
-  LEAD-EDIT-01, INQUIRY-EMBED-01, WORKFLOW-00…05. **PRICE-03/04/05 product path is superseded**
-  (schema residual).
-- **Still open (human gate):** confirm remaining **0060–0070 / 0072–0096** pastes (+ demo seeds);
+  LEAD-EDIT-01, INQUIRY-EMBED-01, WORKFLOW-00…05, AUTH-GOOGLE-01, CONTACT-ROUTE-01,
+  TASK-ASSIGN-01, VND-LIB-01, CON-ARCHIVE-01, VND-16, INV-06, TEAM-EMAIL-01, EMAIL-BRAND-01.
+  **PRICE-03/04/05 product path is superseded** (schema residual).
+- **Still open (human gate):** confirm remaining **0060–0070 / 0072–0099** pastes (+ demo seeds);
   deploy/schedule `purge-demo` (do **not** treat `charge-trial-balance` as the live couple path);
   confirm Vercel Cron actually fires in the deployed environment; broad Soft stack visual checkpoint
-  including Team, venue upgrade + own-shell branding + venue copy, vendor cards, stale-lead pills,
-  lock-screen route group, couple local trial → Monthly/Lifetime, View in Gmail, three-option
-  welcome, venue-upgrade trial + setup nudge, `/for-planners` + `/for-venues`, accent picker,
-  inquiry form + embed snippet + branded embed + intake card + reply drawer, vendor-confirm page,
-  Pending drafts, lead Edit modal, `/automations` templates + builder. See §10 / §15.
+  including Team, venue upgrade + own-shell branding + venue copy, vendor cards + three-tab Vendors,
+  Still to book / ignore, task assignees, stale-lead pills, lock-screen route group, couple local
+  trial → Monthly/Lifetime, View in Gmail, three-option welcome, venue-upgrade trial + setup nudge,
+  `/for-planners` + `/for-venues`, accent picker, inquiry form + embed snippet + branded embed +
+  intake card + reply drawer, vendor-confirm page, Pending drafts, lead Edit modal,
+  `/automations` templates + builder, Google login, invite email delivery, calendar detail modal.
+  See §10 / §15.
 
 **Companion docs:** a separate **Launch Prep Runbook** exists (ops checklist for going to production).
 A separate **Agentic Automation Architecture (v1)** lives at `AGENTIC_AUTOMATION_v1.md` (AGENT-01/02/03
@@ -172,8 +219,6 @@ assistant invocation should work (autonomy tiers, reuse discipline, deferred v2)
 Do not restate the architecture companion in this file — do record shipped tables, routes,
 and product behavior here. The CRM workflow engine is documented **in this bible** (it is not
 the assistant loop).
-
----
 
 ## 1. What this is
 
@@ -252,8 +297,10 @@ a **public inquiry form** (`/inquire/[slug]`) **with embed snippet + optional wh
   (`claude-sonnet-4-6`, env-overridable). Plan generation, outreach drafts, vendor enrichment,
   the assistant.
 - Google Places API (New) — vendor discovery
+- Supabase Auth Google provider — **Continue with Google** on login/signup
+  (AUTH-GOOGLE-01). Distinct from Gmail send OAuth below.
 - Gmail OAuth (scope `gmail.send`) — sending outreach from the couple's own mailbox.
-  **NOT used for invitations.**
+  **NOT used for invitations** (invites go via Resend — INV-06 / TEAM-EMAIL-01).
 - Stripe — billing for couples, planners, and venues (test mode). **Couple:** local 7-day free
   trial (no Stripe objects) then Monthly $10 Subscription **or** Lifetime $99 one-time Checkout
   (`charge_stage=couple_lifetime`). **Planner:** local 7-day free trial then Monthly $59 /
@@ -272,11 +319,13 @@ a **public inquiry form** (`/inquire/[slug]`) **with embed snippet + optional wh
   during this bible write-up (`lib/billing/sync-subscription.ts`); re-read that file before
   extending.
 - **Resend** — transactional email from `First Look <hello@usefirstlook.app>` via `lib/email/send.ts`
-  (AUTO-01 payment digest, AUTO-02 vendor countdown, AGENT-01 weekly synthesis). **Gmail OAuth
+  (AUTO-01 payment digest, AUTO-02 vendor countdown, AGENT-01 weekly synthesis branded digests,
+  **INV-06 / TEAM-EMAIL-01** project + Team invite delivery via `sendEmailBestEffort`). **Gmail OAuth
   remains the send path for vendor outreach and inquiry replies** (the human's mailbox, not Resend).
   **Resend Inbound** (`email.received` webhook at `/api/webhooks/resend-inbound`) is AUTO-03a
-  capture — signature-verified (`RESEND_INBOUND_WEBHOOK_SECRET`), not an anon surface. Env:
-  `RESEND_API_KEY`, `INQUIRY_INBOUND_DOMAIN`.
+  inquiry capture **and** CONTACT-ROUTE-01 admin relay — signature-verified
+  (`RESEND_INBOUND_WEBHOOK_SECRET`), not an anon surface. Env: `RESEND_API_KEY`,
+  `INQUIRY_INBOUND_DOMAIN`, `ADMIN_INBOUND_ADDRESS`, `CONTACT_NOTIFY_EMAIL`.
 - **Vercel Cron** (`vercel.json`) — seven scheduled routes, all gated by `Authorization: Bearer
   ${CRON_SECRET}` (`lib/cron/authorize.ts`). Cadences (UTC): payment-schedule-watch `0 15 * * *`;
   countdown-confirmations `5 15 * * *`; agent-review (AGENT-01) `10 15 * * 1`;
@@ -353,10 +402,11 @@ In `.cursor/main.mdc` (architecture) + `.cursor/design.mdc` (Soft stack design).
   `automation_run_log` (0094). Cron and
   Edge Functions write these; the user-facing client never does.
 - **`vendors` is ACCOUNT-scoped; `project_vendors` is the project-scoped LINK.** One vendor row can
-  serve many projects in the same account. Every vendor UI action that says "remove" means **remove
-  the link**, never the vendor. The account Vendor library (VND-08 / VND-11) is the one surface that
-  adds a `vendors` row with NO `project_vendors` link, and the one place a `vendors` row may be deleted
-  — and only when it has zero links.
+  serve many projects in the same account. Project-workspace "remove" means **remove the link**,
+  never the vendor. The account Vendor library (VND-08 / VND-11 / **VND-LIB-01**) is the one surface
+  that adds a `vendors` row with NO `project_vendors` link, and the one place a `vendors` row may be
+  deleted — and only when it has zero links (else unlink from the booking first). **Still to book
+  (VND-13)** is budget-category driven + `ignored_vendor_categories`, not `vendor_targets` status.
 - **Resolve the BUSINESS account explicitly** (`accounts.kind = 'business'` inner join), never naive
   first-membership. Couples resolve the `personal` account. Helpers in `lib/billing/resolve-account.ts`
   (`resolveBusinessAccountId`). **After TEAM-01, always scope `account_members` reads by
@@ -519,9 +569,9 @@ In `.cursor/main.mdc` (architecture) + `.cursor/design.mdc` (Soft stack design).
   rewrite them.** (v29 — unchanged.)
 - **Additive-then-destructive for column reinterpretation / supersession.** Exemplars: `actual_amount`
   reinterpreted; `budget_items.due_date` write-dead then dropped later; **`rsvp_access_mode` kept and
-  read-dead after gated-only (0054, drop candidate 0097+); `guests.meal_choice` inert after the
-  flatten (drop in MEAL-03a / 0097+); `guests.party_size` still written by `addGuest` for create-form
-  slots but unused for person-grain headcount (also drop in MEAL-03a / 0097+);
+  read-dead after gated-only (0054, drop candidate 0100+); `guests.meal_choice` inert after the
+  flatten (drop in MEAL-03a / 0100+); `guests.party_size` still written by `addGuest` for create-form
+  slots but unused for person-grain headcount (also drop in MEAL-03a / 0100+);
   `wedding_profile.traditions` write-dead as of POLISH-01 (drop unscheduled — same posture).**
 - **A gated (token-bound) RSVP write to a KNOWN guest is NOT the forbidden auto-match.** The standing
   rule "no auto-matching of open RSVPs to guests" exists because an **open** submission arrives with no
@@ -692,10 +742,10 @@ display line and the home for per-person fields.
   add/edit field on Guests), `phone` (nullable — surfaced in place of email), **`address` (nullable,
   0056 — household mailing address)**, `household` (nullable label), `party_size` int default 1
   (**still written by `addGuest` and drives additional create-form slots; person-grain display/
-  summary does not use it for headcount — drop in MEAL-03a / 0097+**), `rsvp_status` text NOT NULL
+  summary does not use it for headcount — drop in MEAL-03a / 0100+**), `rsvp_status` text NOT NULL
   default `pending` CHECK `pending|attending|declined` (**the badge — the authoritative shown status;
   written by `updateRsvp` AND `submit_rsvp`**), `meal_choice` (nullable, **inert — drop in MEAL-03a /
-  0097+**), `notes`, `created_at`, `rsvp_token` NOT NULL default `encode(gen_random_bytes(16),'hex')`
+  0100+**), `notes`, `created_at`, `rsvp_token` NOT NULL default `encode(gen_random_bytes(16),'hex')`
   (the per-household gated-lookup token).
 - **`guest_members` (0040 + 0056 + 0063)** — the **person / display line**. `id`, `project_id`,
   `guest_id` (composite FK `(project_id, guest_id) → guests` ON DELETE CASCADE), `name` (nullable),
@@ -1028,15 +1078,36 @@ cap `AUTOMATION_RUNS_PER_INVOCATION = 20`. Writes go through `mintUnattendedWrit
 `enabled = false` (row kept). Step reorder is two-phase (+1_000_000 offset) so
 `(workflow_id, position)` stays unique mid-swap; UI uses WEB-EDITOR-02 `ReorderButtons`.
 
+### Task assignment (TASK-ASSIGN-01 / 0097) — ON DISK
+
+`tasks.assigned_to` uuid NULL – `auth.users(id)` ON DELETE SET NULL. Index
+`(project_id, assigned_to)`. **No new RLS on `tasks`** — rides existing
+`can_access_project` / `can_edit_project` policies. RPC `list_project_assignees(p_project_id)`
+SECURITY DEFINER, granted to `authenticated`, gated by `can_access_project`: returns account
+members (role_label `planner` or `couple` by account kind) UNION `project_members` (role as
+label). `assignTask` validates the assignee against that list. Board filter: all / unassigned /
+person. Other task updates intentionally do not touch `assigned_to`. **`clone_project_template`
+and `clone_demo_account` always null `assigned_to`.**
+
+### Ignored vendor categories (VND-13b / 0099) — ON DISK
+
+Table `ignored_vendor_categories`: `project_id`, `category` CHECK (same 13-id list as
+`vendor_targets`), unique `(project_id, category)`. RLS: SELECT `can_access_project`; INSERT /
+DELETE `can_edit_project`; **no UPDATE** (toggle = insert/delete). Powers Still to book dismiss;
+does not change `vendor_targets`.
+
 ---
 
 ## 5. Migrations (source of truth: `supabase/migrations/`)
 
-**v40 ships schema 0092–0096.** v38 product slices (MKT-01/02/03, VENUE-06, WHITE-02, VENUE-07,
-ONBOARD-NUDGE-01) remain NO SCHEMA. v39 product slices (AGENT-01/02, LEAD-EDIT-01) remain NO
-SCHEMA. v40 NO SCHEMA: INQUIRY-EMBED-01, WORKFLOW-01/02/04. Next-free migration is **0097**.
+**v41 ships schema 0097–0099** (after v40's 0092–0096). v38 product slices (MKT-01/02/03,
+VENUE-06, WHITE-02, VENUE-07, ONBOARD-NUDGE-01) remain NO SCHEMA. v39 product slices
+(AGENT-01/02, LEAD-EDIT-01) remain NO SCHEMA. v40 NO SCHEMA: INQUIRY-EMBED-01, WORKFLOW-01/02/04,
+AUTH-GOOGLE-01, CONTACT-ROUTE-01. v41 NO SCHEMA: VND-13 UI, VND-LIB-01, CON-ARCHIVE-01, VND-16,
+VENUE-08, CAL-05, INV-06, TEAM-EMAIL-01, EMAIL-BRAND-01, VND-OUTREACH-MOBILE-01. Next-free
+migration is **0100**.
 
-Applied in order. **You are the source of truth on the next number — next free is 0097.**
+Applied in order. **You are the source of truth on the next number — next free is 0100.**
 
 > **How migrations are applied here (READ THIS BEFORE SUGGESTING ANY CLI COMMAND):** by hand-pasting
 > each file into the Supabase SQL editor and running it once, in order. There is NO CLI
@@ -1046,7 +1117,7 @@ Applied in order. **You are the source of truth on the next number — next free
 
 > **A migration paste must return clean. Any error means NOTHING applied.** After every migration,
 > confirm with `to_regclass` / `to_regprocedure` / `pg_policies` / `pg_indexes` before running any
-> checkpoint. A file on disk is NOT an applied migration. **0060–0096 live paste is UNCONFIRMED
+> checkpoint. A file on disk is NOT an applied migration. **0060–0099 live paste is UNCONFIRMED
 > unless Dom closed them; 0068–0069 claimed LIVE VERIFIED — re-confirm before relying; 0071 LIVE
 > VERIFIED.** Demo template seeds are a separate hand-apply
 > (`supabase/seeds/demo_templates*.sql`), not part of the migration sequence. Edge Functions are
@@ -1056,7 +1127,7 @@ Applied in order. **You are the source of truth on the next number — next free
 > before every `create policy` / `create trigger`; `create … if not exists` for indexes;
 > `drop constraint if exists` before `add constraint`; guard backfills so a re-paste is a no-op.
 
-**Complete index (0001–0096):**
+**Complete index (0001–0099):**
 
 - **0001** core tenancy (`accounts`, `account_members`, `projects`, `project_members`,
   `can_access_project`; also project-scoped `vendors` as the worked-example feature table)
@@ -1132,8 +1203,11 @@ Applied in order. **You are the source of truth on the next number — next free
 - **0094 automation_foundation (WORKFLOW-00)** — ON DISK (workflows / steps / runs / run_log)
 - **0095 workflow_send_email (WORKFLOW-03)** — ON DISK (`send_email` + `workflow_email`)
 - **0096 automation_templates (WORKFLOW-05)** — ON DISK (`template_key` + one-per-template index)
+- **0097 task_assignment (TASK-ASSIGN-01)** — ON DISK (`tasks.assigned_to` + `list_project_assignees`)
+- **0098 tmpl_no_amount_clone (TMPL-02)** — ON DISK (budget clone `planned_amount = 0`)
+- **0099 ignored_vendor_categories (VND-13b)** — ON DISK (Still to book ignore list)
 
-DDL for 0059–0083 is expanded in the subsections below; 0084–0096 follow those. 0001–0058 live in
+DDL for 0059–0083 is expanded in the subsections below; 0084–0099 follow those. 0001–0058 live in
 `supabase/migrations/` — read those files before writing queries; do not invent columns.
 
 ### 0059 seating_member_grain (SEAT-12) — APPLIED LIVE + visually verified, DDL RECONSTRUCTED (v33)
@@ -1321,9 +1395,12 @@ null** (no project). Personal path unchanged (account + member + one project).
 ### 0079 project_template_clone (TMPL-01) — ON DISK; **committed** (`b2bf8fc`)
 
 `clone_project_template(source, target)` — same-account, member-gated; rejects if target already has
-tasks/budget_items/vendor_targets. Copies task title/phase/position; budget category/label/
-planned_amount; vendor_targets category only. No dates/status/actuals/vendor links.
-- **Checkpoint:** New wedding with template source seeds empty project; re-clone raises already-has-data.
+tasks/budget_items/vendor_targets. Originally copied task title/phase/position; budget
+category/label/planned_amount; vendor_targets category only. **Superseded for amounts by TMPL-02
+(0098):** planned_amount is now always `0`. **0097** also forces `assigned_to` null on copy.
+No dates/status/actuals/vendor links/assignees/dollar estimates.
+- **Checkpoint:** New wedding with template source seeds empty project; re-clone raises already-has-data;
+  budget lines show `$0` planned.
 
 ### 0080 outreach_gmail_thread (GMAIL-THREAD-01) — ON DISK
 
@@ -1471,14 +1548,37 @@ not null`. No CHECK on the key — values live in `lib/automations/templates.ts`
 - **Checkpoint:** flipping a template on twice does not create a second row; a hand-built
   workflow keeps `template_key` null.
 
+### 0097 task_assignment (TASK-ASSIGN-01) — ON DISK
+
+`tasks.assigned_to uuid` FK – `auth.users` ON DELETE SET NULL. Index
+`tasks_project_assigned_idx` on `(project_id, assigned_to)`. RPC `list_project_assignees(uuid)`
+DEFINER – authenticated. Rewrites `clone_project_template` + `clone_demo_account` to null
+`assigned_to` on task copy. No new RLS on `tasks`.
+- **Checkpoint:** `to_regprocedure('list_project_assignees(uuid)')`; assign a teammate; filter
+  board by assignee; clone a template – assignees null.
+
+### 0098 tmpl_no_amount_clone (TMPL-02) — ON DISK
+
+Replaces `clone_project_template`: budget insert is category + label with `planned_amount = 0`
+(never copy source dollars). Tasks still null `assigned_to`; vendor_targets unchanged.
+- **Checkpoint:** New Booking from a template with non-zero planned lines yields `$0` planned
+  on the new project.
+
+### 0099 ignored_vendor_categories (VND-13b) — ON DISK
+
+Table `ignored_vendor_categories` + unique `(project_id, category)` + category CHECK (13 ids) +
+RLS SELECT/INSERT/DELETE (no UPDATE). Powers Still to book dismiss on the Vendors Outreach tab.
+- **Checkpoint:** `to_regclass('public.ignored_vendor_categories')`; Ignore hides a budget-
+  mapped category from Still to book; Un-ignore restores it; booked categories stay out.
+
 **Verified against disk:** TEAM-01 / VENUE-01…07 / PRICE-07/08 / GMAIL-THREAD / VND-12 /
 LEAD-STALE / ENT-01a / OVERDUE-01 / CHECKOUT-RECONCILE-01 / TRIAL-GUARD-01 / WHITE-02 / WHITE-03 /
 ONBOARD-NUDGE-01 / MKT-01…03 / AUTO-01/02 / AGENT-00/01/01a/02/03 / AUTO-03a/03b /
-ACCT-GRANT-01 / LEAD-EDIT-01 / INQUIRY-EMBED-01 / DEMO-ANON-01 / WORKFLOW-00…05.
+ACCT-GRANT-01 / LEAD-EDIT-01 / INQUIRY-EMBED-01 / DEMO-ANON-01 / WORKFLOW-00…05 / AUTH-GOOGLE-01 / CONTACT-ROUTE-01 / TASK-ASSIGN-01 / TMPL-02 / VND-13 / VND-13b / VND-LIB-01 / CON-ARCHIVE-01 / VND-16 / VENUE-08 / CAL-05 / INV-06 / TEAM-EMAIL-01 / EMAIL-BRAND-01.
 0070–0083 DDL on disk **and committed**; **0071 live** on
 calendar / guest_members / rsvp_attendees; **`isTaskPastDue` single-sourced** for task overdue.
-**0084–0096 on disk.** **Confirm live:** remaining pastes of
-0060–0070 / 0072–0096; Edge Function `purge-demo` deploy; demo seeds; Stripe test Checkout
+**0084–0099 on disk.** **Confirm live:** remaining pastes of
+0060–0070 / 0072–0099; Edge Function `purge-demo` deploy; demo seeds; Stripe test Checkout
 for couple monthly/lifetime + planner + venue (plan flip); Vercel Cron env + schedules;
 Resend inbound domain + webhook secret; `SUPABASE_JWT_SECRET`.
 
@@ -1501,6 +1601,7 @@ ONBOARD-NUDGE-01 storage keys. **`wedding_profile.include_*`** (0067); **`formal
 (0095). **`inquiry_form_attempts`** (0089).
 **`leads.estimated_guest_count`** (0090). **`automation_workflows` / `automation_steps` /
 `automation_runs` / `automation_run_log`** (0094) + **`template_key`** (0096).
+**`tasks.assigned_to`** (0097). **`ignored_vendor_categories`** (0099).
 
 **No-migration slices (complete list):** DASH-01; DASH-02; DASH-03; CON-01; CON-04; budget row
 polish; BUD paid/actual ramp polish; BUD-FILTER-01; BUD-QUICKADD-01/02; BUD-NOTES-01; GST-03;
@@ -1509,7 +1610,7 @@ hardening; ONB-03; POLISH-01; DEMO-02 / DEMO-03; tour UI; AGR-01; ENT-01; ENT-01
 PRICE-02; PRICE-06; PRICE-07; PRICE-08; VENUE-02/02b/03; VENUE-04; VENUE-05; VENUE-06; VENUE-07;
 CHECKOUT-RECONCILE-01; TRIAL-GUARD-01; VND-12; LEAD-STALE-01; OVERDUE-01; HYG-01; HYG-01a;
 WEB-REVAL-01; ASSIST-BUD-01; WHITE-02; ONBOARD-NUDGE-01; MKT-01; MKT-02; MKT-03; AGENT-01;
-AGENT-02; LEAD-EDIT-01; INQUIRY-EMBED-01; WORKFLOW-01; WORKFLOW-02; WORKFLOW-04.
+AGENT-02; LEAD-EDIT-01; INQUIRY-EMBED-01; WORKFLOW-01; WORKFLOW-02; WORKFLOW-04; AUTH-GOOGLE-01; CONTACT-ROUTE-01; VND-13 (UI); VND-LIB-01; CON-ARCHIVE-01; VND-16; VENUE-08; CAL-05; INV-06; TEAM-EMAIL-01; EMAIL-BRAND-01; VND-OUTREACH-MOBILE-01.
 
 ---
 
@@ -1592,11 +1693,13 @@ Abandoning that Checkout returns to `/account/venue-upgrade?status=cancelled` (p
 > **`plannerOnly` resolves from ACCOUNT KIND, never from `project_members.role`.** CAL-04 is the
 > only role-aware tab exception (Calendar for invited couples).
 
-### Invitation acceptance path (INV-05 + INV-08 + TEAM-01)
+### Invitation acceptance path (INV-05 + INV-08 + TEAM-01 + INV-06 / TEAM-EMAIL-01)
 
 **Project:** `/invite/[token]` middleware sets `pending_invite_token` cookie [httpOnly, 30 min];
 authenticated → `acceptProjectInvitation(token)`. Token MUST NOT resolve before authentication.
 INV-08 closed the Next 16 cookie-write crash — do not move the write back into `InvitePage`.
+**INV-06:** after creating the invitation row, best-effort Resend via `sendEmailBestEffort`; UI
+shows sent vs share-link fallback. One-time link remains always available.
 
 **Account (TEAM-01):** `/invite/account/[token]` is matched **before** `/invite/` in middleware
 (otherwise `account` would be parsed as a project token). Sets `pending_account_invite_token`
@@ -1604,6 +1707,7 @@ INV-08 closed the Next 16 cookie-write crash — do not move the write back into
 consumers in parallel on login + auth callback. Project success redirects to the project; account
 errors redirect to `/invite/account/{token}?error=`; account success falls through to
 `getPostLoginPath` (membership now exists). Do not set either cookie from a page render.
+**TEAM-EMAIL-01:** same best-effort Resend pattern as INV-06 after creating the account invitation.
 
 ### Dashboard — Urgent + wedding cards (DASH-01 + DASH-03)
 
@@ -1613,7 +1717,7 @@ unchanged. **DASH-03** adds planner **wedding cards** (`components/dashboard/wed
 count (`guests.rsvp_status = attending`), sage/rosewood task progress via `lib/task-overdue.ts`
 (`isTaskPastDue`), Archive + Enter. Active cards / archived list toggle in
 `dashboard-wedding-list.tsx`. Planner-only surface (personal accounts still redirect away from
-`/dashboard`). **TMPL-01:** New wedding form may clone checklist/budget/vendor-target structure from
+`/dashboard`). **TMPL-01/02:** New wedding form may clone checklist/budget/vendor-target structure from
 another active project on the same business account.
 
 > **DASH-03 caveats (session-authored slice — see §7 provenance exception).**
@@ -1652,12 +1756,31 @@ links live under Website / `external_registry_links`.
 > personal-only (no role exception). CAL-02/WRITE-01 RLS: project-linked events writable by
 > `can_edit_project` editors (account members + couple/collaborator project members).
 
+#### Checklist tab (TASK-ASSIGN-01)
+
+Phase groups + recessed task rows. Per-task **AssigneeChip** (initials + picker grouped by
+role). Board filter: all / unassigned / person (`list_project_assignees`). `assignTask` is the
+only mutation that writes `assigned_to`. Template/demo clones never copy assignees.
+
 #### Overview (DASH-02 + ASSIST-UI-01)
 
 Shared `ProjectOverview` (`components/dashboard/project-overview.tsx`) powers couple + planner project
 dashboards. **ASSIST-UI-01:** a raised card with a **recessed** `AskAssistantPrompt` ("What should I
 tackle next?") sits under the stat row; the vendor-empty state also invites the assistant (no nested
 raised `EmptyState`). Suggested-path steps omit Overview + Calendar (personal work-step launcher).
+
+#### Vendors tab (VND-13 / VND-13b + outreach + booked)
+
+Project Vendors is three query tabs (`?tab=search|outreach|booked`, default `search`):
+- **Search** — Places discover only (needed-target rail removed from search).
+- **Outreach** — Gmail outreach + **Still to book** (`VendorsToBookSection`) + shortlist.
+  Still to book = budget categories mapped via `mapBudgetCategoryToVendorCategory` that are
+  not already booked and not in `ignored_vendor_categories`. Ignore / Un-ignore; "Find vendors"
+  jumps to Search. `vendor_targets` still used for booked slots / outreach category linking —
+  **not** as the To Book source.
+- **Booked** — booked band with arrival/scope (**AUTO-02**) + **Copy confirm link** (VND-16).
+Mobile outreach chrome keeps actions + status filters on one scrollable line
+(VND-OUTREACH-MOBILE-01). Checklist empty/vendor empty states still offer `AskAssistantPrompt`.
 
 #### Guests tab (GST-03…09 + GST-12)
 
@@ -1667,8 +1790,8 @@ per-person relationship + derived partner-side; **Adult/Child + optional "Guest 
 association sublabel (`{Primary}'s child` / `{Primary}'s Guest`); **no post-create edit** of
 `member_type` / `related_to`. Household address + phone (email UI-deprecated); RSVP dropdown
 (`updateRsvp`) with household badge as authoritative shown status; no Headcount; single Add Guest;
-event-level song requests; gated submit auto-populates the badge; responses panel is a record, not an
-inbox. **RsvpAccessCard removed** (no replacement card). Meal column when `meal_service_style ===
+event-level song requests (**Requested so far** list on `SongRequestsCard`); gated submit
+auto-populates the badge; responses panel is a record, not an inbox. **RsvpAccessCard removed** (no replacement card). Meal column when `meal_service_style ===
 plated`; selectable styles no longer include `none` for new config (legacy `none` still editable if
 stored). **ASSIST-UI-01:** empty list `EmptyState` includes `AskAssistantPrompt`.
 
@@ -1722,15 +1845,19 @@ Edit button → shared `Modal`; **AUTO-03a / INQUIRY-EMBED-01** `InquiryIntakeCa
 form link + iframe embed snippet — inbound-DNS copy is **not** shown),
 `/automations` (**WORKFLOW-04/05** — template gallery + hand-built list; `/automations/new` and
 `/automations/[workflowId]` editor; personal accounts redirect away),
-`/account/billing` (planner plan gets an equal-weight Upgrade-to-Venue card — VENUE-06),
+`/account/billing` (planner plan gets an equal-weight Upgrade-to-Venue card — VENUE-06;
+**VENUE-08:** paid venue plan sees a cadence pricing card instead),
 **`/account/team` (TEAM-01)**, **`/account/branding` (WHITE-01 + WHITE-02 picker/contrast + WHITE-03
 inquiry-embed copy)**,
 **`/account/venue-upgrade` (VENUE-02 / VENUE-05 / VENUE-06 / ONBOARD-NUDGE-01)**, `/vendors`
-(VND-08/08a + **VND-11 detail/portfolio** + **VND-12 card grid**), `/calendar` (CAL-01 + **CAL-03
-hues/chips/legend**), `/contracts` (CON-01/01a/02 + **CON-04 generate**). Couple project Calendar is
+(VND-08/08a + **VND-11 detail/portfolio** + **VND-12 card grid** + **VND-LIB-01** delete/unlink),
+`/calendar` (CAL-01 + **CAL-03 hues/chips/legend** + **CAL-05 detail modal**), `/contracts`
+(CON-01/01a/02 + **CON-04 generate** + **CON-ARCHIVE-01** archive delete / edit-in-project). Couple project Calendar is
 under the project workspace (`/projects/[id]/calendar`, CAL-02/WRITE-01 RLS; **tab = personal +
 invited couple**, §6). Shared calendar chrome: `CalendarEventChip`, `CalendarLegend`,
-`lib/calendar-hues.ts` (`--cal-w-1…5` categorical wedding/kind tints — not status colours).
+`CalendarEventDetailModal` (**CAL-05** — when / wedding / overdue / location / notes / deep links /
+Edit for authored), `lib/calendar-hues.ts` (`--cal-w-1…5` categorical wedding/kind tints —
+not status colours; hue spread retuned >=50 degrees).
 **Assistant panel Pending section** (`PendingDraftList`) reviews AGENT-03 vendor-outreach drafts
 on the project; inquiry-reply **and workflow-email** drafts review on `/leads`, not in the project panel.
 
@@ -1739,7 +1866,8 @@ on the project; inquiry-reply **and workflow-email** drafts review on `/leads`, 
 `app/w/[slug]`, `/w/[slug]/rsvp`, `/w/[slug]/registry`, `/invite/[token]`, **`/invite/account/[token]`**,
 **`/vendor-confirm/[token]` (AUTO-02)**, **`/inquire/[slug]` (AUTO-03a + WHITE-03 — Tier 2: one deep
 field + raised form card; white-label logo/accent when enabled; invalid slug is pre-submit)**. Marketing `/` **(MKT-01 planner/venue-first)** + **`/for-planners` (MKT-02)** +
-**`/for-venues` (MKT-03)** + `/pricing`. Marketing copy must not lead with "AI." Entitlement lock:
+**`/for-venues` (MKT-03)** + `/pricing`. Login/signup offer **Continue with Google**
+(AUTH-GOOGLE-01). Marketing copy must not lead with "AI." Entitlement lock:
 `/account/locked` (authenticated, **`(locked)` group**).
 
 ---
@@ -1983,7 +2111,7 @@ Personal-only `/projects/[id]/agreements` for contract files.
 
 #### TMPL-01 — Project structure clone. Migration **0079**.
 
-Same-account checklist/budget/vendor-target structure clone from New wedding form.
+Same-account checklist/budget/vendor-target structure clone from New wedding form. **TMPL-02 (0098)** sets `planned_amount = 0` on budget clone; **0097** nulls `assigned_to`.
 
 #### ASSIST-BUD-01 — Assistant budget/payment tool coverage. NO SCHEMA.
 
@@ -2486,7 +2614,96 @@ Templates are the front door; the builder is "for anyone who wants full control.
 Toggle on: insert workflow + steps (or re-enable). Toggle off: `enabled = false` (row
 kept). Customize uses the same `/automations/[id]` editor. Partial unique index: at most
 one row per `(account, template)`. Time-based "nudge me when a lead goes quiet" is **not**
-in this slice — that would be a cron scan (AUTO-01/02 family), not an event hook.
+
+### v41 — Task assignment + Vendors tabs + invites email + calendar detail + library manage
+
+> **Provenance:** code-/migration-scan verified against disk (0097–0099 + Vendors three-tab
+> workspace + invite email + calendar detail + branded digests). Live paste of 0097–0099 is
+> unconfirmed unless Dom closed them. AUTH-GOOGLE-01 and CONTACT-ROUTE-01 shipped with the v40
+> bible bump (`fd0efdc`) and are recorded here as current product truth (they were missing from
+> the v40 write-up).
+
+#### AUTH-GOOGLE-01 — Continue with Google. NO SCHEMA. (Shipped with v40 bump; documented in v41.)
+
+Login and signup (`LoginCard`) offer **Continue with Google** beside email/password.
+`signInWithGoogle` calls `supabase.auth.signInWithOAuth({ provider: "google" })` and returns
+through the existing `/auth/callback` path. Distinct from Gmail OAuth (`gmail.send`) used for
+outreach. Requires the Google provider enabled in Supabase Auth + correct site URL / redirect
+allowlist.
+
+#### CONTACT-ROUTE-01 — Admin inbound relay. NO SCHEMA. (Shipped with v40 bump; documented in v41.)
+
+Same webhook `/api/webhooks/resend-inbound` that captures inquiry mail: if any recipient matches
+`ADMIN_INBOUND_ADDRESS`, forward the body to `CONTACT_NOTIFY_EMAIL` via `sendEmail` (optional
+`replyTo` from the original From). Otherwise AUTO-03a inquiry slug path. Still signature-verified;
+**not** an anon surface. Env: `ADMIN_INBOUND_ADDRESS`, `CONTACT_NOTIFY_EMAIL`.
+
+#### TASK-ASSIGN-01 — Checklist assignees. Migration **0097**.
+
+`tasks.assigned_to` + `list_project_assignees` + `AssigneeChip` / board filter. No new RLS —
+rides `can_edit_project`. Assignable set = account members UNION project members. Clones
+(`clone_project_template`, `clone_demo_account`) always null `assigned_to`. Turbopack follow-up
+stopped re-exporting types from checklist server actions (`f1ac888`) — build-only, no product
+change.
+
+#### TMPL-02 — Template clone without dollar amounts. Migration **0098**.
+
+Supersedes TMPL-01's planned_amount copy. New Booking from a template seeds budget **category +
+label** with `planned_amount = 0` so planners enter their own estimates. Tasks still null
+assignees; vendor_targets still category-only.
+
+#### VND-LIB-01 — Library delete / unlink. NO SCHEMA.
+
+Account vendor detail: **Delete from library** only when `project_vendors` count is 0; otherwise
+blocked. Per-booking row: **Remove from this booking** (`removeProjectVendor`) — link only,
+never the library row unless unused.
+
+#### CON-ARCHIVE-01 — Contracts archive manage. NO SCHEMA.
+
+Archive rows gain **Delete** (file) and **Edit in {project}** (jump to project Contracts).
+
+#### VND-16 — Copy confirm link. NO SCHEMA.
+
+Booked card copies the same `/vendor-confirm/[token]` URL AUTO-02 emails, via shared
+`vendorConfirmUrl` (`lib/vendors/confirm-url.ts`). Cron uses the same helper.
+
+#### VENUE-08 — Venue billing cadence card. NO SCHEMA.
+
+When `accounts.plan = 'venue'` and a real Venue subscription is present, Billing shows the
+current Venue Monthly/Annual cadence card instead of the equal-weight Upgrade CTA (VENUE-06).
+
+#### VND-13 / VND-13b — Search / Outreach / Booked + budget To Book. Migration **0099**.
+
+Query tabs `?tab=search|outreach|booked`. Still to book is **budget-mapped** categories not
+booked and not ignored (`ignored_vendor_categories`). Read-time map
+`mapBudgetCategoryToVendorCategory` — does **not** unify budget free-text with vendor CHECK
+vocabularies. `vendor_targets` remains for booked slots / outreach linking. Tour copy updated.
+
+#### VND-OUTREACH-MOBILE-01 — Outreach mobile chrome. NO SCHEMA.
+
+Header actions + status filter chips stay on one horizontal scroll line; compact advance labels;
+Remove becomes icon-only on small screens so vendor names stay readable.
+
+#### CAL-05 — Calendar event detail. NO SCHEMA.
+
+Chip/list open `CalendarEventDetailModal` (when, wedding, overdue, location, notes, Go to
+task/budget/vendor, Edit for authored events). Wedding hue palette retuned for >=50 degree
+spread (`globals.css` + `lib/calendar-hues.ts`).
+
+#### INV-06 / TEAM-EMAIL-01 — Invite email delivery. NO SCHEMA.
+
+After creating a project invitation or account (Team) invitation, best-effort Resend via
+`sendEmailBestEffort`. UI: "Invite sent to …" vs "email didn't send, share this link";
+one-time link still shown. DB write remains source of truth. Gmail OAuth stays outreach-only.
+
+#### EMAIL-BRAND-01 — Branded AGENT-01 digests. NO SCHEMA.
+
+Weekly synthesis final model message is strict JSON `{summary, highlights}` stored on
+`agent_run_log.summary`. Email renders through `renderBrandedDigestEmail` with First Look logo
+(`public/email/firstlook-logo.png`) or venue own-brand via `getOwnAccountBrandingForAccount`
+when white-label applies.
+
+---
 
 ---
 
@@ -2604,11 +2821,12 @@ proactive messages (Phase 5).
 **Agentic automation (shipped):** scheduled / event-triggered invocation of this same loop.
 Same tools, same cap, same RLS — new entry point. Distinct from AUTO-01/02 (fixed-cadence
 template reminders; no LLM) **and** from WORKFLOW-00…05 (CRM event + delay engine; no LLM;
-`lib/automations/`). **On disk:** AGENT-00 (0086), AGENT-01 (weekly synthesis, read-only),
-AGENT-01a (0087 impersonation + smoke), AGENT-02 (daily `add_note`), AGENT-03 (0088
-`create_agent_draft` + Pending approve/reject), AUTO-03a (0089 capture), AUTO-03b (0090
-extract/compose/approve). Architecture companion: `AGENTIC_AUTOMATION_v1.md`. Unattended writes
-use `mintUnattendedWriteSession` — never service-role as the request JWT. Autonomy line: send-to-self
+`lib/automations/`). **On disk:** AGENT-00 (0086), AGENT-01 (weekly synthesis, read-only;
+**EMAIL-BRAND-01** JSON `{summary, highlights}` + branded HTML digest), AGENT-01a (0087
+impersonation + smoke), AGENT-02 (daily `add_note`), AGENT-03 (0088 `create_agent_draft` +
+Pending approve/reject), AUTO-03a (0089 capture), AUTO-03b (0090 extract/compose/approve).
+Architecture companion: `AGENTIC_AUTOMATION_v1.md`. Unattended writes use
+`mintUnattendedWriteSession` — never service-role as the request JWT. Autonomy line: send-to-self
 and in-app notes may run unattended; third-party sends always propose-then-approve. CRM workflow
 `send_email` uses the same impersonation + `createAgentDraft` + Approve line.
 
@@ -2628,7 +2846,7 @@ cards; recessed wells for rows/tracks. Hierarchy = raised-contains-recessed.
 
 | Tier | Where | What it gets |
 |---|---|---|
-| **1 — App chrome** | `app/(app)/`, most of `components/`, planner, forms, **seating canvas**, assistant + **in-page `AskAssistantPrompt` wells** + **Pending draft list**, settings, Access, Branding, Team, venue-upgrade, `/vendors` card grid / `/calendar` / `/contracts` / **`/automations` (template gallery + builder)**, the Budget page, the Guests page, **the Notes board**, **the website editor incl. the sticky preview**, **the dashboard wedding cards**, **demo banner**, **page-tour overlay**, **CoupleShell + venue PlannerShell white-label chrome**, **Leads kanban (stale pills + reply-ready pills + Edit modal + InquiryIntakeCard)** | Soft stack palette + Figtree; two depth levels; three radii; **no** accent flood; **no** Cormorant/Great Vibes |
+| **1 — App chrome** | `app/(app)/`, most of `components/`, planner, forms, **seating canvas**, assistant + **in-page `AskAssistantPrompt` wells** + **Pending draft list**, settings, Access, Branding, Team, venue-upgrade, `/vendors` card grid + project Vendors three-tab workspace / `/calendar` (detail modal) / `/contracts` / **`/automations` (template gallery + builder)** / checklist assignee chips, the Budget page, the Guests page, **the Notes board**, **the website editor incl. the sticky preview**, **the dashboard wedding cards**, **demo banner**, **page-tour overlay**, **CoupleShell + venue PlannerShell white-label chrome**, **Leads kanban (stale pills + reply-ready pills + Edit modal + InquiryIntakeCard)** | Soft stack palette + Figtree; two depth levels; three radii; **no** accent flood; **no** Cormorant/Great Vibes |
 | **2 — Emotional** | Landing **incl. `/for-planners` + `/for-venues`**, onboarding hero/welcome, empty-state heroes, `/invite/[token]`, **`/invite/account/[token]`**, **`/account/locked` (`(locked)` group)**, **`/inquire/[slug]` (one deep field; WHITE-03 brand mark in the header, not a second deep field)**, **`/vendor-confirm/[token]`** | Same palette + Figtree; larger display scale; **exactly one** deep field `--deep` per surface |
 | **3 — Website + print** | `components/website/`, public `/w/[slug]` (incl. the gated RSVP + song intake, **the image-shape + timeline-layout render**), `RunSheetDocument.tsx` print header, the contract print document | `--ws-*` colour + Cormorant + (Romance) Great Vibes + Hanken |
 
@@ -2773,7 +2991,7 @@ scan is a **findings list** for factual drift only (migration numbers, columns, 
 10. **A "next-free" migration number from Cursor — or from THIS bible — is a claim to verify, not a
     fact.** 0053 surfaced during GST-04 Step 0; later numbers were taken while a stale next-free
     claim in this document was still circulating (0059 seating, 0060–0062, 0063–0064, 0065–0069,
-    0070–0079, 0080–0083, 0084–0091, 0092–0096). Grep `supabase/migrations/` before trusting a number. **Next-free today is 0097.**
+    0070–0079, 0080–0083, 0084–0091, 0092–0096). Grep `supabase/migrations/` before trusting a number. **Next-free today is 0100.**
 11. **A checkpoint only tests what Step 0 thought to ask.** TRIAL-GUARD-01's bug (a null-status stub
     soft-locking trial eligibility) existed since PRICE-01/PRICE-07 shipped but surfaced only once
     VENUE-05 added a second call site and real Checkout-abandonment testing happened. Absence of a
@@ -2811,7 +3029,7 @@ a code scan. Prefer section-level diffs.
 - A second Checkout-return writer that does not call `applyCheckoutSession`.
 - Skipping the return-page check that `session.metadata.account_id` matches the authenticated
   account.
-- **Trusting an outdated "next-free"** — **0084–0096 are taken**; next-free is **0097**.
+- **Trusting an outdated "next-free"** — **0084–0099 are taken**; next-free is **0100**.
 - Treating couple billing as **$7 week + day-7 $92** — live path is PRICE-07 local trial +
   PRICE-08 Monthly $10 / Lifetime $99. Do not reschedule `charge-trial-balance` as the couple path.
 - Reusing `project_invitations` for Team seats. Do not parse `/invite/account/` as a project token.
@@ -2843,7 +3061,7 @@ a code scan. Prefer section-level diffs.
 - A future `submit_rsvp` replace that drops gated-only / song-gate / badge auto-populate / **0072
   throttle** while "just" touching the form.
 - Dropping `guests.meal_choice` / `guests.party_size` / `rsvp_access_mode` / `budget_items.due_date` /
-  `wedding_profile.traditions` before their planned supersession migration (**0097+**). Claiming
+  `wedding_profile.traditions` before their planned supersession migration (**0100+**). Claiming
   `party_size` is fully inert — it still drives create-form slots. Do not resurrect a `traditions`
   write path.
 - Adding a second sweetheart without demoting (0064 + action enforce uniqueness).
@@ -3001,7 +3219,10 @@ is in §7 of this file. Schema numbers in §5.
   PRICE-01/02/06/07/08, HYG-01/01a, WEB-REVAL, ASSIST-BUD, GMAIL-THREAD, TEAM-01, VENUE-01…07,
   LEAD-STALE, OVERDUE-01, CHECKOUT-RECONCILE-01, TRIAL-GUARD-01, MKT-01/02/03, ONBOARD-NUDGE-01,
   AUTO-01/02, AGENT-00/01/01a/02/03, AUTO-03a/03b, ACCT-GRANT-01,
-  LEAD-EDIT-01, INQUIRY-EMBED-01, DEMO-ANON-01, WHITE-03, WORKFLOW-00…05.**
+  LEAD-EDIT-01, INQUIRY-EMBED-01, DEMO-ANON-01, WHITE-03, WORKFLOW-00…05,
+  AUTH-GOOGLE-01, CONTACT-ROUTE-01, TASK-ASSIGN-01, TMPL-02, VND-13/13b, VND-LIB-01,
+  CON-ARCHIVE-01, VND-16, VENUE-08, CAL-05, INV-06, TEAM-EMAIL-01, EMAIL-BRAND-01,
+  VND-OUTREACH-MOBILE-01.**
 - **PRICE-03/04/05 product path is superseded** (0076–0078 schema residual — do not schedule
   `charge-trial-balance` as the couple path).
 - **WRITE-01 / 0071** closed the former "viewer can write" schema gap for listed tables; Access
@@ -3027,14 +3248,24 @@ send until Approve; public `/inquire/[slug]` + inbound (if DNS live) landing as 
 reply-ready → Approve via Gmail; 0091 GRANT unblocking branding / inquiry-slug member writes;
 lead Edit modal save + `friendlyLeadError` hiding raw PostgREST. Cron env is an ops gate.
 
-**Open — v40 verification gap:** INQUIRY-EMBED-01, DEMO-ANON-01, WHITE-03, WORKFLOW-00…05 are
-code-shipped. Confirm: 0092–0096 pastes; a business demo clone named Lumen Planning with
-`/inquire/demo-studio`; iframe snippet copies the prod origin; white-labeled inquire page shows
-logo/accent + "Powered by First Look"; unknown slug is invalid **before** submit; flipping
-`booking_confirmation` on drafts a `workflow_email` on Booked (does **not** send until Approve);
-3-day proposal template actually waits (dispatcher resume); lost-lead template writes
-`leads.notes`; builder create/reorder/disable; delete blocked when run history exists. Cron
-`automation-dispatch` is an ops gate.
+**Open — v40 verification gap:** INQUIRY-EMBED-01, DEMO-ANON-01, WHITE-03, WORKFLOW-00…05,
+AUTH-GOOGLE-01, and CONTACT-ROUTE-01 are code-shipped. Confirm: 0092–0096 pastes; a business
+demo clone named Lumen Planning with `/inquire/demo-studio`; iframe snippet copies the prod
+origin; white-labeled inquire page shows logo/accent + "Powered by First Look"; unknown slug is
+invalid **before** submit; flipping `booking_confirmation` on drafts a `workflow_email` on Booked
+(does **not** send until Approve); 3-day proposal template actually waits (dispatcher resume);
+lost-lead template writes `leads.notes`; builder create/reorder/disable; delete blocked when run
+history exists; Google Continue on login/signup; admin@ inbound lands on `CONTACT_NOTIFY_EMAIL`.
+Cron `automation-dispatch` is an ops gate.
+
+**Open — v41 verification gap:** TASK-ASSIGN-01, TMPL-02, VND-13/13b, VND-LIB-01,
+CON-ARCHIVE-01, VND-16, VENUE-08, CAL-05, INV-06 / TEAM-EMAIL-01, EMAIL-BRAND-01, and
+VND-OUTREACH-MOBILE-01 are code-shipped. Confirm: 0097–0099 pastes; assign a teammate and
+filter the checklist; New Booking template yields `$0` planned; Search/Outreach/Booked tabs +
+Still to book Ignore/Un-ignore; library delete blocked when linked; archive Delete + Edit-in-
+project; Copy confirm link matches AUTO-02 URL; venue Billing cadence card; calendar chip opens
+detail modal; project + Team invite emails arrive (or fallback link UI); AGENT-01 digest is
+branded HTML with summary/highlights.
 
 **Open — deferrals + gaps (current):**
 - **CHECKOUT-RECONCILE-01 remaining gap:** no periodic reconciliation job exists for an account that
@@ -3044,17 +3275,17 @@ logo/accent + "Powered by First Look"; unknown slug is invalid **before** submit
   success-URL fix.
 - **Rotate `STRIPE_SECRET_KEY`** if it was ever live-mode outside this dev machine (resolved but
   key hygiene is separate). Confirm `.env.local` holds `sk_test_...` before further Checkout testing.
-- **0060–0070 / 0072–0096 hand-paste** still need confirmation where not already live-checked;
+- **0060–0070 / 0072–0099 hand-paste** still need confirmation where not already live-checked;
   **0071 LIVE VERIFIED**. Demo seeds + `purge-demo` deploy/schedule are separate applies.
-  **0079–0083 are committed**. **0084–0096 on disk**. Vercel Cron +
+  **0079–0083 are committed**. **0084–0099 on disk**. Vercel Cron +
   Resend inbound + `SUPABASE_JWT_SECRET` are ops gates, not schema.
-- **DASH-03a (deferred) — wedding-card blurb.** Needs `projects.description` (**0097+**) AND an edit
+- **DASH-03a (deferred) — wedding-card blurb.** Needs `projects.description` (**0100+**) AND an edit
   affordance. Deferred deliberately to avoid a dead write path.
 - **PRICE-03/04/05 residual** — `stripe_payment_method_id`, claim/cancel RPCs, `charge-trial-balance`
   Edge Function. Product path gone; drop unscheduled. Do not wire a new $7 Checkout.
-- **`rsvp_access_mode` read-dead (0054), not dropped** — drop candidate **0097+**.
+- **`rsvp_access_mode` read-dead (0054), not dropped** — drop candidate **0100+**.
 - **`guests.meal_choice` inert; `guests.party_size` still written for create slots** — both drop in
-  **MEAL-03a / 0097+**. (`rsvp_submissions.party_size` is a DIFFERENT column — still live/RPC-derived.)
+  **MEAL-03a / 0100+**. (`rsvp_submissions.party_size` is a DIFFERENT column — still live/RPC-derived.)
 - **`wedding_profile.traditions` write-dead** — drop unscheduled. Do not resurrect a write path.
 - **`guests.email` UI-deprecated, kept** — email may still matter for invites.
 - **Per-member RSVP status (model B) deferred.** GST-09 is household-badge only; DASH-03 confirmed-
@@ -3090,13 +3321,13 @@ logo/accent + "Powered by First Look"; unknown slug is invalid **before** submit
 - **Demo → real account conversion** — not shipped.
 - **`viewer` invite** — product still deferred (WRITE-01 done). Update `lib/invitations/constants.ts`
   comment when offering.
-- **TEAM-01 has no email delivery** (same as INV-06 for project invites — copy the link).
+- **Project and Team invites send best-effort Resend email** (INV-06 / TEAM-EMAIL-01); one-time link copy remains the fallback when send fails.
 - **Venue Checkout is not a public marketing Checkout** — post-login `/account/venue-upgrade` only.
   `/for-venues` and `/pricing` are discoverability, not Checkout.
 - **`getAccountContext` still takes the first membership by `created_at`** — a user on both a
   personal and a business account (possible after TEAM-01 accept while already a couple) is a
   sharp edge; not solved.
-- **`budget_items.due_date` write-dead** (drop **0097+** after parity); reconciled payment schedule
+- **`budget_items.due_date` write-dead** (drop **0100+** after parity); reconciled payment schedule
   (model b) deferred; budget dashboard overhaul deferred (mockup-first); `budget_items.category`
   free-text + quick-add list deliberate. (Ledger writers now `can_edit_project`.)
 - **CON-03 deferred**; CAL-01a deferred; contract category axis vendor-only; `{{amount}}` no project
@@ -3116,13 +3347,15 @@ logo/accent + "Powered by First Look"; unknown slug is invalid **before** submit
 CAL-04 / Agreements / TMPL-01 / demo throttle UX / Team / venue upgrade + own-shell + venue copy +
 setup nudge / vendor cards / stale-lead pills / View in Gmail / three-option welcome /
 `/for-planners` + `/for-venues` / inquiry form + intake card + reply drawer / vendor-confirm /
-Pending drafts / lead Edit modal / booked-card arrival+scope**; Tier 1 date locale policy; optional
-Soft stack `reference.html` regenerate; legacy CSS aliases; font-load scoping.
+Pending drafts / lead Edit modal / booked-card arrival+scope / Vendors three-tab + Still to
+book / task assignees / calendar detail / Google login / invite email / branded digests**; Tier 1
+date locale policy; optional Soft stack `reference.html` regenerate; legacy CSS aliases;
+font-load scoping.
 
 **Dev DB state (baseline — re-introspect before relying on rows):**
 - `dominicciccaglione@gmail.com` — **personal**, "Dom & Jordyn 2027", wedding 2027-02-13. 12 guest
   households, every household ≥1 member (22 after the 0055 backfill). Song toggle state per §15 note.
-  Seating at member grain (0059). Confirm **0060–0096** if using Calendar / vendor media / notes /
+  Seating at member grain (0059). Confirm **0060–0099** if using Calendar / vendor media / notes /
   association / sweetheart / demo / tours / onboarding / branding / write gates / throttles / billing /
   template clone / team seats / venue plan / Gmail threads / payment reminders / vendor confirm /
   agent drafts / inquiry slug.
@@ -3241,7 +3474,7 @@ Guests-page rework (GST-03…09 / 0054–0058).** Migrations **0001–0058**.
 - **ACCT-GRANT-01** — **0091**. `GRANT UPDATE` on `accounts` to `authenticated`.
 - **LEAD-EDIT-01** — No schema. Shared `Modal` + lead Edit modal.
 
-**Done (v40 — Inquiry embed + demo anonymize + CRM workflow engine):**
+**Done (v40 — Inquiry embed + demo anonymize + CRM workflow engine + Google auth + admin relay):**
 - **INQUIRY-EMBED-01** — No schema. Iframe snippet on the intake card; inbound-DNS copy removed.
 - **DEMO-ANON-01** — **0092**. Demo clones named Lumen Planning; `demo-studio` inquiry slugs.
 - **WHITE-03** — **0093**. Anon `get_inquiry_branding`; branded `/inquire/[slug]` embed.
@@ -3251,35 +3484,52 @@ Guests-page rework (GST-03…09 / 0054–0058).** Migrations **0001–0058**.
 - **WORKFLOW-03** — **0095**. `send_email` → pending `workflow_email`; Approve via Gmail.
 - **WORKFLOW-04** — No schema. `/automations` builder UI.
 - **WORKFLOW-05** — **0096**. One-click templates (`template_key`).
+- **AUTH-GOOGLE-01** — No schema. Continue with Google on login/signup.
+- **CONTACT-ROUTE-01** — No schema. Admin inbound → `CONTACT_NOTIFY_EMAIL` on the same webhook.
 
-Current through **0096** (on disk); next-free **0097** (MEAL-03a incl. `party_size`,
+**Done (v41 — Task assignment + Vendors tabs + invites email + calendar detail + library manage):**
+- **TASK-ASSIGN-01** — **0097**. `tasks.assigned_to` + `list_project_assignees` + board filter.
+- **TMPL-02** — **0098**. Template clone `planned_amount = 0`.
+- **VND-13 / VND-13b** — **0099**. Search/Outreach/Booked tabs + budget Still to book + ignore list.
+- **VND-LIB-01** — No schema. Library delete when unused; unlink from booking.
+- **CON-ARCHIVE-01** — No schema. Archive delete + Edit-in-project.
+- **VND-16** — No schema. Copy confirm link on booked card.
+- **VENUE-08** — No schema. Venue Billing cadence card.
+- **CAL-05** — No schema. Calendar event detail modal + hue retune.
+- **INV-06 / TEAM-EMAIL-01** — No schema. Best-effort Resend on project + Team invites.
+- **EMAIL-BRAND-01** — No schema. Branded AGENT-01 digest + JSON summary/highlights.
+- **VND-OUTREACH-MOBILE-01** — No schema. Outreach mobile single-line chrome.
+
+Current through **0099** (on disk); next-free **0100** (MEAL-03a incl. `party_size`,
 `budget_items.due_date` drop, `rsvp_access_mode` drop, optional `traditions` drop, DASH-03a
-`projects.description`, optional PRICE-03/04/05 residual drop — all **0097+**).
+`projects.description`, optional PRICE-03/04/05 residual drop — all **0100+**).
 
-**In progress:** confirm **0060–0096 hand-pastes** (+ demo seeds + `purge-demo` + Vercel Cron env);
-the **broad** Dom Soft stack + LAND-01 live visual checkpoint (prior unwalked surfaces + **Team /
-venue / vendor cards / stale leads / lock group / couple Monthly-Lifetime / View in Gmail /
-three-option welcome / venue-upgrade trial + setup nudge / accent picker / `/for-planners` +
-`/for-venues` / inquiry form + embed + branded inquire / reply drawer / vendor-confirm / Pending
-drafts / lead Edit / `/automations` templates + builder**).
+**In progress:** confirm **0060–0099 hand-pastes** (+ demo seeds + `purge-demo` + Vercel Cron env +
+Google Auth provider + admin inbound env); the **broad** Dom Soft stack + LAND-01 live visual
+checkpoint (prior unwalked surfaces + **Team / venue / vendor cards / Vendors tabs / Still to book /
+task assignees / stale leads / lock group / couple Monthly-Lifetime / View in Gmail / three-option
+welcome / venue-upgrade trial + setup nudge / accent picker / `/for-planners` + `/for-venues` /
+inquiry form + embed + branded inquire / reply drawer / vendor-confirm / Pending drafts / lead Edit /
+`/automations` templates + builder / Google login / invite email / calendar detail / branded
+digests**).
 CHECKOUT-RECONCILE-01 remaining gap: abandoned Checkout with no return-page hit (no periodic job).
 
-**Remaining couple side:** moodboard; **MEAL-03a (0097+, drops `guests.meal_choice` + `guests.party_size`)**;
-**`budget_items.due_date` drop (0097+, after parity)**; **`rsvp_access_mode` drop (0097+)**; optional
-**`wedding_profile.traditions` drop**; **DASH-03a (wedding-card blurb — `projects.description` 0097+ +
+**Remaining couple side:** moodboard; **MEAL-03a (0100+, drops `guests.meal_choice` + `guests.party_size`)**;
+**`budget_items.due_date` drop (0100+, after parity)**; **`rsvp_access_mode` drop (0100+)**; optional
+**`wedding_profile.traditions` drop**; **DASH-03a (wedding-card blurb — `projects.description` 0100+ +
 editor)**; optional website-media orphan GC; budget dashboard overhaul (mockup-first); optional
 reconciled payment schedule (model b); **optional per-member RSVP status (guest model B)**; optional
 assistant write for note `action_status`; optional post-create edit for GST-12 association; demo →
 real account conversion.
 
-**Remaining planner side:** invoicing accepted proposals; deeper CRM; INV-06 + TEAM email delivery;
+**Remaining planner side:** invoicing accepted proposals; deeper CRM;
 `viewer` invite (**WRITE-01 done — product decision remains**); CAL-01a (task-due calendar overlay);
 CON-03 (real PDF); account-role hierarchy (explicitly not TEAM-01); AUTO-01 reminder-sent UI /
 digest-frequency controls (deferred); surface `estimated_guest_count` on the lead Edit modal;
 retire `ensureInquirySlug` service-role write after 0091 is live; wire `lead_created` /
 `project_created` in the builder (schema-legal); a time-based "quiet lead" template (cron-scan
 family, not WORKFLOW event hooks); venue-copy wrap for the Automations sidebar label. PRICE-02 /
-VENUE-02 paid Checkout are **shipped**. AUTO-01/02 / AGENT-00…03 / AUTO-03 / WORKFLOW-00…05 are
+VENUE-02 paid Checkout are **shipped**. AUTO-01/02 / AGENT-00…03 / AUTO-03 / WORKFLOW-00…05 / TASK-ASSIGN-01 / TMPL-02 / VND-13 are
 **shipped on disk** (paste + Cron env remain).
 
 **Remaining seating:** SEAT-07 assistant mock-up; optional per-seat UI depth.
@@ -3358,22 +3608,30 @@ Do not fold CRM workflows into either.
   delete. At most one row per `(account, template)`.
 - **Business demo clones are named Lumen Planning.** Do not slugify a live studio into a public
   demo inquiry URL.
+- **Checklist assignees are optional** (`tasks.assigned_to`); clones never copy them.
+- **Template budget clone never copies dollar amounts** (TMPL-02 — always `planned_amount = 0`).
+- **Still to book is budget-mapped + ignore list**, not `vendor_targets` status (VND-13).
+- **Project and Team invites send best-effort Resend email**; link copy is the fallback.
+- **Google sign-in is first-class on login/signup**; Gmail OAuth remains outreach-only.
+- **AGENT-01 digests are branded HTML** from JSON summary/highlights (EMAIL-BRAND-01).
 
 ---
 
 ## 15. Start here next (pick-up point)
 
 The couple product is feature-complete, shareable, and payable. The planner/venue product has a CRM
-+ collaborator invites + **account Team seats** + wedding archive + Vendor library **(card grid +
-detail/portfolio)** + **CoupleShell white-label + venue own-shell + accent picker** + authorable
-Calendar + **wedding cards** + **template clone** + cross-project Contracts archive with templates
-**(+ assistant-drafted templates)** + **venue first-class signup / copy / setup nudge** + **inquiry
-intake (public form + embed snippet + white-label) + reply drafts** + **lead Edit modal** +
-**payment-schedule watch** + **vendor countdown confirm** + **weekly synthesis / implication notes /
-outreach drafts** + **CRM workflow templates + builder**.
++ collaborator invites + **account Team seats** (+ invite email) + wedding archive + Vendor library
+**(card grid + detail/portfolio + delete/unlink)** + **CoupleShell white-label + venue own-shell +
+accent picker** + authorable Calendar **(+ event detail)** + **wedding cards** + **template clone
+(amounts start at $0)** + cross-project Contracts archive with templates **(+ assistant-drafted
+templates + archive manage)** + **venue first-class signup / copy / setup nudge / Billing cadence**
++ **inquiry intake (public form + embed snippet + white-label) + reply drafts** + **lead Edit modal**
++ **payment-schedule watch** + **vendor countdown confirm** + **weekly branded synthesis /
+implication notes / outreach drafts** + **CRM workflow templates + builder** + **checklist task
+assignment** + **Vendors Search/Outreach/Booked + budget Still to book** + **Google sign-in**.
 Marketing is **planner/venue-first** (`/` + `/for-planners` + `/for-venues` + `/pricing`). Schema
-pastes for **0060–0096** still need confirmation unless Dom closed them. Plan is **couples-first
-launch** with B2B marketing. Bible at **v40**. Schema through **0096**; next-free **0097**. This
+pastes for **0060–0099** still need confirmation unless Dom closed them. Plan is **couples-first
+launch** with B2B marketing. Bible at **v41**. Schema through **0099**; next-free **0100**. This
 document is self-contained.
 
 **Do not** resume a Modern romantic / VND-01 layout pass; **do not** reorder website sections with
@@ -3383,11 +3641,11 @@ via the sticky preview); **do not** treat Calendar as strictly personal-only (CA
 see it; collaborators do not); **do not** casually extend CAL-04's role exception to other tabs; **do
 not** treat Registry as a workspace tab; **do not** re-inline task overdue (OVERDUE-01 —
 `isTaskPastDue` is the helper); **do not** drop the DASH-03a blurb deferral; **do not** trust
-"next-free 0084" (0084–0096 taken — next-free is **0097**); **do not** treat WRITE-01 as unfinished
+"next-free 0084" (0084–0099 taken — next-free is **0100**); **do not** treat WRITE-01 as unfinished
 schema work (shipped; `viewer` invite is product-deferred); **do not** assume planner bootstrap
 creates a placeholder project (ONB-06); **do not** drop `guests.meal_choice` / `guests.party_size`
 until MEAL-03a, or `budget_items.due_date` / `rsvp_access_mode` / `traditions` until parity
-(**0097+**); **do not** claim `party_size` is fully inert; **do not** resurrect a `traditions` write
+(**0100+**); **do not** claim `party_size` is fully inert; **do not** resurrect a `traditions` write
 path; **do not** restore an open/anonymous RSVP path or a guest-facing self-report headcount as the
 count source; **do not** auto-match RSVP attendee names to `guest_members`; **do not** treat
 `guest_members.attending` as the shown RSVP status (the badge is); **do not** persist a client song
@@ -3421,8 +3679,8 @@ welcome link — it is a first-class equal-weight option; **do not** add `kind='
 auto-fire `venue_branding_nudge` / `venue_team_nudge` as page tours; **do not** persist a brand
 preset id; **do not** hardcode PlannerShell "Leads"/"New wedding"/"Weddings" instead of `getCopy`;
 **do not** treat MKT-01/02/03, VENUE-06, WHITE-02/03, VENUE-07, ONBOARD-NUDGE-01, AUTO-01/02,
-AGENT-00…03, AUTO-03, ACCT-GRANT-01, LEAD-EDIT-01, INQUIRY-EMBED-01, DEMO-ANON-01, or
-WORKFLOW-00…05 as live-checkpoint-verified — they are
+AGENT-00…03, AUTO-03, ACCT-GRANT-01, LEAD-EDIT-01, INQUIRY-EMBED-01, DEMO-ANON-01, WORKFLOW-00…05, AUTH-GOOGLE-01, CONTACT-ROUTE-01, TASK-ASSIGN-01, TMPL-02, VND-13,
+VND-LIB-01, CAL-05, INV-06, TEAM-EMAIL-01, or EMAIL-BRAND-01 as live-checkpoint-verified — they are
 code-shipped only until the itemized checkpoints are run; **do not** auto-send vendor outreach,
 inquiry replies, or workflow emails from cron; **do not** use service-role as the request JWT for agent writes;
 **do not** skip `agent_run_log` / `automation_run_log` on a failed run; **do not** client-supply `account_id` to
@@ -3431,7 +3689,7 @@ demo inquiry URL; **do not** route workflow `change_lead_stage` through `updateL
 **do not** let a failed workflow fail a lead mutation; **do not** pull @dnd-kit into `/automations`;
 **do not** CHECK-constrain `template_key` (keys live in `lib/automations/templates.ts`).
 
-**A. Confirm hand-paste of 0060 → … → 0096** (in order) + apply demo seeds + deploy/schedule
+**A. Confirm hand-paste of 0060 → … → 0099** (in order) + apply demo seeds + deploy/schedule
 `purge-demo` (do **not** treat `charge-trial-balance` as required couple ops). Checkpoint: prior
 0060–0079 items plus `outreach_messages.gmail_thread_id`; `account_invitations` + fellow-member
 SELECT + business-only INSERT/accept; `accounts.plan` + CHECKs; Team invite round trip;
@@ -3440,7 +3698,7 @@ venue Checkout flips `plan`; couple local trial → Monthly/Lifetime; `payment_r
 `accounts.inquiry_slug` + `submit_inquiry`; outreach XOR + `estimated_guest_count`;
 `GRANT UPDATE` on `accounts` to authenticated; demo clones named Lumen Planning with
 `demo-studio` slug; `get_inquiry_branding`; four automation tables + `send_email` /
-`workflow_email` / `template_key`.
+`workflow_email` / `template_key`; `tasks.assigned_to` + `list_project_assignees`; template clone `$0` planned; `ignored_vendor_categories`.
 
 **A′. `isTaskPastDue` single-source is done on disk (OVERDUE-01).** Spot-check that Overview,
 assistant `getChecklist`, wedding cards, planner urgent, and calendar **task** overlays import
@@ -3455,7 +3713,8 @@ Monthly/Lifetime**, **planner trial → paid**, **venue upgrade + own-shell + ve
 welcome**, **venue-upgrade trial**, **`/for-planners` + `/for-venues`**, **`/inquire/[slug]` (incl.
 embed branding + invalid-slug)**,
 **`/vendor-confirm/[token]`**, **InquiryIntakeCard (form link + iframe) + reply drawer + lead Edit
-modal**, **Pending drafts**, **booked-card arrival/scope**, **`/automations` templates + builder**,
+modal**, **Pending drafts**, **booked-card arrival/scope**, **`/automations` templates + builder**, **Vendors Search/Outreach/Booked + Still to book**,
+**task assignees**, **calendar detail**, **Google login**, **invite email**, **branded digests**,
 planner dashboard/leads/billing/Access, `/vendors`,
 `/calendar`, `/contracts`, landing, `/pricing`, login, `/invite/[token]`, `/invite/account/[token]`,
 `/w/[slug]` date hydration. Confirm no hydration mismatch. Fix only real regressions.
@@ -3465,15 +3724,16 @@ planner dashboard/leads/billing/Access, `/vendors`,
 does **not** see the Calendar tab; confirm an invited **couple** **does** (CAL-04). Optionally smoke
 a **TEAM-01** invite to a second planner email (same business book, not a project member).
 
-**D. Apply + checkpoint any un-pasted migrations through 0096 + demo seeds + `purge-demo` +
-Vercel Cron env (`CRON_SECRET`, Resend, `SUPABASE_JWT_SECRET`, inbound domain/webhook secret).**
+**D. Apply + checkpoint any un-pasted migrations through 0099 + demo seeds + `purge-demo` +
+Vercel Cron env (`CRON_SECRET`, Resend, `SUPABASE_JWT_SECRET`, inbound domain/webhook secret,
+`ADMIN_INBOUND_ADDRESS`, `CONTACT_NOTIFY_EMAIL`) + Google OAuth provider in Supabase Auth.**
 A file on disk is not applied, and a `vercel.json` cron is not a live schedule until deployed.
 
-**E. MEAL-03a — drop `guests.meal_choice` AND `guests.party_size`. Migration 0097+** (after confirming
+**E. MEAL-03a — drop `guests.meal_choice` AND `guests.party_size`. Migration 0100+** (after confirming
 create-form no longer needs `party_size`; the `rsvp_submissions.party_size` column stays).
 
 **F. Drop `budget_items.due_date`, `rsvp_access_mode`, and optionally `wedding_profile.traditions`.
-Migration 0097+** — only after confirming parity. Optional: drop PRICE-03/04/05 residual
+Migration 0100+** — only after confirming parity. Optional: drop PRICE-03/04/05 residual
 (`stripe_payment_method_id` if unused, claim/cancel RPCs, undeploy `charge-trial-balance`).
 
 **G. `viewer` invite (optional, post-WRITE-01).** Product decision only — write gates are done. If
@@ -3482,7 +3742,7 @@ offering, update Access allowlist + constants comment and smoke a read-only invi
 **H. Budget dashboard overhaul (mockup-first).** Aesthetic; data model complete.
 
 **I. Launch (after paste confirmation + visual QA).** Separate prod Supabase org on Pro + migrations
-**0001–0096** (+ 0097 if MEAL-03a / drops shipped) by hand — never `db push` — + storage buckets
+**0001–0096** (+ 0100 if MEAL-03a / drops shipped) by hand — never `db push` — + storage buckets
 (`project-files` + `website-media` + **`vendor-media`** + **`brand-media`**) + `purge-demo` + SMTP +
 **demo template seeds**; Vercel + domain + env (**incl. `CRON_SECRET`, Resend, `SUPABASE_JWT_SECRET`,
 `INQUIRY_INBOUND_DOMAIN`, `RESEND_INBOUND_WEBHOOK_SECRET`**); Stripe live + webhook + Portal + Tax +
@@ -3499,7 +3759,7 @@ send, **stale-lead pill** on an untouched lead, **inquiry form round trip + bran
 approve**, **workflow template on + Approve send**, **vendor-confirm link**, **Pending outreach
 draft approve**.
 
-**J. Planner depth / revenue (post-launch).** Invoicing; INV-06 + TEAM email; optional `viewer`
+**J. Planner depth / revenue (post-launch).** Invoicing; optional `viewer`
 invite; CAL-01a; CON-03; reconciled payment schedule (model b); **guest model B**; lead→project
 conversion (Phase 4 — re-audit write policies); demo → real account conversion; optional
 account-role hierarchy (not implied by TEAM-01).
@@ -3528,7 +3788,7 @@ either. Do not auto-send to third parties. Do not route workflow stage changes t
 **Recommended path:** **paste + checkpoint 0060–0096 + demo seeds + `purge-demo` + Cron/Resend/JWT
 env (A/D)** → **close the broad visual checkpoint + invite Jordyn (+ optional Team invite) (B/C)**
 → **MEAL-03a + due_date/rsvp_access_mode/traditions drops (E/F)** → **budget dashboard mockup (H)**
-→ **Launch (I)** → optional `viewer` (G) → invoicing → INV-06 / CAL-01a / CON-03 / reconciled
+→ **Launch (I)** → optional `viewer` (G) → invoicing → CAL-01a / CON-03 / reconciled
 schedule / guest model B → conversion (J) → remaining L. Re-read `reconcileCheckoutReturn` /
 `applyCheckoutSession` before extending Checkout return handling. When extending **agentic**
 automation, read **M** / `AGENTIC_AUTOMATION_v1.md`. When extending **CRM workflows**, read §4 /

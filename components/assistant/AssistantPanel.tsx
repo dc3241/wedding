@@ -6,6 +6,7 @@ import {
   loadAssistantMessages,
   sendAssistantMessage,
 } from "@/components/assistant/actions";
+import { formatBoldText } from "@/components/assistant/format-bold-text";
 import { PendingDraftList } from "@/components/assistant/PendingDraftList";
 import type { AgentDraftPreview, AssistantMessage } from "@/components/assistant/types";
 import { Button } from "@/components/ui/button";
@@ -298,7 +299,11 @@ export function AssistantPanel({
                       isPlanner && "text-[14px] px-3 py-2",
                     )}
                   >
-                    <p className="whitespace-pre-wrap">{message.content}</p>
+                    <p className="whitespace-pre-wrap">
+                      {message.role === "assistant"
+                        ? formatBoldText(message.content)
+                        : message.content}
+                    </p>
                   </div>
                   <time
                     className="mt-1 text-[11px] text-muted"

@@ -10,7 +10,7 @@ alwaysApply: true
    `globals.css` wins.
 2. **`wedding-app/.cursor/design.mdc`** (this file) — canonical for **RULES**. If a rule disagrees
    with any document, this file wins.
-3. The Project Bible §10 (`PROJECT_BIBLE_v40.md`) — a **pointer** to this file. It must not
+3. The Project Bible §10 (`PROJECT_BIBLE_v41.md`) — a **pointer** to this file. It must not
    restate token values or rules. Any §10 content that contradicts this file is stale by definition.
 
 `main.mdc` (beside this file) is canonical for **architecture** — multi-tenancy, RLS-as-sole-

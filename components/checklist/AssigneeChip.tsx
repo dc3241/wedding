@@ -70,9 +70,22 @@ export function AssigneeChip({
     function place() {
       const rect = buttonRef.current?.getBoundingClientRect();
       if (!rect) return;
+
+      // Match menu width: w-[min(16.5rem,calc(100vw-2rem))] → 1rem edge gutter each side.
+      const rem =
+        parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+      const edge = rem;
+      const menuWidth = Math.min(16.5 * rem, window.innerWidth - edge * 2);
+
+      // Prefer right-align to the trigger; clamp so neither edge leaves the viewport.
+      let right = window.innerWidth - rect.right;
+      const minRight = edge;
+      const maxRight = Math.max(edge, window.innerWidth - menuWidth - edge);
+      right = Math.min(Math.max(right, minRight), maxRight);
+
       setCoords({
         top: rect.bottom + 6,
-        right: window.innerWidth - rect.right,
+        right,
       });
     }
 
