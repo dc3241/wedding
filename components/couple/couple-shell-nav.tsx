@@ -10,6 +10,8 @@ export function CoupleShellNav() {
   const onBilling =
     pathname === "/account/billing" ||
     pathname.startsWith("/account/billing?");
+  const onContact =
+    pathname === "/contact" || pathname.startsWith("/contact?");
 
   return (
     <nav className="flex items-center gap-1">
@@ -23,6 +25,17 @@ export function CoupleShellNav() {
         )}
       >
         Billing
+      </Link>
+      <Link
+        href="/contact"
+        className={cn(
+          "relative rounded-[var(--radius-inner)] px-3 py-2 text-sm font-medium no-underline transition-colors after:absolute after:inset-x-3 after:bottom-0.5 after:h-[2px] after:origin-left after:scale-x-0 after:bg-accent after:transition-transform after:duration-150",
+          onContact
+            ? "font-semibold text-ink after:scale-x-100"
+            : "text-muted hover:bg-well hover:text-ink",
+        )}
+      >
+        Contact
       </Link>
       <LogoutButton />
     </nav>

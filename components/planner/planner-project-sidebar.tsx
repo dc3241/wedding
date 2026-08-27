@@ -73,6 +73,8 @@ export function PlannerProjectSidebar({
   const onBilling =
     pathname === "/account/billing" ||
     pathname.startsWith("/account/billing?");
+  const onContact =
+    pathname === "/contact" || pathname.startsWith("/contact?");
   const onBranding =
     pathname === "/account/branding" ||
     pathname.startsWith("/account/branding?");
@@ -109,6 +111,9 @@ export function PlannerProjectSidebar({
           </Link>
           <Link href="/account/billing" className={navLinkClass(onBilling)}>
             Billing
+          </Link>
+          <Link href="/contact" className={navLinkClass(onContact)}>
+            Contact
           </Link>
           <div className="px-1.5 pt-1">
             <LogoutButton />

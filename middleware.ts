@@ -42,9 +42,10 @@ export async function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     /*
-     * Skip static assets and fully-public surfaces (/w/*, /vendor-confirm/*, /inquire/*)
+     * Skip static assets and fully-public surfaces
+     * (/w/*, /vendor-confirm/*, /inquire/*, /contact)
      * so guest traffic never pays for getUser() session refresh.
      */
-    "/((?!_next/static|_next/image|favicon.ico|w/|vendor-confirm/|inquire/).*)",
+    "/((?!_next/static|_next/image|favicon.ico|w/|vendor-confirm/|inquire/|contact(?:/|$)).*)",
   ],
 };

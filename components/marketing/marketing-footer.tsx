@@ -18,6 +18,9 @@ export function MarketingFooter() {
           <Link href="/account/billing" className="hover:text-ink">
             Billing
           </Link>
+          <Link href="/contact" className="hover:text-ink">
+            Contact
+          </Link>
         </nav>
         <p className="text-[12px] text-muted">
           © {new Date().getFullYear()} First Look.
