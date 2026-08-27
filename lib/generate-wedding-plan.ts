@@ -199,15 +199,8 @@ Already booked (do not suggest finding a vendor for these): ${
   }
 Anything else: ${profile.vibeNotes ?? "none"}
 
-Return STRICT JSON ONLY — no prose, no markdown, no code fences — matching exactly this shape:
-{
-  "checklist": [ { "title": string, "monthsBeforeWedding": number } ],
-  "budget": [ { "category": string, "plannedAmount": number } ],
-  "vendorCategories": [ { "category": string, "note": string } ]
-}
-
 Guidance:
-- Include 10–18 checklist tasks with monthsBeforeWedding as whole months before the wedding (0 for week-of tasks).
+- Include 10–18 checklist tasks. monthsBeforeWedding is whole months before the wedding (0 for week-of tasks).
 ${runwayGuidance}
 - Budget categories should sum to roughly the couple's total budget target (within about 10% if a target is given).
 - Reflect their style, traditions, and priorities in task titles, budget splits, and vendor category notes.
@@ -217,6 +210,87 @@ ${runwayGuidance}
 - Include essential vendor categories from that id list tailored to their wedding. note stays free text.`;
 }
 
+/** Constrained decoding — Anthropic guarantees this JSON, not free-text. */
+function weddingPlanJsonSchema() {
+  return {
+    type: "object",
+    additionalProperties: false,
+    required: ["checklist", "budget", "vendorCategories"],
+    properties: {
+      checklist: {
+        type: "array",
+        minItems: 1,
+        description: "10 to 18 starting tasks for this wedding.",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: ["title", "monthsBeforeWedding"],
+          properties: {
+            title: {
+              type: "string",
+              description: "Task title. Non-empty.",
+            },
+            monthsBeforeWedding: {
+              type: "integer",
+              description:
+                "Whole months before the wedding. 0 is week-of. Must not exceed the runway.",
+            },
+          },
+        },
+      },
+      budget: {
+        type: "array",
+        minItems: 1,
+        description:
+          "Budget line items. Amounts should sum to roughly the couple's total budget target.",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: ["category", "plannedAmount"],
+          properties: {
+            category: {
+              type: "string",
+              description: "Budget category label (free text).",
+            },
+            plannedAmount: {
+              type: "number",
+              description: "Planned dollar amount. Zero or positive.",
+            },
+          },
+        },
+      },
+      vendorCategories: {
+        type: "array",
+        description:
+          "Vendors still to find. Omit already-booked categories. Empty is allowed.",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: ["category", "note"],
+          properties: {
+            category: {
+              type: "string",
+              enum: VENDOR_CATEGORIES.map((c) => c.id),
+              description: "Canonical vendor category id.",
+            },
+            note: {
+              type: "string",
+              description: "Why this vendor matters for this wedding.",
+            },
+          },
+        },
+      },
+    },
+  };
+}
+
+const TRANSIENT_HTTP_STATUSES = new Set([429, 500, 502, 503, 529]);
+
+type AnthropicPlanResponse = {
+  stop_reason?: string;
+  content?: { type: string; text?: string }[];
+};
+
 export async function callClaudeForWeddingPlan(
   profile: WeddingProfileInput,
   todayIso: string,
@@ -225,11 +299,12 @@ export async function callClaudeForWeddingPlan(
   const apiKey = process.env.MODEL_API_KEY;
   if (!apiKey) return null;
 
-  // 3 attempts × ~26s observed ≈ 78s — fits the onboarding maxDuration=120.
-  const MAX_PARSE_ATTEMPTS = 3;
+  // Structured JSON + up to 3 attempts for transient API / truncation only.
+  // 3 × ~26s observed ≈ 78s — fits onboarding maxDuration=120.
+  const MAX_ATTEMPTS = 3;
   const prompt = buildPrompt(profile, todayIso, runwayMonths);
 
-  for (let attempt = 1; attempt <= MAX_PARSE_ATTEMPTS; attempt++) {
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     try {
       const response = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
@@ -240,34 +315,61 @@ export async function callClaudeForWeddingPlan(
         },
         body: JSON.stringify({
           model: ANTHROPIC_MODEL,
-          max_tokens: 4096,
+          max_tokens: 8192,
           system:
-            "You are a wedding planning assistant. Respond with STRICT JSON ONLY — no prose, no markdown, no code fences.",
+            "You are a wedding planning assistant. Produce a complete starting plan for this couple.",
           messages: [
             {
               role: "user",
               content: prompt,
             },
           ],
+          output_config: {
+            format: {
+              type: "json_schema",
+              schema: weddingPlanJsonSchema(),
+            },
+          },
         }),
       });
 
       if (!response.ok) {
         const errorBody = await response.text().catch(() => "");
         console.error("[generate-wedding-plan] Anthropic API error", {
+          attempt,
           status: response.status,
           statusText: response.statusText,
           body: errorBody.slice(0, 4000),
         });
+        if (
+          TRANSIENT_HTTP_STATUSES.has(response.status) &&
+          attempt < MAX_ATTEMPTS
+        ) {
+          continue;
+        }
         return null;
       }
 
-      const data = (await response.json()) as {
-        content?: { type: string; text?: string }[];
-      };
+      const data = (await response.json()) as AnthropicPlanResponse;
+
+      if (
+        data.stop_reason === "max_tokens" ||
+        data.stop_reason === "refusal"
+      ) {
+        console.error("[generate-wedding-plan] incomplete structured output", {
+          attempt,
+          stop_reason: data.stop_reason,
+        });
+        if (attempt < MAX_ATTEMPTS) continue;
+        return null;
+      }
 
       const raw = data.content?.find((block) => block.type === "text")?.text;
-      if (!raw) return null;
+      if (!raw) {
+        console.error("[generate-wedding-plan] empty text block", { attempt });
+        if (attempt < MAX_ATTEMPTS) continue;
+        return null;
+      }
 
       const stripped = stripJsonFences(raw);
       let parsed: unknown;
@@ -279,7 +381,7 @@ export async function callClaudeForWeddingPlan(
           const offset = match ? Number(match[1]) : 0;
           console.error("[generate-wedding-plan] JSON.parse failed", {
             attempt,
-            maxAttempts: MAX_PARSE_ATTEMPTS,
+            maxAttempts: MAX_ATTEMPTS,
             length: stripped.length,
             offset,
             window: stripped.slice(
@@ -287,7 +389,7 @@ export async function callClaudeForWeddingPlan(
               offset + 200,
             ),
           });
-          if (attempt < MAX_PARSE_ATTEMPTS) continue;
+          if (attempt < MAX_ATTEMPTS) continue;
           return null;
         }
         throw error;
@@ -296,8 +398,9 @@ export async function callClaudeForWeddingPlan(
       if (!validateGeneratedPlan(parsed)) {
         console.error(
           "[generate-wedding-plan] model output failed validation",
-          parsed,
+          { attempt, parsed },
         );
+        if (attempt < MAX_ATTEMPTS) continue;
         return null;
       }
 
@@ -315,7 +418,11 @@ export async function callClaudeForWeddingPlan(
         ),
       };
     } catch (error) {
-      console.error("[generate-wedding-plan] Anthropic call failed", error);
+      console.error("[generate-wedding-plan] Anthropic call failed", {
+        attempt,
+        error,
+      });
+      if (attempt < MAX_ATTEMPTS) continue;
       return null;
     }
   }
