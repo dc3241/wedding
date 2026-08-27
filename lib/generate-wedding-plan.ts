@@ -264,7 +264,27 @@ export async function callClaudeForWeddingPlan(
     const raw = data.content?.find((block) => block.type === "text")?.text;
     if (!raw) return null;
 
-    const parsed = JSON.parse(stripJsonFences(raw)) as unknown;
+    const stripped = stripJsonFences(raw);
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(stripped);
+    } catch (error) {
+      // Diagnostic scaffolding — remove once the malformed payload is captured.
+      if (error instanceof SyntaxError) {
+        const match = /position (\d+)/i.exec(error.message);
+        const offset = match ? Number(match[1]) : 0;
+        console.error("[generate-wedding-plan] JSON.parse failed", {
+          length: stripped.length,
+          offset,
+          window: stripped.slice(
+            Math.max(0, offset - 200),
+            offset + 200,
+          ),
+        });
+      }
+      throw error;
+    }
+
     if (!validateGeneratedPlan(parsed)) {
       console.error(
         "[generate-wedding-plan] model output failed validation",
