@@ -11,6 +11,8 @@ import {
 } from "@/lib/onboarding-gate";
 import { createClient } from "@/utils/supabase/server";
 
+export const maxDuration = 120;
+
 export default async function OnboardingPage() {
   const supabase = await createClient();
   const account = await getAccountContext(supabase);

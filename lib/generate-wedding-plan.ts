@@ -247,7 +247,15 @@ export async function callClaudeForWeddingPlan(
       }),
     });
 
-    if (!response.ok) return null;
+    if (!response.ok) {
+      const errorBody = await response.text().catch(() => "");
+      console.error("[generate-wedding-plan] Anthropic API error", {
+        status: response.status,
+        statusText: response.statusText,
+        body: errorBody.slice(0, 4000),
+      });
+      return null;
+    }
 
     const data = (await response.json()) as {
       content?: { type: string; text?: string }[];
@@ -257,7 +265,13 @@ export async function callClaudeForWeddingPlan(
     if (!raw) return null;
 
     const parsed = JSON.parse(stripJsonFences(raw)) as unknown;
-    if (!validateGeneratedPlan(parsed)) return null;
+    if (!validateGeneratedPlan(parsed)) {
+      console.error(
+        "[generate-wedding-plan] model output failed validation",
+        parsed,
+      );
+      return null;
+    }
 
     return {
       checklist: parsed.checklist.map((item) => ({
@@ -270,7 +284,8 @@ export async function callClaudeForWeddingPlan(
       })),
       vendorCategories: filterCanonicalVendorCategories(parsed.vendorCategories),
     };
-  } catch {
+  } catch (error) {
+    console.error("[generate-wedding-plan] Anthropic call failed", error);
     return null;
   }
 }

@@ -73,21 +73,30 @@ export function PlanPreviewStep({
     const booked = new Set(alreadyBookedVendorCategoryIds);
 
     startTransition(async () => {
-      const result = await generatePlan(projectId);
-      setGenLoading(false);
-      setHasLoaded(true);
+      try {
+        const result = await generatePlan(projectId);
+        setGenLoading(false);
+        setHasLoaded(true);
 
-      if (result.ok) {
-        setPlan({
-          ...result.plan,
-          vendorCategories: result.plan.vendorCategories.filter(
-            (item) => !booked.has(item.category),
-          ),
-        });
-        setBudgetTarget(result.totalBudgetTarget);
-      } else {
+        if (result.ok) {
+          setPlan({
+            ...result.plan,
+            vendorCategories: result.plan.vendorCategories.filter(
+              (item) => !booked.has(item.category),
+            ),
+          });
+          setBudgetTarget(result.totalBudgetTarget);
+        } else {
+          setPlan(null);
+          setGenError(result.error);
+        }
+      } catch {
+        setGenLoading(false);
+        setHasLoaded(true);
         setPlan(null);
-        setGenError(result.error);
+        setGenError(
+          "We couldn't generate your plan right now. Please try again in a moment.",
+        );
       }
     });
   }, [alreadyBookedVendorCategoryIds, projectId]);
