@@ -225,87 +225,100 @@ export async function callClaudeForWeddingPlan(
   const apiKey = process.env.MODEL_API_KEY;
   if (!apiKey) return null;
 
-  try {
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-      },
-      body: JSON.stringify({
-        model: ANTHROPIC_MODEL,
-        max_tokens: 4096,
-        system:
-          "You are a wedding planning assistant. Respond with STRICT JSON ONLY — no prose, no markdown, no code fences.",
-        messages: [
-          {
-            role: "user",
-            content: buildPrompt(profile, todayIso, runwayMonths),
-          },
-        ],
-      }),
-    });
+  // 3 attempts × ~26s observed ≈ 78s — fits the onboarding maxDuration=120.
+  const MAX_PARSE_ATTEMPTS = 3;
+  const prompt = buildPrompt(profile, todayIso, runwayMonths);
 
-    if (!response.ok) {
-      const errorBody = await response.text().catch(() => "");
-      console.error("[generate-wedding-plan] Anthropic API error", {
-        status: response.status,
-        statusText: response.statusText,
-        body: errorBody.slice(0, 4000),
-      });
-      return null;
-    }
-
-    const data = (await response.json()) as {
-      content?: { type: string; text?: string }[];
-    };
-
-    const raw = data.content?.find((block) => block.type === "text")?.text;
-    if (!raw) return null;
-
-    const stripped = stripJsonFences(raw);
-    let parsed: unknown;
+  for (let attempt = 1; attempt <= MAX_PARSE_ATTEMPTS; attempt++) {
     try {
-      parsed = JSON.parse(stripped);
-    } catch (error) {
-      // Diagnostic scaffolding — remove once the malformed payload is captured.
-      if (error instanceof SyntaxError) {
-        const match = /position (\d+)/i.exec(error.message);
-        const offset = match ? Number(match[1]) : 0;
-        console.error("[generate-wedding-plan] JSON.parse failed", {
-          length: stripped.length,
-          offset,
-          window: stripped.slice(
-            Math.max(0, offset - 200),
-            offset + 200,
-          ),
-        });
-      }
-      throw error;
-    }
+      const response = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": apiKey,
+          "anthropic-version": "2023-06-01",
+        },
+        body: JSON.stringify({
+          model: ANTHROPIC_MODEL,
+          max_tokens: 4096,
+          system:
+            "You are a wedding planning assistant. Respond with STRICT JSON ONLY — no prose, no markdown, no code fences.",
+          messages: [
+            {
+              role: "user",
+              content: prompt,
+            },
+          ],
+        }),
+      });
 
-    if (!validateGeneratedPlan(parsed)) {
-      console.error(
-        "[generate-wedding-plan] model output failed validation",
-        parsed,
-      );
+      if (!response.ok) {
+        const errorBody = await response.text().catch(() => "");
+        console.error("[generate-wedding-plan] Anthropic API error", {
+          status: response.status,
+          statusText: response.statusText,
+          body: errorBody.slice(0, 4000),
+        });
+        return null;
+      }
+
+      const data = (await response.json()) as {
+        content?: { type: string; text?: string }[];
+      };
+
+      const raw = data.content?.find((block) => block.type === "text")?.text;
+      if (!raw) return null;
+
+      const stripped = stripJsonFences(raw);
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(stripped);
+      } catch (error) {
+        if (error instanceof SyntaxError) {
+          const match = /position (\d+)/i.exec(error.message);
+          const offset = match ? Number(match[1]) : 0;
+          console.error("[generate-wedding-plan] JSON.parse failed", {
+            attempt,
+            maxAttempts: MAX_PARSE_ATTEMPTS,
+            length: stripped.length,
+            offset,
+            window: stripped.slice(
+              Math.max(0, offset - 200),
+              offset + 200,
+            ),
+          });
+          if (attempt < MAX_PARSE_ATTEMPTS) continue;
+          return null;
+        }
+        throw error;
+      }
+
+      if (!validateGeneratedPlan(parsed)) {
+        console.error(
+          "[generate-wedding-plan] model output failed validation",
+          parsed,
+        );
+        return null;
+      }
+
+      return {
+        checklist: parsed.checklist.map((item) => ({
+          title: item.title.trim(),
+          monthsBeforeWedding: Math.round(item.monthsBeforeWedding),
+        })),
+        budget: parsed.budget.map((item) => ({
+          category: item.category.trim(),
+          plannedAmount: Math.round(item.plannedAmount),
+        })),
+        vendorCategories: filterCanonicalVendorCategories(
+          parsed.vendorCategories,
+        ),
+      };
+    } catch (error) {
+      console.error("[generate-wedding-plan] Anthropic call failed", error);
       return null;
     }
-
-    return {
-      checklist: parsed.checklist.map((item) => ({
-        title: item.title.trim(),
-        monthsBeforeWedding: Math.round(item.monthsBeforeWedding),
-      })),
-      budget: parsed.budget.map((item) => ({
-        category: item.category.trim(),
-        plannedAmount: Math.round(item.plannedAmount),
-      })),
-      vendorCategories: filterCanonicalVendorCategories(parsed.vendorCategories),
-    };
-  } catch (error) {
-    console.error("[generate-wedding-plan] Anthropic call failed", error);
-    return null;
   }
+
+  return null;
 }
