@@ -50,7 +50,7 @@ function formatTabList(labels: string[]): string {
 }
 
 function workspaceTabLabels(role: ProjectInviteRole): string[] {
-  // Invited members have no account — same filter as CoupleShell (§6 / CAL-04).
+  // Invited members have no account — same filter as CoupleShell (§6 / CAL-04 / CAL-06).
   return tabsForAccountKind(null, role).map((tab) => tab.label);
 }
 

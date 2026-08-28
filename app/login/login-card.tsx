@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { Input } from "@/components/ui/input";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -139,6 +140,16 @@ export function LoginCard({
             required
             autoComplete={isSignup ? "new-password" : "current-password"}
           />
+          {isSignup ? null : (
+            <p className="text-right">
+              <Link
+                href="/forgot-password"
+                className="text-[13px] text-accent hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+              >
+                Forgot password?
+              </Link>
+            </p>
+          )}
         </div>
 
         <div className="pt-2">

@@ -16,7 +16,7 @@ export function ProjectWorkspaceNav({
   projectId: string;
   /** Null = no account (invited member). Do not collapse to `"personal"`. */
   accountKind: AccountKind | null;
-  /** CAL-04: used only for Calendar when kind is null. */
+  /** CAL-04 / CAL-06: used only for Calendar when kind is null. */
   projectMemberRole?: string | null;
 }) {
   const pathname = usePathname();

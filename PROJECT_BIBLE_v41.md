@@ -165,6 +165,7 @@ testing.
 | **VND-16** | Booked card "Copy confirm link" via shared `vendorConfirmUrl`. | **NONE** |
 | **VENUE-08** | Paid venue Billing shows cadence card (not Upgrade CTA). | **NONE** |
 | **CAL-05** | Calendar event detail modal + wedding-hue retune (≥50° spread). | **NONE** |
+| **CAL-06** | Invited-collaborator Calendar tab (same CAL-04 role exception). | **NONE** |
 | **INV-06 / TEAM-EMAIL-01** | Best-effort Resend on project + Team invites; link copy fallback. | **NONE** |
 | **EMAIL-BRAND-01** | AGENT-01 digest: JSON synthesis + branded HTML shell (own-brand when venue white-label). | **NONE** |
 | **VND-OUTREACH-MOBILE-01** | Outreach actions + filters stay on one mobile line. | **NONE** |
@@ -261,7 +262,7 @@ Estimate/Actual/Difference/Paid model + payment ledger + dated payment schedule 
 files**, day-of timeline, gift registry with public share + guest claims, **in-app AI assistant with
 in-page prompts on Overview and empty tabs**, **guided page tours (TOUR-01)**, **a seating builder at
 the per-member grain with at most one sweetheart table**, **a project Calendar tab (personal owners +
-invited couples via CAL-04) with wedding/kind hue polish**, **a couple Agreements tab for
+invited couples via CAL-04 + invited collaborators via CAL-06) with wedding/kind hue polish**, **a couple Agreements tab for
 signed/vendor contract files**), a planner CRM (contracts, lead pipeline **with derived stale-lead
 pills (LEAD-STALE-01) + inquiry intake (form link / inbound email) + clay reply-ready drafts
 (AUTO-03) + Edit modal (LEAD-EDIT-01)**, proposals → accepted agreement → printable contract,
@@ -654,9 +655,9 @@ Tables: `accounts` (kind: personal | business; **`plan` planner | venue, 0083**)
 
 **A planner opening their own project has NO `project_members` row.** An invited member has NO
 account kind. `plannerOnly` tab filtering resolves from ACCOUNT kind and must never be switched to
-`project_members.role`. **CAL-04 is the sole deliberate exception:** when `kind === null` and
-`projectMemberRole === "couple"`, the Calendar tab is shown — still not a general role-based tab
-system. **`viewer` exists on the enum but is not issued by Access (INV-07 allowlist remains
+`project_members.role`. **CAL-04 / CAL-06 is the sole deliberate exception:** when `kind === null`
+and `projectMemberRole` is `"couple"` or `"collaborator"`, the Calendar tab is shown — still not a
+general role-based tab system. **`viewer` exists on the enum but is not issued by Access (INV-07 allowlist remains
 `{couple, collaborator}`).** WRITE-01 write gates are done; offering `viewer` is still a product
 deferral.
 
@@ -936,9 +937,9 @@ and `with check`. Consequence: tightening the project branch also tightens proje
 for non-account members (a future `viewer` would fail SELECT on project-linked rows too — low risk
 today; Access does not issue `viewer`). Account members still pass via `is_account_member`.
 **Live check (v35):** `pg_policies` shows `can_edit_project` on that single policy.
-**Tab visibility (CAL-04):** personal owners always; invited members with
-`project_members.role = 'couple'` also see Calendar; collaborators / other kind-null roles do not.
-See §6.
+**Tab visibility (CAL-04 / CAL-06):** personal owners always; invited members with
+`project_members.role` in `('couple','collaborator')` also see Calendar; other kind-null roles do
+not. See §6.
 
 ### Vendors / vendor-media (VND-11 / 0061) — ON DISK, paste-unconfirmed
 
@@ -1692,8 +1693,8 @@ Abandoning that Checkout returns to `/account/venue-upgrade?status=cancelled` (p
 `cancel_url`). Name field label/placeholder swaps for venue ("Venue name"). There is still no
 `accounts.kind='venue'`.
 
-> **`plannerOnly` resolves from ACCOUNT KIND, never from `project_members.role`.** CAL-04 is the
-> only role-aware tab exception (Calendar for invited couples).
+> **`plannerOnly` resolves from ACCOUNT KIND, never from `project_members.role`.** CAL-04 / CAL-06
+> is the only role-aware tab exception (Calendar for invited couples and collaborators).
 
 ### Invitation acceptance path (INV-05 + INV-08 + TEAM-01 + INV-06 / TEAM-EMAIL-01)
 
@@ -1736,7 +1737,7 @@ another active project on the same business account.
 
 `app/(app)/projects/[projectId]/layout.tsx`: tabs from `lib/project-tabs.ts`, audience-gated by
 `account.kind` (pass `null` for invited members — do **not** collapse null→personal). Passes
-`projectMemberRole` for the CAL-04 Calendar exception.
+`projectMemberRole` for the CAL-04 / CAL-06 Calendar exception.
 
 **Exact membership + order** (`lib/project-tabs.ts`):
 - **personal:** Overview · **Calendar** · Checklist · Budget · Vendors · Guests · Website · Seating ·
@@ -1745,18 +1746,20 @@ another active project on the same business account.
   · Contracts · Notes & files · Access
 - **null + role `couple` (invited couple):** personal set **minus** couple Contracts (`agreements`);
   **Calendar included via CAL-04**
-- **null (invited collaborator / other):** personal set **minus Calendar** and **minus** couple
-  Contracts
+- **null + role `collaborator` (invited collaborator):** personal set **minus** couple Contracts
+  (`agreements`); **Calendar included via CAL-06**
+- **null (other kind-null roles):** personal set **minus Calendar** and **minus** couple Contracts
 
 **Registry is NOT a workspace tab.** Public registry + claims remain anon surfaces; outbound registry
 links live under Website / `external_registry_links`.
 
-> **Calendar tab gating — CAL-04 (v35).** Base flag remains `coupleOnly` (personal owners). **Invited
-> `couple` members also see Calendar** when `kind === null` and `projectMemberRole === "couple"`.
-> Collaborators and other kind-null roles do not. This is the **first** tab gate that reads
-> `project_members.role` — do not casually extend the pattern to other tabs. Couple Agreements stays
-> personal-only (no role exception). CAL-02/WRITE-01 RLS: project-linked events writable by
-> `can_edit_project` editors (account members + couple/collaborator project members).
+> **Calendar tab gating — CAL-04 (v35) + CAL-06.** Base flag remains `coupleOnly` (personal owners).
+> **Invited `couple` and `collaborator` members also see Calendar** when `kind === null` and
+> `projectMemberRole` is `"couple"` or `"collaborator"`. Other kind-null roles do not. This is the
+> **only** tab gate that reads `project_members.role` — do not casually extend the pattern to other
+> tabs. Couple Agreements stays personal-only (no role exception). CAL-02/WRITE-01 RLS: project-linked
+> events writable by `can_edit_project` editors (account members + couple/collaborator project
+> members). RLS already permitted collaborator reads/writes; CAL-06 closes the UI gap.
 
 #### Checklist tab (TASK-ASSIGN-01)
 
@@ -1957,7 +1960,7 @@ assistant — still reactive; **discovery only** (opens the panel with a prefill
 #### CAL-02 — Calendar project-member RLS. Migration **0060** (on disk, catch-up).
 
 Couple project Calendar tab + collaborators can manage project-linked `calendar_events`. RLS is fact;
-tab gating later gained CAL-04 (invited couples) — §6.
+tab gating later gained CAL-04 (invited couples) and **CAL-06** (invited collaborators) — §6.
 
 #### VND-11 — Vendor library detail / portfolio. Migration **0061** (on disk, catch-up).
 
@@ -2105,7 +2108,14 @@ Business signup creates account only; planners add weddings via New wedding (opt
 #### CAL-04 — Invited-couple Calendar tab. NO SCHEMA.
 
 Role exception for `kind === null` + `role === "couple"`. First role-aware tab gate — do not extend
-casually. Closes the v34 "invited real couple loses Calendar" edge.
+casually to other tabs. Closes the v34 "invited real couple loses Calendar" edge. **CAL-06** later
+extends this same Calendar exception to invited `collaborator` members.
+
+#### CAL-06 — Invited-collaborator Calendar tab. NO SCHEMA.
+
+Extends the CAL-04 exception: `kind === null` + (`role === "couple"` **or** `role === "collaborator"`).
+Agreements stays personal-only. No RLS change — `can_edit_project` already included collaborators
+(0029 / 0071).
 
 #### AGR-01 — Couple Agreements tab. NO SCHEMA (catch-up).
 
@@ -3049,7 +3059,8 @@ a code scan. Prefer section-level diffs.
   `(locked)`.
 - Treating **WRITE-01 as still open** — write gates shipped as **0071**; `viewer` invite remains a
   product deferral only.
-- Treating Calendar as strictly personal-only — **CAL-04** shows it to invited `couple` members.
+- Treating Calendar as strictly personal-only — **CAL-04 / CAL-06** shows it to invited `couple`
+  and `collaborator` members.
 - Omitting the couple **Agreements** tab from the personal tab list.
 - Assuming planner bootstrap still creates a placeholder project — **ONB-06** does not.
 - Treating RSVP throttle as soft-only — **0072** is the source of truth inside `submit_rsvp`.
@@ -3101,7 +3112,8 @@ a code scan. Prefer section-level diffs.
   out — §3 / ONB-05).
 - Emitting `{{amount}}` from CON-04's generator (excluded by product decision).
 - Copying template `rsvp_token`s or published website slugs when cloning demo accounts.
-- Extending CAL-04's role exception to other `coupleOnly` tabs without a deliberate decision.
+- Extending CAL-04 / CAL-06's Calendar role exception to other `coupleOnly` tabs without a
+  deliberate decision.
 - Mirroring RSVP or demo throttle thresholds in app code (RPC/Edge constants are sole source).
 - Starting venue Checkout from public `/pricing` (cosmetic only; real path is post-login
   `/account/venue-upgrade`).
@@ -3578,7 +3590,7 @@ Do not fold CRM workflows into either.
 - **ENT-01 lock screen lives in `(locked)`** — do not pathname-branch `(app)/layout`.
 - **`isTaskPastDue` is the single task-overdue helper** (OVERDUE-01).
 - **WRITE-01 write policies use `can_edit_project`; offering `viewer` is still a product deferral.**
-- **CAL-04 is the only role-aware tab exception** (invited couple → Calendar).
+- **CAL-04 / CAL-06 is the only role-aware tab exception** (invited couple + collaborator → Calendar).
 - **Planner and couple trial is local (no Stripe objects) until paid Checkout.**
 - **Demo throttle thresholds live only in RPCs**; purge is Edge Function, not pg_cron.
 - **ONB-06: business accounts start with zero projects.**
@@ -3640,8 +3652,8 @@ document is self-contained.
 **Do not** resume a Modern romantic / VND-01 layout pass; **do not** reorder website sections with
 @dnd-kit or pull @dnd-kit into the website editor; **do not** fork a second collapse affordance for the
 section editor; **do not** import Supabase or `lib/partner-sides.ts` into `components/website/` (incl.
-via the sticky preview); **do not** treat Calendar as strictly personal-only (CAL-04 invited couples
-see it; collaborators do not); **do not** casually extend CAL-04's role exception to other tabs; **do
+via the sticky preview); **do not** treat Calendar as strictly personal-only (CAL-04 / CAL-06 invited
+couples and collaborators see it); **do not** casually extend that role exception to other tabs; **do
 not** treat Registry as a workspace tab; **do not** re-inline task overdue (OVERDUE-01 —
 `isTaskPastDue` is the helper); **do not** drop the DASH-03a blurb deferral; **do not** trust
 "next-free 0084" (0084–0099 taken — next-free is **0100**); **do not** treat WRITE-01 as unfinished
@@ -3724,7 +3736,8 @@ planner dashboard/leads/billing/Access, `/vendors`,
 
 **C. Invite Jordyn for real** (prefer an INV-07 collaborator invite; confirm
 `project_members.role = 'collaborator'` in SQL after accept). Confirm the invited **collaborator**
-does **not** see the Calendar tab; confirm an invited **couple** **does** (CAL-04). Optionally smoke
+**does** see the Calendar tab (CAL-06) and can create/edit/delete project-linked events; confirm an
+invited **couple** still does (CAL-04). Confirm Agreements stays hidden for both. Optionally smoke
 a **TEAM-01** invite to a second planner email (same business book, not a project member).
 
 **D. Apply + checkpoint any un-pasted migrations through 0099 + demo seeds + `purge-demo` +

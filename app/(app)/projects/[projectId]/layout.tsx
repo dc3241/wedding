@@ -71,8 +71,9 @@ export default async function ProjectLayout({
     data: { user },
   } = await supabase.auth.getUser();
 
-  // CAL-04: invited members pass kind=null; Calendar needs project_members.role
-  // only in that path. Account owners never read role for tab gating.
+  // CAL-04 / CAL-06: invited members pass kind=null; Calendar needs
+  // project_members.role only in that path. Account owners never read role
+  // for tab gating.
   const [messagesResult, toursResult, memberRoleResult, draftsResult] =
     await Promise.all([
       // Last N only (desc + limit), then reverse so the panel seeds newest-last.
