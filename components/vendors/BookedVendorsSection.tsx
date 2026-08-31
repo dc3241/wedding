@@ -799,11 +799,12 @@ function BookedVendorCard({
           />
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1.5">
-          <Pill variant="sage">Booked</Pill>
           {vendor.confirmed_at ? (
             <Pill variant="sage">Confirmed</Pill>
           ) : (
-            <Pill variant="clay">Pending</Pill>
+            <Pill variant="clay" title="Has not confirmed day-of arrival">
+              Unconfirmed
+            </Pill>
           )}
         </div>
       </button>
