@@ -14,6 +14,7 @@ import {
 import { isValidWeddingTheme } from "@/components/website/themes";
 import { isValidWeddingTemplate } from "@/components/website/templates/registry";
 import { formatTimeOfDay } from "@/lib/timeline-aggregates";
+import { nextProjectNameForWeddingDate } from "@/lib/sync-wedding-date-fields";
 import { normalizeProductUrl } from "@/lib/registry";
 import { createClient } from "@/utils/supabase/server";
 import { clientForWrite } from "@/utils/supabase/for-write";
@@ -366,7 +367,11 @@ export async function createWeddingWebsite(
   }
 
   const [{ data: project }, { data: profile }] = await Promise.all([
-    supabase.from("projects").select("name, wedding_date").eq("id", projectId).maybeSingle(),
+    supabase
+      .from("projects")
+      .select("name, wedding_date, account_id")
+      .eq("id", projectId)
+      .maybeSingle(),
     supabase
       .from("wedding_profile")
       .select("location")
@@ -374,8 +379,24 @@ export async function createWeddingWebsite(
       .maybeSingle(),
   ]);
 
+  const { data: account } = project?.account_id
+    ? await supabase
+        .from("accounts")
+        .select("name, kind")
+        .eq("id", project.account_id)
+        .maybeSingle()
+    : { data: null };
+
+  const seedNames = nextProjectNameForWeddingDate({
+    currentName: project?.name ?? "",
+    previousDate: project?.wedding_date ?? null,
+    nextDate: project?.wedding_date ?? null,
+    accountName: account?.name ?? null,
+    preferAccountName: account?.kind === "personal",
+  });
+
   const content = buildSeedContent(
-    project?.name ?? "",
+    seedNames,
     project?.wedding_date ?? null,
     profile?.location ?? "",
   );

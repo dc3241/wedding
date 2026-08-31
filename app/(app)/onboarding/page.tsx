@@ -5,10 +5,8 @@ import {
   ACCOUNT_LOCKED_PATH,
   checkEntitlement,
 } from "@/lib/billing/entitlement-gate";
-import {
-  getCoupleDestinationPath,
-  needsCoupleOnboarding,
-} from "@/lib/onboarding-gate";
+import { getCoupleDestinationPath, needsCoupleOnboarding } from "@/lib/onboarding-gate";
+import { displayCoupleNames } from "@/lib/wedding-date";
 import { createClient } from "@/utils/supabase/server";
 
 export const maxDuration = 120;
@@ -52,6 +50,6 @@ export default async function OnboardingPage() {
   }
 
   return (
-    <OnboardingWizard projectId={projectId} coupleNames={project.name} />
+    <OnboardingWizard projectId={projectId} coupleNames={displayCoupleNames(project.name)} />
   );
 }

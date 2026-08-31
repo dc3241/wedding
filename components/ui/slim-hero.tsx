@@ -2,6 +2,7 @@
 
 import { WeddingDateEditor } from "@/components/ui/wedding-date-editor";
 import { cn } from "@/lib/cn";
+import { displayCoupleNames } from "@/lib/wedding-date";
 import { useEffect, useState } from "react";
 
 type SlimHeroProps = {
@@ -61,6 +62,7 @@ export function SlimHero({
   const displayDate =
     dateLabel ?? (weddingDate ? formatSlimDate(weddingDate) : null);
   const canEdit = Boolean(projectId);
+  const title = displayCoupleNames(coupleNames);
 
   return (
     <div
@@ -71,7 +73,7 @@ export function SlimHero({
     >
       <div className="flex min-w-0 flex-wrap items-baseline gap-x-4 gap-y-2">
         <span className="font-display text-[22px] font-extrabold leading-none tracking-[-0.02em] break-words text-ink max-sm:leading-snug">
-          {coupleNames}
+          {title}
         </span>
         {displayDate ? (
           <span className="truncate text-[14px] font-medium tabular-nums text-muted">

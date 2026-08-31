@@ -9,15 +9,8 @@ import { PageHeader } from "@/components/ui/page-header";
 import { Pill } from "@/components/ui/pill";
 import { getAccountContext } from "@/lib/account-context";
 import { sectionStackClass } from "@/lib/density";
+import { projectWorkspaceEyebrow } from "@/lib/wedding-date";
 import { createClient } from "@/utils/supabase/server";
-
-function formatEyebrowDate(iso: string) {
-  return new Date(iso + "T00:00:00").toLocaleDateString("en-US", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
-}
 
 function formatShortDate(iso: string) {
   return new Date(iso).toLocaleDateString("en-US", {
@@ -97,10 +90,7 @@ export default async function AccessPage({
 
   const projectName = project?.name ?? "Wedding";
   const weddingDate = project?.wedding_date ?? null;
-  const eyebrow =
-    weddingDate != null
-      ? `${projectName} · ${formatEyebrowDate(weddingDate)}`
-      : projectName;
+  const eyebrow = projectWorkspaceEyebrow(projectName, weddingDate);
 
   const pending = pendingRows ?? [];
 

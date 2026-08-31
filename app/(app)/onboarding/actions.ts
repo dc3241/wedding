@@ -1,6 +1,11 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import {
+  loadWeddingDateSyncContext,
+  nextProjectNameForWeddingDate,
+  patchWebsiteHeroForWeddingDateChange,
+} from "@/lib/sync-wedding-date-fields";
 import { getVendorCategoryById } from "@/lib/vendor-categories";
 import {
   isFormality,
@@ -50,12 +55,24 @@ export async function saveOnboarding(
   fields: OnboardingFields,
 ) {
   const supabase = await createClient();
+  const ctx = await loadWeddingDateSyncContext(supabase, projectId);
+  const nextDate = fields.weddingDate || null;
+  const nextName = ctx
+    ? nextProjectNameForWeddingDate({
+        currentName: ctx.name,
+        previousDate: ctx.weddingDate,
+        nextDate,
+        accountName: ctx.accountName,
+        preferAccountName: ctx.preferAccountName,
+      })
+    : null;
 
   const { error: projectError } = await supabase
     .from("projects")
     .update({
-      wedding_date: fields.weddingDate || null,
+      wedding_date: nextDate,
       total_budget: fields.totalBudget,
+      ...(nextName && nextName !== ctx?.name ? { name: nextName } : {}),
     })
     .eq("id", projectId);
 
@@ -84,6 +101,16 @@ export async function saveOnboarding(
   );
 
   if (profileError) throw profileError;
+
+  if (ctx && nextName) {
+    await patchWebsiteHeroForWeddingDateChange(supabase, {
+      projectId,
+      previousName: ctx.name,
+      previousDate: ctx.weddingDate,
+      nextName,
+      nextDate,
+    });
+  }
 
   revalidatePath("/onboarding");
   revalidatePath(`/projects/${projectId}`);

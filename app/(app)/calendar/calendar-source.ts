@@ -7,6 +7,7 @@ import type {
   TaskDueOverlay,
 } from "./types";
 import { EVENT_KIND_LABELS } from "./types";
+import { displayCoupleNames } from "@/lib/wedding-date";
 
 /** Local YYYY-MM-DD from a Date in the planner's timezone. */
 export function toLocalDateKey(date: Date): string {
@@ -181,13 +182,13 @@ export function weddingToItem(project: ActiveWedding): CalendarItem | null {
   return {
     id: `wedding:${project.id}`,
     source: "wedding",
-    title: project.name,
+    title: displayCoupleNames(project.name),
     localDate,
     timeLabel: null,
     allDay: true,
     sortKey: `${localDate}T00:00:00`,
     projectId: project.id,
-    projectName: project.name,
+    projectName: displayCoupleNames(project.name),
     kind: null,
   };
 }

@@ -9,6 +9,7 @@ import { ProjectWorkspaceNav } from "@/components/projects/project-workspace-nav
 import { getAccountContext } from "@/lib/account-context";
 import { getBrandingForProject } from "@/lib/branding/get-branding";
 import { coupleOnboardingRedirect } from "@/lib/onboarding-gate";
+import { displayCoupleNames } from "@/lib/wedding-date";
 import { createClient } from "@/utils/supabase/server";
 
 export async function generateMetadata({
@@ -162,7 +163,7 @@ export default async function ProjectLayout({
       >
         <ProjectShell
           projectId={projectId}
-          coupleNames={project.name}
+          coupleNames={displayCoupleNames(project.name)}
           weddingDate={project.wedding_date}
           accountKind={accountKind}
         >

@@ -17,6 +17,7 @@ import {
 } from "@/lib/checklist-phases";
 import { wholeMonthsBetween } from "@/lib/date-months";
 import { sectionStackClass } from "@/lib/density";
+import { projectWorkspaceEyebrow } from "@/lib/wedding-date";
 import { createClient } from "@/utils/supabase/server";
 
 type TaskRow = AggregateTask & {
@@ -115,14 +116,6 @@ function buildSections(tasks: TaskRow[], weddingDate: string | null) {
     });
 }
 
-function formatEyebrowDate(iso: string) {
-  return new Date(iso + "T00:00:00").toLocaleDateString("en-US", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
-}
-
 export default async function ChecklistPage({
   params,
 }: {
@@ -156,10 +149,7 @@ export default async function ChecklistPage({
   const aggregates = computeChecklistAggregates(taskList, weddingDate);
   const sections = buildSections(taskList, weddingDate);
 
-  const eyebrow =
-    weddingDate != null
-      ? `${projectName} · ${formatEyebrowDate(weddingDate)}`
-      : projectName;
+  const eyebrow = projectWorkspaceEyebrow(projectName, weddingDate);
 
   return (
     <div className={stackClass}>

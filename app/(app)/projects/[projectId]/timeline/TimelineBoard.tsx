@@ -18,6 +18,7 @@ import {
   type TimelineSectionGroup,
 } from "@/lib/timeline-aggregates";
 import { cn } from "@/lib/cn";
+import { projectWorkspaceEyebrow } from "@/lib/wedding-date";
 
 type TimelineBoardProps = {
   projectId: string;
@@ -25,14 +26,6 @@ type TimelineBoardProps = {
   weddingDate: string | null;
   aggregates: TimelineAggregates;
 };
-
-function formatEyebrowDate(iso: string) {
-  return new Date(iso + "T00:00:00").toLocaleDateString("en-US", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
-}
 
 function runSheetHref(projectId: string, owner: string | null) {
   const base = `/projects/${projectId}/timeline/run-sheet`;
@@ -329,10 +322,7 @@ export function TimelineBoard({
     setGapAddAfterId(event.id);
   }
 
-  const eyebrow =
-    weddingDate != null
-      ? `${projectName} · ${formatEyebrowDate(weddingDate)}`
-      : projectName;
+  const eyebrow = projectWorkspaceEyebrow(projectName, weddingDate);
 
   return (
     <div className="space-y-6">

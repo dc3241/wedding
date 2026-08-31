@@ -32,6 +32,7 @@ import { TourHelpButton } from "@/components/tour/TourHelpButton";
 import { PageHeader } from "@/components/ui/page-header";
 import { Pill } from "@/components/ui/pill";
 import { cn } from "@/lib/cn";
+import { projectWorkspaceEyebrow } from "@/lib/wedding-date";
 
 type BudgetBoardProps = {
   projectId: string;
@@ -111,14 +112,6 @@ function NextDueSummary({
       )}
     </Card>
   );
-}
-
-function formatEyebrowDate(iso: string) {
-  return new Date(iso + "T00:00:00").toLocaleDateString("en-US", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
 }
 
 function AllocationBand({
@@ -698,9 +691,7 @@ export function BudgetBoard({
     .filter((row) => row.visibleItems.length > 0);
 
   const eyebrow =
-    weddingDate != null
-      ? `${projectName} · ${formatEyebrowDate(weddingDate)}`
-      : projectName;
+    projectWorkspaceEyebrow(projectName, weddingDate);
 
   const filtersActive = statusFilter !== "all" || categoryFilter !== "";
 

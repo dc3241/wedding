@@ -4,6 +4,7 @@ import { Eyebrow } from "@/components/ui/eyebrow";
 import { WeddingDateEditor } from "@/components/ui/wedding-date-editor";
 import { formatWeddingDate } from "@/components/website/template-utils";
 import { cn } from "@/lib/cn";
+import { displayCoupleNames } from "@/lib/wedding-date";
 import { useEffect, useState } from "react";
 
 type WeddingHeroProps = {
@@ -55,6 +56,7 @@ export function WeddingHero({
   const displayDate =
     dateLabel ?? (weddingDate ? formatWeddingDate(weddingDate) : null);
   const canEdit = Boolean(projectId);
+  const title = displayCoupleNames(coupleNames);
 
   return (
     <div className="w-full">
@@ -66,7 +68,7 @@ export function WeddingHero({
       >
         <Eyebrow>Overview</Eyebrow>
         <h1 className="mt-2 font-display text-[32px] font-extrabold leading-[1.02] tracking-[-0.03em] text-ink md:text-[42px]">
-          {coupleNames}
+          {title}
         </h1>
         {displayDate ? (
           <p className="mt-3 text-[15px] font-medium tabular-nums text-muted">

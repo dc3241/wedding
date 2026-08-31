@@ -19,6 +19,7 @@ import type {
   UpNextTask,
 } from "@/lib/checklist-aggregates";
 import { cn } from "@/lib/cn";
+import { projectWorkspaceEyebrow } from "@/lib/wedding-date";
 
 export type ChecklistSection = {
   phase: string | null;
@@ -38,14 +39,6 @@ type ChecklistBoardProps = {
   assignees: ProjectAssignee[];
   currentUserId: string;
 };
-
-function formatEyebrowDate(iso: string) {
-  return new Date(iso + "T00:00:00").toLocaleDateString("en-US", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
-}
 
 function formatShortDue(date: string | null) {
   if (!date) return null;
@@ -312,9 +305,7 @@ export function ChecklistBoard({
   });
 
   const eyebrow =
-    weddingDate != null
-      ? `${projectName} · ${formatEyebrowDate(weddingDate)}`
-      : projectName;
+    projectWorkspaceEyebrow(projectName, weddingDate);
 
   function togglePhase(key: string) {
     setOpenPhases((prev) => ({ ...prev, [key]: !prev[key] }));

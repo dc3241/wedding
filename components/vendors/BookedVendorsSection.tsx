@@ -155,41 +155,38 @@ function MoneySummary({
   }
 
   return (
-    <dl className="grid grid-cols-3 gap-3 text-[13px]">
-      <div>
-        <dt className="text-muted">Actual</dt>
-        <dd className="mt-0.5 tabnum font-medium text-ink">
-          {price == null ? "—" : formatCurrency(price)}
-        </dd>
-      </div>
-      <div>
-        <dt className="text-muted">Paid</dt>
-        <dd className="mt-0.5 tabnum font-medium text-ink">
-          {formatCurrency(paid)}
-        </dd>
-      </div>
-      <div>
-        <dt className="text-muted">Next due</dt>
-        <dd
+    <div className="rounded-[var(--radius-inner)] bg-well px-3.5 py-3 shadow-recessed">
+      <dl className="grid grid-cols-2 gap-x-4 gap-y-1">
+        <div className="min-w-0">
+          <dt className="text-[13px] font-medium text-muted">Actual</dt>
+          <dd className="mt-0.5 text-[15px] font-medium tabular-nums text-ink">
+            {price == null ? "—" : formatCurrency(price)}
+          </dd>
+        </div>
+        <div className="min-w-0">
+          <dt className="text-[13px] font-medium text-muted">Paid</dt>
+          <dd className="mt-0.5 text-[15px] font-medium tabular-nums text-ink">
+            {formatCurrency(paid)}
+          </dd>
+        </div>
+      </dl>
+      {nextDue == null ? (
+        <p className="mt-2.5 border-t border-hairline pt-2.5 text-[13px] text-muted">
+          No upcoming payment
+        </p>
+      ) : (
+        <p
           className={cn(
-            "mt-0.5 tabnum font-medium",
-            pastDue ? "text-rosewood" : nextDue ? "text-sage" : "text-ink",
+            "mt-2.5 border-t border-hairline pt-2.5 text-[13px] font-medium tabular-nums leading-snug",
+            pastDue ? "text-rosewood" : "text-muted",
           )}
         >
-          {nextDue == null ? (
-            "—"
-          ) : (
-            <>
-              {formatCurrency(nextDue.amount)}
-              <span className="mt-0.5 block text-[12px] font-normal text-muted">
-                {formatLocalDate(nextDue.due_on)}
-                {pastDue ? " · past due" : ""}
-              </span>
-            </>
-          )}
-        </dd>
-      </div>
-    </dl>
+          {formatCurrency(nextDue.amount)} next due{" "}
+          {formatLocalDate(nextDue.due_on)}
+          {pastDue ? " · past due" : ""}
+        </p>
+      )}
+    </div>
   );
 }
 
@@ -779,34 +776,38 @@ function BookedVendorCard({
     >
       <button
         type="button"
-        className="flex w-full items-start justify-between gap-3 px-5 py-4 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-accent"
+        className="flex w-full flex-col gap-3 px-5 py-4 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-accent"
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
       >
-        <div className="min-w-0 flex-1 space-y-2">
-          <p className="text-[15px] font-medium leading-snug text-ink break-words">
-            {vendor.name}
-          </p>
-          {vendor.contact_phone ? (
-            <p className="text-[13px] text-muted">{vendor.contact_phone}</p>
-          ) : null}
-          <CategoryChips categories={categoryIds} />
-          <MoneySummary
-            price={vendor.price}
-            paid={vendor.paid}
-            nextDue={vendor.nextDue}
-            pastDue={vendor.pastDue}
-          />
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <p className="text-[15px] font-medium leading-snug text-ink break-words">
+              {vendor.name}
+            </p>
+            {vendor.contact_phone ? (
+              <p className="mt-1 text-[13px] text-muted">
+                {vendor.contact_phone}
+              </p>
+            ) : null}
+            <CategoryChips categories={categoryIds} />
+          </div>
+          <div className="flex shrink-0 flex-col items-end gap-1.5">
+            {vendor.confirmed_at ? (
+              <Pill variant="sage">Confirmed</Pill>
+            ) : (
+              <Pill variant="clay" title="Has not confirmed day-of arrival">
+                Unconfirmed
+              </Pill>
+            )}
+          </div>
         </div>
-        <div className="flex shrink-0 flex-col items-end gap-1.5">
-          {vendor.confirmed_at ? (
-            <Pill variant="sage">Confirmed</Pill>
-          ) : (
-            <Pill variant="clay" title="Has not confirmed day-of arrival">
-              Unconfirmed
-            </Pill>
-          )}
-        </div>
+        <MoneySummary
+          price={vendor.price}
+          paid={vendor.paid}
+          nextDue={vendor.nextDue}
+          pastDue={vendor.pastDue}
+        />
       </button>
 
       {open ? (
@@ -1002,7 +1003,7 @@ export function BookedVendorsSection({
         <div
           className="grid gap-4"
           style={{
-            gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+            gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
           }}
         >
           {vendors.map((vendor) => (

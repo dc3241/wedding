@@ -29,15 +29,8 @@ import { getAccountContext } from "@/lib/account-context";
 import { tallyAttendingMeals } from "@/lib/caterer-tally";
 import { dataRowClass, sectionStackClass } from "@/lib/density";
 import { resolvePartnerSides } from "@/lib/partner-sides";
+import { projectWorkspaceEyebrow } from "@/lib/wedding-date";
 import { createClient } from "@/utils/supabase/server";
-
-function formatEyebrowDate(iso: string) {
-  return new Date(iso + "T00:00:00").toLocaleDateString("en-US", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
-}
 
 function mealNameFromJoin(
   mealJoin: { name: string } | { name: string }[] | null | undefined,
@@ -332,10 +325,7 @@ export default async function GuestsPage({
 
   const projectName = project?.name ?? "Your wedding";
   const weddingDate = project?.wedding_date ?? null;
-  const eyebrow =
-    weddingDate != null
-      ? `${projectName} · ${formatEyebrowDate(weddingDate)}`
-      : projectName;
+  const eyebrow = projectWorkspaceEyebrow(projectName, weddingDate);
   // wedding_profile has no partner-name columns today; derive from project.name.
   const partnerSides = resolvePartnerSides({
     projectName: project?.name ?? null,

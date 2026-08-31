@@ -23,7 +23,9 @@ export async function bootstrapAccountAndProject(
   const isBusiness = accountKind === "business";
   const projectName = isBusiness
     ? null
-    : ((formData.get("projectName") as string) ?? null);
+    : ((formData.get("projectName") as string)?.trim() ||
+        (formData.get("accountName") as string)?.trim() ||
+        null);
 
   const supabase = await createClient();
 

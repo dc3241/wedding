@@ -32,6 +32,7 @@ import {
   VENDOR_CATEGORIES,
   vendorCategoryLabel,
 } from "@/lib/vendor-categories";
+import { projectWorkspaceEyebrow } from "@/lib/wedding-date";
 import { createClient } from "@/utils/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -67,14 +68,6 @@ function formatDefaultDate(date: string | null) {
   return new Date(date + "T00:00:00").toLocaleDateString("en-US", {
     month: "long",
     day: "numeric",
-    year: "numeric",
-  });
-}
-
-function formatEyebrowDate(iso: string) {
-  return new Date(iso + "T00:00:00").toLocaleDateString("en-US", {
-    day: "numeric",
-    month: "long",
     year: "numeric",
   });
 }
@@ -296,10 +289,7 @@ export default async function VendorsPage({
   const defaultDate = formatDefaultDate(project?.wedding_date ?? null);
   const projectName = project?.name ?? "Your wedding";
   const weddingDate = project?.wedding_date ?? null;
-  const eyebrow =
-    weddingDate != null
-      ? `${projectName} · ${formatEyebrowDate(weddingDate)}`
-      : projectName;
+  const eyebrow = projectWorkspaceEyebrow(projectName, weddingDate);
 
   const inFlightPv = mapPvRows(inFlightRows);
   const bookedPv = mapPvRows(bookedRows);

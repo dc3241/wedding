@@ -9,6 +9,7 @@ import { PlannerDashboard, buildLastContactMap } from "@/components/dashboard/pl
 import type { OutreachVendor } from "@/components/vendors/outreach-vendor";
 import type { RsvpStatus } from "./guests/types";
 import { getAccountContext } from "@/lib/account-context";
+import { displayCoupleNames } from "@/lib/wedding-date";
 import { createClient } from "@/utils/supabase/server";
 
 function parseRsvpStatus(value: string | null | undefined): RsvpStatus {
@@ -198,7 +199,7 @@ export default async function ProjectPage({
 
   const overview = buildOverviewData({
     projectId,
-    coupleNames: project.name,
+    coupleNames: displayCoupleNames(project.name),
     weddingDate: project.wedding_date,
     totalBudget,
     tasks,

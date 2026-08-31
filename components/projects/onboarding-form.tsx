@@ -112,22 +112,6 @@ export function OnboardingForm() {
           />
         </div>
 
-        {choice === "couple" ? (
-          <div className="space-y-2">
-            <label htmlFor="projectName" className="text-sm font-medium">
-              Wedding name
-            </label>
-            <input
-              id="projectName"
-              name="projectName"
-              type="text"
-              required
-              placeholder="Sarah & James — Oct 2026"
-              className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm"
-            />
-          </div>
-        ) : null}
-
         <SubmitButton />
       </form>
     </div>

@@ -13,15 +13,8 @@ import { TourHelpButton } from "@/components/tour/TourHelpButton";
 import { PageHeader } from "@/components/ui/page-header";
 import { getAccountContext } from "@/lib/account-context";
 import { sectionStackClass } from "@/lib/density";
+import { projectWorkspaceEyebrow } from "@/lib/wedding-date";
 import { createClient } from "@/utils/supabase/server";
-
-function formatEyebrowDate(iso: string) {
-  return new Date(iso + "T00:00:00").toLocaleDateString("en-US", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
-}
 
 function parseTableKind(value: string): SeatingTableKind | null {
   if (isSeatingTableKind(value) || value === "dancefloor") {
@@ -148,10 +141,7 @@ export default async function SeatingPage({
 
   const projectName = project?.name ?? "Your wedding";
   const weddingDate = project?.wedding_date ?? null;
-  const eyebrow =
-    weddingDate != null
-      ? `${projectName} · ${formatEyebrowDate(weddingDate)}`
-      : projectName;
+  const eyebrow = projectWorkspaceEyebrow(projectName, weddingDate);
 
   return (
     <div className={stackClass}>
