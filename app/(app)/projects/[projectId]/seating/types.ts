@@ -40,6 +40,19 @@ export type SeatingAssignment = {
   seat_index: number | null;
 };
 
+/** Canvas chairs are 1..seat_count. 0 / out-of-range do not fill a circle. */
+export function occupiesNumberedSeat(
+  seatIndex: number | null,
+  seatCount: number,
+): seatIndex is number {
+  return (
+    seatIndex != null &&
+    Number.isInteger(seatIndex) &&
+    seatIndex >= 1 &&
+    seatIndex <= seatCount
+  );
+}
+
 /** One guest_members person + household cue for the seating roster. */
 export type RosterPerson = {
   id: string;

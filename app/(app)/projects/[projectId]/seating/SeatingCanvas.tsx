@@ -7,6 +7,7 @@ import {
   CANVAS_WIDTH,
   formatPersonName,
   isDancefloor,
+  occupiesNumberedSeat,
   type RosterPerson,
   type SeatingAssignment,
   type SeatingTable,
@@ -126,10 +127,10 @@ function SeatingTableGraphic({
     const person = peopleById.get(assignment.guest_member_id);
     if (!person) continue;
     const occupant = { assignment, person };
-    if (assignment.seat_index == null) {
-      needsSeat.push(occupant);
-    } else {
+    if (occupiesNumberedSeat(assignment.seat_index, table.seat_count)) {
       bySeat.set(assignment.seat_index, occupant);
+    } else {
+      needsSeat.push(occupant);
     }
   }
 

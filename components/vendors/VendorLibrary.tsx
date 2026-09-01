@@ -1,9 +1,13 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
-import { Eyebrow } from "@/components/ui/eyebrow";
-import { VendorCard } from "@/components/vendors/VendorCard";
+import { Select } from "@/components/ui/select";
+import {
+  DIRECTORY_COLS,
+  VendorDirectoryRow,
+} from "@/components/vendors/VendorDirectoryRow";
 import { cn } from "@/lib/cn";
 import {
   VENDOR_CATEGORIES,
@@ -30,47 +34,7 @@ const UNCATEGORIZED_KEY = "__uncategorized__";
 const ALL_CATEGORIES = "all";
 const KNOWN_ORDER = VENDOR_CATEGORIES.map((c) => c.id);
 
-function sortWithinGroup(a: LibraryVendor, b: LibraryVendor) {
-  if (a.is_preferred !== b.is_preferred) {
-    return a.is_preferred ? -1 : 1;
-  }
-  return a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
-}
-
-function groupVendors(vendors: LibraryVendor[]) {
-  const byKey = new Map<string, LibraryVendor[]>();
-
-  for (const vendor of vendors) {
-    const key = vendor.category ?? UNCATEGORIZED_KEY;
-    const list = byKey.get(key) ?? [];
-    list.push(vendor);
-    byKey.set(key, list);
-  }
-
-  for (const list of byKey.values()) {
-    list.sort(sortWithinGroup);
-  }
-
-  const keys = [...byKey.keys()].sort((a, b) => {
-    if (a === UNCATEGORIZED_KEY) return 1;
-    if (b === UNCATEGORIZED_KEY) return -1;
-    const ai = KNOWN_ORDER.indexOf(a);
-    const bi = KNOWN_ORDER.indexOf(b);
-    if (ai !== -1 && bi !== -1) return ai - bi;
-    if (ai !== -1) return -1;
-    if (bi !== -1) return 1;
-    return vendorCategoryLabel(a).localeCompare(vendorCategoryLabel(b), undefined, {
-      sensitivity: "base",
-    });
-  });
-
-  return keys.map((key) => ({
-    key,
-    label:
-      key === UNCATEGORIZED_KEY ? "Uncategorized" : vendorCategoryLabel(key),
-    vendors: byKey.get(key) ?? [],
-  }));
-}
+type SortKey = "preferred" | "name" | "linked";
 
 function matchesSearch(vendor: LibraryVendor, query: string) {
   if (!query) return true;
@@ -80,8 +44,45 @@ function matchesSearch(vendor: LibraryVendor, query: string) {
   return false;
 }
 
-function vendorCountLabel(count: number) {
-  return `${count} vendor${count === 1 ? "" : "s"}`;
+function sortVendors(vendors: LibraryVendor[], sort: SortKey) {
+  return [...vendors].sort((a, b) => {
+    if (sort === "preferred") {
+      if (a.is_preferred !== b.is_preferred) return a.is_preferred ? -1 : 1;
+      return a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
+    }
+    if (sort === "linked") {
+      if (a.linkCount !== b.linkCount) return b.linkCount - a.linkCount;
+      return a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
+    }
+    return a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
+  });
+}
+
+function uniqueCategoryCount(vendors: LibraryVendor[]) {
+  return new Set(vendors.map((v) => v.category ?? UNCATEGORIZED_KEY)).size;
+}
+
+function summaryLine({
+  visibleCount,
+  totalCount,
+  preferredCount,
+  categoryCount,
+  isNarrowed,
+}: {
+  visibleCount: number;
+  totalCount: number;
+  preferredCount: number;
+  categoryCount: number;
+  isNarrowed: boolean;
+}) {
+  const vendorWord = visibleCount === 1 ? "vendor" : "vendors";
+  const categoryWord = categoryCount === 1 ? "category" : "categories";
+
+  if (isNarrowed && visibleCount !== totalCount) {
+    return `${visibleCount} of ${totalCount} ${vendorWord} · ${preferredCount} preferred`;
+  }
+
+  return `${visibleCount} ${vendorWord} · ${preferredCount} preferred · ${categoryCount} ${categoryWord}`;
 }
 
 /** ACCENT-01a bottom berry bar — same after: technique as project workspace nav. */
@@ -144,20 +145,11 @@ function CategoryFilterRail({
   );
 }
 
-function VendorGrid({ vendors }: { vendors: LibraryVendor[] }) {
-  return (
-    <div className="grid gap-[18px] [grid-template-columns:repeat(auto-fill,minmax(230px,1fr))]">
-      {vendors.map((vendor) => (
-        <VendorCard key={vendor.id} vendor={vendor} />
-      ))}
-    </div>
-  );
-}
-
 export function VendorLibrary({ vendors }: { vendors: LibraryVendor[] }) {
   const [preferredOnly, setPreferredOnly] = useState(false);
   const [search, setSearch] = useState("");
   const [categoryKey, setCategoryKey] = useState(ALL_CATEGORIES);
+  const [sort, setSort] = useState<SortKey>("preferred");
 
   const searchQuery = search.trim();
 
@@ -218,15 +210,14 @@ export function VendorLibrary({ vendors }: { vendors: LibraryVendor[] }) {
    * When a search query is present, category filtering is skipped for visibility.
    */
   const visibleVendors = useMemo(() => {
-    if (!searchQuery && resolvedCategoryKey !== ALL_CATEGORIES) {
-      return searchFiltered.filter(
-        (v) => (v.category ?? UNCATEGORIZED_KEY) === resolvedCategoryKey,
-      );
-    }
-    return searchFiltered;
-  }, [searchFiltered, resolvedCategoryKey, searchQuery]);
-
-  const groups = useMemo(() => groupVendors(visibleVendors), [visibleVendors]);
+    const filtered =
+      !searchQuery && resolvedCategoryKey !== ALL_CATEGORIES
+        ? searchFiltered.filter(
+            (v) => (v.category ?? UNCATEGORIZED_KEY) === resolvedCategoryKey,
+          )
+        : searchFiltered;
+    return sortVendors(filtered, sort);
+  }, [searchFiltered, resolvedCategoryKey, searchQuery, sort]);
 
   if (vendors.length === 0) {
     return (
@@ -235,6 +226,13 @@ export function VendorLibrary({ vendors }: { vendors: LibraryVendor[] }) {
       </EmptyState>
     );
   }
+
+  const isNarrowed =
+    preferredOnly ||
+    Boolean(searchQuery) ||
+    resolvedCategoryKey !== ALL_CATEGORIES;
+
+  const preferredCount = visibleVendors.filter((v) => v.is_preferred).length;
 
   return (
     <div className="space-y-5">
@@ -296,6 +294,20 @@ export function VendorLibrary({ vendors }: { vendors: LibraryVendor[] }) {
             Preferred only
           </button>
         </div>
+
+        <label className="ml-auto flex min-w-[11rem] items-center gap-2">
+          <span className="sr-only">Sort vendors</span>
+          <Select
+            value={sort}
+            onChange={(e) => setSort(e.target.value as SortKey)}
+            aria-label="Sort vendors"
+            className="w-auto min-w-[11rem] py-2 text-[13px]"
+          >
+            <option value="preferred">Preferred first</option>
+            <option value="name">Name A–Z</option>
+            <option value="linked">Most linked</option>
+          </Select>
+        </label>
       </div>
 
       <CategoryFilterRail
@@ -311,18 +323,54 @@ export function VendorLibrary({ vendors }: { vendors: LibraryVendor[] }) {
             : "No vendors match this filter."}
         </EmptyState>
       ) : (
-        <div className="space-y-8">
-          {groups.map((group) => (
-            <section key={group.key} className="space-y-3.5">
-              <div className="flex items-baseline gap-2">
-                <Eyebrow>{group.label}</Eyebrow>
-                <span className="text-[12.5px] font-semibold text-muted">
-                  {vendorCountLabel(group.vendors.length)}
+        <div className="space-y-3">
+          <p className="text-[13px] font-medium tabular-nums text-muted">
+            {summaryLine({
+              visibleCount: visibleVendors.length,
+              totalCount: vendors.length,
+              preferredCount,
+              categoryCount: uniqueCategoryCount(visibleVendors),
+              isNarrowed,
+            })}
+          </p>
+
+          <Card className="overflow-hidden p-0">
+            <div className="p-3 sm:p-4">
+              <div
+                className={cn(
+                  "mb-2 hidden border-b border-hairline px-4 py-3 lg:grid lg:gap-4",
+                  DIRECTORY_COLS,
+                )}
+              >
+                <span className="text-[12px] font-semibold uppercase tracking-[0.09em] text-muted">
+                  Vendor
+                </span>
+                <span className="text-[12px] font-semibold uppercase tracking-[0.09em] text-muted">
+                  Category
+                </span>
+                <span className="text-[12px] font-semibold uppercase tracking-[0.09em] text-muted">
+                  Contact
+                </span>
+                <span className="text-[12px] font-semibold uppercase tracking-[0.09em] text-muted">
+                  Instagram
+                </span>
+                <span
+                  className="text-[12px] font-semibold uppercase tracking-[0.09em] text-muted"
+                  title="Weddings this vendor is linked to"
+                >
+                  Linked
+                </span>
+                <span className="text-[12px] font-semibold uppercase tracking-[0.09em] text-muted lg:justify-self-end">
+                  Preferred
                 </span>
               </div>
-              <VendorGrid vendors={group.vendors} />
-            </section>
-          ))}
+              <ul className="list-none">
+                {visibleVendors.map((vendor) => (
+                  <VendorDirectoryRow key={vendor.id} vendor={vendor} />
+                ))}
+              </ul>
+            </div>
+          </Card>
         </div>
       )}
     </div>

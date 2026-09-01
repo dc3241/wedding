@@ -6,6 +6,7 @@ import {
   CANVAS_WIDTH,
   isSeatingTableKind,
   isSeatingTableShape,
+  occupiesNumberedSeat,
   SEAT_COUNT_MAX,
   SEAT_COUNT_MIN,
 } from "./types";
@@ -423,7 +424,7 @@ export async function assignMemberToLowestFreeSeat(
   const used = new Set<number>();
   for (const row of seated ?? []) {
     if (row.guest_member_id === memberId) continue;
-    if (row.seat_index == null) continue;
+    if (!occupiesNumberedSeat(Number(row.seat_index), table.seat_count)) continue;
     used.add(Number(row.seat_index));
   }
 

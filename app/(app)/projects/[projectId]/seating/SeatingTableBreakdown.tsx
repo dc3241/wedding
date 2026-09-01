@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import type { RefObject } from "react";
 import type { RosterPerson, SeatingAssignment, SeatingTable } from "./types";
-import { formatPersonName } from "./types";
+import { formatPersonName, occupiesNumberedSeat } from "./types";
 import { Select } from "@/components/ui/select";
 import { cn } from "@/lib/cn";
 
@@ -37,7 +37,7 @@ function openSeatsForTable(
   const occupied = new Set<number>();
   for (const person of seated) {
     const seat = person.assignment.seat_index;
-    if (seat != null) occupied.add(seat);
+    if (occupiesNumberedSeat(seat, seatCount)) occupied.add(seat);
   }
 
   const open: number[] = [];

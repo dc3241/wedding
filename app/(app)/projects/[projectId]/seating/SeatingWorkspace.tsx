@@ -713,7 +713,7 @@ export function SeatingWorkspace({
       </SeatingToolbar>
 
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
-        <div className="w-full lg:w-[300px] lg:shrink-0">
+        <aside className="w-full min-h-0 lg:sticky lg:top-6 lg:max-h-[calc(100dvh-5.5rem)] lg:w-[300px] lg:shrink-0 lg:self-start">
           <GuestRoster
             projectId={projectId}
             people={people}
@@ -730,75 +730,79 @@ export function SeatingWorkspace({
             onSelectMember={handleSelectMember}
             onUnseat={handleUnseat}
           />
-        </div>
+        </aside>
 
-        <div className="min-w-0 flex-1 space-y-3">
-          {hint ? (
-            <p className="text-[13px] font-medium text-muted">{hint}</p>
-          ) : null}
+        <div className="min-w-0 flex-1">
+          <div className="space-y-3">
+            {hint ? (
+              <p className="text-[13px] font-medium text-muted">{hint}</p>
+            ) : null}
 
-          {errorMessage ? (
-            <p className="text-[13px] text-rosewood">{errorMessage}</p>
-          ) : null}
+            {errorMessage ? (
+              <p className="text-[13px] text-rosewood">{errorMessage}</p>
+            ) : null}
 
-          {confirmation && !seatMenu ? (
-            <p className="text-[13px] font-medium text-sage">{confirmation}</p>
-          ) : null}
+            {confirmation && !seatMenu ? (
+              <p className="text-[13px] font-medium text-sage">{confirmation}</p>
+            ) : null}
 
-          {seatMenu ? (
-            <SeatActionMenu
-              target={seatMenu}
-              people={people}
-              assignmentByMemberId={assignmentByMemberId}
-              isPending={isPending}
-              confirmation={confirmation}
-              onMove={() => {
-                setMovingAssignmentId(seatMenu.assignmentId);
-                setSeatMenu(null);
-                setConfirmation(null);
-                setErrorMessage(null);
-              }}
-              onSwapOrReplace={handleSwapOrReplace}
-              onUnseat={() => handleUnseat(seatMenu.assignmentId)}
-              onClose={() => {
-                setSeatMenu(null);
-                setConfirmation(null);
-              }}
+            {seatMenu ? (
+              <SeatActionMenu
+                target={seatMenu}
+                people={people}
+                assignmentByMemberId={assignmentByMemberId}
+                isPending={isPending}
+                confirmation={confirmation}
+                onMove={() => {
+                  setMovingAssignmentId(seatMenu.assignmentId);
+                  setSeatMenu(null);
+                  setConfirmation(null);
+                  setErrorMessage(null);
+                }}
+                onSwapOrReplace={handleSwapOrReplace}
+                onUnseat={() => handleUnseat(seatMenu.assignmentId)}
+                onClose={() => {
+                  setSeatMenu(null);
+                  setConfirmation(null);
+                }}
+              />
+            ) : null}
+
+            <SeatingCanvas
+              tables={tables}
+              armedShape={armedShape}
+              armedDancefloor={armedDancefloor}
+              selectedId={selectedTableId}
+              occupancyByTable={occupancyByTable}
+              assignmentsByTable={assignmentsByTable}
+              peopleById={peopleById}
+              pendingSeat={pendingSeat}
+              moveMode={Boolean(movingAssignmentId)}
+              assignMode={Boolean(selectedMemberId || pendingSeat)}
+              onPlace={handlePlace}
+              onTableClick={handleTableClick}
+              onEmptyCanvasClick={handleEmptyCanvasClick}
+              onTableMove={handleTableDragMove}
+              onEmptySeatClick={handleEmptySeatClick}
+              onOccupiedSeatClick={handleOccupiedSeatClick}
+              onNeedsSeatClick={handleNeedsSeatClick}
             />
-          ) : null}
+          </div>
 
-          <SeatingCanvas
-            tables={tables}
-            armedShape={armedShape}
-            armedDancefloor={armedDancefloor}
-            selectedId={selectedTableId}
-            occupancyByTable={occupancyByTable}
-            assignmentsByTable={assignmentsByTable}
-            peopleById={peopleById}
-            pendingSeat={pendingSeat}
-            moveMode={Boolean(movingAssignmentId)}
-            assignMode={Boolean(selectedMemberId || pendingSeat)}
-            onPlace={handlePlace}
-            onTableClick={handleTableClick}
-            onEmptyCanvasClick={handleEmptyCanvasClick}
-            onTableMove={handleTableDragMove}
-            onEmptySeatClick={handleEmptySeatClick}
-            onOccupiedSeatClick={handleOccupiedSeatClick}
-            onNeedsSeatClick={handleNeedsSeatClick}
-          />
+          <div className="mt-8">
+            <SeatingTableBreakdown
+              sectionRef={breakdownRef}
+              tables={seatableTables}
+              peopleByTable={peopleByTable}
+              occupancyByTable={occupancyByTable}
+              assignablePeople={assignablePeople}
+              isPending={isPending}
+              onAddMember={handleBreakdownAdd}
+              onUnseat={handleUnseat}
+            />
+          </div>
         </div>
       </div>
-
-      <SeatingTableBreakdown
-        sectionRef={breakdownRef}
-        tables={seatableTables}
-        peopleByTable={peopleByTable}
-        occupancyByTable={occupancyByTable}
-        assignablePeople={assignablePeople}
-        isPending={isPending}
-        onAddMember={handleBreakdownAdd}
-        onUnseat={handleUnseat}
-      />
     </div>
   );
 }

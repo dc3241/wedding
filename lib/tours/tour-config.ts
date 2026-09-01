@@ -93,7 +93,7 @@ export const TOUR_CONFIGS: Record<string, TourConfig> = {
       {
         target: "seating-assign",
         title: "Seat a guest",
-        body: "Click an empty seat, then pick someone from this roster — or select a person first and click a seat. Occupied seats open swap, replace, or unseat.",
+        body: "Click an empty seat, then pick someone from this roster — search if the list is long, or select a person first and click a seat. Occupied seats open swap, replace, or unseat.",
       },
       {
         target: "seating-sweetheart",
