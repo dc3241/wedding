@@ -25,11 +25,13 @@ Platform injects `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`.
 
 ## 3. Deploy
 
-From the repo root (linked Supabase CLI):
+From the repo root, name the project (never rely on whatever is currently linked):
 
 ```bash
-supabase functions deploy charge-trial-balance --no-verify-jwt
+npx supabase functions deploy charge-trial-balance --project-ref <ref> --no-verify-jwt
 ```
+
+Staging: `qgpadkqpzxzsxtghzumq`. Production: `szqlbsmvsnxzlitjeewc`.
 
 `--no-verify-jwt` is intentional: the function checks
 `Authorization: Bearer <service_role>` itself so Dashboard schedules and curl

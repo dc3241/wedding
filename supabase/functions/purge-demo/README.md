@@ -25,11 +25,13 @@ select purge_demo_auth_users();  -- expect 1+; template/real users untouched
 
 ## 3. Deploy the function
 
-From the repo root (linked Supabase CLI):
+From the repo root, name the project (never rely on whatever is currently linked):
 
 ```bash
-supabase functions deploy purge-demo --no-verify-jwt
+npx supabase functions deploy purge-demo --project-ref <ref> --no-verify-jwt
 ```
+
+Staging: `qgpadkqpzxzsxtghzumq`. Production: `szqlbsmvsnxzlitjeewc`.
 
 `--no-verify-jwt` is intentional: the function checks `Authorization: Bearer <service_role>` itself so Dashboard schedules (which inject the service role) and curl both work. Do **not** leave it callable without that bearer.
 

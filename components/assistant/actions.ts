@@ -9,15 +9,25 @@ import type {
 } from "@/components/assistant/types";
 import { createClient } from "@/utils/supabase/server";
 
+/** ASSIST-THREAD-01: same kind === null signal CAL-04 uses for invited members. */
+function threadAudienceFromAccount(
+  account: Awaited<ReturnType<typeof getAccountContext>>,
+): "account" | "invited" {
+  return (account?.kind ?? null) === null ? "invited" : "account";
+}
+
 export async function loadAssistantMessages(
   projectId: string,
 ): Promise<AssistantMessage[]> {
   const supabase = await createClient();
+  const account = await getAccountContext(supabase);
+  const audience = threadAudienceFromAccount(account);
 
   const { data, error } = await supabase
     .from("assistant_messages")
     .select("id, role, content, created_at")
     .eq("project_id", projectId)
+    .eq("audience", audience)
     .order("created_at", { ascending: true });
 
   if (error || !data) {
@@ -39,6 +49,7 @@ export async function sendAssistantMessage(
   const supabase = await createClient();
   const account = await getAccountContext(supabase);
   const accountKind = account?.kind ?? "personal";
+  const audience = threadAudienceFromAccount(account);
 
   const [{ data: project }, { data: history }] = await Promise.all([
     supabase
@@ -50,6 +61,7 @@ export async function sendAssistantMessage(
       .from("assistant_messages")
       .select("role, content")
       .eq("project_id", projectId)
+      .eq("audience", audience)
       .order("created_at", { ascending: false })
       .limit(ASSISTANT_HISTORY_WINDOW),
   ]);
@@ -80,8 +92,13 @@ export async function sendAssistantMessage(
   }
 
   const { error: insertError } = await supabase.from("assistant_messages").insert([
-    { project_id: projectId, role: "user", content: trimmed },
-    { project_id: projectId, role: "assistant", content: result.reply },
+    { project_id: projectId, role: "user", content: trimmed, audience },
+    {
+      project_id: projectId,
+      role: "assistant",
+      content: result.reply,
+      audience,
+    },
   ]);
 
   if (insertError) {

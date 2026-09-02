@@ -1,10 +1,33 @@
 -- ============================================================
 -- seeds/demo_templates_guests.sql
 -- Additive patch: 4th planner client + realistic guest volumes.
--- Re-runnable. Apply: supabase db query --linked -f this file
--- MUST run AFTER demo_templates.sql (depends on business account
--- a8886e9c-53b7-47d4-a6dc-521bc2b3c363 existing).
+-- Re-runnable. MUST run AFTER demo_templates.sql (depends on
+-- business account a8886e9c-53b7-47d4-a6dc-521bc2b3c363 existing).
+--
+-- DESTRUCTIVE on the Mila & Griffin demo project (and guest rows
+-- this file rebuilds). Refuses to run unless this session has:
+--   set demo.seed_confirm = 'reseed-demo-templates';
+-- Name the database with --db-url <connection-string>. Never --linked.
+-- `db query --project-ref` does not retarget; with --linked it still hits
+-- whatever the CLI is currently pointed at.
+--
+-- SQL editor: run the SET, then this file, in the same session
+-- (or paste the SET as the first line).
+-- CLI (PowerShell):
+--   $sql = "set demo.seed_confirm = 'reseed-demo-templates';`n" + (Get-Content -Raw .\supabase\seeds\demo_templates_guests.sql)
+--   $tmp = Join-Path $env:TEMP 'demo_templates_guests.apply.sql'
+--   Set-Content -Path $tmp -Value $sql
+--   npx supabase db query --db-url $env:STAGING_DB_URL -f $tmp
 -- ============================================================
+
+do $seed_guard$
+begin
+  if current_setting('demo.seed_confirm', true) is distinct from 'reseed-demo-templates' then
+    raise exception 'demo_seed_refused: set demo.seed_confirm = ''reseed-demo-templates'' (see file header). Nothing applied.'
+      using errcode = 'P0001';
+  end if;
+end
+$seed_guard$;
 
 create extension if not exists pgcrypto with schema extensions;
 

@@ -83,6 +83,7 @@ export default async function ProjectLayout({
         .from("assistant_messages")
         .select("id, role, content, created_at")
         .eq("project_id", projectId)
+        .eq("audience", tabAudience === null ? "invited" : "account")
         .order("created_at", { ascending: false })
         .limit(ASSISTANT_HISTORY_WINDOW),
       user

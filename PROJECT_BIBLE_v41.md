@@ -363,10 +363,13 @@ a **public inquiry form** (`/inquire/[slug]`) **with embed snippet + optional wh
   - **Great Vibes** → `--font-script` — Romance website template only
 - Built in Cursor (Agent mode), Windows dev env, repo at `E:\wedding\wedding-app`
 
-> **Supabase CLI is linked** (`supabase db query --linked` works and is the sanctioned way to
-> introspect). **NEVER run `supabase db push`.** Migrations here are hand-pasted; there is no
-> `schema_migrations` tracker, so `db push` sees an empty history and tries to apply all files from
-> 0001. Reads yes, push never. See §5.
+> **Name the Supabase target.** For SQL, use `supabase db query --db-url <connection-string>` so the
+> destination is in the command. Never `--linked` — that silently uses whatever project the CLI is
+> currently pointed at (today: production First Look `szqlbsmvsnxzlitjeewc`, not staging).
+> `db query --project-ref` does **not** retarget; combined with `--linked` it still hits the linked
+> project even if the refs disagree. **NEVER run `supabase db push`.** Migrations here are
+> hand-pasted; there is no `schema_migrations` tracker, so `db push` sees an empty history and tries
+> to apply all files from 0001. Reads yes, push never. See §5.
 
 ---
 
@@ -1114,16 +1117,17 @@ Applied in order. **You are the source of truth on the next number — next free
 
 > **How migrations are applied here (READ THIS BEFORE SUGGESTING ANY CLI COMMAND):** by hand-pasting
 > each file into the Supabase SQL editor and running it once, in order. There is NO CLI
-> migration-history tracker. **`supabase db push` is FORBIDDEN.** `supabase db query --linked` for
-> READS is sanctioned. Fresh installs may use `supabase/deploy-batches/batch1.sql`…`batch4.sql` as a
-> convenience concat — still never `db push`.
+> migration-history tracker. **`supabase db push` is FORBIDDEN.** `supabase db query --db-url
+> <connection-string>` for READS is sanctioned. Never `--linked`. Fresh installs may use
+> `supabase/deploy-batches/batch1.sql`…`batch4.sql` as a convenience concat — still never `db push`.
 
 > **A migration paste must return clean. Any error means NOTHING applied.** After every migration,
 > confirm with `to_regclass` / `to_regprocedure` / `pg_policies` / `pg_indexes` before running any
 > checkpoint. A file on disk is NOT an applied migration. **0060–0099 live paste is UNCONFIRMED
 > unless Dom closed them; 0068–0069 claimed LIVE VERIFIED — re-confirm before relying; 0071 LIVE
-> VERIFIED.** Demo template seeds are a separate hand-apply
-> (`supabase/seeds/demo_templates*.sql`), not part of the migration sequence. Edge Functions are
+> VERIFIED.** Demo template seeds are a separate guarded hand-apply
+> (`supabase/seeds/demo_templates*.sql`; requires `set demo.seed_confirm = 'reseed-demo-templates'`
+> and an explicit `--db-url`), not part of the migration sequence. Edge Functions are
 > separate Dashboard deploys.
 
 > **Write migrations to be re-runnable.** `create or replace` for functions; `drop … if exists`

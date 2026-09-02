@@ -16,7 +16,7 @@ export const COUPLE_CONTRACTS_SEGMENT = "agreements";
  * - personal: Overview · Calendar · Checklist · Budget · Vendors · Guests · Website ·
  *   Seating · Day-of timeline · Contracts · Notes & files
  * - business: Overview · Checklist · Budget · Vendors · Guests · Website · Seating ·
- *   Day-of timeline · Contracts · Notes & files · Access
+ *   Day-of timeline · Contracts · Invoices · Notes & files · Access
  * - null + role couple (invited couple): personal set minus couple Contracts
  *   (Calendar included via CAL-04)
  * - null + role collaborator: personal set minus couple Contracts
@@ -35,6 +35,7 @@ export const PROJECT_TABS: ProjectTab[] = [
   { label: "Seating", segment: "seating" },
   { label: "Day-of timeline", segment: "timeline" },
   { label: "Contracts", segment: "contracts", plannerOnly: true },
+  { label: "Invoices", segment: "invoices", plannerOnly: true },
   {
     label: "Contracts",
     segment: COUPLE_CONTRACTS_SEGMENT,

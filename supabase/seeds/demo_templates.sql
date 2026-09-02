@@ -9,8 +9,31 @@
 -- Idempotent: safe to re-run. Uses fixed UUIDs for personal;
 -- reshapes the existing business is_demo_template account.
 -- Does NOT attach account_members (clone binds the visitor).
--- Hand-apply: supabase db query --linked -f this file
+--
+-- DESTRUCTIVE on the demo-template accounts/projects named below.
+-- Refuses to run unless this session has:
+--   set demo.seed_confirm = 'reseed-demo-templates';
+-- Name the database with --db-url <connection-string>. Never --linked.
+-- `db query --project-ref` does not retarget; with --linked it still hits
+-- whatever the CLI is currently pointed at.
+--
+-- SQL editor: run the SET, then this file, in the same session
+-- (or paste the SET as the first line).
+-- CLI (PowerShell):
+--   $sql = "set demo.seed_confirm = 'reseed-demo-templates';`n" + (Get-Content -Raw .\supabase\seeds\demo_templates.sql)
+--   $tmp = Join-Path $env:TEMP 'demo_templates.apply.sql'
+--   Set-Content -Path $tmp -Value $sql
+--   npx supabase db query --db-url $env:STAGING_DB_URL -f $tmp
 -- ============================================================
+
+do $seed_guard$
+begin
+  if current_setting('demo.seed_confirm', true) is distinct from 'reseed-demo-templates' then
+    raise exception 'demo_seed_refused: set demo.seed_confirm = ''reseed-demo-templates'' (see file header). Nothing applied.'
+      using errcode = 'P0001';
+  end if;
+end
+$seed_guard$;
 
 create extension if not exists pgcrypto with schema extensions;
 
