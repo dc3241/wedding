@@ -60,12 +60,12 @@ function BankForm({
       }}
       className="space-y-4"
     >
-      <h2 id="bank-form-title" className="font-display text-[19px] font-semibold text-ink">
+      <h2 id="bank-form-title" className="font-display text-[19px] font-extrabold tracking-[-0.02em] text-ink">
         {initial.idea ? "Edit idea" : "New idea"}
       </h2>
 
       <div>
-        <label className="mb-1 block text-[11px] font-semibold tracking-[0.03em] text-muted uppercase">
+        <label className="mb-1 block text-[12px] font-semibold tracking-[0.09em] text-muted uppercase">
           Platform
         </label>
         <Select
@@ -83,7 +83,7 @@ function BankForm({
       </div>
 
       <div>
-        <label className="mb-1 block text-[11px] font-semibold tracking-[0.03em] text-muted uppercase">
+        <label className="mb-1 block text-[12px] font-semibold tracking-[0.09em] text-muted uppercase">
           Idea
         </label>
         <Input
@@ -96,7 +96,7 @@ function BankForm({
 
       {meta.usesType ? (
         <div>
-          <label className="mb-1 block text-[11px] font-semibold tracking-[0.03em] text-muted uppercase">
+          <label className="mb-1 block text-[12px] font-semibold tracking-[0.09em] text-muted uppercase">
             Type
           </label>
           <Select
@@ -120,7 +120,7 @@ function BankForm({
 
       {meta.usesFormat ? (
         <div>
-          <label className="mb-1 block text-[11px] font-semibold tracking-[0.03em] text-muted uppercase">
+          <label className="mb-1 block text-[12px] font-semibold tracking-[0.09em] text-muted uppercase">
             Format
           </label>
           <Input
@@ -133,7 +133,7 @@ function BankForm({
 
       {meta.usesTitle ? (
         <div>
-          <label className="mb-1 block text-[11px] font-semibold tracking-[0.03em] text-muted uppercase">
+          <label className="mb-1 block text-[12px] font-semibold tracking-[0.09em] text-muted uppercase">
             Pin title
           </label>
           <Input
@@ -144,7 +144,7 @@ function BankForm({
       ) : null}
 
       <div>
-        <label className="mb-1 block text-[11px] font-semibold tracking-[0.03em] text-muted uppercase">
+        <label className="mb-1 block text-[12px] font-semibold tracking-[0.09em] text-muted uppercase">
           {meta.bodyLabel}
         </label>
         <Textarea
@@ -156,7 +156,7 @@ function BankForm({
       </div>
 
       <div>
-        <label className="mb-1 block text-[11px] font-semibold tracking-[0.03em] text-muted uppercase">
+        <label className="mb-1 block text-[12px] font-semibold tracking-[0.09em] text-muted uppercase">
           Notes
         </label>
         <Textarea
@@ -225,7 +225,7 @@ export function ContentBankBoard({ items }: { items: ContentBankItem[] }) {
             type="button"
             onClick={() => setPlatformFilter("all")}
             className={cn(
-              "rounded-[var(--radius-pill)] border-[1.5px] px-3.5 py-1.5 text-[13px] font-medium",
+              "rounded-[var(--radius-pill)] border-[1.5px] px-3.5 py-1.5 text-[14px] font-medium",
               platformFilter === "all"
                 ? "border-ink bg-ink text-surface font-semibold"
                 : "border-hairline bg-surface text-muted hover:border-accent hover:text-accent",
@@ -241,7 +241,7 @@ export function ContentBankBoard({ items }: { items: ContentBankItem[] }) {
                 type="button"
                 onClick={() => setPlatformFilter(p.key)}
                 className={cn(
-                  "rounded-[var(--radius-pill)] border-[1.5px] px-3.5 py-1.5 text-[13px] font-medium",
+                  "rounded-[var(--radius-pill)] border-[1.5px] px-3.5 py-1.5 text-[14px] font-medium",
                   platformFilter === p.key
                     ? "border-ink bg-ink text-surface font-semibold"
                     : "border-hairline bg-surface text-muted hover:border-accent hover:text-accent",
@@ -252,7 +252,7 @@ export function ContentBankBoard({ items }: { items: ContentBankItem[] }) {
             );
           })}
         </div>
-        <Button variant="primary" onClick={() => setEditing("new")} className="text-[13px]">
+        <Button variant="primary" onClick={() => setEditing("new")}>
           + New idea
         </Button>
       </div>
@@ -277,13 +277,13 @@ export function ContentBankBoard({ items }: { items: ContentBankItem[] }) {
                     </Pill>
                   ) : null}
                 </div>
-                <div className="mb-1 text-[15px] font-semibold text-ink">{item.idea}</div>
+                <div className="mb-1 text-[15px] font-medium text-ink">{item.idea}</div>
                 {item.title ? (
-                  <div className="mb-1 text-[13px] font-medium text-accent">{item.title}</div>
+                  <div className="mb-1 text-[14px] font-medium text-accent">{item.title}</div>
                 ) : null}
                 <p className="line-clamp-3 text-[13px] text-muted">{item.body}</p>
                 {item.notes ? (
-                  <p className="mt-2 text-[12px] text-muted italic">{item.notes}</p>
+                  <p className="mt-2 text-[13px] text-muted italic">{item.notes}</p>
                 ) : null}
                 <button
                   type="button"
@@ -291,7 +291,7 @@ export function ContentBankBoard({ items }: { items: ContentBankItem[] }) {
                     e.stopPropagation();
                     handleDelete(item.id);
                   }}
-                  className="mt-3 text-[12px] font-medium text-rosewood hover:underline"
+                  className="mt-3 text-[13px] font-medium text-rosewood hover:underline"
                 >
                   Delete
                 </button>

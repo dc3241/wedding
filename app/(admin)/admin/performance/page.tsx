@@ -1,5 +1,6 @@
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
+import { PageHeader } from "@/components/ui/page-header";
 import { getScheduleWeeks } from "@/lib/admin/queries";
 import { createClient } from "@/utils/supabase/server";
 
@@ -26,13 +27,11 @@ export default async function AdminPerformancePage() {
 
   return (
     <div>
-      <h1 className="font-display text-[26px] font-extrabold tracking-[-0.01em] text-ink">
-        Performance
-      </h1>
-      <p className="mb-5 text-[13.5px] text-muted">
-        Weekly performance, most recent first. Log new numbers from the Schedule tab — this is
-        the read-only trend view.
-      </p>
+      <PageHeader
+        className="mb-5"
+        title="Performance"
+        description="Weekly performance, most recent first. Log new numbers from the Schedule tab — this is the read-only trend view."
+      />
 
       {logged.length === 0 ? (
         <EmptyState>No performance logged yet — add numbers from the Schedule tab.</EmptyState>
@@ -40,38 +39,40 @@ export default async function AdminPerformancePage() {
         <>
           <div className="mb-5 grid grid-cols-2 gap-3.5 md:grid-cols-4">
             <Card className="px-5 py-4">
-              <div className="mb-1.5 text-[12px] text-muted">Weeks logged</div>
-              <div className="font-serif text-[28px] font-semibold text-ink">
+              <div className="mb-1.5 text-[14px] font-medium text-muted">Weeks logged</div>
+              <div className="font-display text-[32px] font-extrabold leading-none tracking-[-0.03em] tabular-nums text-ink">
                 {logged.length}
               </div>
             </Card>
             <Card className="px-5 py-4">
-              <div className="mb-1.5 text-[12px] text-muted">Latest views</div>
-              <div className="font-serif text-[28px] font-semibold text-ink">
+              <div className="mb-1.5 text-[14px] font-medium text-muted">Latest views</div>
+              <div className="font-display text-[32px] font-extrabold leading-none tracking-[-0.03em] tabular-nums text-ink">
                 {logged[0]?.performance?.views || "—"}
               </div>
             </Card>
             <Card className="px-5 py-4">
-              <div className="mb-1.5 text-[12px] text-muted">Total DMs (logged)</div>
-              <div className="font-serif text-[28px] font-semibold text-ink">{totalDms || "—"}</div>
+              <div className="mb-1.5 text-[14px] font-medium text-muted">Total DMs (logged)</div>
+              <div className="font-display text-[32px] font-extrabold leading-none tracking-[-0.03em] tabular-nums text-ink">
+                {totalDms || "—"}
+              </div>
             </Card>
             <Card className="px-5 py-4">
-              <div className="mb-1.5 text-[12px] text-muted">Total sign-ups (logged)</div>
-              <div className="font-serif text-[28px] font-semibold text-ink">
+              <div className="mb-1.5 text-[14px] font-medium text-muted">Total sign-ups (logged)</div>
+              <div className="font-display text-[32px] font-extrabold leading-none tracking-[-0.03em] tabular-nums text-ink">
                 {totalSignups || "—"}
               </div>
             </Card>
           </div>
 
           <Card className="overflow-x-auto px-5 py-5">
-            <table className="w-full border-collapse text-[13px]">
+            <table className="w-full border-collapse text-[15px] font-medium">
               <thead>
                 <tr>
                   {["Week", "Views", "Follower growth", "DMs", "Sign-ups", "What drove it"].map(
                     (h) => (
                       <th
                         key={h}
-                        className="border-b-[1.5px] border-hairline px-2 pb-2 text-left text-[11px] font-semibold tracking-[0.03em] text-muted uppercase"
+                        className="border-b-[1.5px] border-hairline px-2 pb-2 text-left text-[12px] font-semibold tracking-[0.09em] text-muted uppercase"
                       >
                         {h}
                       </th>

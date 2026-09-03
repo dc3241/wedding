@@ -1,6 +1,7 @@
 "use client";
 
 import { Card } from "@/components/ui/card";
+import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { SCHEDULE_PLATFORM_COLS, type DayCellStatus } from "@/lib/admin/platforms";
 import type { WeekWithDetail } from "@/lib/admin/types";
@@ -15,6 +16,24 @@ import {
 function formatDayLabel(iso: string) {
   const d = new Date(iso + "T00:00:00");
   return d.toLocaleDateString("en-US", { weekday: "short", month: "numeric", day: "numeric" });
+}
+
+function monthKey(iso: string) {
+  return iso.slice(0, 7);
+}
+
+function formatMonthLabel(iso: string) {
+  return new Date(iso + "T00:00:00").toLocaleDateString("en-US", {
+    month: "long",
+    year: "numeric",
+  });
+}
+
+function weekDoneCount(week: WeekWithDetail) {
+  return week.days.reduce(
+    (n, d) => n + Object.values(d.platforms).filter((v) => v === "done").length,
+    0,
+  );
 }
 
 function Cell({
@@ -55,6 +74,21 @@ export function ScheduleGrid({ weeks, initialWeekId }: { weeks: WeekWithDetail[]
     [localWeeks, activeWeekId],
   );
 
+  const months = useMemo(() => {
+    const seen = new Map<string, string>();
+    for (const w of localWeeks) {
+      const key = monthKey(w.start_date);
+      if (!seen.has(key)) seen.set(key, formatMonthLabel(w.start_date));
+    }
+    return [...seen.entries()].map(([key, label]) => ({ key, label }));
+  }, [localWeeks]);
+
+  const activeMonth = week ? monthKey(week.start_date) : (months[0]?.key ?? "");
+  const weeksInMonth = useMemo(
+    () => localWeeks.filter((w) => monthKey(w.start_date) === activeMonth),
+    [localWeeks, activeMonth],
+  );
+
   function handleToggle(dayId: string, key: string) {
     setLocalWeeks((prev) =>
       prev.map((w) => ({
@@ -88,62 +122,80 @@ export function ScheduleGrid({ weeks, initialWeekId }: { weeks: WeekWithDetail[]
   }
 
   if (localWeeks.length === 0) {
-    return <p className="text-[13.5px] text-muted">No schedule weeks yet.</p>;
+    return <p className="text-[15px] font-medium text-muted">No schedule weeks yet.</p>;
   }
 
   return (
     <div>
-      <div className="mb-4 flex flex-wrap gap-2">
-        {localWeeks.map((w) => {
-          const doneCount = w.days.reduce(
-            (n, d) => n + Object.values(d.platforms).filter((v) => v === "done").length,
-            0,
-          );
-          return (
-            <button
-              key={w.id}
-              type="button"
-              onClick={() => setActiveWeekId(w.id)}
-              className={cn(
-                "rounded-[var(--radius-pill)] border-[1.5px] px-3.5 py-1.5 text-[13px] font-medium",
-                w.id === activeWeekId
-                  ? "border-ink bg-ink text-surface font-semibold"
-                  : "border-hairline bg-surface text-muted hover:border-accent hover:text-accent",
-              )}
-            >
-              {w.label}
-              {doneCount > 0 ? (
-                <span className="ml-1.5 inline-block size-1.5 rounded-full bg-sage align-middle" />
-              ) : null}
-            </button>
-          );
-        })}
+      <div className="mb-4 flex flex-wrap gap-3">
+        <label className="block min-w-[200px] max-w-[280px] flex-1">
+          <span className="mb-1 block text-[12px] font-semibold tracking-[0.09em] text-muted uppercase">
+            Month
+          </span>
+          <Select
+            value={activeMonth}
+            onChange={(e) => {
+              const nextMonth = e.target.value;
+              const currentStillInMonth =
+                week && monthKey(week.start_date) === nextMonth;
+              if (currentStillInMonth) return;
+              const first = localWeeks.find((w) => monthKey(w.start_date) === nextMonth);
+              if (first) setActiveWeekId(first.id);
+            }}
+            aria-label="Month"
+          >
+            {months.map((m) => (
+              <option key={m.key} value={m.key}>
+                {m.label}
+              </option>
+            ))}
+          </Select>
+        </label>
+        <label className="block min-w-[220px] max-w-[320px] flex-1">
+          <span className="mb-1 block text-[12px] font-semibold tracking-[0.09em] text-muted uppercase">
+            Week
+          </span>
+          <Select
+            value={activeWeekId}
+            onChange={(e) => setActiveWeekId(e.target.value)}
+            aria-label="Week"
+          >
+            {weeksInMonth.map((w) => (
+              <option key={w.id} value={w.id}>
+                {w.label}
+                {weekDoneCount(w) > 0 ? " ✓" : ""}
+              </option>
+            ))}
+          </Select>
+        </label>
       </div>
 
       {week ? (
         <Card className="px-5 py-5">
-          <div className="mb-1 font-serif text-[20px] font-semibold text-ink">{week.label}</div>
-          <p className="mb-4 text-[12.5px] text-muted">Tap a box to mark it created &amp; posted</p>
+          <div className="mb-1 font-display text-[19px] font-extrabold tracking-[-0.02em] text-ink">
+            {week.label}
+          </div>
+          <p className="mb-4 text-[13px] text-muted">Tap a box to mark it created &amp; posted</p>
 
           <div className="overflow-x-auto">
-            <table className="w-full border-collapse text-[13px]">
+            <table className="w-full border-collapse text-[15px] font-medium">
               <thead>
                 <tr>
-                  <th className="border-b-[1.5px] border-hairline pb-2 text-left text-[11px] font-semibold tracking-[0.03em] text-muted uppercase">
+                  <th className="border-b-[1.5px] border-hairline pb-2 text-left text-[12px] font-semibold tracking-[0.09em] text-muted uppercase">
                     Day
                   </th>
                   {SCHEDULE_PLATFORM_COLS.map((c) => (
                     <th
                       key={c.key}
-                      className="border-b-[1.5px] border-hairline px-1.5 pb-2 text-center text-[11px] font-semibold tracking-[0.03em] text-muted uppercase"
+                      className="border-b-[1.5px] border-hairline px-1.5 pb-2 text-center text-[12px] font-semibold tracking-[0.09em] text-muted uppercase"
                     >
                       {c.label}
                     </th>
                   ))}
-                  <th className="border-b-[1.5px] border-hairline px-1.5 pb-2 text-left text-[11px] font-semibold tracking-[0.03em] text-muted uppercase">
+                  <th className="border-b-[1.5px] border-hairline px-1.5 pb-2 text-left text-[12px] font-semibold tracking-[0.09em] text-muted uppercase">
                     Couples notes
                   </th>
-                  <th className="border-b-[1.5px] border-hairline px-1.5 pb-2 text-left text-[11px] font-semibold tracking-[0.03em] text-muted uppercase">
+                  <th className="border-b-[1.5px] border-hairline px-1.5 pb-2 text-left text-[12px] font-semibold tracking-[0.09em] text-muted uppercase">
                     Planner+Ops notes
                   </th>
                 </tr>
@@ -162,7 +214,7 @@ export function ScheduleGrid({ weeks, initialWeekId }: { weeks: WeekWithDetail[]
                         />
                       </td>
                     ))}
-                    <td className="max-w-[160px] border-b border-hairline px-1.5 py-1.5 text-[12px] text-muted">
+                    <td className="max-w-[160px] border-b border-hairline px-1.5 py-1.5 text-[13px] text-muted">
                       <input
                         defaultValue={day.notes_couples ?? ""}
                         onBlur={(e) => handleNotesBlur(day.id, "notes_couples", e.currentTarget.value)}
@@ -170,7 +222,7 @@ export function ScheduleGrid({ weeks, initialWeekId }: { weeks: WeekWithDetail[]
                         className="w-full bg-transparent outline-none placeholder:text-ring"
                       />
                     </td>
-                    <td className="max-w-[160px] border-b border-hairline px-1.5 py-1.5 text-[12px] text-muted">
+                    <td className="max-w-[160px] border-b border-hairline px-1.5 py-1.5 text-[13px] text-muted">
                       <input
                         defaultValue={day.notes_planner ?? ""}
                         onBlur={(e) => handleNotesBlur(day.id, "notes_planner", e.currentTarget.value)}
@@ -194,26 +246,25 @@ export function ScheduleGrid({ weeks, initialWeekId }: { weeks: WeekWithDetail[]
               ] as const
             ).map(([field, label]) => (
               <label key={field} className="block">
-                <span className="mb-1 block text-[11px] font-semibold tracking-[0.03em] text-muted uppercase">
+                <span className="mb-1 block text-[12px] font-semibold tracking-[0.09em] text-muted uppercase">
                   {label}
                 </span>
                 <input
                   defaultValue={week.performance?.[field] ?? ""}
                   onBlur={(e) => handlePerfBlur(week.id, field, e.currentTarget.value)}
                   placeholder="—"
-                  className="w-full rounded-[var(--radius-inner)] border border-ring bg-surface px-2.5 py-1.5 text-[13px]"
+                  className="w-full rounded-[var(--radius-inner)] border border-ring bg-surface px-2.5 py-1.5 text-[15px] font-medium"
                 />
               </label>
             ))}
             <div className="col-span-2 md:col-span-4">
-              <span className="mb-1 block text-[11px] font-semibold tracking-[0.03em] text-muted uppercase">
+              <span className="mb-1 block text-[12px] font-semibold tracking-[0.09em] text-muted uppercase">
                 What drove it
               </span>
               <Textarea
                 defaultValue={week.performance?.notes ?? ""}
                 onBlur={(e) => handlePerfBlur(week.id, "notes", e.currentTarget.value)}
                 rows={2}
-                className="text-[13px]"
               />
             </div>
           </div>

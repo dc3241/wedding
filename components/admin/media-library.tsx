@@ -81,18 +81,18 @@ function AssetRow({ asset }: { asset: MediaAsset }) {
 
   return (
     <Card className="flex flex-wrap items-center gap-3 px-4 py-3">
-      <span className="flex size-10 shrink-0 items-center justify-center rounded-[var(--radius-inner)] bg-well text-[11px] font-bold text-muted uppercase">
+      <span className="flex size-10 shrink-0 items-center justify-center rounded-[var(--radius-inner)] bg-well text-[12px] font-bold tracking-[0.09em] text-muted uppercase">
         {isVideo(asset.content_type) ? "VID" : "IMG"}
       </span>
       <div className="min-w-0 flex-1">
-        <div className="truncate text-[14px] font-semibold text-ink">{asset.filename}</div>
-        <div className="text-[12px] text-muted">{formatMediaFileSize(asset.file_size)}</div>
+        <div className="truncate text-[15px] font-medium text-ink">{asset.filename}</div>
+        <div className="text-[13px] text-muted">{formatMediaFileSize(asset.file_size)}</div>
       </div>
       <Select
         value={asset.status}
         onChange={(e) => handleStatus(e.target.value as MediaAsset["status"])}
         disabled={isPending}
-        className="w-auto text-[12.5px]"
+        className="w-auto"
       >
         {(Object.keys(STATUS_META) as MediaAsset["status"][]).map((s) => (
           <option key={s} value={s}>
@@ -101,7 +101,7 @@ function AssetRow({ asset }: { asset: MediaAsset }) {
         ))}
       </Select>
       <Pill variant={meta.pill}>{meta.label}</Pill>
-      <div className="flex gap-3 text-[12px]">
+      <div className="flex gap-3 text-[13px]">
         <button
           type="button"
           onClick={handleDownload}
@@ -119,7 +119,7 @@ function AssetRow({ asset }: { asset: MediaAsset }) {
           Delete
         </button>
       </div>
-      {error ? <p className="w-full text-[12px] text-rosewood">{error}</p> : null}
+      {error ? <p className="w-full text-[13px] text-rosewood">{error}</p> : null}
     </Card>
   );
 }
@@ -213,7 +213,7 @@ export function MediaLibrary({ assets }: { assets: MediaAsset[] }) {
   return (
     <div>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <p className="text-[13px] text-muted">Video and photo handoff — up to 2GB per file.</p>
+        <p className="text-[15px] font-medium text-muted">Video and photo handoff — up to 2GB per file.</p>
         <div>
           <input
             ref={inputRef}
@@ -227,7 +227,6 @@ export function MediaLibrary({ assets }: { assets: MediaAsset[] }) {
           <Button
             type="button"
             variant="primary"
-            className="text-[13px]"
             onClick={() => inputRef.current?.click()}
           >
             + Upload files
@@ -239,14 +238,14 @@ export function MediaLibrary({ assets }: { assets: MediaAsset[] }) {
         <div className="mb-5 space-y-2">
           {jobs.map((job, i) => (
             <Card key={`${job.name}-${i}`} className="px-4 py-3">
-              <div className="mb-1.5 flex items-center justify-between text-[13px]">
+              <div className="mb-1.5 flex items-center justify-between text-[15px] font-medium">
                 <span className="truncate font-medium text-ink">{job.name}</span>
                 <span className="text-muted">
                   {job.error ? "Failed" : job.progress === 100 ? "Done" : `${job.progress}%`}
                 </span>
               </div>
               {job.error ? (
-                <p className="text-[12px] text-rosewood">{job.error}</p>
+                <p className="text-[13px] text-rosewood">{job.error}</p>
               ) : (
                 <div className="h-1.5 overflow-hidden rounded-full bg-well">
                   <div

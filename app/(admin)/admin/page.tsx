@@ -1,6 +1,8 @@
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ButtonLink } from "@/components/ui/button";
+import { Eyebrow } from "@/components/ui/eyebrow";
+import { PageHeader } from "@/components/ui/page-header";
 import {
   getAutomationPrompts,
   getContentBank,
@@ -14,9 +16,11 @@ import { createClient } from "@/utils/supabase/server";
 function AdminStat({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
     <Card className="px-5 py-4">
-      <div className="mb-1.5 text-[12px] text-muted">{label}</div>
-      <div className="font-serif text-[28px] font-semibold text-ink">{value}</div>
-      {sub ? <div className="mt-1 text-[12px] text-muted">{sub}</div> : null}
+      <div className="mb-1.5 text-[14px] font-medium text-muted">{label}</div>
+      <div className="font-display text-[32px] font-extrabold leading-none tracking-[-0.03em] tabular-nums text-ink">
+        {value}
+      </div>
+      {sub ? <div className="mt-1 text-[13px] text-muted">{sub}</div> : null}
     </Card>
   );
 }
@@ -47,12 +51,11 @@ export default async function AdminOverviewPage() {
 
   return (
     <div>
-      <h1 className="font-display text-[26px] font-extrabold tracking-[-0.01em] text-ink">
-        Overview
-      </h1>
-      <p className="mb-5 text-[13.5px] text-muted">
-        {currentWeek ? currentWeek.label : "No schedule week set up yet"}
-      </p>
+      <PageHeader
+        className="mb-5"
+        title="Overview"
+        description={currentWeek ? currentWeek.label : "No schedule week set up yet"}
+      />
 
       <div className="mb-4 grid grid-cols-2 gap-3.5 md:grid-cols-4">
         <AdminStat
@@ -78,9 +81,9 @@ export default async function AdminOverviewPage() {
 
       <div className="grid gap-4 md:grid-cols-[1.3fr_1fr] md:items-start">
         <Card className="px-6 py-5">
-          <div className="mb-3 text-[11.5px] font-semibold tracking-[0.06em] text-accent uppercase">
+          <Eyebrow className="mb-3 text-accent">
             Today — {todayRow?.date ?? today}
-          </div>
+          </Eyebrow>
           {todayRow ? (
             <div>
               {SCHEDULE_PLATFORM_COLS.filter((c) => todayRow.platforms[c.key] !== "off").map(
@@ -89,7 +92,7 @@ export default async function AdminOverviewPage() {
                   return (
                     <div
                       key={c.key}
-                      className="flex items-center justify-between border-b border-hairline py-2.5 text-[14px] last:border-b-0"
+                      className="flex items-center justify-between border-b border-hairline py-2.5 text-[15px] font-medium last:border-b-0"
                     >
                       <span>{c.label}</span>
                       <span
@@ -113,11 +116,9 @@ export default async function AdminOverviewPage() {
 
         <div className="flex flex-col gap-4">
           <Card className="px-6 py-5">
-            <div className="mb-3 text-[11.5px] font-semibold tracking-[0.06em] text-accent uppercase">
-              Latest performance
-            </div>
+            <Eyebrow className="mb-3 text-accent">Latest performance</Eyebrow>
             {latestPerf ? (
-              <div className="space-y-1.5 text-[13.5px] text-ink">
+              <div className="space-y-1.5 text-[15px] font-medium text-ink">
                 <div>
                   <b>{latestPerf.views || "—"}</b> views
                 </div>
@@ -133,22 +134,20 @@ export default async function AdminOverviewPage() {
                 ) : null}
               </div>
             ) : (
-              <p className="text-[13.5px] text-muted">Nothing logged yet.</p>
+              <p className="text-[15px] font-medium text-muted">Nothing logged yet.</p>
             )}
-            <ButtonLink href="/admin/performance" variant="default" className="mt-4 text-[13px]">
+            <ButtonLink href="/admin/performance" variant="default" className="mt-4">
               View performance
             </ButtonLink>
           </Card>
 
           <Card className="px-6 py-5">
-            <div className="mb-3 text-[11.5px] font-semibold tracking-[0.06em] text-accent uppercase">
-              Automations
-            </div>
-            <p className="text-[13.5px] text-muted">
+            <Eyebrow className="mb-3 text-accent">Automations</Eyebrow>
+            <p className="text-[15px] font-medium text-muted">
               {prompts.length} prompt{prompts.length === 1 ? "" : "s"} ready to run —
               weekly content-day batch normally runs Fridays.
             </p>
-            <ButtonLink href="/admin/automations" variant="primary" className="mt-4 text-[13px]">
+            <ButtonLink href="/admin/automations" variant="primary" className="mt-4">
               Open automations
             </ButtonLink>
           </Card>

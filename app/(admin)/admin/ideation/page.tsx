@@ -1,4 +1,5 @@
 import { IdeationBoard } from "@/components/admin/ideation-board";
+import { PageHeader } from "@/components/ui/page-header";
 import { getIdeationItems } from "@/lib/admin/queries";
 import { createClient } from "@/utils/supabase/server";
 
@@ -8,13 +9,11 @@ export default async function AdminIdeationPage() {
 
   return (
     <div>
-      <h1 className="font-display text-[26px] font-extrabold tracking-[-0.01em] text-ink">
-        Ideation
-      </h1>
-      <p className="mb-5 text-[13.5px] text-muted">
-        Brainstorm with Claude, then rate and comment — future generations pull your best- and
-        worst-rated ideas as context.
-      </p>
+      <PageHeader
+        className="mb-5"
+        title="Ideation"
+        description="Brainstorm with Claude, then rate and comment — future generations pull your best- and worst-rated ideas as context."
+      />
 
       <IdeationBoard items={items} />
     </div>

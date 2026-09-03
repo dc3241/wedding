@@ -67,7 +67,7 @@ function IdeaCard({ item }: { item: IdeationItem }) {
 
   return (
     <Card className="px-5 py-4">
-      <p className="mb-3 text-[14.5px] text-ink">{item.idea_text}</p>
+      <p className="mb-3 text-[15px] font-medium text-ink">{item.idea_text}</p>
       <div className="mb-2 flex items-center gap-2">
         <ThumbButton active={item.rating === "up"} onClick={() => handleRate("up")} variant="up">
           👍
@@ -83,7 +83,7 @@ function IdeaCard({ item }: { item: IdeationItem }) {
           type="button"
           onClick={handleDelete}
           disabled={isPending}
-          className="ml-auto text-[12px] font-medium text-rosewood hover:underline"
+          className="ml-auto text-[13px] font-medium text-rosewood hover:underline"
         >
           Delete
         </button>
@@ -93,7 +93,6 @@ function IdeaCard({ item }: { item: IdeationItem }) {
         onChange={(e) => setComment(e.target.value)}
         onBlur={handleCommentBlur}
         placeholder="Why? (feeds future generations)"
-        className="text-[13px]"
       />
     </Card>
   );
@@ -139,7 +138,7 @@ export function IdeationBoard({ items }: { items: IdeationItem[] }) {
       <Card className="mb-5 px-5 py-4">
         <div className="flex flex-wrap items-end gap-3">
           <div className="min-w-[220px] flex-1">
-            <label className="mb-1 block text-[11px] font-semibold tracking-[0.03em] text-muted uppercase">
+            <label className="mb-1 block text-[12px] font-semibold tracking-[0.09em] text-muted uppercase">
               Topic (optional)
             </label>
             <Input
@@ -148,12 +147,12 @@ export function IdeationBoard({ items }: { items: IdeationItem[] }) {
               placeholder="e.g. budget tips, day-of timeline, vendor red flags"
             />
           </div>
-          <Button variant="primary" onClick={handleGenerate} disabled={generating} className="text-[13px]">
+          <Button variant="primary" onClick={handleGenerate} disabled={generating}>
             {generating ? "Generating…" : "✨ Generate ideas"}
           </Button>
         </div>
-        {genError ? <p className="mt-2 text-[12.5px] text-rosewood">{genError}</p> : null}
-        <p className="mt-2 text-[12px] text-muted">
+        {genError ? <p className="mt-2 text-[13px] text-rosewood">{genError}</p> : null}
+        <p className="mt-2 text-[13px] text-muted">
           Pulls your best- and worst-rated past ideas as context before generating.
         </p>
       </Card>
@@ -165,7 +164,7 @@ export function IdeationBoard({ items }: { items: IdeationItem[] }) {
             type="button"
             onClick={() => setFilter(f)}
             className={cn(
-              "rounded-[var(--radius-pill)] border-[1.5px] px-3.5 py-1.5 text-[13px] font-medium",
+              "rounded-[var(--radius-pill)] border-[1.5px] px-3.5 py-1.5 text-[14px] font-medium",
               filter === f
                 ? "border-ink bg-ink text-surface font-semibold"
                 : "border-hairline bg-surface text-muted hover:border-accent hover:text-accent",
@@ -179,7 +178,7 @@ export function IdeationBoard({ items }: { items: IdeationItem[] }) {
                   ? "👎 Passed"
                   : "Unrated"}
             {f !== "all" ? (
-              <Pill variant="default" className="ml-1.5 px-1.5 py-0 text-[10px]">
+              <Pill variant="default" className="ml-1.5 px-1.5 py-0">
                 {
                   localItems.filter((i) =>
                     f === "unrated" ? i.rating === null : i.rating === f,

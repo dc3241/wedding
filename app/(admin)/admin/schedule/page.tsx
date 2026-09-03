@@ -1,4 +1,5 @@
 import { ScheduleGrid } from "@/components/admin/schedule-grid";
+import { PageHeader } from "@/components/ui/page-header";
 import { getScheduleWeeks, pickCurrentWeek } from "@/lib/admin/queries";
 import { adminToday } from "@/lib/admin/today";
 import { createClient } from "@/utils/supabase/server";
@@ -10,13 +11,11 @@ export default async function AdminSchedulePage() {
 
   return (
     <div>
-      <h1 className="font-display text-[26px] font-extrabold tracking-[-0.01em] text-ink">
-        Schedule
-      </h1>
-      <p className="mb-5 text-[13.5px] text-muted">
-        Weekly content calendar — tap a box to mark it created &amp; posted, click a week to
-        switch, and log performance at the bottom of each week.
-      </p>
+      <PageHeader
+        className="mb-5"
+        title="Schedule"
+        description="Weekly content calendar — pick a month and week, tap a box to mark it created & posted, and log performance at the bottom of each week."
+      />
 
       <ScheduleGrid weeks={weeks} initialWeekId={currentWeek?.id ?? null} />
     </div>

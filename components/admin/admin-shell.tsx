@@ -189,7 +189,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
 
         <div
           className={cn(
-            "mb-4 px-2 text-[10.5px] font-semibold tracking-[0.08em] text-[#948B90] uppercase",
+            "mb-4 px-2 text-[12px] font-semibold tracking-[0.09em] text-[#948B90] uppercase",
             collapsed && "md:hidden",
           )}
         >
@@ -204,7 +204,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  "group relative mb-0.5 flex items-center gap-3 rounded-[var(--radius-inner)] px-2.5 py-2.5 text-[14px] font-medium whitespace-nowrap text-[#C9BFC4] hover:bg-white/8 hover:text-canvas",
+                  "group relative mb-0.5 flex items-center gap-3 rounded-[var(--radius-inner)] px-2.5 py-2.5 text-[15px] font-medium whitespace-nowrap text-[#C9BFC4] hover:bg-white/8 hover:text-canvas",
                   collapsed && "md:justify-center",
                   active && "bg-white/12 font-semibold text-canvas",
                 )}
@@ -240,7 +240,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
           >
             <MenuIcon />
           </button>
-          <span className="rounded-[var(--radius-pill)] bg-accent-wash px-3.5 py-1.5 text-[12.5px] font-semibold whitespace-nowrap text-accent">
+          <span className="rounded-[var(--radius-pill)] bg-accent-wash px-3.5 py-1.5 text-[13px] font-semibold whitespace-nowrap text-accent">
             First Look Admin
           </span>
         </div>

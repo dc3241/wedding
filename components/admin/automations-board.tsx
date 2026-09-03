@@ -54,11 +54,11 @@ function PromptForm({
       }}
       className="space-y-4"
     >
-      <h2 id="prompt-form-title" className="font-display text-[19px] font-semibold text-ink">
+      <h2 id="prompt-form-title" className="font-display text-[19px] font-extrabold tracking-[-0.02em] text-ink">
         {initial.name ? "Edit prompt" : "New prompt"}
       </h2>
       <div>
-        <label className="mb-1 block text-[11px] font-semibold tracking-[0.03em] text-muted uppercase">
+        <label className="mb-1 block text-[12px] font-semibold tracking-[0.09em] text-muted uppercase">
           Name
         </label>
         <Input
@@ -69,7 +69,7 @@ function PromptForm({
         />
       </div>
       <div>
-        <label className="mb-1 block text-[11px] font-semibold tracking-[0.03em] text-muted uppercase">
+        <label className="mb-1 block text-[12px] font-semibold tracking-[0.09em] text-muted uppercase">
           Description
         </label>
         <Input
@@ -81,7 +81,7 @@ function PromptForm({
         />
       </div>
       <div>
-        <label className="mb-1 block text-[11px] font-semibold tracking-[0.03em] text-muted uppercase">
+        <label className="mb-1 block text-[12px] font-semibold tracking-[0.09em] text-muted uppercase">
           Prompt template
         </label>
         <Textarea
@@ -89,7 +89,7 @@ function PromptForm({
           onChange={(e) => setForm((f) => ({ ...f, prompt_template: e.target.value }))}
           rows={10}
           required
-          className="font-mono text-[13px]"
+          className="font-mono text-[14px]"
         />
       </div>
       <div className="flex justify-end gap-2 pt-1">
@@ -137,7 +137,7 @@ function RunPrompt({ prompt }: { prompt: AdminAutomationPrompt }) {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="text-[13px] font-semibold text-accent hover:underline"
+        className="text-[14px] font-semibold text-accent hover:underline"
       >
         {open ? "Hide run panel" : "Run…"}
       </button>
@@ -149,15 +149,15 @@ function RunPrompt({ prompt }: { prompt: AdminAutomationPrompt }) {
             placeholder="Optional extra context for this run (topic, week, angle…)"
             rows={2}
           />
-          <Button variant="primary" onClick={handleRun} disabled={running} className="text-[13px]">
+          <Button variant="primary" onClick={handleRun} disabled={running}>
             {running ? "Running…" : "Run automation"}
           </Button>
           {result ? (
             <div
               className={
                 result.ok
-                  ? "rounded-[var(--radius-inner)] bg-well px-3.5 py-3 text-[13px] whitespace-pre-wrap text-ink"
-                  : "rounded-[var(--radius-inner)] bg-rosewood-wash px-3.5 py-3 text-[13px] text-rosewood"
+                  ? "rounded-[var(--radius-inner)] bg-well px-3.5 py-3 text-[15px] font-medium whitespace-pre-wrap text-ink"
+                  : "rounded-[var(--radius-inner)] bg-rosewood-wash px-3.5 py-3 text-[15px] font-medium text-rosewood"
               }
             >
               {result.text}
@@ -227,8 +227,10 @@ export function AutomationsBoard({
   return (
     <div>
       <div className="mb-4 flex items-center justify-between">
-        <h2 className="font-display text-[18px] font-semibold text-ink">Prompts</h2>
-        <Button variant="primary" onClick={() => setEditing("new")} className="text-[13px]">
+        <h2 className="font-display text-[19px] font-extrabold tracking-[-0.02em] text-ink">
+          Prompts
+        </h2>
+        <Button variant="primary" onClick={() => setEditing("new")}>
           + New prompt
         </Button>
       </div>
@@ -240,8 +242,8 @@ export function AutomationsBoard({
           {localPrompts.map((prompt) => (
             <Card key={prompt.id} className="px-5 py-4">
               <div className="mb-1 flex items-start justify-between gap-2">
-                <div className="text-[15px] font-semibold text-ink">{prompt.name}</div>
-                <div className="flex shrink-0 gap-3 text-[12px]">
+                <div className="text-[15px] font-medium text-ink">{prompt.name}</div>
+                <div className="flex shrink-0 gap-3 text-[13px]">
                   <button
                     type="button"
                     onClick={() => setEditing(prompt)}
@@ -267,7 +269,9 @@ export function AutomationsBoard({
         </div>
       )}
 
-      <h2 className="mb-3 font-display text-[18px] font-semibold text-ink">Recent runs</h2>
+      <h2 className="mb-3 font-display text-[19px] font-extrabold tracking-[-0.02em] text-ink">
+        Recent runs
+      </h2>
       {localRuns.length === 0 ? (
         <EmptyState>No runs yet — run a prompt above to see it here.</EmptyState>
       ) : (
@@ -276,7 +280,7 @@ export function AutomationsBoard({
             <Card key={run.id} className="px-5 py-4">
               <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
-                  <span className="text-[13.5px] font-semibold text-ink">
+                  <span className="text-[15px] font-medium text-ink">
                     {promptName(run.prompt_id)}
                   </span>
                   <Pill
@@ -292,20 +296,20 @@ export function AutomationsBoard({
                   </Pill>
                   {run.saved_to_bank ? <Pill variant="accent">Saved to bank</Pill> : null}
                 </div>
-                <span className="text-[12px] text-muted">{formatWhen(run.created_at)}</span>
+                <span className="text-[13px] text-muted">{formatWhen(run.created_at)}</span>
               </div>
               {run.input_text ? (
-                <p className="mb-2 text-[12.5px] text-muted italic">Context: {run.input_text}</p>
+                <p className="mb-2 text-[13px] text-muted italic">Context: {run.input_text}</p>
               ) : null}
               {run.output_text ? (
-                <p className="mb-3 line-clamp-6 rounded-[var(--radius-inner)] bg-well px-3.5 py-3 text-[13px] whitespace-pre-wrap text-ink">
+                <p className="mb-3 line-clamp-6 rounded-[var(--radius-inner)] bg-well px-3.5 py-3 text-[15px] font-medium whitespace-pre-wrap text-ink">
                   {run.output_text}
                 </p>
               ) : null}
               {run.error_message ? (
                 <p className="mb-3 text-[13px] text-rosewood">{run.error_message}</p>
               ) : null}
-              <div className="flex gap-3 text-[12px]">
+              <div className="flex gap-3 text-[13px]">
                 <button
                   type="button"
                   onClick={() => handleToggleSaved(run.id, run.saved_to_bank)}
