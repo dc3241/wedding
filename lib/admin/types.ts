@@ -1,4 +1,8 @@
 import type { ContentPlatform, ContentType, DayPlatforms } from "@/lib/admin/platforms";
+import type {
+  ContentQueuePlatform,
+  ContentQueueStatus,
+} from "@/lib/admin/content-queue";
 
 export type ScheduleWeek = {
   id: string;
@@ -83,4 +87,24 @@ export type IdeationItem = {
   rating: "up" | "down" | null;
   comment: string | null;
   created_at: string;
+};
+
+export type ContentQueueItem = {
+  id: string;
+  platform: ContentQueuePlatform;
+  pillar: string;
+  content_type: ContentType;
+  prompt: string;
+  image_paths: string[];
+  caption: string;
+  status: ContentQueueStatus;
+  week_of: string;
+  kie_task_id: string | null;
+  generated_by: string | null;
+  approved_at: string | null;
+  denied_at: string | null;
+  created_at: string;
+  updated_at: string;
+  /** Signed preview URLs, parallel to image_paths that signed successfully. */
+  image_urls: string[];
 };

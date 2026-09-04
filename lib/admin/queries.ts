@@ -1,9 +1,14 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import {
+  CONTENT_QUEUE_BUCKET,
+  CONTENT_QUEUE_SIGNED_TTL_SECONDS,
+} from "@/lib/admin/content-queue";
 import type {
   AdminAutomationPrompt,
   AdminAutomationRun,
   ContentBankItem,
+  ContentQueueItem,
   IdeationItem,
   MediaAsset,
   ScheduleDay,
@@ -116,4 +121,60 @@ export async function getIdeationItems(
     .select("id, idea_text, requested_by, rating, comment, created_at")
     .order("created_at", { ascending: false });
   return (data ?? []) as IdeationItem[];
+}
+
+const QUEUE_SELECT =
+  "id, platform, pillar, content_type, prompt, image_paths, caption, status, week_of, kie_task_id, generated_by, approved_at, denied_at, created_at, updated_at";
+
+type QueueRow = Omit<ContentQueueItem, "image_urls">;
+
+async function signQueueImagePaths(
+  supabase: SupabaseClient,
+  paths: string[],
+): Promise<string[]> {
+  if (paths.length === 0) return [];
+  const { data, error } = await supabase.storage
+    .from(CONTENT_QUEUE_BUCKET)
+    .createSignedUrls(paths, CONTENT_QUEUE_SIGNED_TTL_SECONDS);
+  if (error || !data) return [];
+  return data
+    .filter((row) => row.signedUrl && !row.error)
+    .map((row) => row.signedUrl as string);
+}
+
+/** Most recent week_of by default. Preview URLs are signed server-side. */
+export async function getContentQueue(
+  supabase: SupabaseClient,
+  weekOf?: string,
+): Promise<{ weekOf: string | null; items: ContentQueueItem[] }> {
+  let resolvedWeek = weekOf ?? null;
+  if (!resolvedWeek) {
+    const { data: latest } = await supabase
+      .from("content_queue")
+      .select("week_of")
+      .order("week_of", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    resolvedWeek = latest?.week_of ?? null;
+  }
+
+  if (!resolvedWeek) {
+    return { weekOf: null, items: [] };
+  }
+
+  const { data, error } = await supabase
+    .from("content_queue")
+    .select(QUEUE_SELECT)
+    .eq("week_of", resolvedWeek)
+    .order("created_at", { ascending: true });
+  if (error) throw new Error(error.message);
+
+  const rows = (data ?? []) as QueueRow[];
+  const items = await Promise.all(
+    rows.map(async (row) => ({
+      ...row,
+      image_urls: await signQueueImagePaths(supabase, row.image_paths ?? []),
+    })),
+  );
+  return { weekOf: resolvedWeek, items };
 }

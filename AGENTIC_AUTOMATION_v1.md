@@ -1,6 +1,6 @@
 # Agentic Automation Subsystem — Architecture v1
 
-Companion to `PROJECT_BIBLE_v41.md`. Same posture as the Launch Prep Runbook — a **separate
+Companion to `PROJECT_BIBLE_v43.md`. Same posture as the Launch Prep Runbook — a **separate
 document**, not a fork of the bible. Read this before writing any slice prompt for AGENT-01,
 AGENT-02, AGENT-03, or AUTO-03.
 
@@ -13,7 +13,7 @@ The bible remains canonical for current product/schema state. This file is canon
 trigger-based assistant invocation should work. Do not restate this architecture in the bible.
 
 **Out of scope here:** AUTO-01/02 (rule-based cron reminders) and WORKFLOW-00…05 (account-scoped
-CRM event + delay engine at `/automations`). Those are documented in `PROJECT_BIBLE_v41.md`.
+CRM event + delay engine at `/automations`). Those are documented in `PROJECT_BIBLE_v43.md`.
 This file covers AGENT-01/02/03 + AUTO-03 only.
 
 ---

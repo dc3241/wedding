@@ -27,6 +27,10 @@
     {
       "path": "/api/cron/automation-dispatch",
       "schedule": "25 15 * * *"
+    },
+    {
+      "path": "/api/cron/content-queue-generate",
+      "schedule": "35 15 * * 5"
     }
   ]
 }

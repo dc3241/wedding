@@ -39,6 +39,16 @@ const NAV_ITEMS: { href: string; label: string; icon: ReactNode }[] = [
     icon: <path d="M10 3 3 7l7 4 7-4-7-4ZM3 11l7 4 7-4" />,
   },
   {
+    href: "/admin/content-queue",
+    label: "Content queue",
+    icon: (
+      <>
+        <rect x="5" y="4" width="12" height="13" rx="2" />
+        <path d="M3 7v9.5A1.5 1.5 0 0 0 4.5 18H15" />
+      </>
+    ),
+  },
+  {
     href: "/admin/automations",
     label: "Automations",
     icon: <path d="M11 2 4.5 11.5H9L8 18l6.5-9.5H10l1-6.5Z" />,
