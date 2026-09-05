@@ -15,8 +15,8 @@ import { useEffect, useState, type ReactNode } from "react";
  * shape, not a different design system.
  *
  * ADMIN-AUD-01: shared top block, then Couples / Venues & planners groups.
- * Content queue and generate+rate Ideation stay top-level (Open decisions
- * #2a and #5). Collapse + mobile drawer stay in this file.
+ * Content queue and generate+rate Ideation stay top-level. Collapse +
+ * mobile drawer stay in this file.
  */
 
 type NavItem = {
@@ -88,7 +88,6 @@ const NAV: NavBlock[] = [
     kind: "group",
     label: "Couples",
     items: [
-      { href: "/admin/couples/pillars", label: "Content pillars", tooltip: "Couples content pillars", icon: ideationIcon },
       { href: "/admin/couples/bank", label: "Content bank", tooltip: "Couples content bank", icon: bankIcon },
       { href: "/admin/couples/image", label: "Image generator", tooltip: "Image generator", icon: imageIcon },
       { href: "/admin/couples/automations", label: "Automations", tooltip: "Couples automations", icon: automationsIcon },
@@ -98,7 +97,6 @@ const NAV: NavBlock[] = [
     kind: "group",
     label: "Venues & planners",
     items: [
-      { href: "/admin/planner/pillars", label: "Content pillars", tooltip: "Venues & planners content pillars", icon: ideationIcon },
       { href: "/admin/planner/bank", label: "Content bank", tooltip: "Venues & planners content bank", icon: bankIcon },
       { href: "/admin/planner/outreach", label: "Venue outreach", tooltip: "Venue outreach", icon: outreachIcon },
       { href: "/admin/planner/automations", label: "Automations", tooltip: "Venues & planners automations", icon: automationsIcon },

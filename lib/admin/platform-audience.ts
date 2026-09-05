@@ -34,5 +34,20 @@ export function bankPlatformsForAudience(
   ).map((p) => p.key);
 }
 
+export function itemInAudienceBank(
+  item: { audience_group: AudienceGroup | null; platform: string },
+  audience: AudienceGroup,
+): boolean {
+  if (item.audience_group) return item.audience_group === audience;
+  return audienceForPlatform(item.platform) === audience;
+}
+
 export const COUPLES_BANK_PLATFORMS = bankPlatformsForAudience("couples");
-export const PLANNER_BANK_PLATFORMS = bankPlatformsForAudience("planner");
+
+/** Planner bank includes IG/TikTok/Pin so queue graphics with a planner angle can file here. */
+export const PLANNER_BANK_PLATFORMS: ContentPlatform[] = [
+  "tiktok",
+  "instagram",
+  "pinterest",
+  ...bankPlatformsForAudience("planner"),
+];

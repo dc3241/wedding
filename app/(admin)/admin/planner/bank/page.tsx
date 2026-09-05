@@ -13,9 +13,9 @@ export default async function PlannerBankPage() {
       <PageHeader
         className="mb-5"
         title="Content bank — Venues & planners"
-        description="LinkedIn posts, Reddit threads to comment on, YouTube ideas — one place to grab whichever you need."
+        description="Approved queue graphics aimed at planners, plus LinkedIn, Reddit, and YouTube ideas."
       />
-      <ContentBankBoard items={items} platforms={PLANNER_BANK_PLATFORMS} />
+      <ContentBankBoard items={items} platforms={PLANNER_BANK_PLATFORMS} audience="planner" />
     </div>
   );
 }

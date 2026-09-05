@@ -12,7 +12,7 @@ export default async function AdminIdeationPage() {
       <PageHeader
         className="mb-5"
         title="Ideation"
-        description="Brainstorm with Claude, then rate and comment — future generations pull your best- and worst-rated ideas as context."
+        description="Like ideas and set platform, format, and audience on each. Friday produces those likes, then they leave this list so they are not made again."
       />
 
       <IdeationBoard items={items} />

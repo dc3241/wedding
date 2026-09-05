@@ -5,9 +5,9 @@
  * rather than a full script/post.
  *
  * Preference-tuned prompting, NOT model fine-tuning: before generating,
- * pull the best-rated (up, with comments) and worst-rated (down, with
- * comments) prior ideas as few-shot context so the model learns what
- * Dom/Jordyn actually like without any training infrastructure.
+ * pull unused liked / passed ideas plus already-produced (used_at) rows
+ * as few-shot context so the model leans into taste and does not repeat
+ * posts that already ran through the Friday queue.
  */
 import { NextResponse } from "next/server";
 import { checkIsAdmin } from "@/lib/admin/is-admin";
@@ -19,13 +19,18 @@ export const dynamic = "force-dynamic";
 
 const SYSTEM_PROMPT = `You are a social content strategist for First Look, a wedding-planning SaaS
 for couples and wedding planners/venues. You are brainstorming short-form
-content ideas (TikTok, Instagram, Facebook, Pinterest, LinkedIn) for the
-founders to post from their own personal-feeling brand account.
+content ideas the founders will later turn into Instagram, TikTok, or Pinterest
+posts from their own personal-feeling brand account.
 
 Tone: warm, useful, a little funny, never salesy. Mix of pure-value tips,
 behind-the-scenes/story content, and soft product mentions — mostly NOT
 direct promo. Ideas should be one or two sentences each: a hook or topic a
 human could turn into a script without more research.
+
+Every batch must mix:
+- About half couples-facing (budget, timeline, guests, vendors, real-wedding walkthroughs)
+- About half planner/venue-facing (inquiry speed, lead follow-up, avoiding double-bookings, ops)
+Do not cluster the whole list on one angle. Never use the word "AI".
 
 Return ONLY strict JSON: {"ideas": ["idea one", "idea two", ...]}. No
 markdown fences, no commentary.`;
@@ -51,21 +56,29 @@ export async function POST(request: Request) {
     body = {};
   }
   const topic = body.topic?.trim() || null;
-  const count = Math.min(Math.max(body.count ?? 8, 1), 20);
+  const count = Math.min(Math.max(body.count ?? 12, 1), 20);
 
-  const [{ data: liked }, { data: disliked }] = await Promise.all([
+  const [{ data: liked }, { data: disliked }, { data: used }] = await Promise.all([
     supabase
       .from("ideation_items")
       .select("idea_text, comment")
       .eq("rating", "up")
+      .is("used_at", null)
       .order("created_at", { ascending: false })
       .limit(6),
     supabase
       .from("ideation_items")
       .select("idea_text, comment")
       .eq("rating", "down")
+      .is("used_at", null)
       .order("created_at", { ascending: false })
       .limit(6),
+    supabase
+      .from("ideation_items")
+      .select("idea_text")
+      .not("used_at", "is", null)
+      .order("used_at", { ascending: false })
+      .limit(20),
   ]);
 
   const fewShotLines: string[] = [];
@@ -81,6 +94,12 @@ export async function POST(request: Request) {
       fewShotLines.push(`- "${row.idea_text}"${row.comment ? ` — note: ${row.comment}` : ""}`);
     }
   }
+  if (used?.length) {
+    fewShotLines.push("Ideas already produced as posts — do not repeat or lightly rephrase:");
+    for (const row of used) {
+      fewShotLines.push(`- "${row.idea_text}"`);
+    }
+  }
 
   const userText = [
     `Generate ${count} new content ideas.`,
@@ -94,7 +113,7 @@ export async function POST(request: Request) {
   const parsed = await callClaudeJson({
     system: SYSTEM_PROMPT,
     user: userText,
-    maxTokens: 1536,
+    maxTokens: 2048,
   });
 
   if (!isRecord(parsed)) {
@@ -113,7 +132,7 @@ export async function POST(request: Request) {
   const { data: inserted, error } = await supabase
     .from("ideation_items")
     .insert(ideas.map((idea_text) => ({ idea_text, requested_by: user.id })))
-    .select("id, idea_text, requested_by, rating, comment, created_at");
+    .select("id, idea_text, requested_by, rating, comment, platform, format, audience_group, carousel_slides, used_at, created_at");
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });

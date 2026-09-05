@@ -13,9 +13,9 @@ export default async function CouplesBankPage() {
       <PageHeader
         className="mb-5"
         title="Content bank — Couples"
-        description="Reusable ideas by platform — pull from here when filling out the schedule, or generate new ones from Automations."
+        description="Approved queue graphics and handwritten ideas for the couples angle. Pull from here when filling the schedule."
       />
-      <ContentBankBoard items={items} platforms={COUPLES_BANK_PLATFORMS} />
+      <ContentBankBoard items={items} platforms={COUPLES_BANK_PLATFORMS} audience="couples" />
     </div>
   );
 }

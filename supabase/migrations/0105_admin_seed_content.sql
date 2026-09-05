@@ -193,4 +193,5 @@ insert into schedule_days (week_id, date, platforms, notes_couples, notes_planne
 insert into schedule_days (week_id, date, platforms, notes_couples, notes_planner) select id, '2026-12-30', '{"tiktok": "pending", "ig": "pending", "fbPage": "pending", "fbGroups": "off", "pinterest": "pending", "linkedin": "pending", "reddit": "pending", "youtube": "pending", "outreach": "pending"}'::jsonb, null, null from schedule_weeks where start_date = '2026-12-28';
 insert into schedule_days (week_id, date, platforms, notes_couples, notes_planner) select id, '2026-12-31', '{"tiktok": "pending", "ig": "pending", "fbPage": "pending", "fbGroups": "pending", "pinterest": "pending", "linkedin": "pending", "reddit": "pending", "youtube": "pending", "outreach": "pending"}'::jsonb, null, null from schedule_weeks where start_date = '2026-12-28';
 
-insert into schedule_performance (week_id, views, follower_growth, dms, signups, notes) select id, '14.2k', '+38', '6', '2', 'Story+plug budget post (IG) drove most saves & DMs' from schedule_weeks where start_date = '2026-09-07';
+-- Sample schedule_performance row withdrawn in 0110. Views / DMs /
+-- growth / sign-ups are logged by hand on Schedule; Overview starts empty.

@@ -71,10 +71,19 @@ export async function getContentBank(
   const { data } = await supabase
     .from("content_bank_items")
     .select(
-      "id, platform, idea, type, format, title, body, notes, created_at",
+      "id, platform, idea, type, format, title, body, notes, audience_group, source_queue_id, image_paths, created_at",
     )
     .order("created_at", { ascending: false });
-  return (data ?? []) as ContentBankItem[];
+  const rows = (data ?? []) as Omit<ContentBankItem, "image_urls">[];
+  return Promise.all(
+    rows.map(async (row) => ({
+      ...row,
+      image_urls: await signQueueImagePaths(
+        supabase,
+        (row.image_paths ?? []).filter((p) => p.trim().length > 0),
+      ),
+    })),
+  );
 }
 
 export async function getAutomationPrompts(
@@ -126,13 +135,14 @@ export async function getIdeationItems(
 ): Promise<IdeationItem[]> {
   const { data } = await supabase
     .from("ideation_items")
-    .select("id, idea_text, requested_by, rating, comment, created_at")
+    .select("id, idea_text, requested_by, rating, comment, platform, format, audience_group, carousel_slides, used_at, created_at")
+    .is("used_at", null)
     .order("created_at", { ascending: false });
   return (data ?? []) as IdeationItem[];
 }
 
 const QUEUE_SELECT =
-  "id, platform, pillar, content_type, prompt, image_paths, caption, status, week_of, kie_task_id, generated_by, approved_at, denied_at, created_at, updated_at";
+  "id, platform, pillar, content_type, prompt, image_paths, caption, status, week_of, kie_task_id, kie_task_ids, format, audience_group, carousel_slides, generated_by, approved_at, denied_at, created_at, updated_at";
 
 type QueueRow = Omit<ContentQueueItem, "image_urls">;
 
@@ -181,7 +191,11 @@ export async function getContentQueue(
   const items = await Promise.all(
     rows.map(async (row) => ({
       ...row,
-      image_urls: await signQueueImagePaths(supabase, row.image_paths ?? []),
+      kie_task_ids: row.kie_task_ids ?? [],
+      image_urls: await signQueueImagePaths(
+        supabase,
+        (row.image_paths ?? []).filter((p) => p.trim().length > 0),
+      ),
     })),
   );
   return { weekOf: resolvedWeek, items };

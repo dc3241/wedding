@@ -1,3 +1,5 @@
+import type { ContentPostFormat } from "@/lib/admin/content-formats";
+import type { AudienceGroup } from "@/lib/admin/platform-audience";
 import type { ContentPlatform, ContentType, DayPlatforms } from "@/lib/admin/platforms";
 import type {
   ContentQueuePlatform,
@@ -44,7 +46,11 @@ export type ContentBankItem = {
   title: string | null;
   body: string;
   notes: string | null;
+  audience_group: AudienceGroup | null;
+  source_queue_id: string | null;
+  image_paths: string[];
   created_at: string;
+  image_urls: string[];
 };
 
 export type AdminAutomationPrompt = {
@@ -87,6 +93,11 @@ export type IdeationItem = {
   requested_by: string | null;
   rating: "up" | "down" | null;
   comment: string | null;
+  platform: ContentQueuePlatform | null;
+  format: ContentPostFormat | null;
+  audience_group: AudienceGroup | null;
+  carousel_slides: number | null;
+  used_at: string | null;
   created_at: string;
 };
 
@@ -101,11 +112,15 @@ export type ContentQueueItem = {
   status: ContentQueueStatus;
   week_of: string;
   kie_task_id: string | null;
+  kie_task_ids: string[];
+  format: ContentPostFormat | null;
+  audience_group: AudienceGroup | null;
+  carousel_slides: number | null;
   generated_by: string | null;
   approved_at: string | null;
   denied_at: string | null;
   created_at: string;
   updated_at: string;
-  /** Signed preview URLs, parallel to image_paths that signed successfully. */
+  /** Signed preview URLs for non-empty image_paths, in arrival order. */
   image_urls: string[];
 };

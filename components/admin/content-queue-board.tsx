@@ -11,7 +11,14 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Pill, type PillVariant } from "@/components/ui/pill";
+import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  AUDIENCE_OPTIONS,
+  formatLabel,
+  formatNeedsImages,
+  imagesReadyForQueue,
+} from "@/lib/admin/content-formats";
 import {
   CONTENT_QUEUE_PLATFORMS,
   CONTENT_QUEUE_STATUSES,
@@ -34,39 +41,16 @@ const STATUS_PILL: Record<ContentQueueStatus, { label: string; pill: PillVariant
 type PlatformFilter = "all" | ContentQueuePlatform;
 type StatusFilter = "all" | ContentQueueStatus;
 
-function FilterChip({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        "rounded-[var(--radius-pill)] border-[1.5px] px-3.5 py-1.5 text-[14px] font-medium",
-        active
-          ? "border-ink bg-ink text-surface font-semibold"
-          : "border-hairline bg-surface text-muted hover:border-accent hover:text-accent",
-      )}
-    >
-      {children}
-    </button>
-  );
-}
-
 function QueueImage({
   urls,
   platform,
+  format,
   index,
   onIndexChange,
 }: {
   urls: string[];
   platform: ContentQueuePlatform;
+  format: ContentQueueItem["format"];
   index: number;
   onIndexChange: (next: number) => void;
 }) {
@@ -81,7 +65,11 @@ function QueueImage({
           aspect,
         )}
       >
-        <p className="px-3 text-center text-[13px] text-muted">Waiting for image</p>
+        <p className="px-3 text-center text-[13px] text-muted">
+          {formatNeedsImages(format)
+            ? "Waiting for image"
+            : "Film this — no generated image"}
+        </p>
       </div>
     );
   }
@@ -142,6 +130,9 @@ function QueueCard({ item }: { item: ContentQueueItem }) {
   const platform = contentQueuePlatformMeta(item.platform);
   const statusMeta = STATUS_PILL[item.status];
   const typeMeta = CONTENT_TYPE_META[item.content_type];
+  const audienceLabel =
+    AUDIENCE_OPTIONS.find((a) => a.key === item.audience_group)?.label ?? null;
+  const imagesReady = imagesReadyForQueue(item);
 
   useEffect(() => {
     setPromptDraft(item.prompt);
@@ -178,6 +169,8 @@ function QueueCard({ item }: { item: ContentQueueItem }) {
     <Card className="flex flex-col px-5 py-4">
       <div className="mb-3 flex flex-wrap items-center gap-1.5">
         <Pill variant="default">{platform.label}</Pill>
+        {item.format ? <Pill variant="default">{formatLabel(item.format)}</Pill> : null}
+        {audienceLabel ? <Pill variant="default">{audienceLabel}</Pill> : null}
         <Pill variant={typeMeta.pill} title={typeMeta.label}>
           {item.content_type}
         </Pill>
@@ -187,6 +180,7 @@ function QueueCard({ item }: { item: ContentQueueItem }) {
       <QueueImage
         urls={item.image_urls}
         platform={item.platform}
+        format={item.format}
         index={imageIndex}
         onIndexChange={setImageIndex}
       />
@@ -215,7 +209,7 @@ function QueueCard({ item }: { item: ContentQueueItem }) {
           <>
             <Button
               variant="primary"
-              disabled={isPending}
+              disabled={isPending || !imagesReady}
               onClick={() => run(() => approveContentQueueItem(item.id))}
               className="px-4 py-2"
             >
@@ -229,6 +223,9 @@ function QueueCard({ item }: { item: ContentQueueItem }) {
             >
               Deny
             </Button>
+            {!imagesReady && formatNeedsImages(item.format) ? (
+              <p className="basis-full text-[13px] text-muted">Waiting for images before approve.</p>
+            ) : null}
           </>
         ) : null}
 
@@ -236,7 +233,7 @@ function QueueCard({ item }: { item: ContentQueueItem }) {
           <>
             <Button
               variant="primary"
-              disabled={isPending || item.image_paths.length === 0}
+              disabled={isPending || item.image_urls.length === 0}
               onClick={handleDownload}
               className="px-4 py-2"
             >
@@ -303,33 +300,41 @@ export function ContentQueueBoard({ items }: { items: ContentQueueItem[] }) {
 
   return (
     <div>
-      <div className="mb-3 flex flex-wrap gap-2">
-        <FilterChip active={platformFilter === "all"} onClick={() => setPlatformFilter("all")}>
-          All platforms
-        </FilterChip>
-        {CONTENT_QUEUE_PLATFORMS.map((p) => (
-          <FilterChip
-            key={p.key}
-            active={platformFilter === p.key}
-            onClick={() => setPlatformFilter(p.key)}
+      <div className="mb-4 flex flex-wrap gap-3">
+        <label className="block min-w-[200px] max-w-[280px] flex-1">
+          <span className="mb-1 block text-[12px] font-semibold tracking-[0.09em] text-muted uppercase">
+            Platform
+          </span>
+          <Select
+            value={platformFilter}
+            onChange={(e) => setPlatformFilter(e.target.value as PlatformFilter)}
+            aria-label="Platform"
           >
-            {p.label}
-          </FilterChip>
-        ))}
-      </div>
-      <div className="mb-4 flex flex-wrap gap-2">
-        <FilterChip active={statusFilter === "all"} onClick={() => setStatusFilter("all")}>
-          All statuses
-        </FilterChip>
-        {CONTENT_QUEUE_STATUSES.map((s) => (
-          <FilterChip
-            key={s.key}
-            active={statusFilter === s.key}
-            onClick={() => setStatusFilter(s.key)}
+            <option value="all">All platforms</option>
+            {CONTENT_QUEUE_PLATFORMS.map((p) => (
+              <option key={p.key} value={p.key}>
+                {p.label}
+              </option>
+            ))}
+          </Select>
+        </label>
+        <label className="block min-w-[200px] max-w-[280px] flex-1">
+          <span className="mb-1 block text-[12px] font-semibold tracking-[0.09em] text-muted uppercase">
+            Status
+          </span>
+          <Select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
+            aria-label="Status"
           >
-            {s.label}
-          </FilterChip>
-        ))}
+            <option value="all">All statuses</option>
+            {CONTENT_QUEUE_STATUSES.map((s) => (
+              <option key={s.key} value={s.key}>
+                {s.label}
+              </option>
+            ))}
+          </Select>
+        </label>
       </div>
 
       {filtered.length === 0 ? (

@@ -1,5 +1,12 @@
 "use client";
 
+import {
+  createBankItem,
+  deleteBankItem,
+  getContentBankDownloadUrl,
+  updateBankItem,
+  type BankItemInput,
+} from "@/app/(admin)/admin/bank/actions";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -9,6 +16,15 @@ import { Pill } from "@/components/ui/pill";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import {
+  formatLabel,
+  formatNeedsImages,
+  isContentPostFormat,
+} from "@/lib/admin/content-formats";
+import {
+  itemInAudienceBank,
+  type AudienceGroup,
+} from "@/lib/admin/platform-audience";
+import {
   CONTENT_PLATFORMS,
   CONTENT_TYPE_META,
   type ContentPlatform,
@@ -17,14 +33,8 @@ import {
 import type { ContentBankItem } from "@/lib/admin/types";
 import { cn } from "@/lib/cn";
 import { useMemo, useState, useTransition } from "react";
-import {
-  createBankItem,
-  deleteBankItem,
-  updateBankItem,
-  type BankItemInput,
-} from "@/app/(admin)/admin/bank/actions";
 
-function emptyForm(platform: ContentPlatform): BankItemInput {
+function emptyForm(platform: ContentPlatform): Omit<BankItemInput, "audience_group"> {
   return {
     platform,
     idea: "",
@@ -40,6 +50,12 @@ function platformMeta(key: ContentPlatform) {
   return CONTENT_PLATFORMS.find((p) => p.key === key)!;
 }
 
+function bankAspect(platform: ContentPlatform) {
+  if (platform === "tiktok") return "aspect-[9/16]";
+  if (platform === "pinterest") return "aspect-[2/3]";
+  return "aspect-[4/5]";
+}
+
 function BankForm({
   initial,
   platforms,
@@ -47,10 +63,10 @@ function BankForm({
   onSubmit,
   submitting,
 }: {
-  initial: BankItemInput;
+  initial: Omit<BankItemInput, "audience_group">;
   platforms: ContentPlatform[];
   onCancel: () => void;
-  onSubmit: (input: BankItemInput) => void;
+  onSubmit: (input: Omit<BankItemInput, "audience_group">) => void;
   submitting: boolean;
 }) {
   const [form, setForm] = useState(initial);
@@ -65,7 +81,7 @@ function BankForm({
       }}
       className="space-y-4"
     >
-      <h2 id="bank-form-title" className="font-display text-[19px] font-extrabold tracking-[-0.02em] text-ink">
+      <h2 id="bank-form-title" className="text-[19px] font-extrabold tracking-[-0.02em] text-ink">
         {initial.idea ? "Edit idea" : "New idea"}
       </h2>
 
@@ -187,12 +203,130 @@ function BankForm({
   );
 }
 
+function QueueSourcedCard({
+  item,
+  onDelete,
+}: {
+  item: ContentBankItem;
+  onDelete: (id: string) => void;
+}) {
+  const [imageIndex, setImageIndex] = useState(0);
+  const [copied, setCopied] = useState(false);
+  const [isPending, startTransition] = useTransition();
+  const meta = platformMeta(item.platform);
+  const urls = item.image_urls ?? [];
+  const count = urls.length;
+  const formatText = isContentPostFormat(item.format)
+    ? formatLabel(item.format)
+    : item.format;
+  const ugc = isContentPostFormat(item.format) && !formatNeedsImages(item.format);
+
+  function handleCopy() {
+    if (!item.body) return;
+    void navigator.clipboard.writeText(item.body).then(() => {
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1500);
+    });
+  }
+
+  function handleDownload() {
+    startTransition(async () => {
+      const url = await getContentBankDownloadUrl(item.id, imageIndex);
+      window.open(url, "_blank", "noopener,noreferrer");
+    });
+  }
+
+  return (
+    <Card className="px-5 py-4">
+      <div className="mb-2 flex flex-wrap items-center gap-2">
+        <Pill variant="default">{meta.label}</Pill>
+        {formatText ? <Pill variant="default">{formatText}</Pill> : null}
+        <Pill variant="sage">From queue</Pill>
+      </div>
+
+      {count === 0 ? (
+        <div
+          className={cn(
+            "mb-3 flex items-center justify-center rounded-[var(--radius-inner)] bg-well shadow-recessed",
+            bankAspect(item.platform),
+          )}
+        >
+          <p className="px-3 text-center text-[13px] text-muted">
+            {ugc ? "Film this — no generated image" : "No image on file"}
+          </p>
+        </div>
+      ) : (
+        <div
+          className={cn(
+            "relative mb-3 overflow-hidden rounded-[var(--radius-inner)] bg-well shadow-recessed",
+            bankAspect(item.platform),
+          )}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element -- short-lived signed URL */}
+          <img src={urls[Math.min(imageIndex, count - 1)]} alt="" className="size-full object-cover" />
+          {count > 1 ? (
+            <>
+              <button
+                type="button"
+                aria-label="Previous image"
+                onClick={() => setImageIndex((imageIndex - 1 + count) % count)}
+                className="absolute top-1/2 left-2 flex size-8 -translate-y-1/2 items-center justify-center rounded-[var(--radius-pill)] bg-surface/90 text-[15px] font-semibold text-ink"
+              >
+                ‹
+              </button>
+              <button
+                type="button"
+                aria-label="Next image"
+                onClick={() => setImageIndex((imageIndex + 1) % count)}
+                className="absolute top-1/2 right-2 flex size-8 -translate-y-1/2 items-center justify-center rounded-[var(--radius-pill)] bg-surface/90 text-[15px] font-semibold text-ink"
+              >
+                ›
+              </button>
+            </>
+          ) : null}
+        </div>
+      )}
+
+      <div className="mb-1 text-[15px] font-medium text-ink">{item.idea}</div>
+      <p className="line-clamp-3 text-[13px] text-muted">{item.body}</p>
+      <div className="mt-3 flex flex-wrap items-center gap-3">
+        <button
+          type="button"
+          onClick={handleCopy}
+          className="text-[13px] font-medium text-accent hover:underline"
+        >
+          {copied ? "Copied" : "Copy caption"}
+        </button>
+        {count > 0 ? (
+          <button
+            type="button"
+            disabled={isPending}
+            onClick={handleDownload}
+            className="text-[13px] font-medium text-accent hover:underline disabled:opacity-50"
+          >
+            Download
+          </button>
+        ) : null}
+        <button
+          type="button"
+          onClick={() => onDelete(item.id)}
+          className="ml-auto text-[13px] font-medium text-rosewood hover:underline"
+        >
+          Delete
+        </button>
+      </div>
+    </Card>
+  );
+}
+
 export function ContentBankBoard({
   items,
   platforms,
+  audience,
 }: {
   items: ContentBankItem[];
   platforms: ContentPlatform[];
+  audience: AudienceGroup;
 }) {
   const [localItems, setLocalItems] = useState(items);
   const [platformFilter, setPlatformFilter] = useState<ContentPlatform>(platforms[0]!);
@@ -200,8 +334,11 @@ export function ContentBankBoard({
   const [isPending, startTransition] = useTransition();
 
   const scopedItems = useMemo(
-    () => localItems.filter((i) => platforms.includes(i.platform)),
-    [localItems, platforms],
+    () =>
+      localItems.filter(
+        (i) => itemInAudienceBank(i, audience) && platforms.includes(i.platform),
+      ),
+    [localItems, platforms, audience],
   );
 
   const filtered = useMemo(
@@ -209,26 +346,31 @@ export function ContentBankBoard({
     [scopedItems, platformFilter],
   );
 
-  function handleSubmit(input: BankItemInput) {
+  function handleSubmit(input: Omit<BankItemInput, "audience_group">) {
+    const payload: BankItemInput = { ...input, audience_group: audience };
     if (editing === "new" || editing === null) {
       const temp: ContentBankItem = {
         id: crypto.randomUUID(),
         created_at: new Date().toISOString(),
+        audience_group: audience,
+        source_queue_id: null,
+        image_paths: [],
+        image_urls: [],
         ...input,
       };
       setLocalItems((prev) => [temp, ...prev]);
       setEditing(null);
       startTransition(async () => {
-        await createBankItem(input);
+        await createBankItem(payload);
       });
     } else {
       const id = editing.id;
       setLocalItems((prev) =>
         prev.map((i) => (i.id === id ? { ...i, ...input } : i)),
       );
+      setEditing(null);
       startTransition(async () => {
         await updateBankItem(id, input);
-        setEditing(null);
       });
     }
   }
@@ -274,11 +416,16 @@ export function ContentBankBoard({
       ) : (
         <div className="grid gap-3 md:grid-cols-2">
           {filtered.map((item) => {
+            if (item.source_queue_id) {
+              return (
+                <QueueSourcedCard key={item.id} item={item} onDelete={handleDelete} />
+              );
+            }
             const meta = platformMeta(item.platform);
             return (
               <Card
                 key={item.id}
-                className="cursor-pointer px-5 py-4 transition-colors hover:shadow-card-emotional"
+                className="cursor-pointer px-5 py-4 transition-colors"
                 onClick={() => setEditing(item)}
               >
                 <div className="mb-2 flex items-center justify-between gap-2">
@@ -318,7 +465,7 @@ export function ContentBankBoard({
         </div>
       )}
 
-      {editing !== null ? (
+      {editing !== null && (editing === "new" || !editing.source_queue_id) ? (
         <Modal onClose={() => setEditing(null)} labelledBy="bank-form-title">
           <BankForm
             platforms={platforms}
