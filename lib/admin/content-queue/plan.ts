@@ -131,17 +131,21 @@ export async function buildWeekPlan(
     maxTokens: 8192,
   });
 
-  if (!isRecord(parsed) || !Array.isArray(parsed.posts)) {
+  if (!isRecord(parsed)) {
     throw new Error("Anthropic returned no weekly content plan.");
   }
-  if (parsed.posts.length !== slots.length) {
+  const posts = parsed.posts;
+  if (!Array.isArray(posts)) {
+    throw new Error("Anthropic returned no weekly content plan.");
+  }
+  if (posts.length !== slots.length) {
     throw new Error(
-      `Anthropic plan length mismatch: expected ${slots.length}, got ${parsed.posts.length}.`,
+      `Anthropic plan length mismatch: expected ${slots.length}, got ${posts.length}.`,
     );
   }
 
   return slots.map((slot, i) => {
-    const row = parsed.posts[i];
+    const row = posts[i];
     if (!isRecord(row)) {
       throw new Error(`Anthropic plan item ${i + 1} is not an object.`);
     }

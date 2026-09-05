@@ -97,11 +97,15 @@ export async function POST(request: Request) {
     maxTokens: 1536,
   });
 
-  if (!isRecord(parsed) || !Array.isArray(parsed.ideas)) {
+  if (!isRecord(parsed)) {
+    return NextResponse.json({ error: "The model returned an unexpected response." }, { status: 502 });
+  }
+  const rawIdeas = parsed.ideas;
+  if (!Array.isArray(rawIdeas)) {
     return NextResponse.json({ error: "The model returned an unexpected response." }, { status: 502 });
   }
 
-  const ideas = parsed.ideas.filter((i): i is string => typeof i === "string" && i.trim().length > 0);
+  const ideas = rawIdeas.filter((i): i is string => typeof i === "string" && i.trim().length > 0);
   if (ideas.length === 0) {
     return NextResponse.json({ error: "No ideas were generated." }, { status: 502 });
   }
