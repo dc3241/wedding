@@ -82,22 +82,30 @@ export async function getAutomationPrompts(
 ): Promise<AdminAutomationPrompt[]> {
   const { data } = await supabase
     .from("admin_automation_prompts")
-    .select("id, name, description, prompt_template, is_manual_trigger")
+    .select("id, name, description, prompt_template, is_manual_trigger, audience_group")
     .order("name", { ascending: true });
   return (data ?? []) as AdminAutomationPrompt[];
 }
 
 export async function getRecentAutomationRuns(
   supabase: SupabaseClient,
-  limit = 20,
+  opts: { limit?: number; promptIds?: string[] } = {},
 ): Promise<AdminAutomationRun[]> {
-  const { data } = await supabase
+  const limit = opts.limit ?? 20;
+  if (opts.promptIds && opts.promptIds.length === 0) {
+    return [];
+  }
+  let query = supabase
     .from("admin_automation_runs")
     .select(
       "id, prompt_id, triggered_by, input_text, output_text, status, error_message, saved_to_bank, created_at, completed_at",
     )
     .order("created_at", { ascending: false })
     .limit(limit);
+  if (opts.promptIds && opts.promptIds.length > 0) {
+    query = query.in("prompt_id", opts.promptIds);
+  }
+  const { data } = await query;
   return (data ?? []) as AdminAutomationRun[];
 }
 

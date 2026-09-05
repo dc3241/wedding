@@ -53,6 +53,7 @@ export type AdminAutomationPrompt = {
   description: string | null;
   prompt_template: string;
   is_manual_trigger: boolean;
+  audience_group: "couples" | "planner" | null;
 };
 
 export type AdminAutomationRun = {

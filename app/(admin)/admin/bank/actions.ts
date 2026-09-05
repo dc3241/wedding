@@ -12,6 +12,13 @@ async function requireAdmin() {
   return supabase;
 }
 
+function revalidateBank() {
+  revalidatePath("/admin/bank");
+  revalidatePath("/admin/couples/bank");
+  revalidatePath("/admin/planner/bank");
+  revalidatePath("/admin");
+}
+
 export type BankItemInput = {
   platform: ContentPlatform;
   idea: string;
@@ -34,8 +41,7 @@ export async function createBankItem(input: BankItemInput) {
   });
   if (error) throw new Error(error.message);
 
-  revalidatePath("/admin/bank");
-  revalidatePath("/admin");
+  revalidateBank();
 }
 
 export async function updateBankItem(id: string, input: Partial<BankItemInput>) {
@@ -46,7 +52,7 @@ export async function updateBankItem(id: string, input: Partial<BankItemInput>) 
     .eq("id", id);
   if (error) throw new Error(error.message);
 
-  revalidatePath("/admin/bank");
+  revalidateBank();
 }
 
 export async function deleteBankItem(id: string) {
@@ -54,6 +60,5 @@ export async function deleteBankItem(id: string) {
   const { error } = await supabase.from("content_bank_items").delete().eq("id", id);
   if (error) throw new Error(error.message);
 
-  revalidatePath("/admin/bank");
-  revalidatePath("/admin");
+  revalidateBank();
 }

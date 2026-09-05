@@ -8,6 +8,7 @@ import { Modal } from "@/components/ui/modal";
 import { Pill } from "@/components/ui/pill";
 import { Textarea } from "@/components/ui/textarea";
 import type { AdminAutomationPrompt, AdminAutomationRun } from "@/lib/admin/types";
+import type { AudienceGroup } from "@/lib/admin/platform-audience";
 import { useState, useTransition } from "react";
 import {
   createPrompt,
@@ -18,12 +19,15 @@ import {
   type PromptInput,
 } from "@/app/(admin)/admin/automations/actions";
 
-const EMPTY_PROMPT: PromptInput = {
-  name: "",
-  description: null,
-  prompt_template: "",
-  is_manual_trigger: true,
-};
+function emptyPrompt(audienceGroup: AudienceGroup): PromptInput {
+  return {
+    name: "",
+    description: null,
+    prompt_template: "",
+    is_manual_trigger: true,
+    audience_group: audienceGroup,
+  };
+}
 
 function formatWhen(iso: string) {
   return new Date(iso).toLocaleString("en-US", {
@@ -172,9 +176,11 @@ function RunPrompt({ prompt }: { prompt: AdminAutomationPrompt }) {
 export function AutomationsBoard({
   prompts,
   runs,
+  audienceGroup,
 }: {
   prompts: AdminAutomationPrompt[];
   runs: AdminAutomationRun[];
+  audienceGroup: AudienceGroup;
 }) {
   const [localPrompts, setLocalPrompts] = useState(prompts);
   const [localRuns, setLocalRuns] = useState(runs);
@@ -333,7 +339,17 @@ export function AutomationsBoard({
       {editing !== null ? (
         <Modal onClose={() => setEditing(null)} labelledBy="prompt-form-title">
           <PromptForm
-            initial={editing === "new" ? EMPTY_PROMPT : editing}
+            initial={
+              editing === "new"
+                ? emptyPrompt(audienceGroup)
+                : {
+                    name: editing.name,
+                    description: editing.description,
+                    prompt_template: editing.prompt_template,
+                    is_manual_trigger: editing.is_manual_trigger,
+                    audience_group: editing.audience_group,
+                  }
+            }
             onCancel={() => setEditing(null)}
             onSubmit={handleSubmit}
             submitting={isPending}

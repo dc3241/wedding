@@ -6,6 +6,8 @@ import type { PillVariant } from "@/components/ui/pill";
  * LinkedIn are Idea | Format | Content (use `format`). Pinterest is
  * Idea | Pin Title | Pin Description (uses `title`). YouTube has no rows
  * yet (channel not live) but is a valid platform to file ideas under.
+ * Reddit (ADMIN-AUD-00) is a maintained list of threads to comment on
+ * (idea = title, notes = subreddit, body = why it's relevant).
  */
 export type ContentPlatform =
   | "tiktok"
@@ -13,7 +15,8 @@ export type ContentPlatform =
   | "facebook"
   | "pinterest"
   | "linkedin"
-  | "youtube";
+  | "youtube"
+  | "reddit";
 
 export const CONTENT_PLATFORMS: {
   key: ContentPlatform;
@@ -28,6 +31,7 @@ export const CONTENT_PLATFORMS: {
   { key: "facebook", label: "Facebook", usesType: false, usesFormat: true, usesTitle: false, bodyLabel: "Content" },
   { key: "pinterest", label: "Pinterest", usesType: false, usesFormat: false, usesTitle: true, bodyLabel: "Pin description" },
   { key: "linkedin", label: "LinkedIn", usesType: false, usesFormat: true, usesTitle: false, bodyLabel: "Post copy" },
+  { key: "reddit", label: "Reddit", usesType: false, usesFormat: false, usesTitle: false, bodyLabel: "Why it's relevant" },
   { key: "youtube", label: "YouTube", usesType: false, usesFormat: true, usesTitle: false, bodyLabel: "Content" },
 ];
 
@@ -51,8 +55,8 @@ export const CONTENT_TYPE_META: Record<
 /**
  * Schedule tri-state columns — Couples-facing (c) then
  * Planner-facing + Ops (p). Distinct key set from CONTENT_PLATFORMS
- * (fbPage/fbGroups split, plus reddit/outreach with no content-bank
- * equivalent) — schedule_days.platforms is jsonb precisely so this list
+ * (fbPage/fbGroups split, plus outreach with no content-bank
+ * equivalent; reddit is a bank platform as of ADMIN-AUD-00) — schedule_days.platforms is jsonb precisely so this list
  * can change without a migration.
  */
 export const SCHEDULE_PLATFORM_COLS: {

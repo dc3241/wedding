@@ -17,11 +17,29 @@ export async function callClaudeJson(args: {
   system: string;
   user: string;
   maxTokens?: number;
+  /** ONB-07 structured output. When set, the request uses
+   * output_config.format.type = json_schema instead of fenced-JSON parsing. */
+  jsonSchema?: Record<string, unknown>;
 }): Promise<unknown | null> {
   const apiKey = process.env.MODEL_API_KEY;
   if (!apiKey) return null;
 
   try {
+    const body: Record<string, unknown> = {
+      model: ANTHROPIC_MODEL,
+      max_tokens: args.maxTokens ?? 1024,
+      system: args.system,
+      messages: [{ role: "user", content: args.user }],
+    };
+    if (args.jsonSchema) {
+      body.output_config = {
+        format: {
+          type: "json_schema",
+          schema: args.jsonSchema,
+        },
+      };
+    }
+
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
@@ -29,12 +47,7 @@ export async function callClaudeJson(args: {
         "x-api-key": apiKey,
         "anthropic-version": "2023-06-01",
       },
-      body: JSON.stringify({
-        model: ANTHROPIC_MODEL,
-        max_tokens: args.maxTokens ?? 1024,
-        system: args.system,
-        messages: [{ role: "user", content: args.user }],
-      }),
+      body: JSON.stringify(body),
     });
 
     if (!response.ok) return null;

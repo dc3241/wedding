@@ -10,8 +10,10 @@ import {
   pickCurrentWeek,
 } from "@/lib/admin/queries";
 import { SCHEDULE_PLATFORM_COLS } from "@/lib/admin/platforms";
+import { audienceForPlatform } from "@/lib/admin/platform-audience";
 import { adminToday } from "@/lib/admin/today";
 import { createClient } from "@/utils/supabase/server";
+import type { DayCellStatus } from "@/lib/admin/platforms";
 
 function AdminStat({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
@@ -22,6 +24,37 @@ function AdminStat({ label, value, sub }: { label: string; value: string; sub?: 
       </div>
       {sub ? <div className="mt-1 text-[13px] text-muted">{sub}</div> : null}
     </Card>
+  );
+}
+
+function TodayChecklistRows({
+  cols,
+  platforms,
+}: {
+  cols: typeof SCHEDULE_PLATFORM_COLS;
+  platforms: Record<string, DayCellStatus>;
+}) {
+  return (
+    <div>
+      {cols.map((c) => {
+        const status = platforms[c.key] ?? "pending";
+        return (
+          <div
+            key={c.key}
+            className="flex items-center justify-between border-b border-hairline py-2.5 text-[15px] font-medium last:border-b-0"
+          >
+            <span>{c.label}</span>
+            <span
+              className={
+                status === "done" ? "font-semibold text-sage" : "text-muted"
+              }
+            >
+              {status === "done" ? "Posted" : "Pending"}
+            </span>
+          </div>
+        );
+      })}
+    </div>
   );
 }
 
@@ -42,8 +75,13 @@ export default async function AdminOverviewPage() {
     (c) => todayRow && todayRow.platforms[c.key] !== "off",
   );
   const doneCols = activeCols.filter((c) => todayRow!.platforms[c.key] === "done");
+  const couplesCols = activeCols.filter(
+    (c) => audienceForPlatform(c.key) === "couples",
+  );
+  const plannerCols = activeCols.filter(
+    (c) => audienceForPlatform(c.key) === "planner",
+  );
 
-  // Most recent week with a logged performance row.
   const latestPerf = [...weeks]
     .reverse()
     .map((w) => w.performance)
@@ -75,44 +113,45 @@ export default async function AdminOverviewPage() {
         <AdminStat
           label="Bank ideas ready"
           value={String(bank.length)}
-          sub="across 6 platforms"
+          sub="in the bank"
         />
       </div>
 
       <div className="grid gap-4 md:grid-cols-[1.3fr_1fr] md:items-start">
-        <Card className="px-6 py-5">
-          <Eyebrow className="mb-3 text-accent">
-            Today — {todayRow?.date ?? today}
-          </Eyebrow>
-          {todayRow ? (
-            <div>
-              {SCHEDULE_PLATFORM_COLS.filter((c) => todayRow.platforms[c.key] !== "off").map(
-                (c) => {
-                  const status = todayRow.platforms[c.key] ?? "pending";
-                  return (
-                    <div
-                      key={c.key}
-                      className="flex items-center justify-between border-b border-hairline py-2.5 text-[15px] font-medium last:border-b-0"
-                    >
-                      <span>{c.label}</span>
-                      <span
-                        className={
-                          status === "done"
-                            ? "font-semibold text-sage"
-                            : "text-muted"
-                        }
-                      >
-                        {status === "done" ? "Posted" : "Pending"}
-                      </span>
-                    </div>
-                  );
-                },
-              )}
-            </div>
-          ) : (
-            <EmptyState>No schedule set up for today yet.</EmptyState>
-          )}
-        </Card>
+        <div className="flex flex-col gap-4">
+          <Card className="px-6 py-5">
+            <Eyebrow className="mb-3 text-accent">Today — Couples channels</Eyebrow>
+            {todayRow && couplesCols.length > 0 ? (
+              <TodayChecklistRows
+                cols={couplesCols}
+                platforms={todayRow.platforms}
+              />
+            ) : (
+              <EmptyState>
+                {todayRow
+                  ? "No couples channels scheduled today."
+                  : "No schedule set up for today yet."}
+              </EmptyState>
+            )}
+          </Card>
+          <Card className="px-6 py-5">
+            <Eyebrow className="mb-3 text-accent">
+              Today — Venues & Planners channels
+            </Eyebrow>
+            {todayRow && plannerCols.length > 0 ? (
+              <TodayChecklistRows
+                cols={plannerCols}
+                platforms={todayRow.platforms}
+              />
+            ) : (
+              <EmptyState>
+                {todayRow
+                  ? "No venues & planners channels scheduled today."
+                  : "No schedule set up for today yet."}
+              </EmptyState>
+            )}
+          </Card>
+        </div>
 
         <div className="flex flex-col gap-4">
           <Card className="px-6 py-5">
@@ -147,7 +186,7 @@ export default async function AdminOverviewPage() {
               {prompts.length} prompt{prompts.length === 1 ? "" : "s"} ready to run —
               weekly content-day batch normally runs Fridays.
             </p>
-            <ButtonLink href="/admin/automations" variant="primary" className="mt-4">
+            <ButtonLink href="/admin/couples/automations" variant="primary" className="mt-4">
               Open automations
             </ButtonLink>
           </Card>

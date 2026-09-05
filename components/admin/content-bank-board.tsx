@@ -24,15 +24,17 @@ import {
   type BankItemInput,
 } from "@/app/(admin)/admin/bank/actions";
 
-const EMPTY_FORM: BankItemInput = {
-  platform: "tiktok",
-  idea: "",
-  type: null,
-  format: null,
-  title: null,
-  body: "",
-  notes: null,
-};
+function emptyForm(platform: ContentPlatform): BankItemInput {
+  return {
+    platform,
+    idea: "",
+    type: null,
+    format: null,
+    title: null,
+    body: "",
+    notes: null,
+  };
+}
 
 function platformMeta(key: ContentPlatform) {
   return CONTENT_PLATFORMS.find((p) => p.key === key)!;
@@ -40,17 +42,20 @@ function platformMeta(key: ContentPlatform) {
 
 function BankForm({
   initial,
+  platforms,
   onCancel,
   onSubmit,
   submitting,
 }: {
   initial: BankItemInput;
+  platforms: ContentPlatform[];
   onCancel: () => void;
   onSubmit: (input: BankItemInput) => void;
   submitting: boolean;
 }) {
-  const [form, setForm] = useState<BankItemInput>(initial);
+  const [form, setForm] = useState(initial);
   const meta = platformMeta(form.platform);
+  const isReddit = form.platform === "reddit";
 
   return (
     <form
@@ -74,22 +79,25 @@ function BankForm({
             setForm((f) => ({ ...f, platform: e.target.value as ContentPlatform }))
           }
         >
-          {CONTENT_PLATFORMS.map((p) => (
-            <option key={p.key} value={p.key}>
-              {p.label}
-            </option>
-          ))}
+          {platforms.map((key) => {
+            const p = platformMeta(key);
+            return (
+              <option key={p.key} value={p.key}>
+                {p.label}
+              </option>
+            );
+          })}
         </Select>
       </div>
 
       <div>
         <label className="mb-1 block text-[12px] font-semibold tracking-[0.09em] text-muted uppercase">
-          Idea
+          {isReddit ? "Thread title" : "Idea"}
         </label>
         <Input
           value={form.idea}
           onChange={(e) => setForm((f) => ({ ...f, idea: e.target.value }))}
-          placeholder="One-line hook or topic"
+          placeholder={isReddit ? "Thread title or topic" : "One-line hook or topic"}
           required
         />
       </div>
@@ -157,12 +165,13 @@ function BankForm({
 
       <div>
         <label className="mb-1 block text-[12px] font-semibold tracking-[0.09em] text-muted uppercase">
-          Notes
+          {isReddit ? "Subreddit" : "Notes"}
         </label>
         <Textarea
           value={form.notes ?? ""}
           onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value || null }))}
           rows={2}
+          placeholder={isReddit ? "r/weddingplanning" : undefined}
         />
       </div>
 
@@ -178,25 +187,39 @@ function BankForm({
   );
 }
 
-export function ContentBankBoard({ items }: { items: ContentBankItem[] }) {
+export function ContentBankBoard({
+  items,
+  platforms,
+}: {
+  items: ContentBankItem[];
+  platforms: ContentPlatform[];
+}) {
   const [localItems, setLocalItems] = useState(items);
-  const [platformFilter, setPlatformFilter] = useState<ContentPlatform | "all">("all");
+  const [platformFilter, setPlatformFilter] = useState<ContentPlatform>(platforms[0]!);
   const [editing, setEditing] = useState<ContentBankItem | "new" | null>(null);
   const [isPending, startTransition] = useTransition();
 
+  const scopedItems = useMemo(
+    () => localItems.filter((i) => platforms.includes(i.platform)),
+    [localItems, platforms],
+  );
+
   const filtered = useMemo(
-    () =>
-      platformFilter === "all"
-        ? localItems
-        : localItems.filter((i) => i.platform === platformFilter),
-    [localItems, platformFilter],
+    () => scopedItems.filter((i) => i.platform === platformFilter),
+    [scopedItems, platformFilter],
   );
 
   function handleSubmit(input: BankItemInput) {
     if (editing === "new" || editing === null) {
+      const temp: ContentBankItem = {
+        id: crypto.randomUUID(),
+        created_at: new Date().toISOString(),
+        ...input,
+      };
+      setLocalItems((prev) => [temp, ...prev]);
+      setEditing(null);
       startTransition(async () => {
         await createBankItem(input);
-        setEditing(null);
       });
     } else {
       const id = editing.id;
@@ -221,20 +244,9 @@ export function ContentBankBoard({ items }: { items: ContentBankItem[] }) {
     <div>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => setPlatformFilter("all")}
-            className={cn(
-              "rounded-[var(--radius-pill)] border-[1.5px] px-3.5 py-1.5 text-[14px] font-medium",
-              platformFilter === "all"
-                ? "border-ink bg-ink text-surface font-semibold"
-                : "border-hairline bg-surface text-muted hover:border-accent hover:text-accent",
-            )}
-          >
-            All ({localItems.length})
-          </button>
-          {CONTENT_PLATFORMS.map((p) => {
-            const count = localItems.filter((i) => i.platform === p.key).length;
+          {platforms.map((key) => {
+            const p = platformMeta(key);
+            const count = scopedItems.filter((i) => i.platform === p.key).length;
             return (
               <button
                 key={p.key}
@@ -270,7 +282,12 @@ export function ContentBankBoard({ items }: { items: ContentBankItem[] }) {
                 onClick={() => setEditing(item)}
               >
                 <div className="mb-2 flex items-center justify-between gap-2">
-                  <Pill variant="default">{meta.label}</Pill>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Pill variant="default">{meta.label}</Pill>
+                    {item.platform === "reddit" && item.notes ? (
+                      <Pill variant="default">{item.notes}</Pill>
+                    ) : null}
+                  </div>
                   {item.type ? (
                     <Pill variant={CONTENT_TYPE_META[item.type].pill}>
                       {CONTENT_TYPE_META[item.type].label}
@@ -282,7 +299,7 @@ export function ContentBankBoard({ items }: { items: ContentBankItem[] }) {
                   <div className="mb-1 text-[14px] font-medium text-accent">{item.title}</div>
                 ) : null}
                 <p className="line-clamp-3 text-[13px] text-muted">{item.body}</p>
-                {item.notes ? (
+                {item.platform !== "reddit" && item.notes ? (
                   <p className="mt-2 text-[13px] text-muted italic">{item.notes}</p>
                 ) : null}
                 <button
@@ -304,9 +321,10 @@ export function ContentBankBoard({ items }: { items: ContentBankItem[] }) {
       {editing !== null ? (
         <Modal onClose={() => setEditing(null)} labelledBy="bank-form-title">
           <BankForm
+            platforms={platforms}
             initial={
               editing === "new"
-                ? EMPTY_FORM
+                ? emptyForm(platformFilter)
                 : {
                     platform: editing.platform,
                     idea: editing.idea,
