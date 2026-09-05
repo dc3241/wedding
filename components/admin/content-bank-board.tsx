@@ -19,6 +19,7 @@ import {
   formatLabel,
   formatNeedsImages,
   isContentPostFormat,
+  queueNoImageCopy,
 } from "@/lib/admin/content-formats";
 import {
   itemInAudienceBank,
@@ -219,7 +220,6 @@ function QueueSourcedCard({
   const formatText = isContentPostFormat(item.format)
     ? formatLabel(item.format)
     : item.format;
-  const ugc = isContentPostFormat(item.format) && !formatNeedsImages(item.format);
 
   function handleCopy() {
     if (!item.body) return;
@@ -252,7 +252,9 @@ function QueueSourcedCard({
           )}
         >
           <p className="px-3 text-center text-[13px] text-muted">
-            {ugc ? "Film this — no generated image" : "No image on file"}
+            {isContentPostFormat(item.format) && !formatNeedsImages(item.format)
+              ? queueNoImageCopy(item.format)
+              : "No image on file"}
           </p>
         </div>
       ) : (

@@ -2,7 +2,7 @@ import type { ContentQueuePlatform } from "@/lib/admin/content-queue";
 import type { AudienceGroup } from "@/lib/admin/platform-audience";
 
 /** Production format — what Friday should make. Not A/B/C/D (caption flavor). */
-export type ContentPostFormat = "static" | "carousel" | "ugc" | "photo" | "pin";
+export type ContentPostFormat = "static" | "carousel" | "ugc" | "photo" | "pin" | "text";
 
 export const CONTENT_POST_FORMATS: {
   key: ContentPostFormat;
@@ -14,6 +14,7 @@ export const CONTENT_POST_FORMATS: {
   { key: "ugc", label: "UGC", needsImages: false },
   { key: "photo", label: "Photo", needsImages: true },
   { key: "pin", label: "Pin", needsImages: true },
+  { key: "text", label: "Text post", needsImages: false },
 ];
 
 export const FORMATS_BY_PLATFORM: Record<
@@ -30,12 +31,18 @@ export const FORMATS_BY_PLATFORM: Record<
     { key: "photo", label: "Photo" },
   ],
   pinterest: [{ key: "pin", label: "Pin" }],
+  linkedin: [{ key: "text", label: "Text post" }],
 };
 
 export const AUDIENCE_OPTIONS: { key: AudienceGroup; label: string }[] = [
   { key: "couples", label: "Couples" },
   { key: "planner", label: "Venues & planners" },
 ];
+
+/** Ideas per Generate click. Enough to like 9–12 after passing some. */
+export const IDEATION_GENERATE_COUNT = 15;
+export const IDEATION_GENERATE_MIN = 10;
+export const IDEATION_GENERATE_MAX = 15;
 
 export const DEFAULT_CAROUSEL_SLIDES = 5;
 export const MIN_CAROUSEL_SLIDES = 3;
@@ -72,11 +79,17 @@ export function slideCountFor(
   format: ContentPostFormat | null | undefined,
   slides?: number | null,
 ): number {
-  if (!format || format === "ugc") return 0;
+  if (!formatNeedsImages(format)) return 0;
   if (format === "carousel") {
     return clampCarouselSlides(slides ?? DEFAULT_CAROUSEL_SLIDES);
   }
   return 1;
+}
+
+export function queueNoImageCopy(format: ContentPostFormat | null | undefined): string {
+  if (format === "ugc") return "Film this — no generated image";
+  if (format === "text") return "Text post — no generated image";
+  return "No generated image";
 }
 
 export function formatLabel(format: ContentPostFormat | null | undefined): string {
@@ -129,10 +142,13 @@ export function applyIdeaTargetPatch(
 ): IdeaTargetFields {
   const platform = patch.platform !== undefined ? patch.platform : current.platform;
   let format = patch.format !== undefined ? patch.format : current.format;
-  const audience_group =
+  let audience_group =
     patch.audience_group !== undefined ? patch.audience_group : current.audience_group;
 
-  if (platform === "pinterest") {
+  if (platform === "linkedin") {
+    format = "text";
+    audience_group = "planner";
+  } else if (platform === "pinterest") {
     format = "pin";
   } else if (platform && format && !isFormatForPlatform(platform, format)) {
     format = null;

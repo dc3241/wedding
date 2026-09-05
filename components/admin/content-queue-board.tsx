@@ -18,6 +18,7 @@ import {
   formatLabel,
   formatNeedsImages,
   imagesReadyForQueue,
+  queueNoImageCopy,
 } from "@/lib/admin/content-formats";
 import {
   CONTENT_QUEUE_PLATFORMS,
@@ -66,9 +67,9 @@ function QueueImage({
         )}
       >
         <p className="px-3 text-center text-[13px] text-muted">
-          {formatNeedsImages(format)
+            {formatNeedsImages(format)
             ? "Waiting for image"
-            : "Film this — no generated image"}
+            : queueNoImageCopy(format)}
         </p>
       </div>
     );

@@ -99,15 +99,16 @@ Production formats:
 - carousel: N branded slides, same locked template, a sequence. Put slide prompts in
   "prompts" (length N) AND set "prompt" to the first slide.
 - ugc: film-it-yourself. Caption is the spoken / on-screen script. "prompt" MUST be "".
+- text: LinkedIn (or other) copy-only post. Caption is the post body. "prompt" MUST be "".
 
 For each slot return:
 - topic: one short label (a few words) for the review card.
 - caption: platform-appropriate post text (TikTok on-screen/spoken-style caption,
-  Instagram caption, Pinterest pin description) that executes THIS idea. For UGC this
-  is the script.
-- prompt: image-generation prompt for a branded slide, or "" for UGC. Keep the locked
+  Instagram caption, Pinterest pin description, LinkedIn post) that executes THIS idea.
+  For UGC this is the script. For text this is the full post.
+- prompt: image-generation prompt for a branded slide, or "" for UGC and text. Keep the locked
   template's layout, type, and palette. Describe only what changes (headline, supporting
-  lines, any small scene). Non-UGC prompts MUST include the tags [idea: …] and
+  lines, any small scene). Image-format prompts MUST include the tags [idea: …] and
   [type: A|B|C|D] using the slot's topic label and type.
 - prompts: for carousel only, an array of N image prompts (one per slide), each tagged
   the same way. Empty array for other formats.

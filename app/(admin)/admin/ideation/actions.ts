@@ -7,7 +7,10 @@ import {
   isContentPostFormat,
   type IdeaTargetFields,
 } from "@/lib/admin/content-formats";
-import type { ContentQueuePlatform } from "@/lib/admin/content-queue";
+import {
+  isContentQueuePlatform,
+  type ContentQueuePlatform,
+} from "@/lib/admin/content-queue";
 import type { AudienceGroup } from "@/lib/admin/platform-audience";
 import { createClient } from "@/utils/supabase/server";
 
@@ -35,7 +38,7 @@ export async function setIdeaComment(id: string, comment: string | null) {
 export type IdeaTargetPatch = Partial<IdeaTargetFields>;
 
 function isQueuePlatform(value: unknown): value is ContentQueuePlatform {
-  return value === "instagram" || value === "tiktok" || value === "pinterest";
+  return isContentQueuePlatform(value);
 }
 
 function isAudience(value: unknown): value is AudienceGroup {

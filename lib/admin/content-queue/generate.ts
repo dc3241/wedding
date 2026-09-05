@@ -13,7 +13,9 @@ export const KIE_MODEL = "seedream/5-pro-image-to-image";
 /** Seedream 5 Pro i2i: `basic` = 1K, `high` = 2K. 1K covers 1080 social. */
 export const KIE_QUALITY = "basic" as const;
 
-export const PLATFORM_ASPECT: Record<ContentQueuePlatform, string> = {
+type KiePlatform = Exclude<ContentQueuePlatform, "linkedin">;
+
+export const PLATFORM_ASPECT: Record<KiePlatform, string> = {
   // Slice sizing is IG 4:5. KIE's documented enum is
   // 1:1 | 4:3 | 3:4 | 16:9 | 9:16 | 2:3 | 3:2 | 21:9 — no 4:5.
   // Sending 4:5 as specified; if createTask rejects it, drop to 3:4.
@@ -87,8 +89,11 @@ export async function requestGeneration(
   post: Pick<PlannedPost, "platform" | "prompt">,
   references?: { lrvnPost: string; squareSet: string },
 ): Promise<string> {
+  if (post.platform === "linkedin") {
+    throw new Error("LinkedIn posts are text-only; skip image generation.");
+  }
   const refs = references ?? (await resolveReferenceUrls());
-  const byPlatform: Record<ContentQueuePlatform, string> = {
+  const byPlatform: Record<KiePlatform, string> = {
     tiktok: refs.lrvnPost,
     instagram: refs.squareSet,
     pinterest: refs.squareSet,

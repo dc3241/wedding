@@ -7,7 +7,10 @@ import {
   slideCountFor,
   type ContentPostFormat,
 } from "@/lib/admin/content-formats";
-import type { ContentQueuePlatform } from "@/lib/admin/content-queue";
+import {
+  isContentQueuePlatform,
+  type ContentQueuePlatform,
+} from "@/lib/admin/content-queue";
 import {
   requestGeneration,
   resolveReferenceUrls,
@@ -72,10 +75,6 @@ function resolveMaxBatch(): number {
   return Math.min(DEFAULT_BATCH_SIZE, Math.max(1, Math.round(raw)));
 }
 
-function isQueuePlatform(value: unknown): value is ContentQueuePlatform {
-  return value === "instagram" || value === "tiktok" || value === "pinterest";
-}
-
 function isAudience(value: unknown): value is AudienceGroup {
   return value === "couples" || value === "planner";
 }
@@ -98,7 +97,7 @@ async function loadReadyIdeas(
 
   return (data ?? []).flatMap((row) => {
     if (
-      !isQueuePlatform(row.platform) ||
+      !isContentQueuePlatform(row.platform) ||
       !isContentPostFormat(row.format) ||
       !isAudience(row.audience_group) ||
       !row.id ||

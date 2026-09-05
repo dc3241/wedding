@@ -11,6 +11,7 @@ import {
   AUDIENCE_OPTIONS,
   DEFAULT_CAROUSEL_SLIDES,
   formatsForPlatform,
+  IDEATION_GENERATE_COUNT,
   isIdeaFridayReady,
   MAX_CAROUSEL_SLIDES,
   MIN_CAROUSEL_SLIDES,
@@ -224,6 +225,7 @@ function IdeaCard({
             }
             aria-label="Audience"
             className="py-1.5"
+            disabled={item.platform === "linkedin"}
           >
             <option value="">Audience</option>
             {AUDIENCE_OPTIONS.map((a) => (
@@ -298,7 +300,10 @@ export function IdeationBoard({ items }: { items: IdeationItem[] }) {
       const res = await fetch("/api/admin/ideation/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ topic: topic.trim() || undefined, count: 12 }),
+        body: JSON.stringify({
+          topic: topic.trim() || undefined,
+          count: IDEATION_GENERATE_COUNT,
+        }),
       });
       const data = (await res.json()) as { items?: IdeationItem[]; error?: string };
       if (!res.ok || !data.items) {
@@ -334,8 +339,9 @@ export function IdeationBoard({ items }: { items: IdeationItem[] }) {
         {genError ? <p className="mt-2 text-[13px] text-rosewood">{genError}</p> : null}
         <p className="mt-2 text-[13px] text-muted">
           Liked ideas with a platform, format, and audience become Friday&apos;s
-          content-queue batch. Passed ideas steer the next generate away. Produced
-          likes leave this list.
+          content-queue batch (up to 12). Generate {IDEATION_GENERATE_COUNT} so
+          you can pass a few and still like 9–12. Passed ideas steer the next
+          generate away. Produced likes leave this list.
           {fridayReady > 0 ? ` ${fridayReady} ready for Friday.` : ""}
         </p>
       </Card>

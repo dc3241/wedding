@@ -11,6 +11,11 @@
  */
 import { NextResponse } from "next/server";
 import { checkIsAdmin } from "@/lib/admin/is-admin";
+import {
+  IDEATION_GENERATE_COUNT,
+  IDEATION_GENERATE_MAX,
+  IDEATION_GENERATE_MIN,
+} from "@/lib/admin/content-formats";
 import { callClaudeJson, isRecord } from "@/lib/inquiry/llm-json";
 import { createClient } from "@/utils/supabase/server";
 
@@ -19,17 +24,17 @@ export const dynamic = "force-dynamic";
 
 const SYSTEM_PROMPT = `You are a social content strategist for First Look, a wedding-planning SaaS
 for couples and wedding planners/venues. You are brainstorming short-form
-content ideas the founders will later turn into Instagram, TikTok, or Pinterest
-posts from their own personal-feeling brand account.
+content ideas the founders will later turn into Instagram, TikTok, Pinterest,
+or LinkedIn posts from their own personal-feeling brand account.
 
 Tone: warm, useful, a little funny, never salesy. Mix of pure-value tips,
 behind-the-scenes/story content, and soft product mentions — mostly NOT
 direct promo. Ideas should be one or two sentences each: a hook or topic a
-human could turn into a script without more research.
+human could turn into a script or a LinkedIn post without more research.
 
 Every batch must mix:
-- About half couples-facing (budget, timeline, guests, vendors, real-wedding walkthroughs)
-- About half planner/venue-facing (inquiry speed, lead follow-up, avoiding double-bookings, ops)
+- About half couples-facing (budget, timeline, guests, vendors, real-wedding walkthroughs) — typically Instagram, TikTok, or Pinterest
+- About half planner/venue-facing (inquiry speed, lead follow-up, avoiding double-bookings, ops) — mix LinkedIn text-post ideas with Instagram/TikTok/Pin ideas that speak to planners
 Do not cluster the whole list on one angle. Never use the word "AI".
 
 Return ONLY strict JSON: {"ideas": ["idea one", "idea two", ...]}. No
@@ -56,7 +61,10 @@ export async function POST(request: Request) {
     body = {};
   }
   const topic = body.topic?.trim() || null;
-  const count = Math.min(Math.max(body.count ?? 12, 1), 20);
+  const count = Math.min(
+    Math.max(body.count ?? IDEATION_GENERATE_COUNT, IDEATION_GENERATE_MIN),
+    IDEATION_GENERATE_MAX,
+  );
 
   const [{ data: liked }, { data: disliked }, { data: used }] = await Promise.all([
     supabase
@@ -113,7 +121,7 @@ export async function POST(request: Request) {
   const parsed = await callClaudeJson({
     system: SYSTEM_PROMPT,
     user: userText,
-    maxTokens: 2048,
+    maxTokens: 4096,
   });
 
   if (!isRecord(parsed)) {
