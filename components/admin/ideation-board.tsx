@@ -82,7 +82,7 @@ function IdeaCard({
   item: IdeationItem;
   onPatch: (id: string, patch: Partial<IdeationItem>) => void;
   onRemove: (id: string) => void;
-  onProduced: (id: string) => void;
+  onProduced: (id: string, warning?: string) => void;
 }) {
   const [isPending, startTransition] = useTransition();
   const [comment, setComment] = useState(item.comment ?? "");
@@ -163,12 +163,21 @@ function IdeaCard({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: item.id }),
       });
-      const data = (await res.json()) as { error?: string; queueId?: string };
-      if (!res.ok || !data.queueId) {
+      const data = (await res.json()) as {
+        error?: string;
+        queueId?: string;
+        ok?: boolean;
+        errors?: string[];
+      };
+      if (!data.queueId) {
         setError(data.error ?? "Could not produce this idea.");
         return;
       }
-      onProduced(item.id);
+      const warning =
+        data.ok === false
+          ? data.error ?? data.errors?.[0] ?? "Image generation failed."
+          : undefined;
+      onProduced(item.id, warning);
     } catch {
       setError("Network error reaching the produce route.");
     } finally {
@@ -315,6 +324,7 @@ export function IdeationBoard({ items }: { items: IdeationItem[] }) {
   const [generating, setGenerating] = useState(false);
   const [genError, setGenError] = useState<string | null>(null);
   const [producedNotice, setProducedNotice] = useState(false);
+  const [producedWarning, setProducedWarning] = useState<string | null>(null);
 
   function patchItem(id: string, patch: Partial<IdeationItem>) {
     setLocalItems((prev) => prev.map((i) => (i.id === id ? { ...i, ...patch } : i)));
@@ -324,9 +334,10 @@ export function IdeationBoard({ items }: { items: IdeationItem[] }) {
     setLocalItems((prev) => prev.filter((i) => i.id !== id));
   }
 
-  function handleProduced(id: string) {
+  function handleProduced(id: string, warning?: string) {
     removeItem(id);
     setProducedNotice(true);
+    setProducedWarning(warning ?? null);
   }
 
   const fridayReady = localItems.filter(isIdeaFridayReady).length;
@@ -390,13 +401,23 @@ export function IdeationBoard({ items }: { items: IdeationItem[] }) {
           {fridayReady > 0 ? ` ${fridayReady} ready to produce.` : ""}
         </p>
         {producedNotice ? (
-          <p className="mt-2 text-[13px] text-sage">
-            Sent to the{" "}
-            <Link href="/admin/content-queue" className="font-semibold text-accent hover:underline">
-              content queue
-            </Link>
-            .
-          </p>
+          producedWarning ? (
+            <p className="mt-2 text-[13px] text-rosewood">
+              Sent to the{" "}
+              <Link href="/admin/content-queue" className="font-semibold text-accent hover:underline">
+                content queue
+              </Link>
+              , but image generation failed: {producedWarning}
+            </p>
+          ) : (
+            <p className="mt-2 text-[13px] text-sage">
+              Sent to the{" "}
+              <Link href="/admin/content-queue" className="font-semibold text-accent hover:underline">
+                content queue
+              </Link>
+              .
+            </p>
+          )
         ) : null}
       </Card>
 

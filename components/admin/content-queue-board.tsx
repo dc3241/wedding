@@ -15,10 +15,12 @@ import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import {
   AUDIENCE_OPTIONS,
+  filledImagePaths,
   formatLabel,
   formatNeedsImages,
   imagesReadyForQueue,
   queueNoImageCopy,
+  slideCountFor,
 } from "@/lib/admin/content-formats";
 import {
   CONTENT_QUEUE_PLATFORMS,
@@ -42,18 +44,56 @@ const STATUS_PILL: Record<ContentQueueStatus, { label: string; pill: PillVariant
 type PlatformFilter = "all" | ContentQueuePlatform;
 type StatusFilter = "all" | ContentQueueStatus;
 
+const IMAGE_POLL_MS = 5000;
+const STILL_GENERATING_AFTER_MS = 3 * 60 * 1000;
+
+function imageJobStarted(item: ContentQueueItem): boolean {
+  return item.kie_task_ids.length > 0 || Boolean(item.kie_task_id);
+}
+
+function generatingCopy(item: ContentQueueItem): string {
+  const expected = slideCountFor(item.format, item.carousel_slides);
+  const filled = filledImagePaths(item.image_paths).length;
+  const startedAt = Date.parse(item.updated_at);
+  const takingLong =
+    Number.isFinite(startedAt) && Date.now() - startedAt >= STILL_GENERATING_AFTER_MS;
+  if (expected > 1) {
+    const progress = `${filled} of ${expected}`;
+    return takingLong
+      ? `Still generating… ${progress}`
+      : `Generating images… ${progress}`;
+  }
+  return takingLong ? "Still generating…" : "Generating image…";
+}
+
+function KieSpinner({ className }: { className?: string }) {
+  return (
+    <span
+      className={cn(
+        "inline-block rounded-full border-2 border-accent border-t-transparent animate-spin motion-reduce:animate-none",
+        className,
+      )}
+      aria-hidden
+    />
+  );
+}
+
 function QueueImage({
   urls,
   platform,
   format,
   index,
   onIndexChange,
+  generating,
+  waitingLabel,
 }: {
   urls: string[];
   platform: ContentQueuePlatform;
   format: ContentQueueItem["format"];
   index: number;
   onIndexChange: (next: number) => void;
+  generating: boolean;
+  waitingLabel: string;
 }) {
   const aspect = contentQueuePlatformMeta(platform).aspectClass;
   const count = urls.length;
@@ -65,12 +105,19 @@ function QueueImage({
           "flex items-center justify-center rounded-[var(--radius-inner)] bg-well shadow-recessed",
           aspect,
         )}
+        aria-busy={generating}
+        aria-live="polite"
       >
-        <p className="px-3 text-center text-[13px] text-muted">
-            {formatNeedsImages(format)
-            ? "Waiting for image"
-            : queueNoImageCopy(format)}
-        </p>
+        {formatNeedsImages(format) && generating ? (
+          <div className="flex flex-col items-center gap-2 px-3">
+            <KieSpinner className="size-5" />
+            <p className="text-center text-[13px] text-muted">{waitingLabel}</p>
+          </div>
+        ) : (
+          <p className="px-3 text-center text-[13px] text-muted">
+            {formatNeedsImages(format) ? waitingLabel : queueNoImageCopy(format)}
+          </p>
+        )}
       </div>
     );
   }
@@ -79,9 +126,18 @@ function QueueImage({
   const url = urls[safeIndex];
 
   return (
-    <div className={cn("relative overflow-hidden rounded-[var(--radius-inner)] bg-well shadow-recessed", aspect)}>
+    <div
+      className={cn("relative overflow-hidden rounded-[var(--radius-inner)] bg-well shadow-recessed", aspect)}
+      aria-busy={generating}
+    >
       {/* eslint-disable-next-line @next/next/no-img-element -- short-lived signed URL */}
       <img src={url} alt="" className="size-full object-cover" />
+      {generating ? (
+        <div className="absolute top-2 left-1/2 flex -translate-x-1/2 items-center gap-1.5 rounded-[var(--radius-pill)] bg-surface/90 px-2.5 py-1">
+          <KieSpinner className="size-3" />
+          <p className="text-[13px] text-muted whitespace-nowrap">{waitingLabel}</p>
+        </div>
+      ) : null}
       {count > 1 ? (
         <>
           <button
@@ -127,6 +183,7 @@ function QueueCard({ item }: { item: ContentQueueItem }) {
   const [copied, setCopied] = useState(false);
   const [promptDraft, setPromptDraft] = useState(item.prompt);
   const [imageIndex, setImageIndex] = useState(0);
+  const [retryingImage, setRetryingImage] = useState(false);
   const router = useRouter();
   const platform = contentQueuePlatformMeta(item.platform);
   const statusMeta = STATUS_PILL[item.status];
@@ -134,10 +191,19 @@ function QueueCard({ item }: { item: ContentQueueItem }) {
   const audienceLabel =
     AUDIENCE_OPTIONS.find((a) => a.key === item.audience_group)?.label ?? null;
   const imagesReady = imagesReadyForQueue(item);
+  const jobStarted = imageJobStarted(item);
+  const generating =
+    formatNeedsImages(item.format) && !imagesReady && (jobStarted || retryingImage);
+  const canRetryImage =
+    item.status === "pending" && formatNeedsImages(item.format) && !imagesReady;
 
   useEffect(() => {
     setPromptDraft(item.prompt);
   }, [item.prompt]);
+
+  useEffect(() => {
+    if (jobStarted) setRetryingImage(false);
+  }, [jobStarted]);
 
   function run(fn: () => Promise<void>) {
     setError(null);
@@ -184,6 +250,16 @@ function QueueCard({ item }: { item: ContentQueueItem }) {
         format={item.format}
         index={imageIndex}
         onIndexChange={setImageIndex}
+        generating={generating}
+        waitingLabel={
+          generating
+            ? jobStarted
+              ? generatingCopy(item)
+              : "Starting generation…"
+            : formatNeedsImages(item.format)
+              ? "Image generation didn't start"
+              : queueNoImageCopy(item.format)
+        }
       />
 
       <div className="mt-3">
@@ -224,8 +300,35 @@ function QueueCard({ item }: { item: ContentQueueItem }) {
             >
               Deny
             </Button>
+            {canRetryImage ? (
+              <Button
+                variant="default"
+                disabled={isPending}
+                onClick={() => {
+                  setRetryingImage(true);
+                  run(async () => {
+                    try {
+                      await regenerateContentQueueItem(
+                        item.id,
+                        promptDraft || item.prompt,
+                      );
+                    } catch (err) {
+                      setRetryingImage(false);
+                      throw err;
+                    }
+                  });
+                }}
+                className="px-4 py-2"
+              >
+                Retry image
+              </Button>
+            ) : null}
             {!imagesReady && formatNeedsImages(item.format) ? (
-              <p className="basis-full text-[13px] text-muted">Waiting for images before approve.</p>
+              <p className="basis-full text-[13px] text-muted">
+                {generating
+                  ? "Approve unlocks when the image arrives."
+                  : "Image generation didn't start."}
+              </p>
             ) : null}
           </>
         ) : null}
@@ -267,7 +370,17 @@ function QueueCard({ item }: { item: ContentQueueItem }) {
             <Button
               variant="primary"
               disabled={isPending}
-              onClick={() => run(() => regenerateContentQueueItem(item.id, promptDraft))}
+              onClick={() => {
+                setRetryingImage(true);
+                run(async () => {
+                  try {
+                    await regenerateContentQueueItem(item.id, promptDraft);
+                  } catch (err) {
+                    setRetryingImage(false);
+                    throw err;
+                  }
+                });
+              }}
               className="px-4 py-2"
             >
               Regenerate
@@ -292,6 +405,23 @@ function QueueCard({ item }: { item: ContentQueueItem }) {
 export function ContentQueueBoard({ items }: { items: ContentQueueItem[] }) {
   const [platformFilter, setPlatformFilter] = useState<PlatformFilter>("all");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const router = useRouter();
+
+  const waitingOnKie = items.some(
+    (item) =>
+      formatNeedsImages(item.format) &&
+      !imagesReadyForQueue(item) &&
+      imageJobStarted(item),
+  );
+
+  useEffect(() => {
+    if (!waitingOnKie) return;
+    const id = window.setInterval(() => {
+      if (document.visibilityState !== "visible") return;
+      router.refresh();
+    }, IMAGE_POLL_MS);
+    return () => window.clearInterval(id);
+  }, [waitingOnKie, router]);
 
   const filtered = items.filter((item) => {
     if (platformFilter !== "all" && item.platform !== platformFilter) return false;

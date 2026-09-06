@@ -52,6 +52,7 @@ export async function POST(request: Request) {
     revalidatePath("/admin");
     return NextResponse.json({
       ok: result.errors.length === 0,
+      error: result.errors[0],
       ...result,
     });
   } catch (err) {

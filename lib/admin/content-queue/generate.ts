@@ -9,8 +9,9 @@ import { appOrigin } from "@/lib/url";
 import { createServiceRoleClient } from "@/utils/supabase/service-role";
 import type { PlannedPost } from "@/lib/admin/content-queue/plan";
 import {
+  kiePromptForProductShot,
   matchProductShot,
-  productShotPromptPrefix,
+  screensForShot,
 } from "@/lib/admin/content-queue/product-shots";
 
 export const KIE_CREATE_TASK_URL = "https://api.kie.ai/api/v1/jobs/createTask";
@@ -72,12 +73,27 @@ async function signedReferenceUrl(path: string): Promise<string> {
   return data.signedUrl;
 }
 
-async function signedProductShotUrl(path: string): Promise<string | null> {
+async function signedProductShotUrl(path: string): Promise<string> {
   const supabase = createServiceRoleClient();
+  const slash = path.lastIndexOf("/");
+  const dir = slash === -1 ? "" : path.slice(0, slash);
+  const name = slash === -1 ? path : path.slice(slash + 1);
+  const { data: listed, error: listError } = await supabase.storage
+    .from(CONTENT_QUEUE_BUCKET)
+    .list(dir, { search: name, limit: 20 });
+  if (listError || !listed?.some((entry) => entry.name === name)) {
+    throw new Error(
+      `Product screenshot missing from ${CONTENT_QUEUE_BUCKET}: ${path}. Upload design/product-shots/${name} to production storage before generating.`,
+    );
+  }
   const { data, error } = await supabase.storage
     .from(CONTENT_QUEUE_BUCKET)
     .createSignedUrl(path, REFERENCE_SIGNED_TTL_SECONDS);
-  if (error || !data?.signedUrl) return null;
+  if (error || !data?.signedUrl) {
+    throw new Error(
+      `Could not sign product screenshot ${path}: ${error?.message ?? "unknown error"}`,
+    );
+  }
   return data.signedUrl;
 }
 
@@ -108,15 +124,19 @@ export async function requestGeneration(
     pinterest: refs.squareSet,
   };
 
-  const imageUrls = [byPlatform[post.platform]];
-  let prompt = post.prompt;
+  const layoutUrl = byPlatform[post.platform];
   const shot = matchProductShot(post.prompt);
+  let imageUrls: string[];
+  let prompt: string;
   if (shot) {
-    const productUrl = await signedProductShotUrl(shot.path);
-    if (productUrl) {
-      imageUrls.push(productUrl);
-      prompt = `${productShotPromptPrefix()} ${post.prompt}`;
-    }
+    const productUrls = await Promise.all(
+      screensForShot(shot).map((screen) => signedProductShotUrl(screen.path)),
+    );
+    imageUrls = [...productUrls, layoutUrl];
+    prompt = kiePromptForProductShot(shot, post.prompt);
+  } else {
+    imageUrls = [layoutUrl];
+    prompt = post.prompt;
   }
 
   const res = await fetch(KIE_CREATE_TASK_URL, {

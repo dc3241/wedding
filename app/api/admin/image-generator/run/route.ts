@@ -6,6 +6,7 @@
  * Never calls KIE or any image-generation host.
  */
 import { NextResponse } from "next/server";
+import { KIE_ASPECT_RATIOS, toKieAspectRatio } from "@/lib/admin/content-queue/kie-aspect";
 import { checkIsAdmin } from "@/lib/admin/is-admin";
 import { callClaudeJson, isRecord } from "@/lib/inquiry/llm-json";
 import { createClient } from "@/utils/supabase/server";
@@ -31,7 +32,12 @@ const PACKET_SCHEMA = {
     styleReference: { type: "string", description: "How it should look, tied to the chosen style." },
     composition: { type: "string", description: "Framing, hierarchy, what's in frame." },
     colorsAndLighting: { type: "string", description: "Palette and light. Soft stack: mauve canvas, berry accent, no gold." },
-    aspectRatio: { type: "string", description: "e.g. 4:5, 9:16, 1:1 depending on use." },
+    aspectRatio: {
+      type: "string",
+      enum: [...KIE_ASPECT_RATIOS],
+      description:
+        "KIE Seedream 5 Pro allowed ratios only: 1:1, 4:3, 3:4, 16:9, 9:16, 2:3, 3:2, 21:9. Instagram feed → 3:4 (not 4:5). TikTok → 9:16. Pinterest → 2:3.",
+    },
     negativePrompt: { type: "string", description: "What to avoid." },
   },
 };
@@ -46,6 +52,7 @@ function asPacket(
     if (typeof v !== "string" || !v.trim()) return null;
     out[key] = v.trim();
   }
+  out.aspectRatio = toKieAspectRatio(out.aspectRatio ?? "", "3:4");
   return out as Record<(typeof PACKET_FIELDS)[number], string>;
 }
 
@@ -84,7 +91,8 @@ export async function POST(request: Request) {
     parsed = await callClaudeJson({
       system: `You write KIE / Seedream 5 Pro image-to-image prompt packets for First Look, a wedding-planning app.
 Return only the six fields in the schema. Never use the word "AI" — say "automatically" if relevant.
-Keep the packet tight enough to paste directly into KIE. No gold, florals, or photographic ornament.`,
+Keep the packet tight enough to paste directly into KIE. No gold, florals, or photographic ornament.
+aspectRatio must be one of KIE's allowed values only: 1:1, 4:3, 3:4, 16:9, 9:16, 2:3, 3:2, 21:9. Never emit 4:5 — use 3:4 for Instagram portrait.`,
       user: `Concept: "${concept}". Style: ${style}.`,
       maxTokens: 800,
       jsonSchema: PACKET_SCHEMA,

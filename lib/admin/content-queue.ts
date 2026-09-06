@@ -12,7 +12,7 @@ export const CONTENT_QUEUE_PLATFORMS: {
   aspectClass: string;
 }[] = [
   { key: "tiktok", label: "TikTok", aspectClass: "aspect-[9/16]" },
-  { key: "instagram", label: "Instagram", aspectClass: "aspect-[4/5]" },
+  { key: "instagram", label: "Instagram", aspectClass: "aspect-[3/4]" },
   { key: "pinterest", label: "Pinterest", aspectClass: "aspect-[2/3]" },
   { key: "linkedin", label: "LinkedIn", aspectClass: "min-h-[8rem]" },
 ];

@@ -9,6 +9,7 @@ import {
 import type { ContentQueuePlatform } from "@/lib/admin/content-queue";
 import type { AudienceGroup } from "@/lib/admin/platform-audience";
 import type { ContentType } from "@/lib/admin/platforms";
+import { PRODUCT_SHOT_SLUGS } from "@/lib/admin/content-queue/product-shots";
 import { adminToday } from "@/lib/admin/today";
 import { callClaudeJson, isRecord } from "@/lib/inquiry/llm-json";
 
@@ -106,13 +107,14 @@ For each slot return:
 - caption: platform-appropriate post text (TikTok on-screen/spoken-style caption,
   Instagram caption, Pinterest pin description, LinkedIn post) that executes THIS idea.
   For UGC this is the script. For text this is the full post.
-- prompt: image-generation prompt for a branded slide, or "" for UGC and text. Keep the locked
-  template's layout, type, and palette. Describe only what changes (headline, supporting
-  lines, any small scene). When the idea shows the product, name the real First Look
-  surface in the prompt (checklist, budget, seating, leads, white-label, dashboard, …)
-  so a real screenshot can be attached. Do not invent fake portals, dashboards, or chrome.
-  Lifestyle or tip posts with no UI should not describe a screen. Image-format prompts
-  MUST include the tags [idea: …] and [type: A|B|C|D] using the slot's topic label and type.
+- prompt: image-generation prompt for a branded slide, or "" for UGC and text.
+  Headline + one supporting line only. Never describe screens, dashboards, portals,
+  buttons, logos, helper text, chrome, serif type, script type, or invented UI — a
+  real screenshot is attached separately, and describing UI makes the model ignore it.
+  When the idea shows the product, add [surface: SLUG] using exactly one of:
+  ${PRODUCT_SHOT_SLUGS.join(", ")}. Lifestyle or tip posts with no UI omit [surface:].
+  Image-format prompts MUST include the tags [idea: …] and [type: A|B|C|D] using the
+  slot's topic label and type.
 - prompts: for carousel only, an array of N image prompts (one per slide), each tagged
   the same way. Empty array for other formats.
 
