@@ -109,9 +109,10 @@ For each slot return:
   For UGC this is the script. For text this is the full post.
 - prompt: image-generation prompt for a branded slide, or "" for UGC and text.
   Headline + one supporting line only. Never describe screens, dashboards, portals,
-  buttons, logos, helper text, chrome, serif type, script type, or invented UI — a
-  real screenshot is attached separately, and describing UI makes the model ignore it.
-  When the idea shows the product, add [surface: SLUG] using exactly one of:
+  buttons, logos, helper text, chrome, serif type, script type, device frames, or
+  invented UI — a real screenshot is attached separately as a fragment source, and
+  describing a full screenshot makes the model paste one. When the idea shows the
+  product, add [surface: SLUG] using exactly one of:
   ${PRODUCT_SHOT_SLUGS.join(", ")}. Lifestyle or tip posts with no UI omit [surface:].
   Image-format prompts MUST include the tags [idea: …] and [type: A|B|C|D] using the
   slot's topic label and type.

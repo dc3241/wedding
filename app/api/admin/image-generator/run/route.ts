@@ -92,6 +92,7 @@ export async function POST(request: Request) {
       system: `You write KIE / Seedream 5 Pro image-to-image prompt packets for First Look, a wedding-planning app.
 Return only the six fields in the schema. Never use the word "AI" — say "automatically" if relevant.
 Keep the packet tight enough to paste directly into KIE. No gold, florals, or photographic ornament.
+If the style is "App UI screenshot / feature graphic": isolate 1–2 product UI fragments (a raised card, a few rows, a status pill, a metric) and compose them as designed graphic elements on a mauve canvas. Never paste a full-page screenshot, a crop of a whole window, a device/laptop frame, or overlapping app windows. Keep real labels and numbers; do not invent chrome.
 aspectRatio must be one of KIE's allowed values only: 1:1, 4:3, 3:4, 16:9, 9:16, 2:3, 3:2, 21:9. Never emit 4:5 — use 3:4 for Instagram portrait.`,
       user: `Concept: "${concept}". Style: ${style}.`,
       maxTokens: 800,
