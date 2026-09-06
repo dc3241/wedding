@@ -4,6 +4,7 @@ import {
   formatNeedsImages,
   isContentPostFormat,
   isFormatForPlatform,
+  isIdeaFridayReady,
   slideCountFor,
   type ContentPostFormat,
 } from "@/lib/admin/content-formats";
@@ -34,6 +35,25 @@ export type QueueBatchResult = {
   skippedExisting: boolean;
   errors: string[];
 };
+
+export type ProduceIdeaResult = {
+  queueId: string | null;
+  weekOf: string;
+  planned: number;
+  inserted: number;
+  tasked: number;
+  errors: string[];
+};
+
+export class ProduceIdeaError extends Error {
+  constructor(
+    message: string,
+    readonly code: "not_found" | "already_used" | "not_ready",
+  ) {
+    super(message);
+    this.name = "ProduceIdeaError";
+  }
+}
 
 type ServiceClient = ReturnType<typeof createServiceRoleClient>;
 type ReferenceUrls = Awaited<ReturnType<typeof resolveReferenceUrls>>;
@@ -79,10 +99,51 @@ function isAudience(value: unknown): value is AudienceGroup {
   return value === "couples" || value === "planner";
 }
 
+function asLikedIdeaSlot(row: {
+  id: string | null;
+  idea_text: string | null;
+  comment: string | null;
+  platform: string | null;
+  format: string | null;
+  audience_group: string | null;
+  carousel_slides: number | null;
+}): LikedIdeaSlot | null {
+  if (
+    !isContentQueuePlatform(row.platform) ||
+    !isContentPostFormat(row.format) ||
+    !isAudience(row.audience_group) ||
+    !row.id ||
+    !row.idea_text
+  ) {
+    return null;
+  }
+  if (!isFormatForPlatform(row.platform, row.format)) return null;
+  if (
+    !isIdeaFridayReady({
+      rating: "up",
+      platform: row.platform,
+      format: row.format,
+      audience_group: row.audience_group,
+    })
+  ) {
+    return null;
+  }
+  return {
+    id: row.id,
+    idea_text: row.idea_text,
+    comment: row.comment ?? null,
+    platform: row.platform,
+    format: row.format,
+    audience_group: row.audience_group,
+    carousel_slides: row.carousel_slides ?? null,
+  };
+}
+
 async function loadReadyIdeas(
   supabase: ServiceClient,
   limit: number,
 ): Promise<LikedIdeaSlot[]> {
+  if (limit <= 0) return [];
   const { data, error } = await supabase
     .from("ideation_items")
     .select("id, idea_text, comment, platform, format, audience_group, carousel_slides")
@@ -96,27 +157,8 @@ async function loadReadyIdeas(
   if (error) throw new Error(error.message);
 
   return (data ?? []).flatMap((row) => {
-    if (
-      !isContentQueuePlatform(row.platform) ||
-      !isContentPostFormat(row.format) ||
-      !isAudience(row.audience_group) ||
-      !row.id ||
-      !row.idea_text
-    ) {
-      return [];
-    }
-    if (!isFormatForPlatform(row.platform, row.format)) return [];
-    return [
-      {
-        id: row.id,
-        idea_text: row.idea_text,
-        comment: row.comment ?? null,
-        platform: row.platform,
-        format: row.format,
-        audience_group: row.audience_group,
-        carousel_slides: row.carousel_slides ?? null,
-      },
-    ];
+    const slot = asLikedIdeaSlot(row);
+    return slot ? [slot] : [];
   });
 }
 
@@ -138,103 +180,89 @@ function promptsForRow(row: {
   return fallback ? Array.from({ length: n }, () => fallback) : [];
 }
 
-export async function runWeeklyContentQueue(
-  maxBatch = resolveMaxBatch(),
-): Promise<QueueBatchResult> {
-  if (!process.env.MODEL_API_KEY?.trim()) {
-    throw new Error("MODEL_API_KEY is not configured.");
+function taskIdsForRow(row: {
+  kie_task_id: string | null;
+  kie_task_ids: string[] | null;
+}): string[] {
+  if ((row.kie_task_ids ?? []).length > 0) return row.kie_task_ids ?? [];
+  return row.kie_task_id ? [row.kie_task_id] : [];
+}
+
+async function retryIncompleteJobs(
+  supabase: ServiceClient,
+  rows: {
+    id: string;
+    platform: ContentQueuePlatform;
+    prompt: string;
+    kie_task_id: string | null;
+    kie_task_ids: string[] | null;
+    format: string | null;
+    carousel_slides: number | null;
+    slide_prompts: string[] | null;
+  }[],
+  errors: string[],
+): Promise<number> {
+  const retryRows = rows.filter((row) => {
+    const format = isContentPostFormat(row.format) ? row.format : null;
+    if (!formatNeedsImages(format)) return false;
+    const expected = slideCountFor(format, row.carousel_slides);
+    const ids = taskIdsForRow(row);
+    return ids.length < expected;
+  });
+
+  if (retryRows.length === 0) return 0;
+  if (!process.env.KIE_API_KEY?.trim()) {
+    throw new Error("KIE_API_KEY is not configured.");
   }
 
-  const weekOf = contentQueueWeekOf();
-  const supabase = createServiceRoleClient();
-
-  const { data: existing, error: existingError } = await supabase
-    .from("content_queue")
-    .select(
-      "id, platform, prompt, kie_task_id, kie_task_ids, format, carousel_slides, slide_prompts",
-    )
-    .eq("week_of", weekOf)
-    .order("created_at", { ascending: true });
-  if (existingError) throw new Error(existingError.message);
-
-  const errors: string[] = [];
-  const rows = existing ?? [];
-
-  if (rows.length > 0) {
-    const retryRows = rows.filter((row) => {
+  const references = await resolveReferenceUrls();
+  let retried = 0;
+  for (const row of retryRows) {
+    try {
       const format = isContentPostFormat(row.format) ? row.format : null;
-      if (!formatNeedsImages(format)) return false;
-      const expected = slideCountFor(format, row.carousel_slides);
-      const ids =
-        (row.kie_task_ids ?? []).length > 0
-          ? row.kie_task_ids
-          : row.kie_task_id
-            ? [row.kie_task_id]
-            : [];
-      return ids.length < expected;
-    });
-
-    if (retryRows.length > 0 && !process.env.KIE_API_KEY?.trim()) {
-      throw new Error("KIE_API_KEY is not configured.");
+      const prompts = promptsForRow({
+        format,
+        carousel_slides: row.carousel_slides,
+        prompt: row.prompt,
+        slide_prompts: row.slide_prompts,
+      });
+      const added = await attachImageJobs(
+        supabase,
+        row.id,
+        row.platform,
+        prompts,
+        references,
+        taskIdsForRow(row),
+      );
+      retried += added;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "createTask failed";
+      console.error("content-queue-generate retry:", row.id, err);
+      errors.push(`${row.id}: ${message}`);
     }
-
-    const references =
-      retryRows.length > 0 ? await resolveReferenceUrls() : null;
-    let retried = 0;
-    for (const row of retryRows) {
-      try {
-        const format = isContentPostFormat(row.format) ? row.format : null;
-        const prompts = promptsForRow({
-          format,
-          carousel_slides: row.carousel_slides,
-          prompt: row.prompt,
-          slide_prompts: row.slide_prompts,
-        });
-        const existingIds =
-          (row.kie_task_ids ?? []).length > 0
-            ? row.kie_task_ids
-            : row.kie_task_id
-              ? [row.kie_task_id]
-              : [];
-        const added = await attachImageJobs(
-          supabase,
-          row.id,
-          row.platform,
-          prompts,
-          references!,
-          existingIds,
-        );
-        retried += added;
-      } catch (err) {
-        const message = err instanceof Error ? err.message : "createTask failed";
-        console.error("content-queue-generate retry:", row.id, err);
-        errors.push(`${row.id}: ${message}`);
-      }
-    }
-    return {
-      weekOf,
-      planned: 0,
-      inserted: 0,
-      tasked: retried,
-      retried,
-      skippedExisting: true,
-      errors,
-    };
   }
+  return retried;
+}
 
-  const ideas = await loadReadyIdeas(supabase, maxBatch);
+type ProducePostsResult = {
+  planned: number;
+  inserted: number;
+  tasked: number;
+  errors: string[];
+  queueIds: string[];
+};
+
+async function produceQueuePosts(
+  ideas: LikedIdeaSlot[],
+  weekOf: string,
+): Promise<ProducePostsResult> {
+  const errors: string[] = [];
+  const queueIds: string[] = [];
   if (ideas.length === 0) {
-    return {
-      weekOf,
-      planned: 0,
-      inserted: 0,
-      tasked: 0,
-      retried: 0,
-      skippedExisting: false,
-      errors,
-    };
+    return { planned: 0, inserted: 0, tasked: 0, errors, queueIds };
   }
 
+  const supabase = createServiceRoleClient();
   const plan = await buildWeekPlan(ideas);
   const needsKie = plan.some((post) => formatNeedsImages(post.format));
   if (needsKie && !process.env.KIE_API_KEY?.trim()) {
@@ -276,6 +304,7 @@ export async function runWeeklyContentQueue(
       continue;
     }
     inserted += 1;
+    queueIds.push(row.id);
 
     const { error: usedError } = await supabase
       .from("ideation_items")
@@ -304,14 +333,116 @@ export async function runWeeklyContentQueue(
     }
   }
 
+  return { planned: plan.length, inserted, tasked, errors, queueIds };
+}
+
+export async function runWeeklyContentQueue(
+  maxBatch = resolveMaxBatch(),
+): Promise<QueueBatchResult> {
+  if (!process.env.MODEL_API_KEY?.trim()) {
+    throw new Error("MODEL_API_KEY is not configured.");
+  }
+
+  const weekOf = contentQueueWeekOf();
+  const supabase = createServiceRoleClient();
+
+  const { data: existing, error: existingError } = await supabase
+    .from("content_queue")
+    .select(
+      "id, platform, prompt, kie_task_id, kie_task_ids, format, carousel_slides, slide_prompts",
+    )
+    .eq("week_of", weekOf)
+    .order("created_at", { ascending: true });
+  if (existingError) throw new Error(existingError.message);
+
+  const errors: string[] = [];
+  const rows = existing ?? [];
+  const retried = await retryIncompleteJobs(supabase, rows, errors);
+
+  const remaining = Math.max(0, maxBatch - rows.length);
+  if (remaining === 0) {
+    return {
+      weekOf,
+      planned: 0,
+      inserted: 0,
+      tasked: retried,
+      retried,
+      skippedExisting: true,
+      errors,
+    };
+  }
+
+  const ideas = await loadReadyIdeas(supabase, remaining);
+  if (ideas.length === 0) {
+    return {
+      weekOf,
+      planned: 0,
+      inserted: 0,
+      tasked: retried,
+      retried,
+      skippedExisting: false,
+      errors,
+    };
+  }
+
+  const produced = await produceQueuePosts(ideas, weekOf);
+  errors.push(...produced.errors);
+
   return {
     weekOf,
-    planned: plan.length,
-    inserted,
-    tasked,
-    retried: 0,
+    planned: produced.planned,
+    inserted: produced.inserted,
+    tasked: retried + produced.tasked,
+    retried,
     skippedExisting: false,
     errors,
+  };
+}
+
+export async function produceIdeaNow(ideaId: string): Promise<ProduceIdeaResult> {
+  if (!process.env.MODEL_API_KEY?.trim()) {
+    throw new Error("MODEL_API_KEY is not configured.");
+  }
+
+  const weekOf = contentQueueWeekOf();
+  const supabase = createServiceRoleClient();
+  const { data: row, error } = await supabase
+    .from("ideation_items")
+    .select(
+      "id, idea_text, comment, rating, platform, format, audience_group, carousel_slides, used_at",
+    )
+    .eq("id", ideaId)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!row) {
+    throw new ProduceIdeaError("Idea not found.", "not_found");
+  }
+  if (row.used_at) {
+    throw new ProduceIdeaError("This idea was already produced.", "already_used");
+  }
+  if (row.rating !== "up") {
+    throw new ProduceIdeaError(
+      "Like this idea and pick a platform, format, and audience first.",
+      "not_ready",
+    );
+  }
+
+  const slot = asLikedIdeaSlot(row);
+  if (!slot) {
+    throw new ProduceIdeaError(
+      "Like this idea and pick a platform, format, and audience first.",
+      "not_ready",
+    );
+  }
+
+  const produced = await produceQueuePosts([slot], weekOf);
+  return {
+    queueId: produced.queueIds[0] ?? null,
+    weekOf,
+    planned: produced.planned,
+    inserted: produced.inserted,
+    tasked: produced.tasked,
+    errors: produced.errors,
   };
 }
 

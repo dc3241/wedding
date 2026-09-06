@@ -24,6 +24,7 @@ import {
 import type { AudienceGroup } from "@/lib/admin/platform-audience";
 import type { IdeationItem } from "@/lib/admin/types";
 import { cn } from "@/lib/cn";
+import Link from "next/link";
 import { useState, useTransition } from "react";
 import {
   deleteIdea,
@@ -76,16 +77,20 @@ function IdeaCard({
   item,
   onPatch,
   onRemove,
+  onProduced,
 }: {
   item: IdeationItem;
   onPatch: (id: string, patch: Partial<IdeationItem>) => void;
   onRemove: (id: string) => void;
+  onProduced: (id: string) => void;
 }) {
   const [isPending, startTransition] = useTransition();
   const [comment, setComment] = useState(item.comment ?? "");
   const [error, setError] = useState<string | null>(null);
+  const [producing, setProducing] = useState(false);
   const formatOptions = item.platform ? formatsForPlatform(item.platform) : [];
   const hint = fridayHint(item);
+  const ready = isIdeaFridayReady(item);
 
   function handleRate(rating: "up" | "down") {
     const previous = item.rating;
@@ -149,6 +154,28 @@ function IdeaCard({
     });
   }
 
+  async function handleProduce() {
+    setError(null);
+    setProducing(true);
+    try {
+      const res = await fetch("/api/admin/ideation/produce", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: item.id }),
+      });
+      const data = (await res.json()) as { error?: string; queueId?: string };
+      if (!res.ok || !data.queueId) {
+        setError(data.error ?? "Could not produce this idea.");
+        return;
+      }
+      onProduced(item.id);
+    } catch {
+      setError("Network error reaching the produce route.");
+    } finally {
+      setProducing(false);
+    }
+  }
+
   return (
     <Card className="px-5 py-4">
       <p className="mb-3 text-[15px] font-medium text-ink">{item.idea_text}</p>
@@ -166,7 +193,7 @@ function IdeaCard({
         <button
           type="button"
           onClick={handleDelete}
-          disabled={isPending}
+          disabled={isPending || producing}
           className="ml-auto text-[13px] font-medium text-rosewood hover:underline"
         >
           Delete
@@ -264,7 +291,18 @@ function IdeaCard({
         onBlur={handleCommentBlur}
         placeholder="Why? (feeds future generations)"
       />
-      {hint ? <p className="mt-2 text-[13px] text-muted">{hint}</p> : null}
+      {ready ? (
+        <Button
+          variant="primary"
+          className="mt-3 w-full"
+          onClick={handleProduce}
+          disabled={producing || isPending}
+        >
+          {producing ? "Producing…" : "Produce now"}
+        </Button>
+      ) : hint ? (
+        <p className="mt-2 text-[13px] text-muted">{hint}</p>
+      ) : null}
       {error ? <p className="mt-2 text-[13px] text-rosewood">{error}</p> : null}
     </Card>
   );
@@ -276,6 +314,7 @@ export function IdeationBoard({ items }: { items: IdeationItem[] }) {
   const [topic, setTopic] = useState("");
   const [generating, setGenerating] = useState(false);
   const [genError, setGenError] = useState<string | null>(null);
+  const [producedNotice, setProducedNotice] = useState(false);
 
   function patchItem(id: string, patch: Partial<IdeationItem>) {
     setLocalItems((prev) => prev.map((i) => (i.id === id ? { ...i, ...patch } : i)));
@@ -283,6 +322,11 @@ export function IdeationBoard({ items }: { items: IdeationItem[] }) {
 
   function removeItem(id: string) {
     setLocalItems((prev) => prev.filter((i) => i.id !== id));
+  }
+
+  function handleProduced(id: string) {
+    removeItem(id);
+    setProducedNotice(true);
   }
 
   const fridayReady = localItems.filter(isIdeaFridayReady).length;
@@ -339,11 +383,21 @@ export function IdeationBoard({ items }: { items: IdeationItem[] }) {
         {genError ? <p className="mt-2 text-[13px] text-rosewood">{genError}</p> : null}
         <p className="mt-2 text-[13px] text-muted">
           Liked ideas with a platform, format, and audience become Friday&apos;s
-          content-queue batch (up to 12). Generate {IDEATION_GENERATE_COUNT} so
-          you can pass a few and still like 9–12. Passed ideas steer the next
-          generate away. Produced likes leave this list.
-          {fridayReady > 0 ? ` ${fridayReady} ready for Friday.` : ""}
+          content-queue batch (up to 12), or Produce now. Generate{" "}
+          {IDEATION_GENERATE_COUNT} so you can pass a few and still like 9–12.
+          Passed ideas steer the next generate away. Produced likes leave this
+          list.
+          {fridayReady > 0 ? ` ${fridayReady} ready to produce.` : ""}
         </p>
+        {producedNotice ? (
+          <p className="mt-2 text-[13px] text-sage">
+            Sent to the{" "}
+            <Link href="/admin/content-queue" className="font-semibold text-accent hover:underline">
+              content queue
+            </Link>
+            .
+          </p>
+        ) : null}
       </Card>
 
       <div className="mb-4 flex gap-2">
@@ -389,6 +443,7 @@ export function IdeationBoard({ items }: { items: IdeationItem[] }) {
               item={item}
               onPatch={patchItem}
               onRemove={removeItem}
+              onProduced={handleProduced}
             />
           ))}
         </div>
