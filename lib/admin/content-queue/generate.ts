@@ -1,10 +1,17 @@
 import "server-only";
 
 import { CONTENT_QUEUE_BUCKET } from "@/lib/admin/content-queue";
-import type { ContentQueuePlatform } from "@/lib/admin/content-queue";
+import {
+  PLATFORM_KIE_ASPECT,
+  type KieImagePlatform,
+} from "@/lib/admin/content-queue/kie-aspect";
 import { appOrigin } from "@/lib/url";
 import { createServiceRoleClient } from "@/utils/supabase/service-role";
 import type { PlannedPost } from "@/lib/admin/content-queue/plan";
+import {
+  matchProductShot,
+  productShotPromptPrefix,
+} from "@/lib/admin/content-queue/product-shots";
 
 export const KIE_CREATE_TASK_URL = "https://api.kie.ai/api/v1/jobs/createTask";
 export const KIE_RECORD_INFO_URL = "https://api.kie.ai/api/v1/jobs/recordInfo";
@@ -13,16 +20,9 @@ export const KIE_MODEL = "seedream/5-pro-image-to-image";
 /** Seedream 5 Pro i2i: `basic` = 1K, `high` = 2K. 1K covers 1080 social. */
 export const KIE_QUALITY = "basic" as const;
 
-type KiePlatform = Exclude<ContentQueuePlatform, "linkedin">;
+type KiePlatform = KieImagePlatform;
 
-export const PLATFORM_ASPECT: Record<KiePlatform, string> = {
-  // Slice sizing is IG 4:5. KIE's documented enum is
-  // 1:1 | 4:3 | 3:4 | 16:9 | 9:16 | 2:3 | 3:2 | 21:9 — no 4:5.
-  // Sending 4:5 as specified; if createTask rejects it, drop to 3:4.
-  instagram: "4:5",
-  tiktok: "9:16",
-  pinterest: "2:3",
-};
+export const PLATFORM_ASPECT = PLATFORM_KIE_ASPECT;
 
 /**
  * Locked templates in content-queue-assets. The bucket holds the full
@@ -72,6 +72,15 @@ async function signedReferenceUrl(path: string): Promise<string> {
   return data.signedUrl;
 }
 
+async function signedProductShotUrl(path: string): Promise<string | null> {
+  const supabase = createServiceRoleClient();
+  const { data, error } = await supabase.storage
+    .from(CONTENT_QUEUE_BUCKET)
+    .createSignedUrl(path, REFERENCE_SIGNED_TTL_SECONDS);
+  if (error || !data?.signedUrl) return null;
+  return data.signedUrl;
+}
+
 export async function resolveReferenceUrls(): Promise<{
   lrvnPost: string;
   squareSet: string;
@@ -99,6 +108,17 @@ export async function requestGeneration(
     pinterest: refs.squareSet,
   };
 
+  const imageUrls = [byPlatform[post.platform]];
+  let prompt = post.prompt;
+  const shot = matchProductShot(post.prompt);
+  if (shot) {
+    const productUrl = await signedProductShotUrl(shot.path);
+    if (productUrl) {
+      imageUrls.push(productUrl);
+      prompt = `${productShotPromptPrefix()} ${post.prompt}`;
+    }
+  }
+
   const res = await fetch(KIE_CREATE_TASK_URL, {
     method: "POST",
     headers: {
@@ -109,8 +129,8 @@ export async function requestGeneration(
       model: KIE_MODEL,
       callBackUrl: `${callbackOrigin()}/api/webhooks/kie-content-queue`,
       input: {
-        prompt: post.prompt,
-        image_urls: [byPlatform[post.platform]],
+        prompt,
+        image_urls: imageUrls,
         aspect_ratio: PLATFORM_ASPECT[post.platform],
         quality: KIE_QUALITY,
         output_format: "png",

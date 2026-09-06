@@ -108,8 +108,11 @@ For each slot return:
   For UGC this is the script. For text this is the full post.
 - prompt: image-generation prompt for a branded slide, or "" for UGC and text. Keep the locked
   template's layout, type, and palette. Describe only what changes (headline, supporting
-  lines, any small scene). Image-format prompts MUST include the tags [idea: …] and
-  [type: A|B|C|D] using the slot's topic label and type.
+  lines, any small scene). When the idea shows the product, name the real First Look
+  surface in the prompt (checklist, budget, seating, leads, white-label, dashboard, …)
+  so a real screenshot can be attached. Do not invent fake portals, dashboards, or chrome.
+  Lifestyle or tip posts with no UI should not describe a screen. Image-format prompts
+  MUST include the tags [idea: …] and [type: A|B|C|D] using the slot's topic label and type.
 - prompts: for carousel only, an array of N image prompts (one per slide), each tagged
   the same way. Empty array for other formats.
 
