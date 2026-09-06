@@ -113,9 +113,45 @@ For each slot return:
 - prompts: for carousel only, an array of N image prompts (one per slide), each tagged
   the same way. Empty array for other formats.
 
-Return ONLY strict JSON:
-{"posts":[{"topic":"","caption":"","prompt":"","prompts":[]}, ...]}
-One object per slot, same order. No markdown fences. Never use the word "AI".`;
+Return one object per slot, same order. Never use the word "AI".`;
+
+/** Constrained decoding — same ONB-07 shape as generate-wedding-plan. */
+const WEEKLY_PLAN_JSON_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["posts"],
+  properties: {
+    posts: {
+      type: "array",
+      minItems: 1,
+      description: "One post per approved idea, same order as the prompt.",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["topic", "caption", "prompt", "prompts"],
+        properties: {
+          topic: {
+            type: "string",
+            description: "Short review-card label.",
+          },
+          caption: {
+            type: "string",
+            description: "Platform post text or UGC/text-post body.",
+          },
+          prompt: {
+            type: "string",
+            description: "Image prompt, or empty string for UGC and text.",
+          },
+          prompts: {
+            type: "array",
+            items: { type: "string" },
+            description: "Carousel slide prompts; empty for other formats.",
+          },
+        },
+      },
+    },
+  },
+};
 
 function asNonEmptyString(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value.trim() : null;
@@ -173,6 +209,7 @@ export async function buildWeekPlan(ideas: LikedIdeaSlot[]): Promise<PlannedPost
     system: SYSTEM_PROMPT,
     user,
     maxTokens: 12288,
+    jsonSchema: WEEKLY_PLAN_JSON_SCHEMA,
   });
 
   if (!isRecord(parsed)) {

@@ -116,7 +116,8 @@ export async function callClaudeJson(args: {
 
   try {
     return JSON.parse(stripJsonFences(raw)) as unknown;
-  } catch {
-    fail(`Anthropic JSON parse failed: ${clip(stripJsonFences(raw))}`);
+  } catch (err) {
+    const where = err instanceof SyntaxError ? ` (${err.message})` : "";
+    fail(`Anthropic JSON parse failed${where}: ${clip(stripJsonFences(raw))}`);
   }
 }
