@@ -79,14 +79,23 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "style is required" }, { status: 400 });
   }
 
-  const parsed = await callClaudeJson({
-    system: `You write KIE / Seedream 5 Pro image-to-image prompt packets for First Look, a wedding-planning app.
+  let parsed: unknown;
+  try {
+    parsed = await callClaudeJson({
+      system: `You write KIE / Seedream 5 Pro image-to-image prompt packets for First Look, a wedding-planning app.
 Return only the six fields in the schema. Never use the word "AI" — say "automatically" if relevant.
 Keep the packet tight enough to paste directly into KIE. No gold, florals, or photographic ornament.`,
-    user: `Concept: "${concept}". Style: ${style}.`,
-    maxTokens: 800,
-    jsonSchema: PACKET_SCHEMA,
-  });
+      user: `Concept: "${concept}". Style: ${style}.`,
+      maxTokens: 800,
+      jsonSchema: PACKET_SCHEMA,
+    });
+  } catch (err) {
+    const message =
+      err instanceof Error
+        ? err.message
+        : "The model did not return a complete prompt packet.";
+    return NextResponse.json({ error: message }, { status: 502 });
+  }
 
   const packet = asPacket(parsed);
   if (!packet) {

@@ -176,11 +176,13 @@ export async function buildWeekPlan(ideas: LikedIdeaSlot[]): Promise<PlannedPost
   });
 
   if (!isRecord(parsed)) {
-    throw new Error("Anthropic returned no weekly content plan.");
+    const kind = Array.isArray(parsed) ? "array" : typeof parsed;
+    throw new Error(`Anthropic weekly plan was not an object (got ${kind}).`);
   }
   const posts = parsed.posts;
   if (!Array.isArray(posts)) {
-    throw new Error("Anthropic returned no weekly content plan.");
+    const keys = Object.keys(parsed).join(", ") || "none";
+    throw new Error(`Anthropic weekly plan missing posts array (keys: ${keys}).`);
   }
   if (posts.length !== slots.length) {
     throw new Error(

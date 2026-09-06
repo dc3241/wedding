@@ -118,11 +118,18 @@ export async function POST(request: Request) {
     .filter(Boolean)
     .join("\n");
 
-  const parsed = await callClaudeJson({
-    system: SYSTEM_PROMPT,
-    user: userText,
-    maxTokens: 4096,
-  });
+  let parsed: unknown;
+  try {
+    parsed = await callClaudeJson({
+      system: SYSTEM_PROMPT,
+      user: userText,
+      maxTokens: 4096,
+    });
+  } catch (err) {
+    const message =
+      err instanceof Error ? err.message : "The model returned an unexpected response.";
+    return NextResponse.json({ error: message }, { status: 502 });
+  }
 
   if (!isRecord(parsed)) {
     return NextResponse.json({ error: "The model returned an unexpected response." }, { status: 502 });
