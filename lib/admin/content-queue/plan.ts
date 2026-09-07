@@ -130,9 +130,8 @@ function weeklyPlanJsonSchema(count: number) {
     properties: {
       posts: {
         type: "array",
-        minItems: count,
-        maxItems: count,
-        description: `Exactly ${count} post(s), one per approved idea, same order as the prompt.`,
+        minItems: 1,
+        description: `Exactly ${count} post(s), one per approved idea, same order as the prompt. No extra variants.`,
         items: {
           type: "object",
           additionalProperties: false,
