@@ -119,45 +119,48 @@ For each slot return:
 - prompts: for carousel only, an array of N image prompts (one per slide), each tagged
   the same way. Empty array for other formats.
 
-Return one object per slot, same order. Never use the word "AI".`;
+Return exactly one object per slot, same order — no extra variants. Never use the word "AI".`;
 
 /** Constrained decoding — same ONB-07 shape as generate-wedding-plan. */
-const WEEKLY_PLAN_JSON_SCHEMA = {
-  type: "object",
-  additionalProperties: false,
-  required: ["posts"],
-  properties: {
-    posts: {
-      type: "array",
-      minItems: 1,
-      description: "One post per approved idea, same order as the prompt.",
-      items: {
-        type: "object",
-        additionalProperties: false,
-        required: ["topic", "caption", "prompt", "prompts"],
-        properties: {
-          topic: {
-            type: "string",
-            description: "Short review-card label.",
-          },
-          caption: {
-            type: "string",
-            description: "Platform post text or UGC/text-post body.",
-          },
-          prompt: {
-            type: "string",
-            description: "Image prompt, or empty string for UGC and text.",
-          },
-          prompts: {
-            type: "array",
-            items: { type: "string" },
-            description: "Carousel slide prompts; empty for other formats.",
+function weeklyPlanJsonSchema(count: number) {
+  return {
+    type: "object",
+    additionalProperties: false,
+    required: ["posts"],
+    properties: {
+      posts: {
+        type: "array",
+        minItems: count,
+        maxItems: count,
+        description: `Exactly ${count} post(s), one per approved idea, same order as the prompt.`,
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: ["topic", "caption", "prompt", "prompts"],
+          properties: {
+            topic: {
+              type: "string",
+              description: "Short review-card label.",
+            },
+            caption: {
+              type: "string",
+              description: "Platform post text or UGC/text-post body.",
+            },
+            prompt: {
+              type: "string",
+              description: "Image prompt, or empty string for UGC and text.",
+            },
+            prompts: {
+              type: "array",
+              items: { type: "string" },
+              description: "Carousel slide prompts; empty for other formats.",
+            },
           },
         },
       },
     },
-  },
-};
+  };
+}
 
 function asNonEmptyString(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value.trim() : null;
@@ -202,7 +205,8 @@ export async function buildWeekPlan(ideas: LikedIdeaSlot[]): Promise<PlannedPost
     slides: slideCountFor(idea.format, idea.carousel_slides),
   }));
 
-  const user = `Fill copy for these ${slots.length} approved ideas, in this exact order:\n${slots
+  const user = `Fill copy for these ${slots.length} approved ideas, in this exact order.
+Return exactly ${slots.length} object(s) in "posts" — one per idea, no extras, no variants.\n${slots
     .map((slot, i) => {
       const note = slot.comment ? ` note=${JSON.stringify(slot.comment)}` : "";
       const slides =
@@ -215,23 +219,29 @@ export async function buildWeekPlan(ideas: LikedIdeaSlot[]): Promise<PlannedPost
     system: SYSTEM_PROMPT,
     user,
     maxTokens: 12288,
-    jsonSchema: WEEKLY_PLAN_JSON_SCHEMA,
+    jsonSchema: weeklyPlanJsonSchema(slots.length),
   });
 
   if (!isRecord(parsed)) {
     const kind = Array.isArray(parsed) ? "array" : typeof parsed;
     throw new Error(`Anthropic weekly plan was not an object (got ${kind}).`);
   }
-  const posts = parsed.posts;
-  if (!Array.isArray(posts)) {
+  const rawPosts = parsed.posts;
+  if (!Array.isArray(rawPosts)) {
     const keys = Object.keys(parsed).join(", ") || "none";
     throw new Error(`Anthropic weekly plan missing posts array (keys: ${keys}).`);
   }
-  if (posts.length !== slots.length) {
+  if (rawPosts.length < slots.length) {
     throw new Error(
-      `Anthropic plan length mismatch: expected ${slots.length}, got ${posts.length}.`,
+      `Anthropic plan length mismatch: expected ${slots.length}, got ${rawPosts.length}.`,
     );
   }
+  if (rawPosts.length > slots.length) {
+    console.warn(
+      `Anthropic plan returned ${rawPosts.length} posts for ${slots.length} slot(s); using the first ${slots.length}.`,
+    );
+  }
+  const posts = rawPosts.slice(0, slots.length);
 
   return slots.map((slot, i) => {
     const row = posts[i];
