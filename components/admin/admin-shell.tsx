@@ -55,16 +55,6 @@ const ideationIcon = (
   <path d="M10 2a5 5 0 0 0-3 9c.6.5 1 1.2 1 2h4c0-.8.4-1.5 1-2a5 5 0 0 0-3-9ZM7.5 15h5M8.5 17.5h3" />
 );
 const bankIcon = <path d="M10 3 3 7l7 4 7-4-7-4ZM3 11l7 4 7-4" />;
-const imageIcon = (
-  <>
-    <path d="M4 16 14 6" />
-    <path d="M13 4l1 2 2 1-2 1-1 2-1-2-2-1 2-1Z" />
-    <path d="M5 13l.6 1.4L7 15l-1.4.6L5 17l-.6-1.4L3 15l1.4-.6Z" />
-  </>
-);
-const automationsIcon = (
-  <path d="M11 2 4.5 11.5H9L8 18l6.5-9.5H10l1-6.5Z" />
-);
 const outreachIcon = (
   <>
     <path d="M17 3 3 9.5l6 2 2 6L17 3Z" />
@@ -89,8 +79,6 @@ const NAV: NavBlock[] = [
     label: "Couples",
     items: [
       { href: "/admin/couples/bank", label: "Content bank", tooltip: "Couples content bank", icon: bankIcon },
-      { href: "/admin/couples/image", label: "Image generator", tooltip: "Image generator", icon: imageIcon },
-      { href: "/admin/couples/automations", label: "Automations", tooltip: "Couples automations", icon: automationsIcon },
     ],
   },
   {
@@ -99,7 +87,6 @@ const NAV: NavBlock[] = [
     items: [
       { href: "/admin/planner/bank", label: "Content bank", tooltip: "Venues & planners content bank", icon: bankIcon },
       { href: "/admin/planner/outreach", label: "Venue outreach", tooltip: "Venue outreach", icon: outreachIcon },
-      { href: "/admin/planner/automations", label: "Automations", tooltip: "Venues & planners automations", icon: automationsIcon },
     ],
   },
 ];

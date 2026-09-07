@@ -4,7 +4,6 @@ import { ButtonLink } from "@/components/ui/button";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { PageHeader } from "@/components/ui/page-header";
 import {
-  getAutomationPrompts,
   getContentBank,
   getScheduleWeeks,
   pickCurrentWeek,
@@ -62,10 +61,9 @@ export default async function AdminOverviewPage() {
   const supabase = await createClient();
   const today = adminToday();
 
-  const [weeks, bank, prompts] = await Promise.all([
+  const [weeks, bank] = await Promise.all([
     getScheduleWeeks(supabase),
     getContentBank(supabase),
-    getAutomationPrompts(supabase),
   ]);
 
   const currentWeek = pickCurrentWeek(weeks, today);
@@ -181,13 +179,13 @@ export default async function AdminOverviewPage() {
           </Card>
 
           <Card className="px-6 py-5">
-            <Eyebrow className="mb-3 text-accent">Automations</Eyebrow>
+            <Eyebrow className="mb-3 text-accent">Content queue</Eyebrow>
             <p className="text-[15px] font-medium text-muted">
-              {prompts.length} prompt{prompts.length === 1 ? "" : "s"} ready to run —
-              weekly content-day batch normally runs Fridays.
+              Review pending graphics and captions. Approved items land in
+              the content bank.
             </p>
-            <ButtonLink href="/admin/couples/automations" variant="primary" className="mt-4">
-              Open automations
+            <ButtonLink href="/admin/content-queue" variant="primary" className="mt-4">
+              Open content queue
             </ButtonLink>
           </Card>
         </div>

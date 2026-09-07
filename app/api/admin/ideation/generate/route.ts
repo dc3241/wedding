@@ -1,8 +1,8 @@
 /**
  * Admin ideation — "Generate ideas" action. Same server-side-only
- * Anthropic call pattern as the automations route (MODEL_API_KEY never
- * reaches the browser), different prompt: short candidate content ideas
- * rather than a full script/post.
+ * Anthropic call pattern as other admin generate routes (MODEL_API_KEY
+ * never reaches the browser), different prompt: short candidate content
+ * ideas rather than a full script/post.
  *
  * Preference-tuned prompting, NOT model fine-tuning: before generating,
  * pull unused liked / passed ideas plus already-produced (used_at) rows

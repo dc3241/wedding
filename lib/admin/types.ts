@@ -53,28 +53,6 @@ export type ContentBankItem = {
   image_urls: string[];
 };
 
-export type AdminAutomationPrompt = {
-  id: string;
-  name: string;
-  description: string | null;
-  prompt_template: string;
-  is_manual_trigger: boolean;
-  audience_group: "couples" | "planner" | null;
-};
-
-export type AdminAutomationRun = {
-  id: string;
-  prompt_id: string | null;
-  triggered_by: string | null;
-  input_text: string | null;
-  output_text: string | null;
-  status: "pending" | "running" | "completed" | "error";
-  error_message: string | null;
-  saved_to_bank: boolean;
-  created_at: string;
-  completed_at: string | null;
-};
-
 export type MediaAsset = {
   id: string;
   filename: string;
