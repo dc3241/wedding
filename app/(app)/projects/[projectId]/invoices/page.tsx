@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
 import { getAccountContext } from "@/lib/account-context";
 import { sectionStackClass } from "@/lib/density";
-import { listProjectInvoices } from "@/lib/invoices/actions";
+import { listInvoiceTemplates, listProjectInvoices } from "@/lib/invoices/actions";
 import { projectWorkspaceEyebrow } from "@/lib/wedding-date";
 import { createClient } from "@/utils/supabase/server";
 
@@ -24,13 +24,14 @@ export default async function InvoicesPage({
 
   const stackClass = sectionStackClass("business");
 
-  const [{ data: project }, invoices] = await Promise.all([
+  const [{ data: project }, invoices, templates] = await Promise.all([
     supabase
       .from("projects")
       .select("name, wedding_date")
       .eq("id", projectId)
       .maybeSingle(),
     listProjectInvoices(projectId),
+    listInvoiceTemplates(),
   ]);
 
   const projectName = project?.name ?? "Wedding";
@@ -42,7 +43,7 @@ export default async function InvoicesPage({
       <PageHeader
         eyebrow={eyebrow}
         title="Invoices"
-        description="Bill a client with a public link. Payment happens off First Look."
+        description="Bill a client with a public link. Qty × rate, a payment plan, then record what arrived."
       />
 
       <Card className="p-6">
@@ -50,7 +51,7 @@ export default async function InvoicesPage({
           New invoice
         </h2>
         <div className="mt-4">
-          <NewInvoiceForm projectId={projectId} />
+          <NewInvoiceForm projectId={projectId} templates={templates} />
         </div>
       </Card>
 

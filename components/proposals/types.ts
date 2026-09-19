@@ -16,6 +16,18 @@ export type ProposalLineItem = {
   unit_price: number;
 };
 
+export type ProposalInvoiceLink = {
+  id: string;
+  projectId: string;
+  invoiceNumber: string;
+  status: string;
+};
+
+export type ProposalProjectOption = {
+  id: string;
+  name: string;
+};
+
 export type Proposal = {
   id: string;
   lead_id: string;

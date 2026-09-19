@@ -5,6 +5,10 @@
       "schedule": "0 15 * * *"
     },
     {
+      "path": "/api/cron/invoice-schedule-watch",
+      "schedule": "2 15 * * *"
+    },
+    {
       "path": "/api/cron/countdown-confirmations",
       "schedule": "5 15 * * *"
     },

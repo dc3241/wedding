@@ -4,6 +4,8 @@ import { ProposalsSection } from "@/components/proposals/ProposalsSection";
 import {
   parseProposalLineItems,
   type Proposal,
+  type ProposalInvoiceLink,
+  type ProposalProjectOption,
   type ProposalStatus,
 } from "@/components/proposals/types";
 import {
@@ -14,6 +16,7 @@ import {
   type Lead,
   type LeadStage,
 } from "@/components/leads/types";
+import { ButtonLink } from "@/components/ui/button";
 import { Pill } from "@/components/ui/pill";
 import { getAccountContext } from "@/lib/account-context";
 import { getCopy } from "@/lib/venue-copy";
@@ -39,22 +42,29 @@ export default async function LeadDetailPage({
     redirect("/projects");
   }
 
-  const [{ data: leadRow }, { data: proposalRows }] = await Promise.all([
-    supabase
-      .from("leads")
-      .select(
-        "id, couple_name, contact_email, contact_phone, wedding_date, estimated_budget, venue, source, stage, notes",
-      )
-      .eq("id", leadId)
-      .maybeSingle(),
-    supabase
-      .from("proposals")
-      .select(
-        "id, lead_id, title, line_items, total, status, notes, terms, accepted_at, created_at, updated_at",
-      )
-      .eq("lead_id", leadId)
-      .order("created_at", { ascending: false }),
-  ]);
+  const [{ data: leadRow }, { data: proposalRows }, { data: projectRows }] =
+    await Promise.all([
+      supabase
+        .from("leads")
+        .select(
+          "id, couple_name, contact_email, contact_phone, wedding_date, estimated_budget, venue, source, stage, notes, project_id",
+        )
+        .eq("id", leadId)
+        .maybeSingle(),
+      supabase
+        .from("proposals")
+        .select(
+          "id, lead_id, title, line_items, total, status, notes, terms, accepted_at, created_at, updated_at",
+        )
+        .eq("lead_id", leadId)
+        .order("created_at", { ascending: false }),
+      supabase
+        .from("projects")
+        .select("id, name")
+        .eq("account_id", account.accountId)
+        .is("archived_at", null)
+        .order("name", { ascending: true }),
+    ]);
 
   if (!leadRow) {
     notFound();
@@ -92,6 +102,49 @@ export default async function LeadDetailPage({
     created_at: row.created_at,
     updated_at: row.updated_at,
   }));
+
+  const projects: ProposalProjectOption[] = (projectRows ?? []).map((row) => ({
+    id: row.id,
+    name: row.name,
+  }));
+
+  let linkedProject: ProposalProjectOption | null = null;
+  if (leadRow.project_id) {
+    linkedProject =
+      projects.find((row) => row.id === leadRow.project_id) ?? null;
+    if (!linkedProject) {
+      const { data: linkedRow } = await supabase
+        .from("projects")
+        .select("id, name")
+        .eq("id", leadRow.project_id)
+        .maybeSingle();
+      if (linkedRow) {
+        linkedProject = { id: linkedRow.id, name: linkedRow.name };
+      }
+    }
+  }
+
+  const proposalIds = proposals.map((row) => row.id);
+  const invoicesByProposalId: Record<string, ProposalInvoiceLink[]> = {};
+  if (proposalIds.length > 0) {
+    const { data: invoiceRows } = await supabase
+      .from("invoices")
+      .select("id, project_id, invoice_number, status, proposal_id")
+      .in("proposal_id", proposalIds)
+      .order("created_at", { ascending: false });
+
+    for (const row of invoiceRows ?? []) {
+      if (!row.proposal_id) continue;
+      const list = invoicesByProposalId[row.proposal_id] ?? [];
+      list.push({
+        id: row.id,
+        projectId: row.project_id,
+        invoiceNumber: row.invoice_number,
+        status: row.status,
+      });
+      invoicesByProposalId[row.proposal_id] = list;
+    }
+  }
 
   const weddingDate = formatLeadDate(lead.wedding_date);
   const budget = formatLeadBudget(lead.estimated_budget);
@@ -136,10 +189,26 @@ export default async function LeadDetailPage({
               <p className="mt-1 text-[13px] text-muted">via {lead.source}</p>
             ) : null}
           </div>
+          {linkedProject ? (
+            <ButtonLink
+              href={`/projects/${linkedProject.id}`}
+              variant="default"
+              className="px-4 py-2 text-[13px]"
+            >
+              {getCopy("openProject", account.plan)}
+            </ButtonLink>
+          ) : null}
         </div>
       </div>
 
-      <ProposalsSection leadId={leadId} proposals={proposals} />
+      <ProposalsSection
+        leadId={leadId}
+        proposals={proposals}
+        projects={projects}
+        invoicesByProposalId={invoicesByProposalId}
+        linkedProject={linkedProject}
+        plan={account.plan}
+      />
     </div>
   );
 }

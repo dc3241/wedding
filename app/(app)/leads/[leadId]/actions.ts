@@ -1,6 +1,9 @@
 "use server";
 
+import { randomUUID } from "crypto";
 import { revalidatePath } from "next/cache";
+import { dispatchLeadAutomation } from "@/lib/automations/run";
+import { createInvoice } from "@/lib/invoices/actions";
 import { createClient } from "@/utils/supabase/server";
 import {
   PROPOSAL_STATUSES,
@@ -20,9 +23,27 @@ function contractPath(leadId: string, proposalId: string) {
 
 function revalidateProposalPaths(leadId: string, proposalId?: string) {
   revalidatePath(leadDetailPath(leadId));
+  revalidatePath("/leads");
   if (proposalId) {
     revalidatePath(contractPath(leadId, proposalId));
   }
+}
+
+function proposalInvoiceLineItems(lineItems: unknown) {
+  return parseProposalLineItems(lineItems)
+    .filter((item) => item.quantity > 0)
+    .map((item) => ({
+      description: item.description,
+      quantity: item.quantity,
+      unitPrice: item.unit_price,
+      kind: "item" as const,
+    }));
+}
+
+function asLeadEmbed(value: unknown): Record<string, unknown> | null {
+  const row = Array.isArray(value) ? value[0] : value;
+  if (!row || typeof row !== "object") return null;
+  return row as Record<string, unknown>;
 }
 
 async function resolveBusinessAccountId() {
@@ -230,4 +251,189 @@ export async function deleteProposal(
 
   revalidateProposalPaths(existing.lead_id, id);
   return { ok: true };
+}
+
+export async function createInvoiceFromProposal(
+  proposalId: string,
+  projectId: string,
+): Promise<
+  | { ok: true; invoiceId: string; projectId: string }
+  | { ok: false; error: string }
+> {
+  const trimmedProject = projectId.trim();
+  if (!trimmedProject) {
+    return { ok: false, error: "Choose where to create this invoice." };
+  }
+
+  const supabase = await createClient();
+  const { data: proposal, error: proposalError } = await supabase
+    .from("proposals")
+    .select(
+      "id, account_id, lead_id, status, notes, terms, line_items, leads!inner(couple_name, contact_email)",
+    )
+    .eq("id", proposalId)
+    .maybeSingle();
+
+  if (proposalError || !proposal) {
+    return { ok: false, error: proposalError?.message ?? "Proposal not found." };
+  }
+
+  if (proposal.status !== "accepted") {
+    return { ok: false, error: "Accept the proposal before creating an invoice." };
+  }
+
+  const { data: project, error: projectError } = await supabase
+    .from("projects")
+    .select("id, account_id, archived_at")
+    .eq("id", trimmedProject)
+    .maybeSingle();
+
+  if (projectError || !project) {
+    return { ok: false, error: projectError?.message ?? "Project not found." };
+  }
+
+  if (project.account_id !== proposal.account_id) {
+    return { ok: false, error: "That project isn't on this account." };
+  }
+
+  if (project.archived_at) {
+    return { ok: false, error: "Pick an active project." };
+  }
+
+  const lead = asLeadEmbed(proposal.leads);
+  const lineItems = proposalInvoiceLineItems(proposal.line_items);
+
+  if (lineItems.length === 0) {
+    return { ok: false, error: "Add line items to the proposal first." };
+  }
+
+  const created = await createInvoice(trimmedProject, {
+    clientName:
+      typeof lead?.couple_name === "string" ? lead.couple_name : null,
+    clientEmail:
+      typeof lead?.contact_email === "string" ? lead.contact_email : null,
+    notes: proposal.notes,
+    terms: proposal.terms,
+    proposalId: proposal.id,
+    lineItems,
+  });
+
+  if (!created.ok) return created;
+
+  revalidateProposalPaths(proposal.lead_id, proposal.id);
+  return { ok: true, invoiceId: created.id, projectId: trimmedProject };
+}
+
+export async function createProjectAndInvoiceFromProposal(
+  proposalId: string,
+): Promise<
+  | { ok: true; invoiceId: string; projectId: string }
+  | { ok: false; error: string }
+> {
+  const supabase = await createClient();
+  const { data: proposal, error: proposalError } = await supabase
+    .from("proposals")
+    .select(
+      "id, account_id, lead_id, status, line_items, leads!inner(account_id, couple_name, wedding_date, project_id, stage)",
+    )
+    .eq("id", proposalId)
+    .maybeSingle();
+
+  if (proposalError || !proposal) {
+    return { ok: false, error: proposalError?.message ?? "Proposal not found." };
+  }
+
+  if (proposal.status !== "accepted") {
+    return { ok: false, error: "Accept the proposal first." };
+  }
+
+  const lineItems = proposalInvoiceLineItems(proposal.line_items);
+  if (lineItems.length === 0) {
+    return { ok: false, error: "Add line items to the proposal first." };
+  }
+
+  const lead = asLeadEmbed(proposal.leads);
+  if (!lead) {
+    return { ok: false, error: "Lead not found." };
+  }
+
+  if (lead.account_id !== proposal.account_id) {
+    return { ok: false, error: "That lead isn't on this account." };
+  }
+
+  let projectId =
+    typeof lead.project_id === "string" ? lead.project_id.trim() : "";
+
+  if (projectId) {
+    const { data: existing } = await supabase
+      .from("projects")
+      .select("id, account_id, archived_at")
+      .eq("id", projectId)
+      .maybeSingle();
+    if (
+      !existing ||
+      existing.account_id !== proposal.account_id ||
+      existing.archived_at
+    ) {
+      projectId = "";
+    }
+  }
+
+  if (!projectId) {
+    const name =
+      typeof lead.couple_name === "string" ? lead.couple_name.trim() : "";
+    if (!name) {
+      return { ok: false, error: "Couple name is required." };
+    }
+
+    const weddingDate =
+      typeof lead.wedding_date === "string" &&
+      /^\d{4}-\d{2}-\d{2}$/.test(lead.wedding_date)
+        ? lead.wedding_date
+        : null;
+
+    projectId = randomUUID();
+    const { error: insertError } = await supabase.from("projects").insert({
+      id: projectId,
+      account_id: proposal.account_id,
+      name,
+      wedding_date: weddingDate,
+    });
+
+    if (insertError) {
+      return { ok: false, error: insertError.message };
+    }
+
+    const previousStage =
+      typeof lead.stage === "string" ? lead.stage : "inquiry";
+    const { error: leadError } = await supabase
+      .from("leads")
+      .update({
+        project_id: projectId,
+        stage: "booked",
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", proposal.lead_id);
+
+    if (leadError) {
+      return { ok: false, error: leadError.message };
+    }
+
+    if (previousStage !== "booked") {
+      await dispatchLeadAutomation({
+        accountId: proposal.account_id,
+        leadId: proposal.lead_id,
+        triggerKind: "lead_stage_changed",
+        fromStage: previousStage,
+        toStage: "booked",
+      });
+    }
+
+    revalidatePath("/projects");
+    revalidatePath("/dashboard");
+    revalidatePath("/", "layout");
+    revalidatePath(`/projects/${projectId}`);
+  }
+
+  return createInvoiceFromProposal(proposalId, projectId);
 }

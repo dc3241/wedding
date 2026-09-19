@@ -43,7 +43,7 @@ export default async function InvoiceDetailPage({
       <PageHeader
         eyebrow={eyebrow}
         title={invoice.client_name?.trim() || "Invoice"}
-        description="Edit the draft, add a payment link, then send. First Look never sees the payment."
+        description="Send the public link, add a payment plan, then record what arrived. First Look never sees the payment."
       />
       <InvoiceDetail invoice={invoice} />
     </div>

@@ -70,6 +70,9 @@ export function PlannerProjectSidebar({
     pathname === "/vendors" || pathname.startsWith("/vendors?");
   const onContracts =
     pathname === "/contracts" || pathname.startsWith("/contracts?");
+  const onInvoices =
+    pathname === "/invoices" || pathname.startsWith("/invoices?");
+  const onMoney = pathname === "/money" || pathname.startsWith("/money?");
   const onBilling =
     pathname === "/account/billing" ||
     pathname.startsWith("/account/billing?");
@@ -102,6 +105,12 @@ export function PlannerProjectSidebar({
           </Link>
           <Link href="/contracts" className={navLinkClass(onContracts)}>
             Contracts
+          </Link>
+          <Link href="/invoices" className={navLinkClass(onInvoices)}>
+            {getCopy("sidebarInvoices", plan)}
+          </Link>
+          <Link href="/money" className={navLinkClass(onMoney)}>
+            {getCopy("sidebarMoney", plan)}
           </Link>
           <Link href="/account/team" className={navLinkClass(onTeam)}>
             Team

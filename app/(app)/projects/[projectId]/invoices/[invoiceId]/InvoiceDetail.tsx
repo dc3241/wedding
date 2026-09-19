@@ -2,6 +2,12 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
+import {
+  emptyDraftLine,
+  InvoiceLineEditor,
+  toLineInputs,
+  type DraftInvoiceLine,
+} from "../InvoiceLineEditor";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -9,32 +15,38 @@ import { Pill } from "@/components/ui/pill";
 import { Textarea } from "@/components/ui/textarea";
 import {
   deleteInvoice,
-  markInvoicePaid,
+  duplicateInvoice,
   markInvoiceUnpaid,
+  saveInvoiceTemplate,
   sendInvoice,
   updateInvoice,
   updateInvoiceLineItems,
   voidInvoice,
 } from "@/lib/invoices/actions";
+import {
+  INVOICE_LINE_KIND_LABEL,
+  invoiceLineAmount,
+} from "@/lib/invoices/lines";
 import { formatInvoiceMoney, invoiceTotal } from "@/lib/invoices/money";
+import { invoiceEffectiveDueDate } from "@/lib/invoices/schedule";
 import {
   invoiceStatusLabel,
   invoiceStatusPillVariant,
   isInvoiceOverdue,
 } from "@/lib/invoices/status";
-import type { InvoiceLineItemInput, InvoiceRow } from "@/lib/invoices/types";
+import type { InvoiceRow } from "@/lib/invoices/types";
 import { invoicePublicUrl } from "@/lib/invoices/url";
+import { InvoicePayments } from "./InvoicePayments";
+import { InvoiceSchedule } from "./InvoiceSchedule";
 
-type DraftLine = InvoiceLineItemInput & { key: string };
-
-function toDraftLines(invoice: InvoiceRow): DraftLine[] {
-  if (invoice.line_items.length === 0) {
-    return [{ key: crypto.randomUUID(), description: "", amount: 0 }];
-  }
+function toDraftLines(invoice: InvoiceRow): DraftInvoiceLine[] {
+  if (invoice.line_items.length === 0) return [emptyDraftLine()];
   return invoice.line_items.map((item) => ({
     key: item.id,
     description: item.description,
-    amount: item.amount,
+    quantity: item.quantity,
+    unitPrice: item.unit_price,
+    kind: item.kind,
   }));
 }
 
@@ -71,29 +83,37 @@ function CopyLink({ url }: { url: string }) {
 export function InvoiceDetail({ invoice }: { invoice: InvoiceRow }) {
   const router = useRouter();
   const draft = invoice.status === "draft";
-  const overdue = isInvoiceOverdue(invoice.due_date, invoice.status);
+  const overdue = isInvoiceOverdue(
+    invoiceEffectiveDueDate({
+      dueDate: invoice.due_date,
+      nextDueOn: invoice.nextDue?.due_on,
+    }),
+    invoice.status,
+    new Date(),
+    invoice.remaining,
+  );
+  const canSend = invoice.status !== "void" && !invoice.sent_at;
   const publicUrl = invoicePublicUrl(invoice.access_token);
 
   const [clientName, setClientName] = useState(invoice.client_name ?? "");
   const [clientEmail, setClientEmail] = useState(invoice.client_email ?? "");
   const [dueDate, setDueDate] = useState(invoice.due_date ?? "");
   const [notes, setNotes] = useState(invoice.notes ?? "");
+  const [terms, setTerms] = useState(invoice.terms ?? "");
   const [paymentLinkUrl, setPaymentLinkUrl] = useState(
     invoice.payment_link_url ?? "",
   );
-  const [lines, setLines] = useState<DraftLine[]>(() => toDraftLines(invoice));
+  const [lines, setLines] = useState<DraftInvoiceLine[]>(() =>
+    toDraftLines(invoice),
+  );
+  const [templateName, setTemplateName] = useState("");
+  const [templateNotice, setTemplateNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [sendNotice, setSendNotice] = useState<{
     emailSent: boolean;
     url: string;
   } | null>(null);
   const [isPending, startTransition] = useTransition();
-
-  function updateLine(key: string, patch: Partial<InvoiceLineItemInput>) {
-    setLines((current) =>
-      current.map((line) => (line.key === key ? { ...line, ...patch } : line)),
-    );
-  }
 
   function run(action: () => Promise<{ ok: true } | { ok: false; error: string }>) {
     setError(null);
@@ -115,6 +135,7 @@ export function InvoiceDetail({ invoice }: { invoice: InvoiceRow }) {
         clientEmail,
         dueDate: dueDate || null,
         notes,
+        terms,
         paymentLinkUrl,
       }),
     );
@@ -122,12 +143,7 @@ export function InvoiceDetail({ invoice }: { invoice: InvoiceRow }) {
 
   function handleSaveLines(e: React.FormEvent) {
     e.preventDefault();
-    run(() =>
-      updateInvoiceLineItems(
-        invoice.id,
-        lines.map(({ description, amount }) => ({ description, amount })),
-      ),
-    );
+    run(() => updateInvoiceLineItems(invoice.id, toLineInputs(lines)));
   }
 
   function handleSend() {
@@ -140,6 +156,34 @@ export function InvoiceDetail({ invoice }: { invoice: InvoiceRow }) {
         return;
       }
       setSendNotice({ emailSent: result.emailSent, url: result.publicUrl });
+      router.refresh();
+    });
+  }
+
+  function handleDuplicate() {
+    setError(null);
+    startTransition(async () => {
+      const result = await duplicateInvoice(invoice.id);
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      router.push(`/projects/${invoice.project_id}/invoices/${result.id}`);
+    });
+  }
+
+  function handleSaveTemplate(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setTemplateNotice(null);
+    startTransition(async () => {
+      const result = await saveInvoiceTemplate(invoice.id, templateName);
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      setTemplateName("");
+      setTemplateNotice("Template saved — use it on New invoice.");
       router.refresh();
     });
   }
@@ -159,16 +203,30 @@ export function InvoiceDetail({ invoice }: { invoice: InvoiceRow }) {
     });
   }
 
-  const liveTotal = invoiceTotal(lines.map((line) => line.amount));
+  const liveTotal = invoiceTotal(
+    lines.map((line) =>
+      invoiceLineAmount(line.kind, line.quantity, line.unitPrice),
+    ),
+  );
 
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center gap-3">
+        {invoice.invoice_number ? (
+          <p className="text-[13px] font-medium tabular-nums text-muted">
+            {invoice.invoice_number}
+          </p>
+        ) : null}
         <Pill variant={invoiceStatusPillVariant(invoice.status, overdue)}>
           {invoiceStatusLabel(invoice.status, overdue)}
         </Pill>
         <p className="text-[15px] font-medium tabular-nums text-ink">
           {formatInvoiceMoney(invoice.total)}
+          {invoice.remaining > 0 && invoice.remaining !== invoice.total ? (
+            <span className="ml-2 font-medium text-muted">
+              {formatInvoiceMoney(invoice.remaining)} due
+            </span>
+          ) : null}
         </p>
       </div>
 
@@ -265,6 +323,19 @@ export function InvoiceDetail({ invoice }: { invoice: InvoiceRow }) {
               rows={3}
             />
           </div>
+          <div className="space-y-1.5">
+            <label htmlFor="detail-terms" className="text-sm font-medium text-ink">
+              Terms
+            </label>
+            <Textarea
+              id="detail-terms"
+              value={terms}
+              onChange={(e) => setTerms(e.target.value)}
+              disabled={isPending || invoice.status === "void"}
+              rows={3}
+              placeholder="Due on receipt. Late fees after 15 days."
+            />
+          </div>
           {invoice.status !== "void" ? (
             <Button type="submit" variant="default" disabled={isPending}>
               {isPending ? "Saving…" : "Save details"}
@@ -284,79 +355,33 @@ export function InvoiceDetail({ invoice }: { invoice: InvoiceRow }) {
         </div>
         {draft ? (
           <form onSubmit={handleSaveLines} className="space-y-3">
-            {lines.map((line, index) => (
-              <div
-                key={line.key}
-                className="flex flex-col gap-2 sm:flex-row sm:items-center"
-              >
-                <Input
-                  aria-label={`Line ${index + 1} description`}
-                  value={line.description}
-                  onChange={(e) =>
-                    updateLine(line.key, { description: e.target.value })
-                  }
-                  disabled={isPending}
-                  className="sm:flex-1"
-                />
-                <Input
-                  aria-label={`Line ${index + 1} amount`}
-                  type="number"
-                  min={0}
-                  step="0.01"
-                  value={Number.isFinite(line.amount) ? line.amount : 0}
-                  onChange={(e) =>
-                    updateLine(line.key, { amount: Number(e.target.value) })
-                  }
-                  disabled={isPending}
-                  className="sm:w-32"
-                />
-                {lines.length > 1 ? (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    disabled={isPending}
-                    onClick={() =>
-                      setLines((current) =>
-                        current.filter((item) => item.key !== line.key),
-                      )
-                    }
-                    className="px-3 py-1.5 text-[13px]"
-                  >
-                    Remove
-                  </Button>
-                ) : null}
-              </div>
-            ))}
-            <div className="flex flex-wrap gap-2">
-              <Button
-                type="button"
-                variant="default"
-                disabled={isPending}
-                onClick={() =>
-                  setLines((current) => [
-                    ...current,
-                    { key: crypto.randomUUID(), description: "", amount: 0 },
-                  ])
-                }
-                className="px-3 py-1.5 text-[13px]"
-              >
-                Add line
-              </Button>
-              <Button type="submit" variant="primary" disabled={isPending}>
-                {isPending ? "Saving…" : "Save line items"}
-              </Button>
-            </div>
+            <InvoiceLineEditor
+              lines={lines}
+              disabled={isPending}
+              onChange={setLines}
+            />
+            <Button type="submit" variant="primary" disabled={isPending}>
+              {isPending ? "Saving…" : "Save line items"}
+            </Button>
           </form>
         ) : (
           <ul className="space-y-2">
             {invoice.line_items.map((item) => (
               <li
                 key={item.id}
-                className="flex items-center justify-between gap-3 rounded-[var(--radius-inner)] bg-well px-4 py-3 shadow-recessed"
+                className="flex items-start justify-between gap-3 rounded-[var(--radius-inner)] bg-well px-4 py-3 shadow-recessed"
               >
-                <span className="min-w-0 text-[15px] font-medium text-ink">
-                  {item.description}
-                </span>
+                <div className="min-w-0">
+                  <p className="text-[15px] font-medium text-ink">
+                    {item.description}
+                  </p>
+                  <p className="mt-0.5 text-[13px] tabular-nums text-muted">
+                    {item.kind !== "item"
+                      ? `${INVOICE_LINE_KIND_LABEL[item.kind]} · `
+                      : ""}
+                    {item.quantity} × {formatInvoiceMoney(item.unit_price)}
+                  </p>
+                </div>
                 <span className="shrink-0 tabular-nums text-[15px] font-medium text-ink">
                   {formatInvoiceMoney(item.amount)}
                 </span>
@@ -366,12 +391,24 @@ export function InvoiceDetail({ invoice }: { invoice: InvoiceRow }) {
         )}
       </Card>
 
+      <InvoiceSchedule
+        key={`${invoice.id}-sched-${invoice.schedule.length}`}
+        invoice={invoice}
+        onChanged={() => router.refresh()}
+      />
+
+      <InvoicePayments
+        key={`${invoice.id}-${invoice.payments.length}-${invoice.collected}`}
+        invoice={invoice}
+        onChanged={() => router.refresh()}
+      />
+
       <Card className="space-y-3 p-6">
         <h2 className="font-display text-[19px] tracking-[-0.02em] text-ink">
           Actions
         </h2>
         <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
-          {draft ? (
+          {canSend ? (
             <Button
               type="button"
               variant="primary"
@@ -389,7 +426,15 @@ export function InvoiceDetail({ invoice }: { invoice: InvoiceRow }) {
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
-          {invoice.status === "paid" ? (
+          <Button
+            type="button"
+            variant="default"
+            disabled={isPending}
+            onClick={handleDuplicate}
+          >
+            Duplicate
+          </Button>
+          {invoice.status === "paid" && invoice.collected <= 0 ? (
             <Button
               type="button"
               variant="default"
@@ -398,17 +443,10 @@ export function InvoiceDetail({ invoice }: { invoice: InvoiceRow }) {
             >
               Mark unpaid
             </Button>
-          ) : invoice.status !== "void" ? (
-            <Button
-              type="button"
-              variant="default"
-              disabled={isPending}
-              onClick={() => run(() => markInvoicePaid(invoice.id))}
-            >
-              Mark paid
-            </Button>
           ) : null}
-          {invoice.status !== "paid" && invoice.status !== "void" ? (
+          {invoice.status !== "void" &&
+          invoice.status !== "paid" &&
+          invoice.collected <= 0 ? (
             <Button
               type="button"
               variant="default"
@@ -418,7 +456,7 @@ export function InvoiceDetail({ invoice }: { invoice: InvoiceRow }) {
               Void
             </Button>
           ) : null}
-          {draft ? (
+          {draft && invoice.collected <= 0 ? (
             <Button
               type="button"
               variant="default"
@@ -429,6 +467,29 @@ export function InvoiceDetail({ invoice }: { invoice: InvoiceRow }) {
             </Button>
           ) : null}
         </div>
+        <form
+          onSubmit={handleSaveTemplate}
+          className="flex flex-col gap-2 sm:flex-row sm:items-end"
+        >
+          <div className="min-w-0 flex-1 space-y-1.5">
+            <label htmlFor="template-name" className="text-sm font-medium text-ink">
+              Save as template
+            </label>
+            <Input
+              id="template-name"
+              value={templateName}
+              onChange={(e) => setTemplateName(e.target.value)}
+              disabled={isPending}
+              placeholder="Planning retainer"
+            />
+          </div>
+          <Button type="submit" variant="default" disabled={isPending}>
+            Save template
+          </Button>
+        </form>
+        {templateNotice ? (
+          <p className="text-[13px] text-sage">{templateNotice}</p>
+        ) : null}
       </Card>
     </div>
   );

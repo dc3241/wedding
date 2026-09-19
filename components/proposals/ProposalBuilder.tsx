@@ -1,8 +1,11 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useEffect, useState, useTransition } from "react";
 import {
+  createInvoiceFromProposal,
+  createProjectAndInvoiceFromProposal,
   deleteProposal,
   updateProposal,
 } from "@/app/(app)/leads/[leadId]/actions";
@@ -10,14 +13,21 @@ import { Button } from "@/components/ui/button";
 import { ButtonLink } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import type { AccountPlan } from "@/lib/account-context";
 import { cn } from "@/lib/cn";
+import { getCopy } from "@/lib/venue-copy";
+import { invoiceStatusLabel } from "@/lib/invoices/status";
+import type { InvoiceStatus } from "@/lib/invoices/types";
 import { ProposalStatusControl } from "./ProposalStatusControl";
 import {
   computeProposalTotal,
   formatProposalCurrency,
   type Proposal,
+  type ProposalInvoiceLink,
   type ProposalLineItem,
+  type ProposalProjectOption,
 } from "./types";
 
 function emptyLineItem(): ProposalLineItem {
@@ -39,9 +49,17 @@ function formatAcceptedAt(iso: string) {
 
 export function ProposalBuilder({
   proposal,
+  projects,
+  relatedInvoices,
+  linkedProject,
+  plan,
   onClose,
 }: {
   proposal: Proposal;
+  projects: ProposalProjectOption[];
+  relatedInvoices: ProposalInvoiceLink[];
+  linkedProject: ProposalProjectOption | null;
+  plan: AccountPlan;
   onClose: () => void;
 }) {
   const router = useRouter();
@@ -52,6 +70,12 @@ export function ProposalBuilder({
   const [lineItems, setLineItems] = useState<ProposalLineItem[]>(
     proposal.line_items.length > 0 ? proposal.line_items : [emptyLineItem()],
   );
+  const [projectId, setProjectId] = useState(() => {
+    if (linkedProject && projects.some((project) => project.id === linkedProject.id)) {
+      return linkedProject.id;
+    }
+    return projects.length === 1 ? (projects[0]?.id ?? "") : "";
+  });
   const [error, setError] = useState<string | null>(null);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -140,6 +164,35 @@ export function ProposalBuilder({
     });
   }
 
+  function handleCreateInvoice(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    startTransition(async () => {
+      const result = await createInvoiceFromProposal(proposal.id, projectId);
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      router.push(
+        `/projects/${result.projectId}/invoices/${result.invoiceId}`,
+      );
+    });
+  }
+
+  function handleConvert() {
+    setError(null);
+    startTransition(async () => {
+      const result = await createProjectAndInvoiceFromProposal(proposal.id);
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      router.push(
+        `/projects/${result.projectId}/invoices/${result.invoiceId}`,
+      );
+    });
+  }
+
   return (
     <Card className={cn("p-5", isPending && "opacity-60")}>
       <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
@@ -180,13 +233,85 @@ export function ProposalBuilder({
       </div>
 
       {isLocked ? (
-        <div className="mb-4 flex flex-wrap gap-2">
-          <ButtonLink
-            href={`/leads/${proposal.lead_id}/proposals/${proposal.id}/contract`}
-            variant="primary"
-          >
-            View contract
-          </ButtonLink>
+        <div className="mb-4 space-y-3">
+          <div className="flex flex-wrap gap-2">
+            <ButtonLink
+              href={`/leads/${proposal.lead_id}/proposals/${proposal.id}/contract`}
+              variant="primary"
+            >
+              View contract
+            </ButtonLink>
+          </div>
+          {relatedInvoices.length > 0 ? (
+            <ul className="space-y-2">
+              {relatedInvoices.map((invoice) => (
+                <li key={invoice.id}>
+                  <Link
+                    href={`/projects/${invoice.projectId}/invoices/${invoice.id}`}
+                    className="text-[13px] font-medium text-accent no-underline hover:underline"
+                  >
+                    {invoice.invoiceNumber || "Invoice"} ·{" "}
+                    {invoiceStatusLabel(
+                      invoice.status as InvoiceStatus,
+                      false,
+                    )}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+          {linkedProject ? (
+            <ButtonLink
+              href={`/projects/${linkedProject.id}`}
+              variant="default"
+            >
+              {getCopy("openProject", plan)}
+            </ButtonLink>
+          ) : (
+            <Button
+              type="button"
+              variant="default"
+              onClick={handleConvert}
+              disabled={isPending}
+            >
+              {getCopy("proposalConvertAndInvoice", plan)}
+            </Button>
+          )}
+          {projects.length > 0 ? (
+            <form
+              onSubmit={handleCreateInvoice}
+              className="flex flex-col gap-2 sm:flex-row sm:items-end"
+            >
+              <div className="min-w-0 flex-1 space-y-1.5">
+                <label
+                  htmlFor={`proposal-invoice-project-${proposal.id}`}
+                  className="text-sm font-medium text-ink"
+                >
+                  {getCopy("invoiceFromProposalPicker", plan)}
+                </label>
+                <Select
+                  id={`proposal-invoice-project-${proposal.id}`}
+                  value={projectId}
+                  onChange={(e) => setProjectId(e.target.value)}
+                  disabled={isPending}
+                >
+                  {projects.length > 1 && !projectId ? (
+                    <option value="">Choose…</option>
+                  ) : null}
+                  {projects.map((project) => (
+                    <option key={project.id} value={project.id}>
+                      {project.name}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+              <Button type="submit" variant="default" disabled={isPending}>
+                {relatedInvoices.length > 0
+                  ? getCopy("invoiceFromProposalAnother", plan)
+                  : getCopy("invoiceFromProposal", plan)}
+              </Button>
+            </form>
+          ) : null}
         </div>
       ) : null}
 

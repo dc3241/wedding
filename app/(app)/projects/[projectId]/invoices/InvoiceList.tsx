@@ -3,6 +3,7 @@ import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Pill } from "@/components/ui/pill";
 import { formatInvoiceMoney } from "@/lib/invoices/money";
+import { invoiceEffectiveDueDate } from "@/lib/invoices/schedule";
 import {
   invoiceStatusLabel,
   invoiceStatusPillVariant,
@@ -38,7 +39,16 @@ export function InvoiceList({
   return (
     <Card className="space-y-2 p-2">
       {invoices.map((invoice) => {
-        const overdue = isInvoiceOverdue(invoice.due_date, invoice.status);
+        const dueDate = invoiceEffectiveDueDate({
+          dueDate: invoice.due_date,
+          nextDueOn: invoice.nextDue?.due_on,
+        });
+        const overdue = isInvoiceOverdue(
+          dueDate,
+          invoice.status,
+          new Date(),
+          invoice.remaining,
+        );
         const title = invoice.client_name?.trim() || "Untitled invoice";
         return (
           <Link
@@ -49,13 +59,24 @@ export function InvoiceList({
             <div className="min-w-0">
               <p className="text-[15px] font-medium text-ink">{title}</p>
               <p className="mt-1 text-[13px] text-muted">
-                Due {formatDue(invoice.due_date)}
+                {invoice.invoice_number ? `${invoice.invoice_number} · ` : ""}
+                Due {formatDue(dueDate)}
+                {invoice.nextDue?.label?.trim()
+                  ? ` · ${invoice.nextDue.label}`
+                  : ""}
               </p>
             </div>
             <div className="flex shrink-0 items-center gap-3">
-              <span className="text-[15px] font-medium tabular-nums text-ink">
-                {formatInvoiceMoney(invoice.total)}
-              </span>
+              <div className="text-right">
+                <p className="text-[15px] font-medium tabular-nums text-ink">
+                  {formatInvoiceMoney(invoice.total)}
+                </p>
+                {invoice.remaining > 0 && invoice.status !== "draft" ? (
+                  <p className="mt-0.5 text-[13px] tabular-nums text-muted">
+                    {formatInvoiceMoney(invoice.remaining)} due
+                  </p>
+                ) : null}
+              </div>
               <Pill variant={invoiceStatusPillVariant(invoice.status, overdue)}>
                 {invoiceStatusLabel(invoice.status, overdue)}
               </Pill>

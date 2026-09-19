@@ -8,20 +8,31 @@ import { Card } from "@/components/ui/card";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { Pill } from "@/components/ui/pill";
 import { cn } from "@/lib/cn";
+import type { AccountPlan } from "@/lib/account-context";
 import { ProposalBuilder } from "./ProposalBuilder";
 import {
   formatProposalCurrency,
   PROPOSAL_STATUS_LABEL,
   PROPOSAL_STATUS_VARIANT,
   type Proposal,
+  type ProposalInvoiceLink,
+  type ProposalProjectOption,
 } from "./types";
 
 export function ProposalsSection({
   leadId,
   proposals,
+  projects,
+  invoicesByProposalId,
+  linkedProject,
+  plan,
 }: {
   leadId: string;
   proposals: Proposal[];
+  projects: ProposalProjectOption[];
+  invoicesByProposalId: Record<string, ProposalInvoiceLink[]>;
+  linkedProject: ProposalProjectOption | null;
+  plan: AccountPlan;
 }) {
   const router = useRouter();
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -103,6 +114,10 @@ export function ProposalsSection({
       {activeProposal ? (
         <ProposalBuilder
           proposal={activeProposal}
+          projects={projects}
+          relatedInvoices={invoicesByProposalId[activeProposal.id] ?? []}
+          linkedProject={linkedProject}
+          plan={plan}
           onClose={() => setActiveId(null)}
         />
       ) : null}

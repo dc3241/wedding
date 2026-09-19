@@ -33,6 +33,28 @@ export const COPY = {
     backToLeads: "← Back to leads",
     selectedProject: "selected wedding",
     templateCopyFailed: "Wedding created, but template copy failed: ",
+    sidebarMoney: "Money",
+    sidebarInvoices: "Invoices",
+    moneyTitle: "Money",
+    moneyDescription:
+      "What you've billed and collected across weddings. Payment still happens off First Look.",
+    moneyByWedding: "By wedding",
+    moneyWeddingColumn: "Wedding",
+    moneyCsvProjectDate: "Wedding date",
+    moneyExportInvoices: "Download invoices",
+    moneyExportCollections: "Download collections",
+    invoicesTitle: "Invoices",
+    invoicesDescription:
+      "Every invoice across weddings. Open one to send, record a payment, or change the plan.",
+    invoicesEmpty:
+      "No invoices yet. Create one on a wedding, then it shows up here.",
+    invoicesWeddingFilter: "Wedding",
+    invoiceFromProposal: "Create invoice",
+    invoiceFromProposalAnother: "Create another invoice",
+    invoiceFromProposalEmpty:
+      "Create a wedding first, then come back to invoice this proposal.",
+    invoiceFromProposalPicker: "Invoice on",
+    proposalConvertAndInvoice: "Create wedding and invoice",
   },
   venue: {
     sidebarLeads: "Inquiries",
@@ -57,6 +79,28 @@ export const COPY = {
     backToLeads: "← Back to inquiries",
     selectedProject: "selected booking",
     templateCopyFailed: "Booking created, but template copy failed: ",
+    sidebarMoney: "Money",
+    sidebarInvoices: "Invoices",
+    moneyTitle: "Money",
+    moneyDescription:
+      "What you've billed and collected across bookings. Payment still happens off First Look.",
+    moneyByWedding: "By booking",
+    moneyWeddingColumn: "Booking",
+    moneyCsvProjectDate: "Booking date",
+    moneyExportInvoices: "Download invoices",
+    moneyExportCollections: "Download collections",
+    invoicesTitle: "Invoices",
+    invoicesDescription:
+      "Every invoice across bookings. Open one to send, record a payment, or change the plan.",
+    invoicesEmpty:
+      "No invoices yet. Create one on a booking, then it shows up here.",
+    invoicesWeddingFilter: "Booking",
+    invoiceFromProposal: "Create invoice",
+    invoiceFromProposalAnother: "Create another invoice",
+    invoiceFromProposalEmpty:
+      "Create a booking first, then come back to invoice this proposal.",
+    invoiceFromProposalPicker: "Invoice on",
+    proposalConvertAndInvoice: "Create booking and invoice",
   },
 } as const;
 
