@@ -275,6 +275,7 @@ export default async function CalendarPage({
         weddings={weddings}
         payments={payments}
         tasks={tasks}
+        railWidth="fixed"
       />
     </div>
   );

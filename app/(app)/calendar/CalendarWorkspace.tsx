@@ -238,7 +238,7 @@ export function CalendarWorkspace({
   mutations,
   weddingOverlayLabel = "Weddings",
   hideProjectName = false,
-  railWidth = "fluid",
+  railWidth = "fixed",
 }: {
   year: number;
   month: number;
@@ -253,8 +253,8 @@ export function CalendarWorkspace({
   weddingOverlayLabel?: string;
   hideProjectName?: boolean;
   /**
-   * `"fluid"` — current planner split (`1.55fr` / `1fr`).
-   * `"fixed"` — calendar column grows; Upcoming rail stays ~340px (project calendar).
+   * `"fixed"` — calendar column grows; rail stays ~300px (planner + project).
+   * `"fluid"` — legacy `1.55fr` / `1fr` split; keep only if a surface needs it.
    */
   railWidth?: "fluid" | "fixed";
 }) {
@@ -327,7 +327,7 @@ export function CalendarWorkspace({
       className={cn(
         "grid grid-cols-1 gap-6 lg:items-start lg:gap-8",
         railWidth === "fixed"
-          ? "lg:grid-cols-[minmax(0,1fr)_340px]"
+          ? "lg:grid-cols-[minmax(0,1fr)_300px]"
           : "lg:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)]",
       )}
     >
@@ -495,20 +495,22 @@ export function CalendarWorkspace({
           </Card>
         ) : null}
 
-        <Card className="px-5 py-5">
-          <h2 className="font-display text-[19px] font-extrabold tracking-[-0.02em] text-ink">
-            Upcoming
-          </h2>
-          <p className="mt-1 text-[13px] font-medium text-muted">
-            Next 7 days
+        {panel === null && upcoming.length === 0 ? (
+          <p className="min-w-0 px-1 text-[14px] font-medium text-muted">
+            Nothing coming up this week.
           </p>
-          <div className="mt-4 space-y-4">
-            {upcoming.length === 0 ? (
-              <p className="text-[14px] font-medium text-muted">
-                Nothing coming up this week.
-              </p>
-            ) : (
-              groupByDate(upcoming).map(([date, dayItems]) => (
+        ) : null}
+
+        {panel === null && upcoming.length > 0 ? (
+          <Card className="px-5 py-5">
+            <h2 className="font-display text-[19px] font-extrabold tracking-[-0.02em] text-ink">
+              Upcoming
+            </h2>
+            <p className="mt-1 text-[13px] font-medium text-muted">
+              Next 7 days
+            </p>
+            <div className="mt-4 space-y-4">
+              {groupByDate(upcoming).map(([date, dayItems]) => (
                 <div key={date} className="space-y-2">
                   <p className="text-[12px] font-semibold uppercase tracking-[0.09em] text-muted">
                     {formatRailDay(date)}
@@ -522,10 +524,10 @@ export function CalendarWorkspace({
                     />
                   ))}
                 </div>
-              ))
-            )}
-          </div>
-        </Card>
+              ))}
+            </div>
+          </Card>
+        ) : null}
       </div>
 
       {detailItem ? (
