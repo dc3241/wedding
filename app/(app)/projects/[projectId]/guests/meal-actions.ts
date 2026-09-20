@@ -12,6 +12,12 @@ function guestsPath(projectId: string) {
   return `/projects/${projectId}/guests`;
 }
 
+function revalidateGuestSurfaces(projectId: string) {
+  const path = guestsPath(projectId);
+  revalidatePath(path);
+  revalidatePath(`${path}/print`);
+}
+
 export type SetMealServiceStyleResult =
   | { ok: true }
   | { ok: false; reason: "invalid" }
@@ -56,7 +62,7 @@ export async function setMealServiceStyle(
     return { ok: false, reason: "error" };
   }
 
-  revalidatePath(guestsPath(projectId));
+  revalidateGuestSurfaces(projectId);
   return { ok: true };
 }
 
@@ -99,7 +105,7 @@ export async function setSongRequestsEnabled(
     return { ok: false, reason: "error" };
   }
 
-  revalidatePath(guestsPath(projectId));
+  revalidateGuestSurfaces(projectId);
   return { ok: true };
 }
 
@@ -130,7 +136,7 @@ export async function addMealOption(
 
   if (error) throw error;
 
-  revalidatePath(guestsPath(projectId));
+  revalidateGuestSurfaces(projectId);
 }
 
 export async function updateMealOption(
@@ -178,7 +184,7 @@ export async function updateMealOption(
 
   if (error) throw error;
 
-  revalidatePath(guestsPath(data.project_id));
+  revalidateGuestSurfaces(data.project_id);
 }
 
 export async function deleteMealOption(id: string) {
@@ -193,5 +199,5 @@ export async function deleteMealOption(id: string) {
 
   if (error) throw error;
 
-  revalidatePath(guestsPath(data.project_id));
+  revalidateGuestSurfaces(data.project_id);
 }

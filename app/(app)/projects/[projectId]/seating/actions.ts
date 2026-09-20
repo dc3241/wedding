@@ -16,6 +16,12 @@ function seatingPath(projectId: string) {
   return `/projects/${projectId}/seating`;
 }
 
+function revalidateSeatingSurfaces(projectId: string) {
+  const path = seatingPath(projectId);
+  revalidatePath(path);
+  revalidatePath(`${path}/print`);
+}
+
 function clampSeatCount(value: number) {
   return Math.min(SEAT_COUNT_MAX, Math.max(SEAT_COUNT_MIN, Math.round(value)));
 }
@@ -79,7 +85,7 @@ export async function addSeatingTable(
 
   if (error) throw error;
 
-  revalidatePath(seatingPath(projectId));
+  revalidateSeatingSurfaces(projectId);
 }
 
 export async function addDancefloor(
@@ -101,7 +107,7 @@ export async function addDancefloor(
 
   if (error) throw error;
 
-  revalidatePath(seatingPath(projectId));
+  revalidateSeatingSurfaces(projectId);
 }
 
 export async function deleteSeatingTable(id: string) {
@@ -116,7 +122,7 @@ export async function deleteSeatingTable(id: string) {
 
   if (error) throw error;
 
-  revalidatePath(seatingPath(data.project_id));
+  revalidateSeatingSurfaces(data.project_id);
 }
 
 export async function moveSeatingTable(
@@ -137,7 +143,7 @@ export async function moveSeatingTable(
 
   if (error) throw error;
 
-  revalidatePath(seatingPath(data.project_id));
+  revalidateSeatingSurfaces(data.project_id);
 }
 
 export type AssignResult = { ok: true } | { ok: false; error: string };
@@ -206,7 +212,7 @@ export async function setSeatingTableKind(
 
   if (error) throw error;
 
-  revalidatePath(seatingPath(data.project_id));
+  revalidateSeatingSurfaces(data.project_id);
   return { ok: true };
 }
 
@@ -244,7 +250,7 @@ export async function rotateSeatingTable(
 
   if (error) throw error;
 
-  revalidatePath(seatingPath(data.project_id));
+  revalidateSeatingSurfaces(data.project_id);
   return { ok: true };
 }
 
@@ -295,7 +301,7 @@ export async function setSeatingTableSeatCount(
 
   if (error) throw error;
 
-  revalidatePath(seatingPath(data.project_id));
+  revalidateSeatingSurfaces(data.project_id);
   return { ok: true };
 }
 
@@ -392,7 +398,7 @@ export async function assignMemberToSeat(
   }
   if (error) throw error;
 
-  revalidatePath(seatingPath(table.project_id));
+  revalidateSeatingSurfaces(table.project_id);
   return { ok: true };
 }
 
@@ -511,7 +517,7 @@ export async function moveMemberToSeat(
   }
   if (error) throw error;
 
-  revalidatePath(seatingPath(existing.project_id));
+  revalidateSeatingSurfaces(existing.project_id);
   return { ok: true };
 }
 
@@ -582,7 +588,7 @@ export async function swapSeats(
   }
   if (moveAError) throw moveAError;
 
-  revalidatePath(seatingPath(a.project_id));
+  revalidateSeatingSurfaces(a.project_id);
   return { ok: true };
 }
 
@@ -645,7 +651,7 @@ export async function replaceSeat(
   }
   if (error) throw error;
 
-  revalidatePath(seatingPath(seat.project_id));
+  revalidateSeatingSurfaces(seat.project_id);
   return { ok: true };
 }
 
@@ -661,5 +667,5 @@ export async function unseatMember(assignmentId: string) {
 
   if (error) throw error;
 
-  revalidatePath(seatingPath(data.project_id));
+  revalidateSeatingSurfaces(data.project_id);
 }

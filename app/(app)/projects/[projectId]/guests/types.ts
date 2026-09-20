@@ -39,6 +39,42 @@ export type Guest = {
   members: GuestMember[];
 };
 
+export function buildPersonLines(
+  guests: Guest[],
+  nameByMemberId: Map<string, string>,
+): GuestPersonLine[] {
+  const lines: GuestPersonLine[] = [];
+
+  for (const guest of guests) {
+    const members = [...guest.members].sort((a, b) => {
+      if (a.sort_order !== b.sort_order) return a.sort_order - b.sort_order;
+      return a.created_at.localeCompare(b.created_at);
+    });
+
+    members.forEach((member, index) => {
+      const relatedId = member.related_to_member_id;
+      lines.push({
+        member,
+        guestId: guest.id,
+        householdFullName: guest.full_name,
+        householdLabel: guest.household,
+        email: guest.email,
+        phone: guest.phone,
+        address: guest.address,
+        rsvp_status: guest.rsvp_status,
+        rsvp_token: guest.rsvp_token,
+        householdMemberCount: members.length,
+        isFirstInHousehold: index === 0,
+        relatedToPrimaryName: relatedId
+          ? (nameByMemberId.get(relatedId) ?? null)
+          : null,
+      });
+    });
+  }
+
+  return lines;
+}
+
 /** Person-grain Guests list row: one guest_members line + household context. */
 export type GuestPersonLine = {
   member: GuestMember;

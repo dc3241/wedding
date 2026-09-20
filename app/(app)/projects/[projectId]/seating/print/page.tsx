@@ -1,20 +1,17 @@
-import { SeatingWorkspace } from "./SeatingWorkspace";
+import { SeatingExportDocument } from "./SeatingExportDocument";
 import type {
   RosterPerson,
   SeatingAssignment,
   SeatingTable,
   SeatingTableKind,
   SeatingTableShape,
-} from "./types";
-import { isSeatingTableKind, isSeatingTableShape } from "./types";
+} from "../types";
+import { isSeatingTableKind, isSeatingTableShape } from "../types";
 import type { RsvpStatus } from "@/app/(app)/projects/[projectId]/guests/types";
 import { RSVP_STATUSES } from "@/app/(app)/projects/[projectId]/guests/types";
-import { TourHelpButton } from "@/components/tour/TourHelpButton";
-import { ButtonLink } from "@/components/ui/button";
-import { PageHeader } from "@/components/ui/page-header";
 import { getAccountContext } from "@/lib/account-context";
 import { sectionStackClass } from "@/lib/density";
-import { projectWorkspaceEyebrow } from "@/lib/wedding-date";
+import { buildTableAssignmentExport } from "@/lib/guest-exports/tables";
 import { createClient } from "@/utils/supabase/server";
 
 function parseTableKind(value: string): SeatingTableKind | null {
@@ -34,7 +31,7 @@ function parseRsvpStatus(value: unknown): RsvpStatus {
     : "pending";
 }
 
-export default async function SeatingPage({
+export default async function SeatingPrintPage({
   params,
 }: {
   params: Promise<{ projectId: string }>;
@@ -117,14 +114,6 @@ export default async function SeatingPage({
     ];
   });
 
-  people.sort((a, b) => {
-    const aHouse = (a.household_name ?? "").localeCompare(b.household_name ?? "");
-    if (aHouse !== 0) return aHouse;
-    const aName = (a.name ?? "").localeCompare(b.name ?? "");
-    if (aName !== 0) return aName;
-    return a.id.localeCompare(b.id);
-  });
-
   const assignments: SeatingAssignment[] = (assignmentRows ?? []).flatMap(
     (row) => {
       if (!row.guest_member_id) return [];
@@ -133,42 +122,21 @@ export default async function SeatingPage({
           id: row.id,
           table_id: row.table_id,
           guest_member_id: row.guest_member_id,
-          seat_index:
-            row.seat_index == null ? null : Number(row.seat_index),
+          seat_index: row.seat_index == null ? null : Number(row.seat_index),
         },
       ];
     },
   );
 
-  const projectName = project?.name ?? "Your wedding";
-  const weddingDate = project?.wedding_date ?? null;
-  const eyebrow = projectWorkspaceEyebrow(projectName, weddingDate);
+  const data = buildTableAssignmentExport(tables, people, assignments);
 
   return (
     <div className={stackClass}>
-      <PageHeader
-        eyebrow={eyebrow}
-        title="Seating"
-        description="Place tables, then click a seat and pick a person — or click a seated person to move, swap, or unseat."
-        actions={
-          <div className="flex items-center gap-2">
-            <ButtonLink
-              href={`/projects/${projectId}/seating/print`}
-              variant="secondary"
-              className="text-[13px] !px-3.5 !py-2"
-            >
-              Print / export
-            </ButtonLink>
-            <TourHelpButton tourKey="seating" />
-          </div>
-        }
-      />
-
-      <SeatingWorkspace
+      <SeatingExportDocument
         projectId={projectId}
-        tables={tables}
-        people={people}
-        assignments={assignments}
+        coupleNames={project?.name ?? "Wedding"}
+        weddingDate={project?.wedding_date ?? null}
+        data={data}
       />
     </div>
   );

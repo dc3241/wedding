@@ -8,6 +8,12 @@ function guestsPath(projectId: string) {
   return `/projects/${projectId}/guests`;
 }
 
+function revalidateGuestSurfaces(projectId: string) {
+  const path = guestsPath(projectId);
+  revalidatePath(path);
+  revalidatePath(`${path}/print`);
+}
+
 export async function setRsvpSubmissionStatus(
   id: string,
   status: RsvpSubmissionStatus,
@@ -23,7 +29,7 @@ export async function setRsvpSubmissionStatus(
 
   if (error) throw error;
 
-  revalidatePath(guestsPath(String(data.project_id)));
+  revalidateGuestSurfaces(String(data.project_id));
 }
 
 export async function deleteRsvpSubmission(id: string): Promise<void> {
@@ -38,5 +44,5 @@ export async function deleteRsvpSubmission(id: string): Promise<void> {
 
   if (error) throw error;
 
-  revalidatePath(guestsPath(String(data.project_id)));
+  revalidateGuestSurfaces(String(data.project_id));
 }

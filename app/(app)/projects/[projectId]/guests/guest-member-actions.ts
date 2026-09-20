@@ -12,6 +12,12 @@ function guestsPath(projectId: string) {
   return `/projects/${projectId}/guests`;
 }
 
+function revalidateGuestSurfaces(projectId: string) {
+  const path = guestsPath(projectId);
+  revalidatePath(path);
+  revalidatePath(`${path}/print`);
+}
+
 function normalizeRelationship(
   value: string | null | undefined,
 ): string | null {
@@ -76,7 +82,7 @@ export async function addGuestMember(
 
   if (error) throw error;
 
-  revalidatePath(guestsPath(guest.project_id));
+  revalidateGuestSurfaces(guest.project_id);
 }
 
 export async function updateGuestMember(
@@ -134,7 +140,7 @@ export async function updateGuestMember(
 
   if (error) throw error;
 
-  revalidatePath(guestsPath(data.project_id));
+  revalidateGuestSurfaces(data.project_id);
 }
 
 export async function deleteGuestMember(id: string) {
@@ -149,5 +155,5 @@ export async function deleteGuestMember(id: string) {
 
   if (error) throw error;
 
-  revalidatePath(guestsPath(data.project_id));
+  revalidateGuestSurfaces(data.project_id);
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { removeGuest } from "./actions";
+import { removeGuest, updateGuest } from "./actions";
 import { deleteGuestMember, updateGuestMember } from "./guest-member-actions";
 import { RsvpSelect } from "./guest-rsvp";
 import type { GuestPersonLine } from "./types";
@@ -48,6 +48,9 @@ export function GuestPersonRow({
   const [name, setName] = useState(member.name ?? "");
   const [meal, setMeal] = useState(member.meal_option_id ?? "");
   const [dietary, setDietary] = useState(member.dietary_note ?? "");
+  const [envelope, setEnvelope] = useState(person.householdLabel ?? "");
+  const [address, setAddress] = useState(person.address ?? "");
+  const [phone, setPhone] = useState(person.phone ?? "");
   const [isPending, startTransition] = useTransition();
   const [isDeleting, startDeleteTransition] = useTransition();
 
@@ -76,6 +79,16 @@ export function GuestPersonRow({
   }) {
     startTransition(async () => {
       await updateGuestMember(member.id, fields);
+    });
+  }
+
+  function saveHousehold(fields: {
+    household?: string;
+    address?: string;
+    phone?: string;
+  }) {
+    startTransition(async () => {
+      await updateGuest(person.guestId, fields);
     });
   }
 
@@ -125,8 +138,58 @@ export function GuestPersonRow({
             {associationSublabel}
           </div>
         ) : null}
-        {person.isFirstInHousehold && person.phone ? (
-          <div className="mt-1 text-[13px] text-muted">{person.phone}</div>
+        {person.isFirstInHousehold ? (
+          <div className="mt-2 grid gap-2">
+            <div>
+              <MobileLabel>Envelope</MobileLabel>
+              <Input
+                value={envelope}
+                onChange={(e) => setEnvelope(e.target.value)}
+                onBlur={() => {
+                  if ((person.householdLabel ?? "") !== envelope) {
+                    saveHousehold({ household: envelope });
+                  }
+                }}
+                placeholder="Envelope name"
+                disabled={isPending || isDeleting}
+                aria-label="Envelope name"
+                className="min-w-0 bg-surface py-2 text-[13px]"
+              />
+            </div>
+            <div>
+              <MobileLabel>Address</MobileLabel>
+              <Input
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+                onBlur={() => {
+                  if ((person.address ?? "") !== address) {
+                    saveHousehold({ address });
+                  }
+                }}
+                placeholder="Mailing address"
+                disabled={isPending || isDeleting}
+                aria-label="Mailing address"
+                className="min-w-0 bg-surface py-2 text-[13px]"
+              />
+            </div>
+            <div>
+              <MobileLabel>Phone</MobileLabel>
+              <Input
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                onBlur={() => {
+                  if ((person.phone ?? "") !== phone) {
+                    saveHousehold({ phone });
+                  }
+                }}
+                type="tel"
+                placeholder="Phone"
+                disabled={isPending || isDeleting}
+                aria-label="Phone"
+                className="min-w-0 bg-surface py-2 text-[13px]"
+              />
+            </div>
+          </div>
         ) : null}
         {relationshipText ? (
           <p className="mt-1 text-[13px] font-medium text-muted md:hidden">

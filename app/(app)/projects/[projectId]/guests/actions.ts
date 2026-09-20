@@ -21,6 +21,12 @@ function guestsPath(projectId: string) {
   return `/projects/${projectId}/guests`;
 }
 
+function revalidateGuestSurfaces(projectId: string) {
+  const path = guestsPath(projectId);
+  revalidatePath(path);
+  revalidatePath(`${path}/print`);
+}
+
 export type GuestPersonWrite = {
   name: string;
   relationship_side?: string | null;
@@ -128,7 +134,7 @@ export async function addGuest(
 
     if (memberError) throw memberError;
 
-    revalidatePath(guestsPath(projectId));
+    revalidateGuestSurfaces(projectId);
     return;
   }
 
@@ -181,7 +187,7 @@ export async function addGuest(
 
   if (membersError) throw membersError;
 
-  revalidatePath(guestsPath(projectId));
+  revalidateGuestSurfaces(projectId);
 }
 
 export async function updateRsvp(
@@ -200,7 +206,7 @@ export async function updateRsvp(
 
   if (error) throw error;
 
-  revalidatePath(guestsPath(data.project_id));
+  revalidateGuestSurfaces(data.project_id);
 }
 
 export async function updateGuest(
@@ -260,7 +266,7 @@ export async function updateGuest(
 
   if (error) throw error;
 
-  revalidatePath(guestsPath(data.project_id));
+  revalidateGuestSurfaces(data.project_id);
 }
 
 export async function removeGuest(guestId: string) {
@@ -275,5 +281,5 @@ export async function removeGuest(guestId: string) {
 
   if (error) throw error;
 
-  revalidatePath(guestsPath(data.project_id));
+  revalidateGuestSurfaces(data.project_id);
 }

@@ -11,11 +11,11 @@ import { SongRequestsCard } from "./SongRequestsCard";
 import type { RsvpSubmission, SongRequestEntry } from "./rsvp-submissions";
 import {
   RSVP_STATUSES,
+  buildPersonLines,
   countPeopleByHouseholdStatus,
   isGuestMemberType,
   type Guest,
   type GuestMember,
-  type GuestPersonLine,
   type PrimaryMemberOption,
   type RsvpStatus,
 } from "./types";
@@ -24,6 +24,7 @@ import { ASSISTANT_PREFILLS } from "@/components/assistant/prefills";
 import { Card } from "@/components/ui/card";
 import { CollapseSection } from "@/components/ui/collapse-section";
 import { TourHelpButton } from "@/components/tour/TourHelpButton";
+import { ButtonLink } from "@/components/ui/button";
 import { PageHeader } from "@/components/ui/page-header";
 import { getAccountContext } from "@/lib/account-context";
 import { tallyAttendingMeals } from "@/lib/caterer-tally";
@@ -38,42 +39,6 @@ function mealNameFromJoin(
   if (!mealJoin) return null;
   if (Array.isArray(mealJoin)) return mealJoin[0]?.name ?? null;
   return mealJoin.name ?? null;
-}
-
-function buildPersonLines(
-  guests: Guest[],
-  nameByMemberId: Map<string, string>,
-): GuestPersonLine[] {
-  const lines: GuestPersonLine[] = [];
-
-  for (const guest of guests) {
-    const members = [...guest.members].sort((a, b) => {
-      if (a.sort_order !== b.sort_order) return a.sort_order - b.sort_order;
-      return a.created_at.localeCompare(b.created_at);
-    });
-
-    members.forEach((member, index) => {
-      const relatedId = member.related_to_member_id;
-      lines.push({
-        member,
-        guestId: guest.id,
-        householdFullName: guest.full_name,
-        householdLabel: guest.household,
-        email: guest.email,
-        phone: guest.phone,
-        address: guest.address,
-        rsvp_status: guest.rsvp_status,
-        rsvp_token: guest.rsvp_token,
-        householdMemberCount: members.length,
-        isFirstInHousehold: index === 0,
-        relatedToPrimaryName: relatedId
-          ? (nameByMemberId.get(relatedId) ?? null)
-          : null,
-      });
-    });
-  }
-
-  return lines;
 }
 
 export default async function GuestsPage({
@@ -336,7 +301,18 @@ export default async function GuestsPage({
         title="Guests"
         eyebrow={eyebrow}
         description="RSVP & meals for your guest list."
-        actions={<TourHelpButton tourKey="guests" />}
+        actions={
+          <div className="flex items-center gap-2">
+            <ButtonLink
+              href={`/projects/${projectId}/guests/print`}
+              variant="secondary"
+              className="text-[13px] !px-3.5 !py-2"
+            >
+              Print / export
+            </ButtonLink>
+            <TourHelpButton tourKey="guests" />
+          </div>
+        }
       />
 
       <Card className="p-[30px]">

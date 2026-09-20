@@ -8,6 +8,12 @@ function guestsPath(projectId: string) {
   return `/projects/${projectId}/guests`;
 }
 
+function revalidateGuestSurfaces(projectId: string) {
+  const path = guestsPath(projectId);
+  revalidatePath(path);
+  revalidatePath(`${path}/print`);
+}
+
 export type RegenerateGuestRsvpTokenResult =
   | { ok: true; token: string }
   | { ok: false; reason: "forbidden" }
@@ -55,6 +61,6 @@ export async function regenerateGuestRsvpToken(
     return { ok: false, reason: "error" };
   }
 
-  revalidatePath(guestsPath(projectId));
+  revalidateGuestSurfaces(projectId);
   return { ok: true, token };
 }
