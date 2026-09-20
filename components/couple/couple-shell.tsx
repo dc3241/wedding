@@ -17,7 +17,7 @@ export function CoupleShell({
 
   return (
     <div className="flex min-h-full flex-col bg-canvas" style={style}>
-      <header className="sticky top-0 z-10 flex items-center justify-between border-b border-hairline bg-canvas px-6 py-[18px]">
+      <header className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-hairline bg-canvas px-6 py-[18px]">
         <Link
           href="/projects"
           className="min-w-0 no-underline"

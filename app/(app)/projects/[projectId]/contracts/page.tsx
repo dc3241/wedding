@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 import { redirect } from "next/navigation";
 import { ContractCategoryControl } from "@/components/contracts/ContractCategoryControl";
 import { ContractStatusControl } from "@/components/contracts/ContractStatusControl";
@@ -54,7 +55,7 @@ export default async function ContractsPage({
   const trailingSlots = Object.fromEntries(
     fileList.map((file) => [
       file.id,
-      <div key={file.id} className="flex flex-wrap items-center justify-end gap-2">
+      <Fragment key={file.id}>
         <ContractCategoryControl
           fileId={file.id}
           initialCategory={file.category ?? null}
@@ -63,7 +64,7 @@ export default async function ContractsPage({
           fileId={file.id}
           initialStatus={file.status ?? null}
         />
-      </div>,
+      </Fragment>,
     ]),
   );
 

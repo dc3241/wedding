@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 import { redirect } from "next/navigation";
 import { ContractCategoryControl } from "@/components/contracts/ContractCategoryControl";
 import { FileManager } from "@/components/files/FileManager";
@@ -74,18 +75,15 @@ export default async function CoupleContractsPage({
         : null;
       return [
         row.id,
-        <div
-          key={row.id}
-          className="flex flex-wrap items-center justify-end gap-2"
-        >
-          <span className="max-w-[160px] truncate text-[13px] text-muted">
+        <Fragment key={row.id}>
+          <span className="min-w-0 max-w-[160px] truncate text-[13px] text-muted">
             {vendorName ?? "—"}
           </span>
           <ContractCategoryControl
             fileId={row.id}
             initialCategory={row.category ?? null}
           />
-        </div>,
+        </Fragment>,
       ];
     }),
   );

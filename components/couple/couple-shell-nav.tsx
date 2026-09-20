@@ -15,11 +15,11 @@ export function CoupleShellNav() {
   const inProjectWorkspace = pathname.startsWith("/projects/");
 
   return (
-    <nav className="flex items-center gap-1">
+    <nav className="flex shrink-0 items-center gap-1">
       {!inProjectWorkspace ? (
         <Link
           href="/projects"
-          className="relative rounded-[var(--radius-inner)] px-3 py-2 text-sm font-medium text-muted no-underline transition-colors after:absolute after:inset-x-3 after:bottom-0.5 after:h-[2px] after:origin-left after:scale-x-0 after:bg-accent after:transition-transform after:duration-150 hover:bg-well hover:text-ink"
+          className="relative whitespace-nowrap rounded-[var(--radius-inner)] px-3 py-2 text-sm font-medium text-muted no-underline transition-colors after:absolute after:inset-x-3 after:bottom-0.5 after:h-[2px] after:origin-left after:scale-x-0 after:bg-accent after:transition-transform after:duration-150 hover:bg-well hover:text-ink"
         >
           Home
         </Link>
@@ -27,7 +27,7 @@ export function CoupleShellNav() {
       <Link
         href="/account/billing"
         className={cn(
-          "relative rounded-[var(--radius-inner)] px-3 py-2 text-sm font-medium no-underline transition-colors after:absolute after:inset-x-3 after:bottom-0.5 after:h-[2px] after:origin-left after:scale-x-0 after:bg-accent after:transition-transform after:duration-150",
+          "relative whitespace-nowrap rounded-[var(--radius-inner)] px-3 py-2 text-sm font-medium no-underline transition-colors after:absolute after:inset-x-3 after:bottom-0.5 after:h-[2px] after:origin-left after:scale-x-0 after:bg-accent after:transition-transform after:duration-150",
           onBilling
             ? "font-semibold text-ink after:scale-x-100"
             : "text-muted hover:bg-well hover:text-ink",
@@ -38,7 +38,7 @@ export function CoupleShellNav() {
       <Link
         href="/contact"
         className={cn(
-          "relative rounded-[var(--radius-inner)] px-3 py-2 text-sm font-medium no-underline transition-colors after:absolute after:inset-x-3 after:bottom-0.5 after:h-[2px] after:origin-left after:scale-x-0 after:bg-accent after:transition-transform after:duration-150",
+          "relative whitespace-nowrap rounded-[var(--radius-inner)] px-3 py-2 text-sm font-medium no-underline transition-colors after:absolute after:inset-x-3 after:bottom-0.5 after:h-[2px] after:origin-left after:scale-x-0 after:bg-accent after:transition-transform after:duration-150",
           onContact
             ? "font-semibold text-ink after:scale-x-100"
             : "text-muted hover:bg-well hover:text-ink",

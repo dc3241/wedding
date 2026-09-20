@@ -62,11 +62,11 @@ function FileRow({
   return (
     <li
       className={cn(
-        "mb-2 flex flex-wrap items-center justify-between gap-3 rounded-[var(--radius-inner)] bg-well px-4 py-3.5 shadow-recessed last:mb-0",
+        "mb-2 flex min-w-0 flex-col gap-3 rounded-[var(--radius-inner)] bg-well px-4 py-3.5 shadow-recessed last:mb-0 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between",
         (disabled || isPending) && "opacity-60",
       )}
     >
-      <div className="min-w-0 flex-1">
+      <div className="min-w-0 sm:flex-1">
         <div className="truncate text-[15px] font-medium text-ink">
           {file.name}
         </div>
@@ -79,14 +79,14 @@ function FileRow({
           <p className="mt-1 text-[13px] text-rosewood">{actionError}</p>
         ) : null}
       </div>
-      <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+      <div className="flex min-w-0 max-w-full flex-wrap items-center gap-2 sm:justify-end">
         {trailing}
         <Button
           type="button"
           variant="default"
           onClick={handleDownload}
           disabled={disabled || isPending}
-          className="px-3 py-1.5 text-[13px]"
+          className="shrink-0 px-3 py-1.5 text-[13px]"
         >
           Download
         </Button>
@@ -94,7 +94,7 @@ function FileRow({
           type="button"
           onClick={handleDelete}
           disabled={disabled || isPending}
-          className="px-2 text-[13px] font-medium text-muted transition-colors hover:text-rosewood disabled:opacity-50"
+          className="shrink-0 px-2 text-[13px] font-medium text-muted transition-colors hover:text-rosewood disabled:opacity-50"
         >
           Delete
         </button>
@@ -205,7 +205,7 @@ export function FileManager({
   }
 
   return (
-    <section data-tour={dataTour} className="space-y-4">
+    <section data-tour={dataTour} className="min-w-0 space-y-4">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-[12px] font-semibold uppercase tracking-[0.09em] text-muted">
@@ -285,7 +285,7 @@ export function FileManager({
       {files.length === 0 ? (
         <EmptyState>{emptyState}</EmptyState>
       ) : (
-        <Card className="overflow-hidden px-3.5 py-3.5">
+        <Card className="min-w-0 px-3.5 py-3.5">
           <ul>
             {files.map((file) => (
               <FileRow
