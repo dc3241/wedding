@@ -58,29 +58,31 @@ function ToBookCard({
 
   return (
     <div className="rounded-[var(--radius-inner)] bg-well px-4 py-3.5 shadow-recessed">
-      <div className="flex items-start justify-between gap-3">
-        <span className="min-w-0 truncate text-[15px] font-medium text-ink">
-          {candidate.label}
-        </span>
-        <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
-          <ButtonLink href={searchHref} variant="secondary" className="gap-2">
-            <SearchIcon />
-            Find vendors
-          </ButtonLink>
-          <Button
-            type="button"
-            variant="ghost"
-            disabled={isPending}
-            className="text-muted"
-            onClick={() => {
-              startTransition(async () => {
-                await ignoreVendorCategory(projectId, candidate.categoryId);
-              });
-            }}
-          >
-            Ignore
-          </Button>
-        </div>
+      <p className="text-[15px] font-medium leading-snug text-ink">
+        {candidate.label}
+      </p>
+      <div className="mt-2.5 flex flex-wrap items-center gap-2">
+        <ButtonLink
+          href={searchHref}
+          variant="secondary"
+          className="gap-1.5 !px-3.5 !py-2.5 text-[13px]"
+        >
+          <SearchIcon />
+          Find vendors
+        </ButtonLink>
+        <Button
+          type="button"
+          variant="ghost"
+          disabled={isPending}
+          className="text-muted !px-3 !py-2.5 text-[13px]"
+          onClick={() => {
+            startTransition(async () => {
+              await ignoreVendorCategory(projectId, candidate.categoryId);
+            });
+          }}
+        >
+          Ignore
+        </Button>
       </div>
     </div>
   );
@@ -102,14 +104,14 @@ function IgnoredList({
           key={item.categoryId}
           className="flex items-center justify-between gap-3"
         >
-          <span className="min-w-0 truncate text-[14px] font-medium text-ink">
+          <span className="min-w-0 text-[14px] font-medium leading-snug text-ink">
             {item.label}
           </span>
           <Button
             type="button"
             variant="ghost"
             disabled={isPending}
-            className="shrink-0 text-muted"
+            className="shrink-0 text-muted !px-3 !py-2.5 text-[13px]"
             onClick={() => {
               startTransition(async () => {
                 await unignoreVendorCategory(projectId, item.categoryId);
@@ -147,18 +149,13 @@ export function VendorsToBookSection({
   );
 
   return (
-    <Card className="space-y-4 px-6 py-5">
+    <Card className="space-y-4 px-5 py-5">
       <p className="text-[12px] font-semibold uppercase tracking-[0.09em] text-muted">
         Still to book
       </p>
 
       {sortedCandidates.length > 0 ? (
-        <div
-          className="grid gap-3"
-          style={{
-            gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
-          }}
-        >
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
           {sortedCandidates.map((candidate) => (
             <ToBookCard
               key={candidate.categoryId}

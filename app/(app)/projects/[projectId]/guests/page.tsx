@@ -27,7 +27,7 @@ import { TourHelpButton } from "@/components/tour/TourHelpButton";
 import { PageHeader } from "@/components/ui/page-header";
 import { getAccountContext } from "@/lib/account-context";
 import { tallyAttendingMeals } from "@/lib/caterer-tally";
-import { dataRowClass, sectionStackClass } from "@/lib/density";
+import { sectionStackClass } from "@/lib/density";
 import { resolvePartnerSides } from "@/lib/partner-sides";
 import { projectWorkspaceEyebrow } from "@/lib/wedding-date";
 import { createClient } from "@/utils/supabase/server";
@@ -90,7 +90,6 @@ export default async function GuestsPage({
   const account = await getAccountContext(supabase);
   const accountKind = account?.kind ?? "personal";
   const stackClass = sectionStackClass(accountKind);
-  const rowClass = dataRowClass(accountKind);
 
   const [
     { data: guestRows },
@@ -443,7 +442,6 @@ export default async function GuestsPage({
         statusFilter={statusFilter}
         mealOptions={mealOptions}
         mealSelectionActive={mealSelectionActive}
-        rowClass={rowClass}
         partnerSides={partnerSides}
         emptyAction={
           <AskAssistantPrompt

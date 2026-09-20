@@ -15,18 +15,32 @@ import {
   type ResolvedPartnerSides,
 } from "@/lib/partner-sides";
 
+export function guestListGridClass(mealSelectionActive: boolean) {
+  return mealSelectionActive
+    ? "md:grid-cols-[minmax(0,1.25fr)_minmax(0,0.85fr)_minmax(8.25rem,0.7fr)_minmax(8.25rem,0.7fr)_minmax(0,1fr)_auto]"
+    : "md:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)_minmax(8.25rem,0.7fr)_minmax(0,1fr)_auto]";
+}
+
+function MobileLabel({ children }: { children: string }) {
+  return (
+    <span className="mb-1 block text-[12px] font-semibold uppercase tracking-[0.09em] text-muted md:hidden">
+      {children}
+    </span>
+  );
+}
+
 export function GuestPersonRow({
   person,
   mealOptions,
   mealSelectionActive,
-  rowClass,
+  gridClass,
   partnerSides,
   tourRsvpAnchor = false,
 }: {
   person: GuestPersonLine;
   mealOptions: MealOption[];
   mealSelectionActive: boolean;
-  rowClass: string;
+  gridClass: string;
   partnerSides: ResolvedPartnerSides;
   tourRsvpAnchor?: boolean;
 }) {
@@ -83,8 +97,16 @@ export function GuestPersonRow({
   }
 
   return (
-    <tr className={cn(rowClass, (isPending || isDeleting) && "opacity-60")}>
-      <td className="py-3 pr-4 align-top">
+    <li
+      className={cn(
+        "rounded-[var(--radius-inner)] bg-well px-4 py-3.5 shadow-recessed",
+        "md:grid md:items-start md:gap-x-4 md:rounded-none md:border-b md:border-hairline md:bg-transparent md:px-0 md:py-3 md:shadow-none md:last:border-b-0",
+        gridClass,
+        (isPending || isDeleting) && "opacity-60",
+      )}
+    >
+      <div className="min-w-0">
+        <MobileLabel>Name</MobileLabel>
         <Input
           value={name}
           onChange={(e) => setName(e.target.value)}
@@ -96,51 +118,84 @@ export function GuestPersonRow({
           placeholder="Name"
           disabled={isPending || isDeleting}
           aria-label="Guest name"
-          className="bg-surface text-[15px] font-medium"
+          className="min-w-0 bg-surface text-[15px] font-medium"
         />
         {associationSublabel ? (
-          <div className="mt-1 text-[13px] text-muted">{associationSublabel}</div>
+          <div className="mt-1 text-[13px] text-muted">
+            {associationSublabel}
+          </div>
         ) : null}
         {person.isFirstInHousehold && person.phone ? (
           <div className="mt-1 text-[13px] text-muted">{person.phone}</div>
         ) : null}
-      </td>
-      <td className="py-3 pr-4 align-top">
         {relationshipText ? (
-          <span className="text-[14px] font-medium text-ink">
+          <p className="mt-1 text-[13px] font-medium text-muted md:hidden">
+            {relationshipText}
+          </p>
+        ) : null}
+      </div>
+
+      <div
+        className={cn(
+          "hidden min-w-0 md:block",
+          !relationshipText && "md:invisible",
+        )}
+      >
+        {relationshipText ? (
+          <span className="text-[14px] font-medium leading-snug text-ink">
             {relationshipText}
           </span>
         ) : null}
-      </td>
-      <td
-        className="py-3 pr-4 align-top"
-        data-tour={tourRsvpAnchor ? "guests-rsvp" : undefined}
+      </div>
+
+      <div
+        className={cn(
+          "mt-3 grid gap-3 md:mt-0 md:contents",
+          mealSelectionActive ? "grid-cols-2" : "grid-cols-1",
+        )}
       >
-        <RsvpSelect guestId={person.guestId} status={person.rsvp_status} />
-      </td>
-      {mealSelectionActive ? (
-        <td className="py-3 pr-4 align-top">
-          <Select
-            value={meal}
-            onChange={(e) => {
-              const next = e.target.value;
-              setMeal(next);
-              save({ meal_option_id: next || null });
-            }}
-            disabled={isPending || isDeleting}
-            aria-label="Meal"
-            className="bg-surface py-2 text-[14px]"
+        <div
+          className="min-w-0"
+          data-tour={tourRsvpAnchor ? "guests-rsvp" : undefined}
+        >
+          <MobileLabel>RSVP</MobileLabel>
+          <RsvpSelect
+            guestId={person.guestId}
+            status={person.rsvp_status}
+            className="min-w-0"
+          />
+        </div>
+
+        {mealSelectionActive ? (
+          <div
+            className="min-w-0"
+            data-tour={tourRsvpAnchor ? "guests-meal" : undefined}
           >
-            <option value="">No meal</option>
-            {mealOptions.map((option) => (
-              <option key={option.id} value={option.id}>
-                {option.is_kids ? `${option.name} (kids)` : option.name}
-              </option>
-            ))}
-          </Select>
-        </td>
-      ) : null}
-      <td className="py-3 pr-4 align-top">
+            <MobileLabel>Meal</MobileLabel>
+            <Select
+              value={meal}
+              onChange={(e) => {
+                const next = e.target.value;
+                setMeal(next);
+                save({ meal_option_id: next || null });
+              }}
+              disabled={isPending || isDeleting}
+              aria-label="Meal"
+              className="min-w-0 bg-surface py-2 text-[14px]"
+            >
+              <option value="">No meal</option>
+              {mealOptions.map((option) => (
+                <option key={option.id} value={option.id}>
+                  {option.is_kids ? `${option.name} (kids)` : option.name}
+                </option>
+              ))}
+            </Select>
+          </div>
+        ) : null}
+      </div>
+
+      <div className="mt-3 min-w-0 md:mt-0">
+        <MobileLabel>Dietary</MobileLabel>
         <Input
           value={dietary}
           onChange={(e) => setDietary(e.target.value)}
@@ -152,20 +207,21 @@ export function GuestPersonRow({
           placeholder="Dietary note"
           disabled={isPending || isDeleting}
           aria-label="Dietary note"
-          className="bg-surface"
+          className="min-w-0 bg-surface"
         />
-      </td>
-      <td className="py-3 text-right align-top">
+      </div>
+
+      <div className="mt-2 flex justify-end md:mt-0 md:justify-self-end">
         <Button
           type="button"
           variant="ghost"
           disabled={isDeleting}
           onClick={handleDeletePerson}
-          className="text-muted hover:text-rosewood"
+          className="text-muted !px-3 !py-2 text-[13px] hover:text-rosewood"
         >
           {isDeleting ? "Deleting…" : "Delete"}
         </Button>
-      </td>
-    </tr>
+      </div>
+    </li>
   );
 }

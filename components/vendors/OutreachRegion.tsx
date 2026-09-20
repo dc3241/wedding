@@ -180,7 +180,7 @@ export function OutreachRegion({
   return (
     <div className="space-y-4">
       <Card className="px-5 py-5">
-        <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
           <div className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
             <Eyebrow>Outreach</Eyebrow>
             <p className="text-[13px] font-medium text-muted tabular-nums">
@@ -190,39 +190,39 @@ export function OutreachRegion({
             </p>
           </div>
 
-          <div className="min-w-0 max-w-full basis-full overflow-x-auto overflow-y-hidden [-webkit-overflow-scrolling:touch] [scrollbar-width:none] touch-pan-x [&::-webkit-scrollbar]:hidden sm:max-w-none sm:basis-auto sm:overflow-visible">
-            <div className="flex w-max flex-nowrap items-center gap-1 sm:w-fit sm:gap-2">
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
+            <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
                 onClick={() => setShowAdd((v) => !v)}
                 aria-expanded={showAdd}
-                className="shrink-0 whitespace-nowrap rounded-[var(--radius-pill)] px-2.5 py-1.5 text-[13px] font-semibold text-accent transition-colors hover:bg-accent-wash focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent sm:px-3"
+                className="rounded-[var(--radius-pill)] px-2.5 py-1.5 text-[13px] font-semibold text-accent transition-colors hover:bg-accent-wash focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent sm:px-3"
               >
                 {showAdd ? "Hide add" : "+ Add manually"}
               </button>
               <ButtonLink
                 href={`/projects/${projectId}/vendors/outreach`}
                 variant="default"
-                className="w-fit shrink-0 whitespace-nowrap !px-2.5 !py-1.5 text-[13px] sm:!px-5 sm:!py-2.5"
+                className="w-fit whitespace-nowrap !px-2.5 !py-1.5 text-[13px] sm:!px-5 sm:!py-2.5"
               >
                 Review drafts
               </ButtonLink>
-              <Button
-                type="button"
-                variant="primary"
-                disabled={selectedToContactIds.length === 0 || isDraftPending}
-                onClick={() => {
-                  setDraftError(null);
-                  setShowDraftForm(true);
-                }}
-                className="w-fit shrink-0 whitespace-nowrap !px-2.5 !py-1.5 text-[13px] sm:!px-5 sm:!py-2.5"
-              >
-                Draft outreach
-                {selectedToContactIds.length > 0
-                  ? ` (${selectedToContactIds.length})`
-                  : ""}
-              </Button>
             </div>
+            <Button
+              type="button"
+              variant="primary"
+              disabled={selectedToContactIds.length === 0 || isDraftPending}
+              onClick={() => {
+                setDraftError(null);
+                setShowDraftForm(true);
+              }}
+              className="w-full whitespace-nowrap !px-2.5 !py-1.5 text-[13px] sm:w-fit sm:!px-5 sm:!py-2.5"
+            >
+              Draft outreach
+              {selectedToContactIds.length > 0
+                ? ` (${selectedToContactIds.length})`
+                : ""}
+            </Button>
           </div>
         </div>
 

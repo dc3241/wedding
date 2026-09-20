@@ -62,46 +62,43 @@ function NextDueSummary({
   allInstallmentsCovered: boolean;
   todayKey: string;
 }) {
+  const pill = nextPayment
+    ? overviewDuePill(nextPayment.due_on, todayKey, nextPayment.pastDue)
+    : null;
+
   return (
-    <Card className="px-6 py-[22px]">
+    <Card className="px-5 py-[22px]">
       <p className="text-[12px] font-semibold uppercase tracking-[0.09em] text-muted">
         Next due
       </p>
-      {nextPayment ? (
-        <div className="mt-3 flex flex-wrap items-center gap-4 rounded-[var(--radius-inner)] bg-well px-4 py-3.5 shadow-recessed">
-          <div className="min-w-0 flex-1">
-            <p className="text-[15px] font-medium text-ink">
+      {nextPayment && pill ? (
+        <div className="mt-3 rounded-[var(--radius-inner)] bg-well px-4 py-3.5 shadow-recessed">
+          <div className="flex items-start justify-between gap-3">
+            <p className="min-w-0 text-[15px] font-medium leading-snug text-ink">
               {nextPayment.primary}
             </p>
-            <p className="mt-0.5 text-[13px] font-medium text-muted">
+            <span
+              className={cn(
+                "shrink-0 rounded-[var(--radius-pill)] px-3 py-1.5 text-[12px] font-bold uppercase tracking-[0.04em]",
+                pill.urgent
+                  ? "bg-rosewood-wash text-rosewood"
+                  : "bg-clay-wash text-clay",
+              )}
+            >
+              {pill.label}
+            </span>
+          </div>
+          <div className="mt-2 flex items-end justify-between gap-3">
+            <p className="min-w-0 text-[13px] font-medium leading-snug text-muted">
               {nextPayment.label?.trim()
                 ? `${nextPayment.label.trim()} · `
                 : ""}
               due {formatShortDate(nextPayment.due_on)}
             </p>
+            <p className="shrink-0 font-display text-[22px] font-extrabold tracking-[-0.03em] tabular-nums text-ink">
+              {formatCurrency(nextPayment.amount)}
+            </p>
           </div>
-          <p className="font-display text-[28px] font-extrabold tracking-[-0.03em] tabular-nums text-ink">
-            {formatCurrency(nextPayment.amount)}
-          </p>
-          {(() => {
-            const pill = overviewDuePill(
-              nextPayment.due_on,
-              todayKey,
-              nextPayment.pastDue,
-            );
-            return (
-              <span
-                className={cn(
-                  "rounded-[var(--radius-pill)] px-3 py-1.5 text-[12px] font-bold uppercase tracking-[0.04em]",
-                  pill.urgent
-                    ? "bg-rosewood-wash text-rosewood"
-                    : "bg-clay-wash text-clay",
-                )}
-              >
-                {pill.label}
-              </span>
-            );
-          })()}
         </div>
       ) : (
         <p className="mt-3 text-[15px] font-medium text-muted">

@@ -2,7 +2,7 @@
 
 import { useState, type ReactNode } from "react";
 import Link from "next/link";
-import { GuestPersonRow } from "./GuestRow";
+import { GuestPersonRow, guestListGridClass } from "./GuestRow";
 import type { MealOption } from "./meal-types";
 import {
   RSVP_STATUSES,
@@ -52,7 +52,6 @@ export function GuestPersonList({
   statusFilter,
   mealOptions,
   mealSelectionActive,
-  rowClass,
   partnerSides,
   emptyAction,
 }: {
@@ -62,12 +61,12 @@ export function GuestPersonList({
   statusFilter?: RsvpStatus;
   mealOptions: MealOption[];
   mealSelectionActive: boolean;
-  rowClass: string;
   partnerSides: ResolvedPartnerSides;
   emptyAction?: ReactNode;
 }) {
   const [sortMode, setSortMode] = useState<SortMode>("alphabetical");
   const sortedPeople = sortPeople(people, sortMode);
+  const gridClass = guestListGridClass(mealSelectionActive);
 
   const count = statusFilter ? people.length : totalPeopleCount;
   const countNoun = count === 1 ? "person" : "people";
@@ -138,41 +137,33 @@ export function GuestPersonList({
       ) : people.length === 0 ? (
         <EmptyState>No guests match this filter.</EmptyState>
       ) : (
-        <Card className="overflow-x-auto px-6 py-4">
-          <table className="w-full min-w-[40rem] border-collapse text-left">
-            <thead>
-              <tr className="border-b border-hairline text-[12px] font-semibold uppercase tracking-[0.09em] text-muted">
-                <th className="pb-3 pr-4 font-semibold">Name</th>
-                <th className="pb-3 pr-4 font-semibold">Relationship</th>
-                <th className="pb-3 pr-4 font-semibold">RSVP</th>
-                {mealSelectionActive ? (
-                  <th
-                    data-tour="guests-meal"
-                    className="pb-3 pr-4 font-semibold"
-                  >
-                    Meal
-                  </th>
-                ) : null}
-                <th className="pb-3 pr-4 font-semibold">Dietary</th>
-                <th className="pb-3 text-right font-semibold">
-                  <span className="sr-only">Actions</span>
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {sortedPeople.map((person, index) => (
-                <GuestPersonRow
-                  key={person.member.id}
-                  person={person}
-                  mealOptions={mealOptions}
-                  mealSelectionActive={mealSelectionActive}
-                  rowClass={rowClass}
-                  partnerSides={partnerSides}
-                  tourRsvpAnchor={index === 0}
-                />
-              ))}
-            </tbody>
-          </table>
+        <Card className="px-4 py-4 md:px-6">
+          <div
+            className={cn(
+              "mb-3 hidden border-b border-hairline pb-3 text-[12px] font-semibold uppercase tracking-[0.09em] text-muted md:grid md:items-end md:gap-x-4",
+              gridClass,
+            )}
+          >
+            <span>Name</span>
+            <span>Relationship</span>
+            <span>RSVP</span>
+            {mealSelectionActive ? <span>Meal</span> : null}
+            <span>Dietary</span>
+            <span className="sr-only">Actions</span>
+          </div>
+          <ul className="space-y-3 md:space-y-0">
+            {sortedPeople.map((person, index) => (
+              <GuestPersonRow
+                key={person.member.id}
+                person={person}
+                mealOptions={mealOptions}
+                mealSelectionActive={mealSelectionActive}
+                gridClass={gridClass}
+                partnerSides={partnerSides}
+                tourRsvpAnchor={index === 0}
+              />
+            ))}
+          </ul>
         </Card>
       )}
     </section>
