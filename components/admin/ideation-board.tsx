@@ -19,9 +19,14 @@ import {
 } from "@/lib/admin/content-formats";
 import {
   CONTENT_QUEUE_PLATFORMS,
+  isActiveContentQueuePlatform,
+  queueRepublishHint,
   type ContentQueuePlatform,
 } from "@/lib/admin/content-queue";
-import type { AudienceGroup } from "@/lib/admin/platform-audience";
+import {
+  lockedAudienceForPlatform,
+  type AudienceGroup,
+} from "@/lib/admin/platform-audience";
 import type { IdeationItem } from "@/lib/admin/types";
 import { cn } from "@/lib/cn";
 import Link from "next/link";
@@ -67,7 +72,11 @@ function ThumbButton({
 
 function fridayHint(item: IdeationItem): string | null {
   if (item.rating !== "up") return null;
-  if (!item.platform) return "Pick a platform so Friday can produce this.";
+  if (!isActiveContentQueuePlatform(item.platform)) {
+    return item.platform
+      ? "Pick TikTok, Pinterest, or LinkedIn — Instagram is retired."
+      : "Pick a platform so Friday can produce this.";
+  }
   if (!item.format) return "Pick a format so Friday knows what to make.";
   if (!item.audience_group) return "Pick an audience so this files in the right bank.";
   return null;
@@ -91,6 +100,8 @@ function IdeaCard({
   const formatOptions = item.platform ? formatsForPlatform(item.platform) : [];
   const hint = fridayHint(item);
   const ready = isIdeaFridayReady(item);
+  const audienceLocked = lockedAudienceForPlatform(item.platform) != null;
+  const republish = item.platform ? queueRepublishHint(item.platform) : null;
 
   function handleRate(rating: "up" | "down") {
     const previous = item.rating;
@@ -261,7 +272,7 @@ function IdeaCard({
             }
             aria-label="Audience"
             className="py-1.5"
-            disabled={item.platform === "linkedin"}
+            disabled={audienceLocked}
           >
             <option value="">Audience</option>
             {AUDIENCE_OPTIONS.map((a) => (
@@ -294,6 +305,9 @@ function IdeaCard({
           </label>
         ) : null}
       </div>
+      {republish ? (
+        <p className="mb-2 text-[13px] text-muted">{republish}</p>
+      ) : null}
       <Input
         value={comment}
         onChange={(e) => setComment(e.target.value)}

@@ -1,5 +1,11 @@
-import type { ContentQueuePlatform } from "@/lib/admin/content-queue";
-import type { AudienceGroup } from "@/lib/admin/platform-audience";
+import {
+  isActiveContentQueuePlatform,
+  type ContentQueuePlatform,
+} from "@/lib/admin/content-queue";
+import {
+  lockedAudienceForPlatform,
+  type AudienceGroup,
+} from "@/lib/admin/platform-audience";
 
 /** Production format — what Friday should make. Not A/B/C/D (caption flavor). */
 export type ContentPostFormat = "static" | "carousel" | "ugc" | "photo" | "pin" | "text";
@@ -11,7 +17,7 @@ export const CONTENT_POST_FORMATS: {
 }[] = [
   { key: "static", label: "Static", needsImages: true },
   { key: "carousel", label: "Carousel", needsImages: true },
-  { key: "ugc", label: "UGC", needsImages: false },
+  { key: "ugc", label: "Video", needsImages: false },
   { key: "photo", label: "Photo", needsImages: true },
   { key: "pin", label: "Pin", needsImages: true },
   { key: "text", label: "Text post", needsImages: false },
@@ -24,14 +30,15 @@ export const FORMATS_BY_PLATFORM: Record<
   instagram: [
     { key: "static", label: "Static" },
     { key: "carousel", label: "Carousel" },
-    { key: "ugc", label: "UGC / Reel" },
+    { key: "ugc", label: "Video" },
   ],
-  tiktok: [
-    { key: "ugc", label: "UGC" },
-    { key: "photo", label: "Photo" },
+  tiktok: [{ key: "ugc", label: "Video" }],
+  pinterest: [{ key: "pin", label: "Static" }],
+  linkedin: [
+    { key: "text", label: "Text post" },
+    { key: "static", label: "Static" },
+    { key: "ugc", label: "Video" },
   ],
-  pinterest: [{ key: "pin", label: "Pin" }],
-  linkedin: [{ key: "text", label: "Text post" }],
 };
 
 export const AUDIENCE_OPTIONS: { key: AudienceGroup; label: string }[] = [
@@ -123,7 +130,7 @@ export function isIdeaFridayReady(item: {
 }): boolean {
   return (
     item.rating === "up" &&
-    item.platform != null &&
+    isActiveContentQueuePlatform(item.platform) &&
     item.format != null &&
     item.audience_group != null
   );
@@ -145,15 +152,18 @@ export function applyIdeaTargetPatch(
   let audience_group =
     patch.audience_group !== undefined ? patch.audience_group : current.audience_group;
 
-  if (platform === "linkedin") {
-    format = "text";
-    audience_group = "planner";
-  } else if (platform === "pinterest") {
+  const lockedAudience = lockedAudienceForPlatform(platform);
+  if (lockedAudience) audience_group = lockedAudience;
+
+  if (platform === "pinterest") {
     format = "pin";
+  } else if (platform === "tiktok") {
+    format = "ugc";
   } else if (platform && format && !isFormatForPlatform(platform, format)) {
     format = null;
   } else if (!platform) {
     format = null;
+    if (patch.platform !== undefined) audience_group = null;
   }
 
   let carousel_slides =

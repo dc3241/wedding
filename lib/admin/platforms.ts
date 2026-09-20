@@ -2,10 +2,10 @@ import type { PillVariant } from "@/components/ui/pill";
 
 /**
  * Content bank platforms — one Bank tab per platform in the source Sheet.
- * TikTok is Idea | Type | Script (uses `type`). Instagram / Facebook /
- * LinkedIn are Idea | Format | Content (use `format`). Pinterest is
- * Idea | Pin Title | Pin Description (uses `title`). YouTube has no rows
- * yet (channel not live) but is a valid platform to file ideas under.
+ * TikTok is Idea | Type | Script (uses `type`). Facebook / LinkedIn /
+ * YouTube are Idea | Format | Content (use `format`). Pinterest is
+ * Idea | Pin Title | Pin Description (uses `title`). Instagram remains
+ * in the type for leftover bank rows but is not shown as a tab.
  * Reddit (ADMIN-AUD-00) is a maintained list of threads to comment on
  * (idea = title, notes = subreddit, body = why it's relevant).
  */
@@ -53,11 +53,13 @@ export const CONTENT_TYPE_META: Record<
 };
 
 /**
- * Schedule tri-state columns — Couples-facing (c) then
- * Planner-facing + Ops (p). Distinct key set from CONTENT_PLATFORMS
- * (fbPage/fbGroups split, plus outreach with no content-bank
- * equivalent; reddit is a bank platform as of ADMIN-AUD-00) — schedule_days.platforms is jsonb precisely so this list
- * can change without a migration.
+ * Schedule tri-state columns — Couples-facing (c) then Planner-facing + Ops (p).
+ * Origins: TikTok / Pin (couples), LinkedIn (planner). FB / YT are republish
+ * checks of those origins, split by audience so a couples TikTok and a planner
+ * LinkedIn video do not share a checkbox. Distinct keys from CONTENT_PLATFORMS
+ * (bank uses `facebook` / `youtube`; schedule uses `fbCouples` / `ytCouples` /
+ * `fbPlanner` / `ytPlanner`). outreach has no bank tab. schedule_days.platforms
+ * is jsonb so this list can change without a table rewrite.
  */
 export const SCHEDULE_PLATFORM_COLS: {
   key: string;
@@ -65,13 +67,13 @@ export const SCHEDULE_PLATFORM_COLS: {
   group: "c" | "p";
 }[] = [
   { key: "tiktok", label: "TikTok", group: "c" },
-  { key: "ig", label: "IG", group: "c" },
-  { key: "fbPage", label: "FB Page", group: "c" },
-  { key: "fbGroups", label: "FB Groups", group: "c" },
   { key: "pinterest", label: "Pin", group: "c" },
+  { key: "fbCouples", label: "FB", group: "c" },
+  { key: "ytCouples", label: "YT", group: "c" },
   { key: "linkedin", label: "LinkedIn", group: "p" },
+  { key: "fbPlanner", label: "FB", group: "p" },
+  { key: "ytPlanner", label: "YT", group: "p" },
   { key: "reddit", label: "Reddit", group: "p" },
-  { key: "youtube", label: "YouTube", group: "p" },
   { key: "outreach", label: "Outreach", group: "p" },
 ];
 

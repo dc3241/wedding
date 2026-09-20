@@ -15,13 +15,14 @@ export const KIE_ASPECT_RATIOS = [
 
 export type KieAspectRatio = (typeof KIE_ASPECT_RATIOS)[number];
 
-export type KieImagePlatform = "instagram" | "tiktok" | "pinterest";
+export type KieImagePlatform = "instagram" | "tiktok" | "pinterest" | "linkedin";
 
 /** Closest allowed ratio per platform. IG feed is 4:5; KIE has no 4:5. */
 export const PLATFORM_KIE_ASPECT: Record<KieImagePlatform, KieAspectRatio> = {
   instagram: "3:4",
   tiktok: "9:16",
   pinterest: "2:3",
+  linkedin: "1:1",
 };
 
 const SOCIAL_TO_KIE: Record<string, KieAspectRatio> = {

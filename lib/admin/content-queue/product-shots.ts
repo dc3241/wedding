@@ -23,9 +23,20 @@ export type ProductShot = {
   description: string;
   /** The one product motif to rebuild as a designed card in the graphic. */
   heroElement: string;
+  /**
+   * How to place the rebuilt motif on the slide. Omit for the default
+   * (one raised card with generous padding). Budget shots fill the pin.
+   */
+  composition?: string;
   /** Extra real screens (image 2…). Layout template is always last. */
   extraScreens?: ProductShotScreen[];
 };
+
+const DEFAULT_COMPOSITION =
+  "Place that white raised card on the mauve canvas with generous padding and a raised shadow so it feels built into the layout, like a marketing illustration of the product, not a photograph of a computer screen.";
+
+const FILL_COMPOSITION =
+  "This motif IS the graphic: scale it to fill most of the canvas under the headline (roughly two-thirds of the frame). Large type and internal card padding, but little empty mauve around the motif. A wide progress band, a grid of category cards, or a tall item card — not a tiny floating widget.";
 
 export const PRODUCT_SHOTS: ProductShot[] = [
   {
@@ -123,10 +134,54 @@ export const PRODUCT_SHOTS: ProductShot[] = [
   {
     slug: "budget",
     path: "product/budget.png",
-    aliases: ["budget", "spent", "allocated", "paid so far"],
-    description: "Budget tracker with category bars",
+    aliases: [
+      "budget tracker",
+      "paid so far",
+      "auto-updating",
+      "auto updating",
+      "put aside",
+      "allocated",
+      "unallocated",
+    ],
+    description:
+      "Budget tracker — 15% paid-so-far band with allocated / paid / committed wells",
     heroElement:
-      "one raised white card of category spend bars and a spent/allocated figure — never a pie, donut, or circular progress",
+      "the wide 15% paid-so-far allocation band with the five money wells (Allocated $32,600, Unallocated $12,400, Actual $17,700, Paid so far $6,700, Committed $25,900) — keep those exact labels and numbers. Never relabel the wells as vendor categories. Never a pie, donut, or circular progress",
+    composition: FILL_COMPOSITION,
+  },
+  {
+    slug: "budget-categories",
+    path: "product/budget-categories.png",
+    aliases: [
+      "budget split",
+      "budget categories",
+      "category ramps",
+      "where the money",
+      "photographer or venue",
+      "venue vs",
+    ],
+    description:
+      "Budget category cards — attire, florals, food, misc, photo, venue with paid ramps",
+    heroElement:
+      "the six category cards as a designed grid filling the pin: attire, florals, food, misc, photo, venue — each with its real ramp bar, total paid, next-due line, and budget figure from the shot. Do not invent category names or swap in the 15% paid-so-far band",
+    composition: FILL_COMPOSITION,
+  },
+  {
+    slug: "budget-item",
+    path: "product/budget-item.png",
+    aliases: [
+      "payment schedule",
+      "next due",
+      "installment",
+      "suit deposit",
+      "add payment",
+      "budget item",
+    ],
+    description:
+      "Expanded attire budget item — paid ramp, deposit ledger, and notes",
+    heroElement:
+      "the expanded attire item card as a tall raised graphic filling the pin: sage paid ramp, Budget $3,500 with +$2,300, and the Payments row $1,200 · Jul 1, 2026 · Suit deposit. Omit the empty payment-schedule form, vendor dropdown, and notes field if they clutter. Never a second window",
+    composition: FILL_COMPOSITION,
   },
   {
     slug: "guests",
@@ -232,7 +287,7 @@ export function kiePromptForProductShot(
   const screenLines = screens.map((screen, i) => {
     const n = i + 1;
     if (i === 0) {
-      return `Image ${n} is a real First Look screenshot (${screen.description}). It is a SOURCE of product UI — labels, numbers, status colors, Soft stack cards and pills — not the graphic itself. Isolate and rebuild this one motif as a designed element: ${shot.heroElement}. Place that white raised card on the mauve canvas with generous padding and a raised shadow so it feels built into the layout, like a marketing illustration of the product, not a photograph of a computer screen. Keep the fragment's real copy, numbers, and status pills from image ${n}. Omit sidebar, top nav, browser chrome, URL bars, overlapping windows, laptop/phone frames, and leftover full-page layout. Do not invent new screens, logos, portals, buttons, or chrome that are not in image ${n}. If a label is unreadable, omit it.`;
+      return `Image ${n} is a real First Look screenshot (${screen.description}). It is a SOURCE of product UI — labels, numbers, status colors, Soft stack cards and pills — not the graphic itself. Isolate and rebuild this one motif as a designed element: ${shot.heroElement}. ${shot.composition ?? DEFAULT_COMPOSITION} Keep the fragment's real copy, numbers, and status pills from image ${n}. Omit sidebar, top nav, browser chrome, URL bars, overlapping windows, laptop/phone frames, and leftover full-page layout. Do not invent new screens, logos, portals, buttons, or chrome that are not in image ${n}. If a label is unreadable, omit it.`;
     }
     const fragment =
       screen.heroElement ??
@@ -254,11 +309,52 @@ export function kiePromptForProductShot(
     .join(" ");
 }
 
+const BUDGET_CATEGORY_HINTS = [
+  "budget split",
+  "split formula",
+  "categor",
+  "where the money",
+  "photographer or venue",
+  "venue vs",
+] as const;
+
+const BUDGET_ITEM_HINTS = [
+  "payment schedule",
+  "next due",
+  "installment",
+  "suit deposit",
+  "add payment",
+  "budget item",
+] as const;
+
+function shotBySlug(slug: string): ProductShot | null {
+  return PRODUCT_SHOTS.find((s) => s.slug === slug) ?? null;
+}
+
+/**
+ * [surface: budget] is the generic tag. Pick the category-grid or item
+ * variant when the prompt is clearly about a split or a single line.
+ */
+function pickBudgetVariant(text: string): ProductShot | null {
+  const hay = text.toLowerCase();
+  if (BUDGET_ITEM_HINTS.some((hint) => hay.includes(hint))) {
+    return shotBySlug("budget-item");
+  }
+  if (BUDGET_CATEGORY_HINTS.some((hint) => hay.includes(hint))) {
+    return shotBySlug("budget-categories");
+  }
+  return shotBySlug("budget");
+}
+
 /** Longest alias wins so "vendor library" beats "vendor". [surface: slug] wins outright. */
 export function matchProductShot(text: string): ProductShot | null {
+  // Type A/B are tip/story with no product UI — even if the planner tagged a surface.
+  if (/\[type:\s*[AB]\]/i.test(text)) return null;
+
   const tagged = text.match(/\[surface:\s*([a-z0-9-]+)\]/i)?.[1]?.toLowerCase();
   if (tagged) {
-    const shot = PRODUCT_SHOTS.find((s) => s.slug === tagged);
+    if (tagged === "budget") return pickBudgetVariant(text);
+    const shot = shotBySlug(tagged);
     if (shot) return shot;
   }
 

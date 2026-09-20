@@ -26,6 +26,7 @@ import {
   CONTENT_QUEUE_PLATFORMS,
   CONTENT_QUEUE_STATUSES,
   contentQueuePlatformMeta,
+  queueRepublishHint,
   type ContentQueuePlatform,
   type ContentQueueStatus,
 } from "@/lib/admin/content-queue";
@@ -190,6 +191,7 @@ function QueueCard({ item }: { item: ContentQueueItem }) {
   const typeMeta = CONTENT_TYPE_META[item.content_type];
   const audienceLabel =
     AUDIENCE_OPTIONS.find((a) => a.key === item.audience_group)?.label ?? null;
+  const republish = queueRepublishHint(item.platform);
   const imagesReady = imagesReadyForQueue(item);
   const jobStarted = imageJobStarted(item);
   const generating =
@@ -243,6 +245,9 @@ function QueueCard({ item }: { item: ContentQueueItem }) {
         </Pill>
         <Pill variant={statusMeta.pill}>{statusMeta.label}</Pill>
       </div>
+      {republish ? (
+        <p className="mb-3 text-[13px] text-muted">{republish}</p>
+      ) : null}
 
       <QueueImage
         urls={item.image_urls}

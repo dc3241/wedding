@@ -21,14 +21,13 @@ export const KIE_MODEL = "seedream/5-pro-image-to-image";
 /** Seedream 5 Pro i2i: `basic` = 1K, `high` = 2K. 1K covers 1080 social. */
 export const KIE_QUALITY = "basic" as const;
 
-type KiePlatform = KieImagePlatform;
-
 export const PLATFORM_ASPECT = PLATFORM_KIE_ASPECT;
 
 /**
  * Locked templates in content-queue-assets. The bucket holds the full
  * sets under references/lrvn-post/ and references/square/; these two
- * are the ones createTask actually sends (TikTok = 9:16 LRVN, IG/Pin = square).
+ * are the ones createTask actually sends (TikTok = 9:16 LRVN,
+ * Pin/LinkedIn static = square).
  * Override with CONTENT_QUEUE_REF_LRVN_URL / CONTENT_QUEUE_REF_SQUARE_URL
  * if the files are hosted at a stable public URL instead.
  */
@@ -114,17 +113,19 @@ export async function requestGeneration(
   post: Pick<PlannedPost, "platform" | "prompt">,
   references?: { lrvnPost: string; squareSet: string },
 ): Promise<string> {
-  if (post.platform === "linkedin") {
-    throw new Error("LinkedIn posts are text-only; skip image generation.");
-  }
   const refs = references ?? (await resolveReferenceUrls());
-  const byPlatform: Record<KiePlatform, string> = {
+  const byPlatform: Record<KieImagePlatform, string> = {
     tiktok: refs.lrvnPost,
     instagram: refs.squareSet,
     pinterest: refs.squareSet,
+    linkedin: refs.squareSet,
   };
 
-  const layoutUrl = byPlatform[post.platform];
+  if (!(post.platform in byPlatform)) {
+    throw new Error(`${post.platform} posts skip image generation.`);
+  }
+
+  const layoutUrl = byPlatform[post.platform as KieImagePlatform];
   const shot = matchProductShot(post.prompt);
   let imageUrls: string[];
   let prompt: string;

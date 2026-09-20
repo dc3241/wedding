@@ -1,21 +1,22 @@
 import {
-  CONTENT_PLATFORMS,
   SCHEDULE_PLATFORM_COLS,
   type ContentPlatform,
 } from "@/lib/admin/platforms";
+import type { ContentQueuePlatform } from "@/lib/admin/content-queue";
 
 export type AudienceGroup = "couples" | "planner";
 
 /**
- * Bank keys that are not also schedule keys. Schedule uses `ig` /
- * `fbPage` / `fbGroups`; the bank uses `instagram` / `facebook`.
- * Schedule keys (including reddit, youtube, outreach) are resolved
- * from SCHEDULE_PLATFORM_COLS so this file cannot drift from
- * Overview / Schedule.
+ * Bank keys that are not also schedule keys. Schedule uses `fbCouples` /
+ * `ytCouples` / `fbPlanner` / `ytPlanner`; the bank uses `facebook` /
+ * `youtube` as republish filing tabs in BOTH audience banks.
+ * Instagram is retired from origination; leftover bank rows still map here
+ * so they do not vanish from queries.
  */
 const BANK_KEY_ALIASES: Record<string, AudienceGroup> = {
   instagram: "couples",
   facebook: "couples",
+  youtube: "planner",
 };
 
 export function audienceForPlatform(
@@ -26,12 +27,13 @@ export function audienceForPlatform(
   return BANK_KEY_ALIASES[platform] ?? null;
 }
 
-export function bankPlatformsForAudience(
-  audience: AudienceGroup,
-): ContentPlatform[] {
-  return CONTENT_PLATFORMS.filter(
-    (p) => audienceForPlatform(p.key) === audience,
-  ).map((p) => p.key);
+/** Queue origins lock audience. Instagram is legacy and not locked in the UI. */
+export function lockedAudienceForPlatform(
+  platform: ContentQueuePlatform | null,
+): AudienceGroup | null {
+  if (platform === "tiktok" || platform === "pinterest") return "couples";
+  if (platform === "linkedin") return "planner";
+  return null;
 }
 
 export function itemInAudienceBank(
@@ -42,12 +44,18 @@ export function itemInAudienceBank(
   return audienceForPlatform(item.platform) === audience;
 }
 
-export const COUPLES_BANK_PLATFORMS = bankPlatformsForAudience("couples");
-
-/** Planner bank includes IG/TikTok/Pin so queue graphics with a planner angle can file here. */
-export const PLANNER_BANK_PLATFORMS: ContentPlatform[] = [
+/** Couples bank: TikTok + Pin origins, FB/YT republish filing. */
+export const COUPLES_BANK_PLATFORMS: ContentPlatform[] = [
   "tiktok",
-  "instagram",
   "pinterest",
-  ...bankPlatformsForAudience("planner"),
+  "facebook",
+  "youtube",
+];
+
+/** Planner bank: LinkedIn + Reddit origins, FB/YT republish filing. */
+export const PLANNER_BANK_PLATFORMS: ContentPlatform[] = [
+  "linkedin",
+  "facebook",
+  "youtube",
+  "reddit",
 ];

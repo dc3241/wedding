@@ -96,24 +96,35 @@ Content types (caption flavor only — not the production format):
 - D: direct promo of First Look. Still specific, never generic SaaS-speak.
 
 Production formats:
-- static / photo / pin: one branded-slide image. Put that prompt in "prompt".
+- static / pin: one branded-slide image. Put that prompt in "prompt".
 - carousel: N branded slides, same locked template, a sequence. Put slide prompts in
   "prompts" (length N) AND set "prompt" to the first slide.
-- ugc: film-it-yourself. Caption is the spoken / on-screen script. "prompt" MUST be "".
-- text: LinkedIn (or other) copy-only post. Caption is the post body. "prompt" MUST be "".
+- ugc: film-it-yourself video. Caption is the spoken / on-screen script (TikTok) or
+  the LinkedIn post copy that accompanies the video. "prompt" MUST be "".
+- text: LinkedIn copy-only post. Caption is the post body. "prompt" MUST be "".
+
+TikTok and LinkedIn posts are also republished to Facebook and YouTube — do not
+write a separate Facebook or YouTube variant. Pinterest is origin-only.
 
 For each slot return:
 - topic: one short label (a few words) for the review card.
 - caption: platform-appropriate post text (TikTok on-screen/spoken-style caption,
-  Instagram caption, Pinterest pin description, LinkedIn post) that executes THIS idea.
-  For UGC this is the script. For text this is the full post.
+  Pinterest pin description, LinkedIn post) that executes THIS idea.
+  For UGC this is the script (TikTok) or the post body (LinkedIn video). For text
+  this is the full post.
 - prompt: image-generation prompt for a branded slide, or "" for UGC and text.
   Headline + one supporting line only. Never describe screens, dashboards, portals,
   buttons, logos, helper text, chrome, serif type, script type, device frames, or
   invented UI — a real screenshot is attached separately as a fragment source, and
   describing a full screenshot makes the model paste one. When the idea shows the
   product, add [surface: SLUG] using exactly one of:
-  ${PRODUCT_SHOT_SLUGS.join(", ")}. Lifestyle or tip posts with no UI omit [surface:].
+  ${PRODUCT_SHOT_SLUGS.join(", ")}. Type A and B never include [surface:] — even when
+  the topic is budget, guests, or vendors. Those graphics are headline + supporting
+  line only (big numbers are fine: "Venue ~50% / Photo ~12%"). Type C and D about
+  budget pick the matching slug: budget (paid-so-far tracker / allocation band),
+  budget-categories (split / where the money goes / category ramps), or budget-item
+  (a single line, deposit, payment schedule, or next due). Lifestyle or tip posts
+  with no UI omit [surface:].
   Image-format prompts MUST include the tags [idea: …] and [type: A|B|C|D] using the
   slot's topic label and type.
 - prompts: for carousel only, an array of N image prompts (one per slide), each tagged

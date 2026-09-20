@@ -13,7 +13,7 @@ export default async function CouplesBankPage() {
       <PageHeader
         className="mb-5"
         title="Content bank — Couples"
-        description="Approved queue graphics and handwritten ideas for the couples angle. Pull from here when filling the schedule."
+        description="TikTok and Pinterest origins, plus Facebook and YouTube as republish filing for the couples TikTok."
       />
       <ContentBankBoard items={items} platforms={COUPLES_BANK_PLATFORMS} audience="couples" />
     </div>

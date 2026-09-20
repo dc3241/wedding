@@ -13,6 +13,9 @@ import {
   updateWeekPerformance,
 } from "@/app/(admin)/admin/schedule/actions";
 
+const COUPLES_SCHEDULE_COLS = SCHEDULE_PLATFORM_COLS.filter((c) => c.group === "c");
+const PLANNER_SCHEDULE_COLS = SCHEDULE_PLATFORM_COLS.filter((c) => c.group === "p");
+
 function formatDayLabel(iso: string) {
   const d = new Date(iso + "T00:00:00");
   return d.toLocaleDateString("en-US", { weekday: "short", month: "numeric", day: "numeric" });
@@ -175,11 +178,30 @@ export function ScheduleGrid({ weeks, initialWeekId }: { weeks: WeekWithDetail[]
           <div className="mb-1 font-display text-[19px] font-extrabold tracking-[-0.02em] text-ink">
             {week.label}
           </div>
-          <p className="mb-4 text-[13px] text-muted">Tap a box to mark it created &amp; posted</p>
+          <p className="mb-4 text-[13px] text-muted">
+            Tap a box to mark it posted. FB and YT are republishes of that
+            column&apos;s origin — TikTok for couples, LinkedIn for planners.
+          </p>
 
           <div className="overflow-x-auto">
             <table className="w-full border-collapse text-[15px] font-medium">
               <thead>
+                <tr>
+                  <th className="pb-1" />
+                  <th
+                    colSpan={COUPLES_SCHEDULE_COLS.length}
+                    className="px-1.5 pb-1 text-center text-[12px] font-semibold tracking-[0.09em] text-muted uppercase"
+                  >
+                    Couples
+                  </th>
+                  <th
+                    colSpan={PLANNER_SCHEDULE_COLS.length}
+                    className="px-1.5 pb-1 text-center text-[12px] font-semibold tracking-[0.09em] text-muted uppercase"
+                  >
+                    Venues &amp; planners
+                  </th>
+                  <th className="pb-1" colSpan={2} />
+                </tr>
                 <tr>
                   <th className="border-b-[1.5px] border-hairline pb-2 text-left text-[12px] font-semibold tracking-[0.09em] text-muted uppercase">
                     Day

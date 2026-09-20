@@ -9,7 +9,7 @@ import {
   type ContentPostFormat,
 } from "@/lib/admin/content-formats";
 import {
-  isContentQueuePlatform,
+  isActiveContentQueuePlatform,
   type ContentQueuePlatform,
 } from "@/lib/admin/content-queue";
 import {
@@ -109,7 +109,7 @@ function asLikedIdeaSlot(row: {
   carousel_slides: number | null;
 }): LikedIdeaSlot | null {
   if (
-    !isContentQueuePlatform(row.platform) ||
+    !isActiveContentQueuePlatform(row.platform) ||
     !isContentPostFormat(row.format) ||
     !isAudience(row.audience_group) ||
     !row.id ||
