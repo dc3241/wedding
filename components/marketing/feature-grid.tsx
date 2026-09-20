@@ -182,9 +182,10 @@ export function FeatureGrid() {
   return (
     <section className="mx-auto max-w-6xl px-6 py-16 md:px-10 md:py-20">
       <ScrollReveal className="mb-11 max-w-[60ch]">
-        <Eyebrow className="mb-4 block">The workspace</Eyebrow>
+        <Eyebrow className="mb-4 block">The couple workspace</Eyebrow>
         <h2 className="text-[32px] font-extrabold tracking-[-0.03em] text-ink md:text-[42px]">
-          Everything you need. Nothing decorative in the way.
+          What the couple actually uses — whether they signed up, or you invited
+          them.
         </h2>
       </ScrollReveal>
 

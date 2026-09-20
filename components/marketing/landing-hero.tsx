@@ -1,8 +1,35 @@
+"use client";
+
 import { DemoCta } from "@/components/demo/demo-cta";
 import { HeroProductPreview } from "@/components/marketing/hero-product-preview";
 import { ScrollReveal } from "@/components/marketing/scroll-reveal";
 import { ButtonLink } from "@/components/ui/button";
 import { Eyebrow } from "@/components/ui/eyebrow";
+import Link from "next/link";
+import type { MouseEvent } from "react";
+
+/**
+ * Same-page section nav as MarketingTopbar: clean hash, scroll, and hashchange
+ * so AudienceSection can switch its tab.
+ */
+function jumpToSection(e: MouseEvent<HTMLAnchorElement>, sectionId: string) {
+  e.preventDefault();
+  const nextUrl = `/#${sectionId}`;
+  if (window.location.pathname + window.location.hash !== nextUrl) {
+    window.history.pushState(null, "", nextUrl);
+  } else {
+    window.history.replaceState(null, "", nextUrl);
+  }
+  window.dispatchEvent(new Event("hashchange"));
+
+  const reduceMotion = window.matchMedia(
+    "(prefers-reduced-motion: reduce)",
+  ).matches;
+  document.getElementById(sectionId)?.scrollIntoView({
+    behavior: reduceMotion ? "auto" : "smooth",
+    block: "start",
+  });
+}
 
 export function LandingHero() {
   return (
@@ -10,15 +37,17 @@ export function LandingHero() {
       <div className="grid items-center gap-12 md:grid-cols-2 md:gap-16">
         <ScrollReveal>
           <Eyebrow className="mb-5 block">
-            For planners, venues &amp; couples
+            Couples, planners, and venues
           </Eyebrow>
           <h1 className="max-w-[22ch] text-[42px] font-extrabold leading-[1.02] tracking-[-0.03em] text-ink md:text-[52px] lg:text-[64px]">
-            Run your planning business. Delight every couple you work with.
+            Plan your wedding. Run your whole book.
           </h1>
           <p className="mt-6 max-w-[48ch] text-[16px] leading-relaxed text-muted md:text-[19px]">
-            Leads, contracts, and vendors — organized automatically. Every
-            couple gets their own beautiful planning space, whether they&apos;re
-            invited by their planner or starting on their own.
+            On your own, you get a checklist, budget, guests, and a wedding site
+            — free to start. Running a planning business or venue, inquiries
+            land on a board, stale ones get flagged, and accepted proposals
+            become signed contracts. Then the couple plans inside the same
+            wedding.
           </p>
           <div className="mt-8 flex flex-wrap items-center gap-3">
             <ButtonLink
@@ -30,6 +59,22 @@ export function LandingHero() {
             </ButtonLink>
             <DemoCta kind="business" compact />
           </div>
+          <p className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 text-[14px] font-semibold">
+            <Link
+              href="/#couples"
+              className="text-accent underline-offset-2 hover:underline"
+              onClick={(e) => jumpToSection(e, "couples")}
+            >
+              Planning your wedding →
+            </Link>
+            <Link
+              href="/#planners"
+              className="text-accent underline-offset-2 hover:underline"
+              onClick={(e) => jumpToSection(e, "planners")}
+            >
+              Planner or venue →
+            </Link>
+          </p>
         </ScrollReveal>
         <ScrollReveal delayMs={80}>
           <HeroProductPreview />

@@ -10,8 +10,8 @@ type FinalCtaProps = {
 /** Tier 2: exactly one deep field (`--deep`) per surface — this is it. */
 export function FinalCta({
   eyebrow = "Ready when you are",
-  title = "Start planning, calmly.",
-  subhead = "Free to begin. Bring your date — we'll structure the plan, help you reach vendors, and collect RSVPs while you stay calm.",
+  title = "Start with your wedding — or your whole book.",
+  subhead = "Free to begin. Couples get the full workspace. Planners and venues get the inquiry board, contracts, and a branded client experience.",
 }: FinalCtaProps) {
   return (
     <section className="mx-auto max-w-6xl px-6 py-16 md:px-10 md:py-24">

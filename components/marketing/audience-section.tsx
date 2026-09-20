@@ -66,8 +66,8 @@ const PLANNERS_CARDS: {
     Preview: WeddingsPreview,
   },
   {
-    title: "Leads to signed contracts",
-    body: "Move prospects through your pipeline, send proposals, and turn an accepted proposal into a printable contract — without leaving the app.",
+    title: "Inquiries land on a board",
+    body: "Share a public inquiry page, or embed the form on your site. Every submission becomes a lead — inquiry, contacted, proposal, booked — instead of another email thread. A reply is drafted for you to approve.",
     icon: ContractIcon,
     Preview: PipelinePreview,
   },
@@ -78,8 +78,8 @@ const PLANNERS_CARDS: {
     Preview: TeamPreview,
   },
   {
-    title: "Nothing goes stale",
-    body: "Leads sitting untouched for two weeks get flagged automatically, so nobody falls through.",
+    title: "Stale leads flagged. Signed work filed.",
+    body: "Leads untouched for two weeks get marked automatically. An accepted proposal becomes a printable contract without leaving the app.",
     icon: StaleIcon,
     Preview: StalePreview,
   },
@@ -208,13 +208,13 @@ export function AudienceSection() {
           </Eyebrow>
           <h2 className="text-[32px] font-extrabold tracking-[-0.03em] text-ink md:text-[42px]">
             {isCouples
-              ? "Everything for your wedding, in one place."
-              : "Every client wedding, one workspace."}
+              ? "Your wedding, planned — not pieced together."
+              : "From first inquiry to signed contract."}
           </h2>
           <p className="mt-3 text-center text-[15px] leading-relaxed text-muted md:text-[16px]">
             {isCouples
               ? 'From the day you sign up to the day you say "I do" — no juggling five different tools.'
-              : "Run your whole book without switching tools — or losing track of which client is where."}
+              : "Capture the lead, work the pipeline, file the contract, then invite the couple into their own wedding — one book for the whole job."}
           </p>
           <DemoCta kind={isCouples ? "personal" : "business"} />
         </div>
@@ -289,8 +289,9 @@ function VenueCallout() {
         Running a venue with your own planning team?
       </h3>
       <p className="mt-2 max-w-[62ch] text-[14px] leading-relaxed text-muted md:text-[15px]">
-        One login for every planner on staff, your venue&apos;s branding on every
-        screen, and the full toolset — checklist to seating chart.
+        The same inquiry board your planners use — plus a seat for everyone on
+        staff, and your venue&apos;s branding on every screen. Checklist to seating
+        chart, under your name.
       </p>
       <div className="mt-4 flex flex-wrap gap-2">
         <UnifyChip>Team seats</UnifyChip>

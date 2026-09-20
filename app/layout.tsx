@@ -34,15 +34,15 @@ const greatVibes = Great_Vibes({
 
 export const metadata: Metadata = {
   title: {
-    default: "First Look — Wedding Planning, Simplified",
+    default: "First Look — Wedding planning for couples, planners, and venues",
     template: "%s — First Look",
   },
   description:
-    "A shared workspace for couples and planners — timeline, budget, and vendors, all in one place.",
+    "Couples plan the day in one workspace. Planners and venues capture inquiries, run a pipeline, and turn proposals into signed contracts — then invite the couple into the same wedding.",
   openGraph: {
-    title: "First Look — Wedding Planning, Simplified",
+    title: "First Look — Wedding planning for couples, planners, and venues",
     description:
-      "A shared workspace for couples and planners — timeline, budget, and vendors, all in one place.",
+      "Couples plan the day in one workspace. Planners and venues capture inquiries, run a pipeline, and turn proposals into signed contracts — then invite the couple into the same wedding.",
     url: "https://usefirstlook.app",
     siteName: "First Look",
     type: "website",
