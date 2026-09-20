@@ -12,9 +12,18 @@ export function CoupleShellNav() {
     pathname.startsWith("/account/billing?");
   const onContact =
     pathname === "/contact" || pathname.startsWith("/contact?");
+  const inProjectWorkspace = pathname.startsWith("/projects/");
 
   return (
     <nav className="flex items-center gap-1">
+      {!inProjectWorkspace ? (
+        <Link
+          href="/projects"
+          className="relative rounded-[var(--radius-inner)] px-3 py-2 text-sm font-medium text-muted no-underline transition-colors after:absolute after:inset-x-3 after:bottom-0.5 after:h-[2px] after:origin-left after:scale-x-0 after:bg-accent after:transition-transform after:duration-150 hover:bg-well hover:text-ink"
+        >
+          Home
+        </Link>
+      ) : null}
       <Link
         href="/account/billing"
         className={cn(

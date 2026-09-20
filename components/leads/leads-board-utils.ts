@@ -25,6 +25,10 @@ export function groupLeadsByStage(leads: Lead[]): LeadColumns {
   return groups;
 }
 
+export function firstOccupiedStage(columns: LeadColumns): LeadStage {
+  return LEAD_STAGES.find((stage) => columns[stage].length > 0) ?? "inquiry";
+}
+
 export function findLeadContainer(
   id: string,
   columns: LeadColumns,

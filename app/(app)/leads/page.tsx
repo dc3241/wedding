@@ -99,7 +99,7 @@ export default async function LeadsPage() {
   }
 
   return (
-    <div className="w-full">
+    <div className="min-w-0 w-full max-w-full overflow-x-clip">
       <div className="mb-6">
         <PageHeader
           eyebrow="CRM"

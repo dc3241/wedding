@@ -28,18 +28,23 @@ export function LeadRow({
   replyDraft,
   onOpenReplyDraft,
   dragHandle,
+  idPrefix,
 }: {
   lead: Lead;
   onStageChange?: (id: string, stage: LeadStage) => void;
   replyDraft?: AgentDraftPreview | null;
   onOpenReplyDraft?: () => void;
   dragHandle?: ReactNode;
+  idPrefix?: string;
 }) {
   const [editing, setEditing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const closeEdit = useCallback(() => setEditing(false), []);
 
+  const stageFieldId = idPrefix
+    ? `stage-${idPrefix}-${lead.id}`
+    : `stage-${lead.id}`;
   const weddingDate = formatLeadDate(lead.wedding_date);
   const budget = formatLeadBudget(lead.estimated_budget);
   const contact = [lead.contact_email, lead.contact_phone]
@@ -164,11 +169,11 @@ export function LeadRow({
           </div>
 
           <div className="flex min-w-0 w-full items-center gap-1.5">
-            <label className="sr-only" htmlFor={`stage-${lead.id}`}>
+            <label className="sr-only" htmlFor={stageFieldId}>
               Stage
             </label>
             <select
-              id={`stage-${lead.id}`}
+              id={stageFieldId}
               value={lead.stage}
               onChange={handleStageChange}
               disabled={isPending}

@@ -23,6 +23,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { reorderLeads } from "@/app/(app)/leads/actions";
 import type { AgentDraftPreview } from "@/components/assistant/types";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { Pill } from "@/components/ui/pill";
 import type { AccountPlan } from "@/lib/account-context";
@@ -33,6 +34,7 @@ import { LeadRow } from "./LeadRow";
 import {
   buildReorderBatch,
   findLeadContainer,
+  firstOccupiedStage,
   groupLeadsByStage,
   moveLeadBetweenStages,
   reorderWithinStage,
@@ -83,6 +85,7 @@ function SortableLeadCard({
         onStageChange={onStageChange}
         replyDraft={replyDraft}
         onOpenReplyDraft={onOpenReplyDraft}
+        idPrefix="board"
         dragHandle={
           <button
             type="button"
@@ -164,6 +167,9 @@ export function LeadsBoard({
   );
   const [activeId, setActiveId] = useState<string | null>(null);
   const [reviewLeadId, setReviewLeadId] = useState<string | null>(null);
+  const [mobileStage, setMobileStage] = useState<LeadStage>(() =>
+    firstOccupiedStage(groupLeadsByStage(initialLeads)),
+  );
   const [error, setError] = useState<string | null>(null);
   const columnsRef = useRef(columns);
   const snapshotRef = useRef<LeadColumns | null>(null);
@@ -378,44 +384,99 @@ export function LeadsBoard({
     );
   }
 
+  const mobileLeads = columns[mobileStage];
+
   return (
-    <div className="space-y-3">
+    <div className="min-w-0 max-w-full space-y-3">
       {error ? <p className="text-[13px] text-rosewood">{error}</p> : null}
 
-      <DndContext
-        sensors={sensors}
-        collisionDetection={closestCorners}
-        onDragStart={handleDragStart}
-        onDragOver={handleDragOver}
-        onDragEnd={handleDragEnd}
-        onDragCancel={handleDragCancel}
-      >
-        <div className="overflow-x-auto pb-2">
-          <div className="flex min-w-max gap-3">
-            {LEAD_STAGES.map((stage) => (
-              <LeadColumn
-                key={stage}
-                stage={stage}
-                leads={columns[stage]}
-                replyDraftsByLeadId={replyDraftsByLeadId}
-                onStageChange={handleStageChange}
-                onOpenReplyDraft={setReviewLeadId}
-              />
-            ))}
+      <div className="lg:hidden">
+        <div className="sticky top-20 z-[5] bg-canvas py-2">
+          <div
+            role="tablist"
+            aria-label="Filter by stage"
+            className="flex flex-wrap gap-1 rounded-[var(--radius-pill)] bg-well p-1 shadow-recessed"
+          >
+            {LEAD_STAGES.map((stage) => {
+              const active = mobileStage === stage;
+              return (
+                <button
+                  key={stage}
+                  type="button"
+                  role="tab"
+                  aria-selected={active}
+                  onClick={() => setMobileStage(stage)}
+                  className={cn(
+                    "cursor-pointer rounded-[var(--radius-pill)] border-none px-3.5 py-1.5 text-[13px] font-semibold transition-colors",
+                    active
+                      ? "bg-accent-wash text-accent"
+                      : "bg-transparent text-muted hover:text-ink",
+                  )}
+                >
+                  {LEAD_STAGE_LABEL[stage]}{" "}
+                  <span className="tabular-nums">{columns[stage].length}</span>
+                </button>
+              );
+            })}
           </div>
         </div>
 
-        <DragOverlay dropAnimation={null}>
-          {activeLead ? (
-            <div className="w-[240px] rotate-1 opacity-95">
-              <LeadRow
-                lead={activeLead}
-                replyDraft={replyDraftsByLeadId[activeLead.id]}
-              />
+        {mobileLeads.length === 0 ? (
+          <EmptyState recessed>None in this stage.</EmptyState>
+        ) : (
+          <ul className="flex flex-col gap-2">
+            {mobileLeads.map((lead) => (
+              <li key={lead.id} className="min-w-0">
+                <LeadRow
+                  lead={lead}
+                  onStageChange={handleStageChange}
+                  replyDraft={replyDraftsByLeadId[lead.id]}
+                  onOpenReplyDraft={() => setReviewLeadId(lead.id)}
+                  idPrefix="mobile"
+                />
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      <div className="hidden min-w-0 max-w-full lg:block">
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCorners}
+          onDragStart={handleDragStart}
+          onDragOver={handleDragOver}
+          onDragEnd={handleDragEnd}
+          onDragCancel={handleDragCancel}
+        >
+          <div className="min-w-0 max-w-full overflow-x-auto pb-2">
+            <div className="flex min-w-max gap-3">
+              {LEAD_STAGES.map((stage) => (
+                <LeadColumn
+                  key={stage}
+                  stage={stage}
+                  leads={columns[stage]}
+                  replyDraftsByLeadId={replyDraftsByLeadId}
+                  onStageChange={handleStageChange}
+                  onOpenReplyDraft={setReviewLeadId}
+                />
+              ))}
             </div>
-          ) : null}
-        </DragOverlay>
-      </DndContext>
+          </div>
+
+          <DragOverlay dropAnimation={null}>
+            {activeLead ? (
+              <div className="w-[240px] rotate-1 opacity-95">
+                <LeadRow
+                  lead={activeLead}
+                  replyDraft={replyDraftsByLeadId[activeLead.id]}
+                  idPrefix="overlay"
+                />
+              </div>
+            ) : null}
+          </DragOverlay>
+        </DndContext>
+      </div>
 
       <InquiryReplyDrawer
         draft={reviewLeadId ? replyDraftsByLeadId[reviewLeadId] ?? null : null}

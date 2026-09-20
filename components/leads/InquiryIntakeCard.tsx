@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { CollapseSection } from "@/components/ui/collapse-section";
 import { Eyebrow } from "@/components/ui/eyebrow";
 
 const INQUIRE_ORIGIN = "https://www.usefirstlook.app";
@@ -56,16 +57,33 @@ export function InquiryIntakeCard({ slug }: { slug: string }) {
   const embedSnippet = `<iframe src="${INQUIRE_ORIGIN}/inquire/${slug}" width="100%" height="720" style="border:0;" title="Inquiry form"></iframe>`;
 
   return (
-    <Card className="mb-6 p-5">
-      <Eyebrow>Inquiry intake</Eyebrow>
-      <p className="mt-2 text-[15px] font-medium text-muted">
-        Share the form link, or embed the form on your site. Both land here as
-        a new inquiry — nothing sends until you approve a reply.
-      </p>
-      <div className="mt-4 space-y-4">
-        <CopyRow label="Form link" value={formUrl} />
-        <CopyRow label="Embed on your site" value={embedSnippet} />
-      </div>
-    </Card>
+    <>
+      <Card className="mb-6 p-5 lg:hidden">
+        <CollapseSection
+          title={<Eyebrow>Inquiry intake</Eyebrow>}
+          defaultOpen={false}
+          bodyClassName="mt-3"
+        >
+          <p className="text-[15px] font-medium text-muted">
+            Share the form link. New inquiries land here — nothing sends until
+            you approve a reply.
+          </p>
+          <div className="mt-4">
+            <CopyRow label="Form link" value={formUrl} />
+          </div>
+        </CollapseSection>
+      </Card>
+      <Card className="mb-6 hidden p-5 lg:block">
+        <Eyebrow>Inquiry intake</Eyebrow>
+        <p className="mt-2 text-[15px] font-medium text-muted">
+          Share the form link, or embed the form on your site. Both land here as
+          a new inquiry — nothing sends until you approve a reply.
+        </p>
+        <div className="mt-4 space-y-4">
+          <CopyRow label="Form link" value={formUrl} />
+          <CopyRow label="Embed on your site" value={embedSnippet} />
+        </div>
+      </Card>
+    </>
   );
 }

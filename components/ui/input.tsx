@@ -80,11 +80,23 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
       return <PasswordInput ref={ref} className={className} {...props} />;
     }
 
+    const isTemporal =
+      type === "date" ||
+      type === "time" ||
+      type === "datetime-local" ||
+      type === "month" ||
+      type === "week";
+
     return (
       <input
         ref={ref}
         type={type}
-        className={cn(fieldClasses, className)}
+        className={cn(
+          fieldClasses,
+          isTemporal &&
+            "min-w-0 max-w-full appearance-none [&::-webkit-date-and-time-value]:text-left [&::-webkit-datetime-edit]:max-w-full [&::-webkit-datetime-edit]:min-w-0",
+          className,
+        )}
         {...props}
       />
     );

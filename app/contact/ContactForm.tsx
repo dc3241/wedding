@@ -6,13 +6,18 @@ import { Eyebrow } from "@/components/ui/eyebrow";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import Link from "next/link";
 import { useState, useTransition } from "react";
 
 type FormState = "idle" | "success" | "invalid" | "send_failed";
 
 const SUPPORT_EMAIL = "hello@usefirstlook.app";
 
-export function ContactForm() {
+export function ContactForm({
+  homeLink,
+}: {
+  homeLink: { href: string; label: string };
+}) {
   const [formState, setFormState] = useState<FormState>("idle");
   const [isPending, startTransition] = useTransition();
 
@@ -29,22 +34,35 @@ export function ContactForm() {
     });
   }
 
+  const backLink = (
+    <Link
+      href={homeLink.href}
+      className="mb-6 inline-block text-[13px] font-medium text-muted no-underline hover:text-ink"
+    >
+      {homeLink.label}
+    </Link>
+  );
+
   if (formState === "success") {
     return (
-      <div className="text-center">
-        <Eyebrow className="mb-3 block">Contact</Eyebrow>
-        <h1 className="text-[32px] font-extrabold leading-none tracking-[-0.03em] text-ink">
-          Message sent
-        </h1>
-        <p className="mt-4 text-[15px] font-medium text-muted">
-          Thanks — we got your note and will reply by email.
-        </p>
+      <div>
+        {backLink}
+        <div className="text-center">
+          <Eyebrow className="mb-3 block">Contact</Eyebrow>
+          <h1 className="text-[32px] font-extrabold leading-none tracking-[-0.03em] text-ink">
+            Message sent
+          </h1>
+          <p className="mt-4 text-[15px] font-medium text-muted">
+            Thanks — we got your note and will reply by email.
+          </p>
+        </div>
       </div>
     );
   }
 
   return (
     <>
+      {backLink}
       <div className="mb-6 text-center">
         <Eyebrow className="mb-3 block">Contact</Eyebrow>
         <h1 className="text-[32px] font-extrabold leading-none tracking-[-0.03em] text-ink">

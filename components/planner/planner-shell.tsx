@@ -8,6 +8,7 @@ import { brandAccentStyle } from "@/lib/branding/accent-style";
 import type { ProjectBranding } from "@/lib/branding/types";
 import { cn } from "@/lib/cn";
 import { acquireScrollLock, releaseScrollLock } from "@/lib/scroll-lock";
+import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import type { AccountPlan } from "@/lib/account-context";
@@ -99,7 +100,7 @@ export function PlannerShell({
     >
       <header
         ref={headerRef}
-        className="sticky top-0 z-10 flex items-center gap-3 border-b border-hairline bg-canvas px-4 py-[18px] lg:px-8"
+        className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-hairline bg-canvas px-4 py-[18px] lg:justify-start lg:px-8"
       >
         <button
           type="button"
@@ -111,8 +112,14 @@ export function PlannerShell({
         >
           <MenuIcon />
         </button>
-        <div className="min-w-0">
-          {branding ? <AccountBrandMark branding={branding} /> : <Wordmark />}
+        <div className="flex min-w-0 flex-1 items-center justify-end lg:flex-none lg:justify-start">
+          <Link
+            href="/dashboard"
+            className="min-w-0 no-underline"
+            aria-label="Dashboard"
+          >
+            {branding ? <AccountBrandMark branding={branding} /> : <Wordmark />}
+          </Link>
         </div>
       </header>
       <div className="flex min-w-0 flex-1 gap-6 px-4 py-5 lg:px-8 lg:py-7">

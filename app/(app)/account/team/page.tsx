@@ -60,7 +60,7 @@ export default async function TeamPage() {
         description="Invite teammates to this planner account. Everyone has the same access — no roles."
       />
 
-      <div className="space-y-5">
+      <div className="mt-6 space-y-5">
         <Card className="p-5">
           <h2 className="text-[19px] font-extrabold tracking-[-0.02em] text-ink">
             Invite a teammate

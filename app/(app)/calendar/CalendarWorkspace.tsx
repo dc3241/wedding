@@ -99,6 +99,16 @@ function OverlayIcon({
   );
 }
 
+function itemHueVar(
+  item: CalendarItem,
+  audience: "planner" | "couple",
+  weddingIds: readonly string[],
+): string {
+  return audience === "planner" && item.projectId
+    ? weddingHue(item.projectId, weddingIds)
+    : kindHue(itemKindKey(item));
+}
+
 function EventChip({
   item,
   audience,
@@ -110,20 +120,37 @@ function EventChip({
   onOpen: (item: CalendarItem) => void;
   weddingIds: readonly string[];
 }) {
-  const kindKey = itemKindKey(item);
-  const hueVar =
-    audience === "planner" && item.projectId
-      ? weddingHue(item.projectId, weddingIds)
-      : kindHue(kindKey);
-
   return (
     <CalendarEventChip
       title={itemChipTitle(item)}
-      glyph={kindGlyph(kindKey)}
-      hueVar={hueVar}
+      glyph={kindGlyph(itemKindKey(item))}
+      hueVar={itemHueVar(item, audience, weddingIds)}
       timeLabel={item.timeLabel}
       status={itemChipStatus(item)}
       onClick={() => onOpen(item)}
+    />
+  );
+}
+
+function ItemDot({
+  item,
+  audience,
+  weddingIds,
+}: {
+  item: CalendarItem;
+  audience: "planner" | "couple";
+  weddingIds: readonly string[];
+}) {
+  const overdue = itemChipStatus(item) === "overdue";
+  const hueVar = itemHueVar(item, audience, weddingIds);
+
+  return (
+    <span
+      className="size-1.5 shrink-0 rounded-full"
+      style={{
+        background: overdue ? "var(--rosewood)" : `var(${hueVar})`,
+      }}
+      aria-hidden
     />
   );
 }
@@ -325,36 +352,42 @@ export function CalendarWorkspace({
   return (
     <div
       className={cn(
-        "grid grid-cols-1 gap-6 lg:items-start lg:gap-8",
+        "grid min-w-0 grid-cols-1 gap-6 lg:items-start lg:gap-8",
         railWidth === "fixed"
           ? "lg:grid-cols-[minmax(0,1fr)_300px]"
           : "lg:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)]",
       )}
     >
       <Card className="min-w-0 overflow-hidden p-5 md:p-6">
-        <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+        <div className="mb-4 flex items-center justify-between gap-3 lg:mb-5">
           <h2 className="font-display text-[19px] font-extrabold tracking-[-0.02em] text-ink">
             {formatMonthHeading(year, month)}
           </h2>
-          <div className="flex flex-wrap items-center gap-2">
-            <ButtonLinkLike href={monthHref(prev.year, prev.month)}>
-              Prev
-            </ButtonLinkLike>
-            <ButtonLinkLike href={monthHref(today.getFullYear(), today.getMonth() + 1)}>
-              Today
-            </ButtonLinkLike>
-            <ButtonLinkLike href={monthHref(next.year, next.month)}>
-              Next
-            </ButtonLinkLike>
-            <Button
-              type="button"
-              onClick={() =>
-                setPanel({ type: "create", date: todayKey })
-              }
-            >
-              Add event
-            </Button>
-          </div>
+          <Button
+            type="button"
+            className="lg:hidden"
+            onClick={() => setPanel({ type: "create", date: todayKey })}
+          >
+            Add event
+          </Button>
+        </div>
+        <div className="mb-4 flex flex-wrap items-center gap-2">
+          <ButtonLinkLike href={monthHref(prev.year, prev.month)}>
+            Prev
+          </ButtonLinkLike>
+          <ButtonLinkLike href={monthHref(today.getFullYear(), today.getMonth() + 1)}>
+            Today
+          </ButtonLinkLike>
+          <ButtonLinkLike href={monthHref(next.year, next.month)}>
+            Next
+          </ButtonLinkLike>
+          <Button
+            type="button"
+            className="hidden lg:inline-flex"
+            onClick={() => setPanel({ type: "create", date: todayKey })}
+          >
+            Add event
+          </Button>
         </div>
 
         <div className="mb-4 flex flex-wrap gap-2">
@@ -375,7 +408,7 @@ export function CalendarWorkspace({
           />
         </div>
 
-        <div className="mb-2 grid grid-cols-7 gap-1.5">
+        <div className="mb-2 grid grid-cols-7 gap-1 lg:gap-1.5">
           {WEEKDAYS.map((d) => (
             <div
               key={d}
@@ -387,7 +420,7 @@ export function CalendarWorkspace({
           ))}
         </div>
 
-        <div className="grid grid-cols-7 gap-1.5">
+        <div className="grid grid-cols-7 gap-1 lg:gap-1.5">
           {cells.map((cell) => {
             const dayItems = byDate.get(cell.localDate) ?? [];
             const visible = dayItems.slice(0, CHIP_LIMIT);
@@ -400,7 +433,9 @@ export function CalendarWorkspace({
                 key={cell.localDate}
                 onClick={() => setPanel({ type: "day", date: cell.localDate })}
                 className={cn(
-                  "flex min-h-[88px] min-w-0 cursor-pointer flex-col gap-1 rounded-[var(--radius-inner)] bg-well p-1.5 text-left shadow-recessed transition-colors",
+                  "flex min-w-0 cursor-pointer flex-col rounded-[var(--radius-inner)] bg-well text-left shadow-recessed transition-colors",
+                  "min-h-[52px] items-center gap-0.5 p-1",
+                  "lg:min-h-[88px] lg:items-stretch lg:gap-1 lg:p-1.5",
                   "hover:bg-accent-wash/50",
                   !cell.inMonth && "opacity-45",
                   selected && "ring-2 ring-accent ring-offset-1 ring-offset-surface",
@@ -420,7 +455,24 @@ export function CalendarWorkspace({
                 >
                   {Number(cell.localDate.slice(8, 10))}
                 </button>
-                <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                {dayItems.length > 0 ? (
+                  <div className="mt-auto flex min-w-0 flex-wrap items-center justify-center gap-0.5 lg:hidden">
+                    {visible.map((item) => (
+                      <ItemDot
+                        key={item.id}
+                        item={item}
+                        audience={audience}
+                        weddingIds={weddingIds}
+                      />
+                    ))}
+                    {overflow > 0 ? (
+                      <span className="text-[9px] font-semibold tabular-nums leading-none text-muted">
+                        +{overflow}
+                      </span>
+                    ) : null}
+                  </div>
+                ) : null}
+                <div className="hidden min-w-0 flex-1 flex-col gap-0.5 lg:flex">
                   {visible.map((item) => (
                     <EventChip
                       key={item.id}
@@ -441,10 +493,12 @@ export function CalendarWorkspace({
           })}
         </div>
 
-        <CalendarLegend audience={audience} weddings={weddings} />
+        <div className="hidden lg:block">
+          <CalendarLegend audience={audience} weddings={weddings} />
+        </div>
       </Card>
 
-      <div className="flex flex-col gap-4 lg:sticky lg:top-6 lg:self-start">
+      <div className="flex min-w-0 flex-col gap-4 lg:sticky lg:top-6 lg:self-start">
         {panel?.type === "create" || panel?.type === "edit" ? (
           <CalendarEventPanel
             mode={panel}

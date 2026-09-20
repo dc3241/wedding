@@ -159,7 +159,7 @@ export function CalendarEventPanel({
   }
 
   return (
-    <Card className="px-5 py-5">
+    <Card className="min-w-0 overflow-hidden px-5 py-5">
       <div className="flex items-center justify-between gap-3">
         <h2 className="font-display text-[19px] font-extrabold tracking-[-0.02em] text-ink">
           {editing ? "Edit event" : "Add event"}
@@ -174,8 +174,8 @@ export function CalendarEventPanel({
         </button>
       </div>
 
-      <form onSubmit={handleSubmit} className="mt-4 space-y-3">
-        <label className="block">
+      <form onSubmit={handleSubmit} className="mt-4 min-w-0 space-y-3">
+        <label className="block min-w-0">
           <span className="mb-1.5 block text-[12px] font-semibold uppercase tracking-[0.09em] text-muted">
             Title
           </span>
@@ -188,7 +188,7 @@ export function CalendarEventPanel({
           />
         </label>
 
-        <label className="block">
+        <label className="block min-w-0">
           <span className="mb-1.5 block text-[12px] font-semibold uppercase tracking-[0.09em] text-muted">
             Date
           </span>
