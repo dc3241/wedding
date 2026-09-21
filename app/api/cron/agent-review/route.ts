@@ -33,6 +33,7 @@ import {
   type DigestSection,
 } from "@/lib/email/render-digest";
 import { sendEmail } from "@/lib/email/send";
+import { stripJsonFences } from "@/lib/inquiry/llm-json";
 import { createServiceRoleClient } from "@/utils/supabase/service-role";
 
 export const runtime = "nodejs";
@@ -67,9 +68,38 @@ function compareWeddingDate(a: CronProjectRow, b: CronProjectRow): number {
   return a.id.localeCompare(b.id);
 }
 
+/** True when text looks like model JSON / fenced JSON — never put this in email. */
+function looksLikeJsonDump(text: string): boolean {
+  const t = text.trim();
+  if (!t) return false;
+  if (t.startsWith("```")) return true;
+  return t.startsWith("{") && /["']summary["']\s*:/.test(t);
+}
+
+function normalizeHighlights(value: unknown): string[] | null {
+  if (!Array.isArray(value)) return null;
+  if (!value.every((item) => typeof item === "string")) return null;
+  return value
+    .map((item) => (item as string).trim())
+    .filter(Boolean)
+    .slice(0, 5);
+}
+
+function asSynthesisObject(parsed: unknown): SynthesisPayload | null {
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    return null;
+  }
+  const record = parsed as { summary?: unknown; highlights?: unknown };
+  if (typeof record.summary !== "string") return null;
+  const highlights = normalizeHighlights(record.highlights);
+  if (!highlights) return null;
+  return { summary: record.summary.trim(), highlights };
+}
+
 /**
  * Parse model final text as { summary, highlights }.
- * On any failure: raw text as summary, highlights: [] — never throw.
+ * Strips markdown fences; never returns JSON/fenced dumps as summary prose.
+ * On unrecoverable failure: empty summary (caller skips email section).
  */
 function parseSynthesisPayload(raw: string): SynthesisPayload {
   const trimmed = raw.trim();
@@ -77,29 +107,40 @@ function parseSynthesisPayload(raw: string): SynthesisPayload {
     return { summary: "", highlights: [] };
   }
 
-  try {
-    const parsed: unknown = JSON.parse(trimmed);
-    if (
-      parsed &&
-      typeof parsed === "object" &&
-      !Array.isArray(parsed) &&
-      "summary" in parsed &&
-      typeof (parsed as { summary: unknown }).summary === "string" &&
-      "highlights" in parsed &&
-      Array.isArray((parsed as { highlights: unknown }).highlights) &&
-      (parsed as { highlights: unknown[] }).highlights.every(
-        (item) => typeof item === "string",
-      )
-    ) {
-      const summary = (parsed as { summary: string }).summary.trim();
-      const highlights = (parsed as { highlights: string[] }).highlights
-        .map((item) => item.trim())
-        .filter(Boolean)
-        .slice(0, 5);
-      return { summary, highlights };
+  const candidates = Array.from(
+    new Set([trimmed, stripJsonFences(trimmed)].filter(Boolean)),
+  );
+
+  for (const candidate of candidates) {
+    try {
+      const parsed: unknown = JSON.parse(candidate);
+      const outer = asSynthesisObject(parsed);
+      if (!outer) continue;
+
+      // Nested dump (e.g. prior fallback stored fenced JSON inside summary).
+      if (looksLikeJsonDump(outer.summary)) {
+        const inner = asSynthesisObject(
+          JSON.parse(stripJsonFences(outer.summary)),
+        );
+        if (inner && !looksLikeJsonDump(inner.summary)) {
+          return {
+            summary: inner.summary,
+            highlights:
+              inner.highlights.length > 0 ? inner.highlights : outer.highlights,
+          };
+        }
+        return { summary: "", highlights: [] };
+      }
+
+      return outer;
+    } catch {
+      // try next candidate / prose fallback
     }
-  } catch {
-    // fall through — treat as plain prose
+  }
+
+  // Plain prose only — never dump JSON-shaped text into the email body.
+  if (looksLikeJsonDump(trimmed)) {
+    return { summary: "", highlights: [] };
   }
 
   return { summary: trimmed, highlights: [] };
@@ -345,7 +386,11 @@ export async function GET(request: Request) {
             summary: payload.summary,
             highlights: payload.highlights,
           };
-        });
+        })
+        // Belt-and-suspenders: never ship JSON/fenced dumps into the email body.
+        .filter(
+          (item) => item.summary.length > 0 && !looksLikeJsonDump(item.summary),
+        );
 
       if (items.length === 0) continue;
 
