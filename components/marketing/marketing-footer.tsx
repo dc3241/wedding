@@ -21,6 +21,9 @@ export function MarketingFooter() {
           <Link href="/contact" className="hover:text-ink">
             Contact
           </Link>
+          <Link href="/privacy" className="hover:text-ink">
+            Privacy
+          </Link>
         </nav>
         <p className="text-[12px] text-muted">
           © {new Date().getFullYear()} First Look.
