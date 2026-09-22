@@ -7,7 +7,7 @@ import { sendEmailBestEffort } from "@/lib/email/send-best-effort";
 import { convertAcceptedProposal } from "@/lib/proposals/convert";
 import { parseProposalLineItems } from "@/components/proposals/types";
 import { invoicePublicUrl } from "@/lib/invoices/url";
-import { proposalPublicUrl } from "@/lib/proposals\url";
+import { proposalPublicUrl } from "@/lib/proposals/url";
 import { createServiceRoleClient } from "@/utils/supabase/service-role";
 import { createClient } from "@/utils/supabase/server";
 

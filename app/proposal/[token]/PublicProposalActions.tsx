@@ -57,7 +57,10 @@ export function PublicProposalActions({
         {invoiceUrl ? (
           <a
             href={invoiceUrl}
-            className={cn(buttonVariantClasses("primary"), "inline-flex")}
+            className={cn(
+              "inline-flex cursor-pointer items-center justify-center rounded-[var(--radius-pill)] border-[1.5px] px-5 py-2.5 text-[14px] font-semibold no-underline",
+              buttonVariantClasses.primary,
+            )}
           >
             View invoice
           </a>
