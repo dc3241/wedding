@@ -2,6 +2,10 @@ export const AUTOMATION_TRIGGER_KINDS = [
   "lead_stage_changed",
   "lead_created",
   "project_created",
+  "proposal_status_changed",
+  "invoice_sent",
+  "payment_link_set",
+  "invoice_marked_paid",
 ] as const;
 
 export type AutomationTriggerKind = (typeof AUTOMATION_TRIGGER_KINDS)[number];
@@ -15,8 +19,18 @@ export const AUTOMATION_ACTION_KINDS = [
 
 export type AutomationActionKind = (typeof AUTOMATION_ACTION_KINDS)[number];
 
-/** Wired triggers only — schema also allows lead_created / project_created. */
-export const AUTOMATION_UI_TRIGGER_KINDS = ["lead_stage_changed"] as const;
+/**
+ * Triggers offered in the builder. project_created stays schema-only until
+ * project-targeted dispatch ships.
+ */
+export const AUTOMATION_UI_TRIGGER_KINDS = [
+  "lead_stage_changed",
+  "lead_created",
+  "proposal_status_changed",
+  "invoice_sent",
+  "payment_link_set",
+  "invoice_marked_paid",
+] as const;
 export type AutomationUiTriggerKind =
   (typeof AUTOMATION_UI_TRIGGER_KINDS)[number];
 

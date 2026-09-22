@@ -7,12 +7,17 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useRef, useState, useTransition } from "react";
-import { ACTION_KIND_LABEL } from "@/components/automations/labels";
+import { ACTION_KIND_LABEL, TRIGGER_KIND_LABEL } from "@/components/automations/labels";
 import {
   LEAD_STAGE_LABEL,
   LEAD_STAGES,
   type LeadStage,
 } from "@/components/leads/types";
+import {
+  PROPOSAL_STATUS_LABEL,
+  PROPOSAL_STATUSES,
+  type ProposalStatus,
+} from "@/components/proposals/types";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -28,8 +33,10 @@ import {
 } from "@/lib/automations/actions";
 import {
   AUTOMATION_UI_ACTION_KINDS,
+  AUTOMATION_UI_TRIGGER_KINDS,
   WORKFLOW_EMAIL_TOKEN_CHIPS,
   type AutomationUiActionKind,
+  type AutomationUiTriggerKind,
   type AutomationWorkflowDetail,
   type JsonObject,
 } from "@/lib/automations/types";
@@ -55,6 +62,14 @@ function isUiActionKind(value: string): value is AutomationUiActionKind {
 
 function isLeadStage(value: string): value is LeadStage {
   return (LEAD_STAGES as readonly string[]).includes(value);
+}
+
+function isProposalStatus(value: string): value is ProposalStatus {
+  return (PROPOSAL_STATUSES as readonly string[]).includes(value);
+}
+
+function isUiTriggerKind(value: string): value is AutomationUiTriggerKind {
+  return (AUTOMATION_UI_TRIGGER_KINDS as readonly string[]).includes(value);
 }
 
 function newDraftStep(): DraftStep {
@@ -91,6 +106,20 @@ function stepFromRow(
 function toStageFromConfig(config: JsonObject): string {
   const raw = config.to_stage;
   return typeof raw === "string" && isLeadStage(raw) ? raw : "";
+}
+
+function toStatusFromConfig(config: JsonObject): string {
+  const raw = config.to_status;
+  return typeof raw === "string" && isProposalStatus(raw) ? raw : "";
+}
+
+function triggerKindFromInitial(
+  initial?: AutomationWorkflowDetail,
+): AutomationUiTriggerKind {
+  if (initial && isUiTriggerKind(initial.trigger_kind)) {
+    return initial.trigger_kind;
+  }
+  return "lead_stage_changed";
 }
 
 function stepConfig(step: DraftStep): JsonObject {
@@ -144,8 +173,14 @@ export function WorkflowEditor({
   const router = useRouter();
   const [name, setName] = useState(initial?.name ?? "");
   const [enabled, setEnabled] = useState(initial?.enabled ?? true);
+  const [triggerKind, setTriggerKind] = useState<AutomationUiTriggerKind>(
+    () => triggerKindFromInitial(initial),
+  );
   const [toStage, setToStage] = useState(
     initial ? toStageFromConfig(initial.trigger_config) : "",
+  );
+  const [toStatus, setToStatus] = useState(
+    initial ? toStatusFromConfig(initial.trigger_config) : "",
   );
   const [steps, setSteps] = useState<DraftStep[]>(
     () => initial?.steps.map(stepFromRow) ?? [newDraftStep()],
@@ -212,8 +247,20 @@ export function WorkflowEditor({
     }
 
     const triggerConfig: JsonObject = { ...initial?.trigger_config };
-    if (toStage) triggerConfig.to_stage = toStage;
-    else delete triggerConfig.to_stage;
+    if (triggerKind === "lead_stage_changed") {
+      if (toStage) triggerConfig.to_stage = toStage;
+      else delete triggerConfig.to_stage;
+      delete triggerConfig.to_status;
+    } else if (triggerKind === "proposal_status_changed") {
+      if (toStatus) triggerConfig.to_status = toStatus;
+      else delete triggerConfig.to_status;
+      delete triggerConfig.to_stage;
+      delete triggerConfig.from_stage;
+    } else {
+      delete triggerConfig.to_stage;
+      delete triggerConfig.from_stage;
+      delete triggerConfig.to_status;
+    }
 
     setError(null);
     startTransition(async () => {
@@ -221,7 +268,7 @@ export function WorkflowEditor({
       if (!workflowId) {
         const created = await createAutomationWorkflow(accountId, {
           name: trimmedName,
-          trigger_kind: "lead_stage_changed",
+          trigger_kind: triggerKind,
           trigger_config: triggerConfig,
           enabled,
         });
@@ -233,6 +280,7 @@ export function WorkflowEditor({
       } else {
         const updated = await updateAutomationWorkflow(workflowId, {
           name: trimmedName,
+          trigger_kind: triggerKind,
           trigger_config: triggerConfig,
           enabled,
         });
@@ -306,8 +354,8 @@ export function WorkflowEditor({
             {initial ? "Edit workflow" : "New workflow"}
           </h2>
           <p className="mt-1 text-[13px] text-muted">
-            Runs when a lead moves stages. Email steps draft for your approval —
-            they never send on their own.
+            Runs when the selected event happens on a lead. Email steps draft for
+            your approval — they never send on their own.
           </p>
         </div>
 
@@ -324,27 +372,59 @@ export function WorkflowEditor({
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="flex flex-col gap-1.5">
             <span className="text-[13px] font-medium text-muted">Trigger</span>
-            <Select value="lead_stage_changed" disabled>
-              <option value="lead_stage_changed">Lead stage changed</option>
-            </Select>
-          </label>
-          <label className="flex flex-col gap-1.5">
-            <span className="text-[13px] font-medium text-muted">
-              Only when moving to
-            </span>
             <Select
-              value={toStage}
-              onChange={(event) => setToStage(event.target.value)}
+              value={triggerKind}
+              onChange={(event) => {
+                const next = event.target.value;
+                if (isUiTriggerKind(next)) setTriggerKind(next);
+              }}
               disabled={isPending}
             >
-              <option value="">Any stage</option>
-              {LEAD_STAGES.map((stage) => (
-                <option key={stage} value={stage}>
-                  {LEAD_STAGE_LABEL[stage]}
+              {AUTOMATION_UI_TRIGGER_KINDS.map((kind) => (
+                <option key={kind} value={kind}>
+                  {TRIGGER_KIND_LABEL[kind] ?? kind}
                 </option>
               ))}
             </Select>
           </label>
+          {triggerKind === "lead_stage_changed" ? (
+            <label className="flex flex-col gap-1.5">
+              <span className="text-[13px] font-medium text-muted">
+                Only when moving to
+              </span>
+              <Select
+                value={toStage}
+                onChange={(event) => setToStage(event.target.value)}
+                disabled={isPending}
+              >
+                <option value="">Any stage</option>
+                {LEAD_STAGES.map((stage) => (
+                  <option key={stage} value={stage}>
+                    {LEAD_STAGE_LABEL[stage]}
+                  </option>
+                ))}
+              </Select>
+            </label>
+          ) : null}
+          {triggerKind === "proposal_status_changed" ? (
+            <label className="flex flex-col gap-1.5">
+              <span className="text-[13px] font-medium text-muted">
+                Only when status becomes
+              </span>
+              <Select
+                value={toStatus}
+                onChange={(event) => setToStatus(event.target.value)}
+                disabled={isPending}
+              >
+                <option value="">Any status</option>
+                {PROPOSAL_STATUSES.map((status) => (
+                  <option key={status} value={status}>
+                    {PROPOSAL_STATUS_LABEL[status]}
+                  </option>
+                ))}
+              </Select>
+            </label>
+          ) : null}
         </div>
 
         <label className="flex items-center gap-2 text-[14px] font-medium text-ink">

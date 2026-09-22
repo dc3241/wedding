@@ -54,7 +54,7 @@ export default async function LeadDetailPage({
       supabase
         .from("proposals")
         .select(
-          "id, lead_id, title, line_items, total, status, notes, terms, accepted_at, created_at, updated_at",
+          "id, lead_id, title, line_items, total, status, notes, terms, accepted_at, access_token, created_at, updated_at",
         )
         .eq("lead_id", leadId)
         .order("created_at", { ascending: false }),
@@ -99,6 +99,7 @@ export default async function LeadDetailPage({
     notes: row.notes,
     terms: row.terms,
     accepted_at: row.accepted_at,
+    access_token: row.access_token,
     created_at: row.created_at,
     updated_at: row.updated_at,
   }));

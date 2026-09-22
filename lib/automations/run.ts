@@ -22,12 +22,11 @@ export const AUTOMATION_RUNS_PER_INVOCATION = 20;
 export type LeadAutomationEvent = {
   accountId: string;
   leadId: string;
-  triggerKind: Extract<
-    AutomationTriggerKind,
-    "lead_stage_changed" | "lead_created"
-  >;
+  triggerKind: Exclude<AutomationTriggerKind, "project_created">;
   fromStage?: string | null;
   toStage?: string | null;
+  /** proposal_status_changed filter — proposal status after the change. */
+  toStatus?: string | null;
 };
 
 type AdminClient = ReturnType<typeof createServiceRoleClient>;
@@ -85,6 +84,11 @@ function triggerMatches(
     const toStage = typeof cfg.to_stage === "string" ? cfg.to_stage : null;
     if (fromStage && fromStage !== event.fromStage) return false;
     if (toStage && toStage !== event.toStage) return false;
+  }
+  if (event.triggerKind === "proposal_status_changed") {
+    const toStatus =
+      typeof cfg.to_status === "string" ? cfg.to_status : null;
+    if (toStatus && toStatus !== event.toStatus) return false;
   }
   return true;
 }

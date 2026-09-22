@@ -2,6 +2,7 @@
 
 import { getAccountContext } from "@/lib/account-context";
 import { revalidatePath } from "next/cache";
+import { dispatchLeadAutomationForProject } from "@/lib/automations/dispatch-for-project";
 import { sendEmailBestEffort } from "@/lib/email/send-best-effort";
 import { deriveInvoiceStatus } from "@/lib/invoices/coverage";
 import {
@@ -558,6 +559,16 @@ export async function updateInvoice(
     return { ok: true };
   }
 
+  const previousPaymentLink = loaded.invoice.payment_link_url?.trim() || null;
+  const nextPaymentLink =
+    fields.paymentLinkUrl !== undefined
+      ? optionalUrl(fields.paymentLinkUrl)
+      : previousPaymentLink;
+  const paymentLinkNewlySet =
+    fields.paymentLinkUrl !== undefined &&
+    Boolean(nextPaymentLink) &&
+    nextPaymentLink !== previousPaymentLink;
+
   const supabase = await createClient();
   const { error } = await supabase
     .from("invoices")
@@ -566,6 +577,13 @@ export async function updateInvoice(
 
   if (error) {
     return { ok: false, error: error.message };
+  }
+
+  if (paymentLinkNewlySet) {
+    await dispatchLeadAutomationForProject({
+      projectId: loaded.invoice.project_id,
+      triggerKind: "payment_link_set",
+    });
   }
 
   revalidateInvoice(loaded.invoice.project_id, invoiceId);
@@ -723,6 +741,11 @@ export async function sendInvoice(
     );
   }
 
+  await dispatchLeadAutomationForProject({
+    projectId: loaded.invoice.project_id,
+    triggerKind: "invoice_sent",
+  });
+
   revalidateInvoice(loaded.invoice.project_id, invoiceId);
   return { ok: true, emailSent, publicUrl };
 }
@@ -755,6 +778,7 @@ export async function recordInvoicePayment(
     return { ok: false, error: "Choose a payment method." };
   }
 
+  const wasPaid = loaded.invoice.status === "paid";
   const supabase = await createClient();
   const { error } = await supabase.from("invoice_payments").insert({
     invoice_id: invoiceId,
@@ -773,6 +797,16 @@ export async function recordInvoicePayment(
   if (!refreshed.ok) return refreshed;
   const synced = await persistCoverage(refreshed.invoice);
   if (!synced.ok) return synced;
+
+  if (!wasPaid) {
+    const after = await loadInvoice(invoiceId);
+    if (after.ok && after.invoice.status === "paid") {
+      await dispatchLeadAutomationForProject({
+        projectId: loaded.invoice.project_id,
+        triggerKind: "invoice_marked_paid",
+      });
+    }
+  }
 
   revalidateInvoice(loaded.invoice.project_id, invoiceId);
   return { ok: true };
@@ -818,8 +852,18 @@ export async function markInvoicePaid(
     return { ok: false, error: "A voided invoice can't be marked paid." };
   }
   if (loaded.invoice.remaining <= 0) {
+    const wasPaid = loaded.invoice.status === "paid";
     const synced = await persistCoverage(loaded.invoice);
     if (!synced.ok) return synced;
+    if (!wasPaid) {
+      const after = await loadInvoice(invoiceId);
+      if (after.ok && after.invoice.status === "paid") {
+        await dispatchLeadAutomationForProject({
+          projectId: loaded.invoice.project_id,
+          triggerKind: "invoice_marked_paid",
+        });
+      }
+    }
     revalidateInvoice(loaded.invoice.project_id, invoiceId);
     return { ok: true };
   }

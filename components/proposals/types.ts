@@ -38,6 +38,7 @@ export type Proposal = {
   notes: string | null;
   terms: string | null;
   accepted_at: string | null;
+  access_token: string;
   created_at: string;
   updated_at: string;
 };

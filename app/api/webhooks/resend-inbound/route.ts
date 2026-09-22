@@ -5,6 +5,7 @@
  */
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
+import { dispatchLeadAutomation } from "@/lib/automations/run";
 import { sendEmail } from "@/lib/email/send";
 import {
   extractEmailAddress,
@@ -138,20 +139,30 @@ export async function POST(req: Request) {
     .limit(1)
     .maybeSingle();
 
-  const { error: insertError } = await supabase.from("leads").insert({
-    account_id: account.id,
-    couple_name: fromParsed.name.slice(0, 200) || "Inquiry",
-    contact_email: fromParsed.email,
-    source: "email_inbound",
-    stage: "inquiry",
-    notes: noteParts.join("\n\n") || null,
-    position: (positionRow?.position ?? 0) + 1,
-  });
+  const { data: inserted, error: insertError } = await supabase
+    .from("leads")
+    .insert({
+      account_id: account.id,
+      couple_name: fromParsed.name.slice(0, 200) || "Inquiry",
+      contact_email: fromParsed.email,
+      source: "email_inbound",
+      stage: "inquiry",
+      notes: noteParts.join("\n\n") || null,
+      position: (positionRow?.position ?? 0) + 1,
+    })
+    .select("id")
+    .single();
 
-  if (insertError) {
-    console.error("resend-inbound: insert", insertError.message);
+  if (insertError || !inserted) {
+    console.error("resend-inbound: insert", insertError?.message);
     return NextResponse.json({ error: "Could not save inquiry." }, { status: 500 });
   }
+
+  await dispatchLeadAutomation({
+    accountId: account.id,
+    leadId: inserted.id,
+    triggerKind: "lead_created",
+  });
 
   return NextResponse.json({ received: true });
 }

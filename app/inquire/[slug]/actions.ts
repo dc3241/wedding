@@ -1,7 +1,9 @@
 "use server";
 
 import { headers } from "next/headers";
+import { dispatchLeadAutomation } from "@/lib/automations/run";
 import { createAnonServerClient } from "@/utils/supabase/anon-server";
+import { createServiceRoleClient } from "@/utils/supabase/service-role";
 
 const NAME_MAX = 120;
 const EMAIL_MAX = 254;
@@ -86,7 +88,7 @@ export async function submitInquiry(
     forwardedFor ? { headers: { "x-forwarded-for": forwardedFor } } : undefined,
   );
 
-  const { error } = await supabase.rpc("submit_inquiry", {
+  const { data: leadId, error } = await supabase.rpc("submit_inquiry", {
     p_slug: slug,
     p_name: name,
     p_email: email,
@@ -101,6 +103,29 @@ export async function submitInquiry(
       return { ok: false, reason: "throttled" };
     }
     return { ok: false, reason: "error" };
+  }
+
+  if (typeof leadId === "string" && leadId) {
+    try {
+      const admin = createServiceRoleClient();
+      const { data: lead } = await admin
+        .from("leads")
+        .select("account_id")
+        .eq("id", leadId)
+        .maybeSingle();
+      if (lead?.account_id) {
+        await dispatchLeadAutomation({
+          accountId: lead.account_id,
+          leadId,
+          triggerKind: "lead_created",
+        });
+      }
+    } catch (err) {
+      console.error(
+        "submitInquiry lead_created:",
+        err instanceof Error ? err.message : err,
+      );
+    }
   }
 
   return { ok: true };

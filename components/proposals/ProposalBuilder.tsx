@@ -9,6 +9,7 @@ import {
   deleteProposal,
   updateProposal,
 } from "@/app/(app)/leads/[leadId]/actions";
+import { sendProposal } from "@/app/proposal/actions";
 import { Button } from "@/components/ui/button";
 import { ButtonLink } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -17,6 +18,7 @@ import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import type { AccountPlan } from "@/lib/account-context";
 import { cn } from "@/lib/cn";
+import { proposalPublicUrl } from "@/lib/proposals/url";
 import { getCopy } from "@/lib/venue-copy";
 import { invoiceStatusLabel } from "@/lib/invoices/status";
 import type { InvoiceStatus } from "@/lib/invoices/types";
@@ -79,6 +81,9 @@ export function ProposalBuilder({
   const [error, setError] = useState<string | null>(null);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const publicUrl = proposalPublicUrl(proposal.access_token);
+  const canSend =
+    proposal.status === "draft" || proposal.status === "sent";
 
   useEffect(() => {
     setTitle(proposal.title);
@@ -193,6 +198,34 @@ export function ProposalBuilder({
     });
   }
 
+  function handleSend() {
+    setError(null);
+    setSaveMessage(null);
+    startTransition(async () => {
+      const result = await sendProposal(proposal.id);
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      setSaveMessage(
+        result.emailSent
+          ? "Proposal sent — email delivered."
+          : "Proposal marked Sent — email couldn't send; copy the link below.",
+      );
+      router.refresh();
+    });
+  }
+
+  async function handleCopyLink() {
+    setError(null);
+    try {
+      await navigator.clipboard.writeText(publicUrl);
+      setSaveMessage("Link copied");
+    } catch {
+      setError("Couldn't copy the link.");
+    }
+  }
+
   return (
     <Card className={cn("p-5", isPending && "opacity-60")}>
       <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
@@ -226,6 +259,28 @@ export function ProposalBuilder({
             proposalId={proposal.id}
             initialStatus={proposal.status}
           />
+          {canSend || proposal.access_token ? (
+            <div className="flex flex-wrap gap-2">
+              {canSend ? (
+                <Button
+                  type="button"
+                  variant="primary"
+                  onClick={handleSend}
+                  disabled={isPending}
+                >
+                  {proposal.status === "sent" ? "Resend proposal" : "Send proposal"}
+                </Button>
+              ) : null}
+              <Button
+                type="button"
+                variant="default"
+                onClick={handleCopyLink}
+                disabled={isPending}
+              >
+                Copy public link
+              </Button>
+            </div>
+          ) : null}
         </div>
         <Button type="button" variant="ghost" onClick={onClose} disabled={isPending}>
           Close
