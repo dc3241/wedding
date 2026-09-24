@@ -1,35 +1,8 @@
-"use client";
-
 import { DemoCta } from "@/components/demo/demo-cta";
 import { HeroProductPreview } from "@/components/marketing/hero-product-preview";
 import { ScrollReveal } from "@/components/marketing/scroll-reveal";
 import { ButtonLink } from "@/components/ui/button";
 import { Eyebrow } from "@/components/ui/eyebrow";
-import Link from "next/link";
-import type { MouseEvent } from "react";
-
-/**
- * Same-page section nav as MarketingTopbar: clean hash, scroll, and hashchange
- * so AudienceSection can switch its tab.
- */
-function jumpToSection(e: MouseEvent<HTMLAnchorElement>, sectionId: string) {
-  e.preventDefault();
-  const nextUrl = `/#${sectionId}`;
-  if (window.location.pathname + window.location.hash !== nextUrl) {
-    window.history.pushState(null, "", nextUrl);
-  } else {
-    window.history.replaceState(null, "", nextUrl);
-  }
-  window.dispatchEvent(new Event("hashchange"));
-
-  const reduceMotion = window.matchMedia(
-    "(prefers-reduced-motion: reduce)",
-  ).matches;
-  document.getElementById(sectionId)?.scrollIntoView({
-    behavior: reduceMotion ? "auto" : "smooth",
-    block: "start",
-  });
-}
 
 export function LandingHero() {
   return (
@@ -59,22 +32,6 @@ export function LandingHero() {
             </ButtonLink>
             <DemoCta kind="business" compact />
           </div>
-          <p className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 text-[14px] font-semibold">
-            <Link
-              href="/#couples"
-              className="text-accent underline-offset-2 hover:underline"
-              onClick={(e) => jumpToSection(e, "couples")}
-            >
-              Planning your wedding →
-            </Link>
-            <Link
-              href="/#planners"
-              className="text-accent underline-offset-2 hover:underline"
-              onClick={(e) => jumpToSection(e, "planners")}
-            >
-              Planner or venue →
-            </Link>
-          </p>
         </ScrollReveal>
         <ScrollReveal delayMs={80}>
           <HeroProductPreview />

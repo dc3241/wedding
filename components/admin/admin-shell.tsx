@@ -8,11 +8,8 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 
 /**
- * Dark collapsible icon-rail sidebar — deliberately different visual
- * treatment from PlannerProjectSidebar's light card style, per Dom's
- * explicit direction (RevLifter reference). Colors still come from the
- * same token set (bg-ink / text-canvas / accent), so it's a different
- * shape, not a different design system.
+ * Dark collapsible icon-rail sidebar. Same Soft stack tokens and shape
+ * as PlannerShell (bg-ink / text-canvas / accent) — different nav only.
  *
  * ADMIN-AUD-01: shared top block, then Couples / Venues & planners groups.
  * Content queue and generate+rate Ideation stay top-level. Collapse +

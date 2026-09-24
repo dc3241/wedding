@@ -1,10 +1,10 @@
 # First Look Admin — Audience-Split slices (ADMIN-AUD)
 
-Paste **one slice per Cursor chat**, in order. This file is prompts, not an implementation. Cursor must run **Step 0 on every slice** and **STOP and report back** if a finding contradicts this file — same discipline as `PROJECT_BIBLE_v43.md` §11.
+Paste **one slice per Cursor chat**, in order. This file is prompts, not an implementation. Cursor must run **Step 0 on every slice** and **STOP and report back** if a finding contradicts this file — same discipline as `PROJECT_BIBLE_v44.md` §11.
 
 Authored 2026-09-04 from the Audience-Split Handoff Spec + `first-look-ops.html` (v2 mockup) **plus a live-repo scan**. The original spec was written from the Bible without opening the repo; several assumptions were stale. Those corrections are baked in below. Re-verify anyway — a next-free number in this file can be taken the same day.
 
-**Canonical sources for the implementing chat:** this file, `PROJECT_BIBLE_v43.md` §11, `.cursor/rules/design.mdc`, the v2 mockup at `c:\Users\dcicc\Downloads\first-look-ops.html`. If a hex disagrees, `app/globals.css` wins. If a rule disagrees, `design.mdc` wins. The mockup is a rendered example — **non-normative for type**. It uses Cormorant on pillar names; admin is Tier 1 chrome, so Figtree only. Do not copy `.font-serif` / `--font-serif` into `components/admin/` or `app/(admin)/`.
+**Canonical sources for the implementing chat:** this file, `PROJECT_BIBLE_v44.md` §11, `.cursor/rules/design.mdc`, the v2 mockup at `c:\Users\dcicc\Downloads\first-look-ops.html`. If a hex disagrees, `app/globals.css` wins. If a rule disagrees, `design.mdc` wins. The mockup is a rendered example — **non-normative for type**. It uses Cormorant on pillar names; admin is Tier 1 chrome, so Figtree only. Do not copy `.font-serif` / `--font-serif` into `components/admin/` or `app/(admin)/`.
 
 Migrations are hand-pasted into the Supabase SQL editor. **`supabase db push` is forbidden.** Create the numbered file under `wedding-app/supabase/migrations/`. Dom applies it.
 
@@ -124,7 +124,7 @@ Paste this block at the top of the first implementing chat (ADMIN-AUD-00 is fine
 Global Step 0 — recon only, write nothing.
 
 You are implementing the First Look Admin audience-split (ADMIN-AUD) against
-wedding-app/. Read ADMIN_AUD_SLICES.md (this file) and PROJECT_BIBLE_v43.md §11.
+wedding-app/. Read ADMIN_AUD_SLICES.md (this file) and PROJECT_BIBLE_v44.md §11.
 If any finding contradicts ADMIN_AUD_SLICES.md, STOP and report before writing
 code or SQL.
 

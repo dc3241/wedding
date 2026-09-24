@@ -36,14 +36,76 @@ function composeLeadNote(
   return current ? `${current}\n\n${addition}` : addition;
 }
 
+async function loadLeadTokenValues(
+  client: SupabaseClient,
+  leadId: string,
+): Promise<
+  | {
+      ok: true;
+      values: {
+        couple_name: string;
+        account_name: string;
+        wedding_date: string;
+      };
+    }
+  | { ok: false; detail: string }
+> {
+  const { data: lead, error: loadError } = await client
+    .from("leads")
+    .select("couple_name, wedding_date, accounts(name)")
+    .eq("id", leadId)
+    .maybeSingle();
+
+  if (loadError) {
+    return { ok: false, detail: loadError.message };
+  }
+  if (!lead) {
+    return { ok: false, detail: "Lead not found." };
+  }
+
+  return {
+    ok: true,
+    values: {
+      couple_name: (lead.couple_name ?? "").trim(),
+      account_name: asAccountName(
+        lead.accounts as
+          | { name: string | null }
+          | { name: string | null }[]
+          | null,
+      ),
+      wedding_date: formatWorkflowWeddingDate(lead.wedding_date),
+    },
+  };
+}
+
+function renderNoteField(
+  template: string | undefined,
+  values: {
+    couple_name: string;
+    account_name: string;
+    wedding_date: string;
+  },
+): string | undefined {
+  if (template === undefined) return undefined;
+  return renderWorkflowEmailTokens(template, values);
+}
+
 async function executeAddNote(
   client: SupabaseClient,
   leadId: string,
   config: JsonObject,
 ): Promise<StepExecution> {
-  const title = asString(config.title);
-  const body = asString(config.body);
+  const titleTemplate = asString(config.title);
+  const bodyTemplate = asString(config.body);
   const projectId = asString(config.project_id)?.trim();
+
+  const tokenValues = await loadLeadTokenValues(client, leadId);
+  if (!tokenValues.ok) {
+    return { outcome: "error", detail: tokenValues.detail };
+  }
+
+  const title = renderNoteField(titleTemplate, tokenValues.values);
+  const body = renderNoteField(bodyTemplate, tokenValues.values);
 
   if (projectId) {
     const noteId = await addNote(projectId, client);
@@ -158,9 +220,14 @@ async function executeSendEmail(
     };
   }
 
+  const tokenValues = await loadLeadTokenValues(client, leadId);
+  if (!tokenValues.ok) {
+    return { outcome: "error", detail: tokenValues.detail };
+  }
+
   const { data: lead, error: loadError } = await client
     .from("leads")
-    .select("id, account_id, couple_name, wedding_date, accounts(name)")
+    .select("id, account_id")
     .eq("id", leadId)
     .maybeSingle();
 
@@ -191,18 +258,11 @@ async function executeSendEmail(
     };
   }
 
-  const values = {
-    couple_name: (lead.couple_name ?? "").trim(),
-    account_name: asAccountName(
-      lead.accounts as
-        | { name: string | null }
-        | { name: string | null }[]
-        | null,
-    ),
-    wedding_date: formatWorkflowWeddingDate(lead.wedding_date),
-  };
-  const subject = renderWorkflowEmailTokens(subjectTemplate, values).trim();
-  const body = renderWorkflowEmailTokens(bodyTemplate, values).trim();
+  const subject = renderWorkflowEmailTokens(
+    subjectTemplate,
+    tokenValues.values,
+  ).trim();
+  const body = renderWorkflowEmailTokens(bodyTemplate, tokenValues.values).trim();
   if (!subject || !body) {
     return {
       outcome: "error",
