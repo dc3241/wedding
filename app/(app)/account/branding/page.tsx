@@ -19,7 +19,7 @@ export default async function BrandingPage() {
   const { data: row } = await supabase
     .from("accounts")
     .select(
-      "plan, brand_name, brand_logo_url, brand_accent_color, white_label_enabled",
+      "plan, brand_name, brand_logo_url, brand_accent_color, brand_sidebar_color, white_label_enabled",
     )
     .eq("id", accountId)
     .maybeSingle();
@@ -27,7 +27,7 @@ export default async function BrandingPage() {
   const shellClass = shellLayoutClass(account.kind, false, "reading");
   const isVenue = row?.plan === "venue";
   const description = isVenue
-    ? "Show your logo, name, and accent color across your planner dashboard, to invited couples, and on the public inquiry embed."
+    ? "Show your logo, name, accent, and sidebar color across your workspace, to invited couples, and on the public inquiry embed."
     : "Show invited couples and collaborators your logo, name, and accent color inside the app and on the public inquiry embed. Your planner chrome stays First Look.";
 
   return (
@@ -39,10 +39,12 @@ export default async function BrandingPage() {
       />
       <BrandingForm
         accountId={accountId}
+        showSidebarColor={isVenue}
         initial={{
           brandName: row?.brand_name ?? null,
           brandLogoUrl: row?.brand_logo_url ?? null,
           brandAccentColor: row?.brand_accent_color ?? null,
+          brandSidebarColor: row?.brand_sidebar_color ?? null,
           whiteLabelEnabled: row?.white_label_enabled === true,
         }}
       />

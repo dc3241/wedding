@@ -14,21 +14,39 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Wordmark } from "@/components/ui/topbar";
 import { BRAND_PRESET_COLORS } from "@/lib/brand-preset-colors";
-import { accentFailsWhiteContrast } from "@/lib/branding/contrast";
-import { BRAND_ACCENT_HEX, BRAND_NAME_MAX_LENGTH } from "@/lib/branding/types";
+import { BRAND_SIDEBAR_PRESET_COLORS } from "@/lib/brand-sidebar-preset-colors";
+import {
+  accentFailsWhiteContrast,
+  sidebarFailsNavTextContrast,
+} from "@/lib/branding/contrast";
+import {
+  BRAND_ACCENT_HEX,
+  BRAND_NAME_MAX_LENGTH,
+  BRAND_SIDEBAR_NAV_TEXT,
+  DEFAULT_BRAND_SIDEBAR_COLOR,
+} from "@/lib/branding/types";
 import { cn } from "@/lib/cn";
 
 type BrandingFormProps = {
   accountId: string;
   initial: UpdateAccountBrandingInput;
+  /** Venue plan — own-shell rail color is relevant. */
+  showSidebarColor?: boolean;
 };
 
-export function BrandingForm({ accountId, initial }: BrandingFormProps) {
+export function BrandingForm({
+  accountId,
+  initial,
+  showSidebarColor = false,
+}: BrandingFormProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [brandName, setBrandName] = useState(initial.brandName ?? "");
   const [brandLogoUrl, setBrandLogoUrl] = useState(initial.brandLogoUrl);
   const [brandAccentColor, setBrandAccentColor] = useState(
     initial.brandAccentColor ?? "#C0396B",
+  );
+  const [brandSidebarColor, setBrandSidebarColor] = useState(
+    initial.brandSidebarColor ?? DEFAULT_BRAND_SIDEBAR_COLOR,
   );
   const [whiteLabelEnabled, setWhiteLabelEnabled] = useState(
     initial.whiteLabelEnabled,
@@ -38,12 +56,24 @@ export function BrandingForm({ accountId, initial }: BrandingFormProps) {
   const [isPending, startTransition] = useTransition();
 
   const accentValid = BRAND_ACCENT_HEX.test(brandAccentColor);
+  const sidebarValid = BRAND_ACCENT_HEX.test(brandSidebarColor);
   const previewAccent = accentValid ? brandAccentColor : "#C0396B";
+  const previewSidebar = sidebarValid
+    ? brandSidebarColor
+    : DEFAULT_BRAND_SIDEBAR_COLOR;
   const previewName = brandName.trim() || "Your business name";
   const lowContrast = accentValid && accentFailsWhiteContrast(brandAccentColor);
+  const sidebarLowContrast =
+    sidebarValid &&
+    sidebarFailsNavTextContrast(brandSidebarColor, BRAND_SIDEBAR_NAV_TEXT);
 
   function setAccent(hex: string) {
     setBrandAccentColor(hex);
+    setSaved(false);
+  }
+
+  function setSidebar(hex: string) {
+    setBrandSidebarColor(hex);
     setSaved(false);
   }
 
@@ -76,11 +106,23 @@ export function BrandingForm({ accountId, initial }: BrandingFormProps) {
       return;
     }
 
+    if (
+      showSidebarColor &&
+      brandSidebarColor.trim() &&
+      !BRAND_ACCENT_HEX.test(brandSidebarColor.trim())
+    ) {
+      setError("Sidebar color must be a 6-digit hex value (e.g. #241C20).");
+      return;
+    }
+
     startTransition(async () => {
       const result = await updateAccountBranding(accountId, {
         brandName: brandName.trim() || null,
         brandLogoUrl,
         brandAccentColor: brandAccentColor.trim() || null,
+        brandSidebarColor: showSidebarColor
+          ? brandSidebarColor.trim() || null
+          : initial.brandSidebarColor,
         whiteLabelEnabled,
       });
 
@@ -99,55 +141,104 @@ export function BrandingForm({ accountId, initial }: BrandingFormProps) {
           Live preview
         </h2>
         <p className="mt-1 text-[13px] text-muted">
-          How invited couples and collaborators see the nav when white-label is
-          on.
+          {showSidebarColor
+            ? "Your workspace rail and how invited couples see accent in the app."
+            : "How invited couples and collaborators see the nav when white-label is on."}
         </p>
-        <div
-          className="mt-4 overflow-hidden rounded-[var(--radius-inner)] border border-hairline bg-canvas shadow-recessed"
-          style={{ ["--accent" as string]: previewAccent }}
-        >
-          <div className="flex items-center justify-between border-b border-hairline px-5 py-3.5">
-            <div className="flex min-w-0 items-center gap-3">
-              {brandLogoUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element -- public brand-media URL
-                <img
-                  src={brandLogoUrl}
-                  alt=""
-                  className="h-7 w-auto max-w-[160px] object-contain"
-                />
-              ) : (
-                <Wordmark className="h-7" />
-              )}
-              {brandName.trim() ? (
-                <span className="truncate text-[15px] font-semibold text-ink">
-                  {previewName}
+
+        {showSidebarColor ? (
+          <div
+            className="mt-4 flex overflow-hidden rounded-[var(--radius-inner)] border border-hairline shadow-recessed"
+            style={{ ["--accent" as string]: previewAccent }}
+          >
+            <div
+              className="flex w-[148px] shrink-0 flex-col gap-1 px-2.5 py-3"
+              style={{ backgroundColor: previewSidebar }}
+            >
+              <div className="mb-2 flex min-w-0 items-center px-1">
+                {brandLogoUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element -- public brand-media URL
+                  <img
+                    src={brandLogoUrl}
+                    alt=""
+                    className="h-8 w-auto max-w-[110px] rounded-[8px] bg-surface object-contain px-1.5 py-1"
+                  />
+                ) : (
+                  <Wordmark className="h-[15px] w-auto text-canvas" />
+                )}
+              </div>
+              <div className="rounded-[var(--radius-inner)] bg-white/12 px-2 py-2 text-[12px] font-semibold text-canvas">
+                <span className="text-accent">●</span> Dashboard
+              </div>
+              <div className="px-2 py-1.5 text-[12px] font-medium text-[#C9BFC4]">
+                Calendar
+              </div>
+              <div className="px-2 py-1.5 text-[12px] font-medium text-[#C9BFC4]">
+                Branding
+              </div>
+            </div>
+            <div className="min-w-0 flex-1 bg-canvas px-4 py-3">
+              <p className="text-[12px] font-semibold tracking-[0.08em] text-accent uppercase">
+                Planning
+              </p>
+              <p className="mt-1 text-[16px] font-extrabold tracking-[-0.02em] text-ink">
+                Dashboard
+              </p>
+              <div className="mt-3">
+                <span className="rounded-[var(--radius-pill)] bg-accent px-3 py-1.5 text-[12px] font-semibold text-surface">
+                  + New booking
                 </span>
-              ) : null}
+              </div>
             </div>
-            <span className="rounded-[var(--radius-pill)] bg-accent-wash px-3 py-1 text-[13px] font-medium text-accent">
-              Billing
-            </span>
           </div>
-          <div className="px-5 py-4">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="rounded-[var(--radius-pill)] bg-accent px-3 py-1.5 text-[13px] font-semibold text-surface">
-                Accent button
-              </span>
-              <span className="rounded-[var(--radius-pill)] bg-well px-3 py-1.5 text-[13px] font-medium text-sage">
-                Done
-              </span>
-              <span className="rounded-[var(--radius-pill)] bg-clay-wash px-3 py-1.5 text-[13px] font-medium text-clay">
-                In progress
-              </span>
-              <span className="rounded-[var(--radius-pill)] bg-rosewood-wash px-3 py-1.5 text-[13px] font-medium text-rosewood">
-                Overdue
+        ) : (
+          <div
+            className="mt-4 overflow-hidden rounded-[var(--radius-inner)] border border-hairline bg-canvas shadow-recessed"
+            style={{ ["--accent" as string]: previewAccent }}
+          >
+            <div className="flex items-center justify-between border-b border-hairline px-5 py-3.5">
+              <div className="flex min-w-0 items-center gap-3">
+                {brandLogoUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element -- public brand-media URL
+                  <img
+                    src={brandLogoUrl}
+                    alt=""
+                    className="h-7 w-auto max-w-[160px] object-contain"
+                  />
+                ) : (
+                  <Wordmark className="h-7" />
+                )}
+                {brandName.trim() ? (
+                  <span className="truncate text-[15px] font-semibold text-ink">
+                    {previewName}
+                  </span>
+                ) : null}
+              </div>
+              <span className="rounded-[var(--radius-pill)] bg-accent-wash px-3 py-1 text-[13px] font-medium text-accent">
+                Billing
               </span>
             </div>
-            <p className="mt-3 text-[13px] text-muted">
-              Status colors stay fixed — only accent changes with your brand.
-            </p>
+            <div className="px-5 py-4">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="rounded-[var(--radius-pill)] bg-accent px-3 py-1.5 text-[13px] font-semibold text-surface">
+                  Accent button
+                </span>
+                <span className="rounded-[var(--radius-pill)] bg-well px-3 py-1.5 text-[13px] font-medium text-sage">
+                  Done
+                </span>
+                <span className="rounded-[var(--radius-pill)] bg-clay-wash px-3 py-1.5 text-[13px] font-medium text-clay">
+                  In progress
+                </span>
+                <span className="rounded-[var(--radius-pill)] bg-rosewood-wash px-3 py-1.5 text-[13px] font-medium text-rosewood">
+                  Overdue
+                </span>
+              </div>
+              <p className="mt-3 text-[13px] text-muted">
+                Status colors stay fixed — only accent changes with your brand.
+              </p>
+            </div>
           </div>
-        </div>
+        )}
       </Card>
 
       <Card className="space-y-6 p-6">
@@ -326,6 +417,72 @@ export function BrandingForm({ accountId, initial }: BrandingFormProps) {
             selection and primary buttons — not status colors.
           </p>
         </div>
+
+        {showSidebarColor ? (
+          <div className="space-y-3">
+            <p className="text-[14px] font-medium text-ink">Sidebar color</p>
+            <div className="flex flex-wrap gap-2">
+              {BRAND_SIDEBAR_PRESET_COLORS.map((preset) => {
+                const selected =
+                  brandSidebarColor.toLowerCase() ===
+                  preset.hex.toLowerCase();
+                return (
+                  <button
+                    key={preset.hex}
+                    type="button"
+                    title={`${preset.label} (${preset.hex})`}
+                    aria-label={`Use ${preset.label} sidebar`}
+                    aria-pressed={selected}
+                    onClick={() => setSidebar(preset.hex)}
+                    className={cn(
+                      "size-8 rounded-[var(--radius-inner)] border border-ring shadow-recessed hover:border-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
+                      selected && "outline-2 outline-offset-2 outline-accent",
+                    )}
+                    style={{ backgroundColor: preset.hex }}
+                  />
+                );
+              })}
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <label className="relative size-9 shrink-0 cursor-pointer overflow-hidden rounded-[var(--radius-inner)] border border-ring shadow-recessed focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-accent">
+                <span className="sr-only">Custom sidebar color</span>
+                <span
+                  className="block size-full"
+                  style={{ backgroundColor: previewSidebar }}
+                  aria-hidden
+                />
+                <input
+                  type="color"
+                  value={previewSidebar}
+                  onChange={(e) => setSidebar(e.target.value)}
+                  className="absolute inset-0 cursor-pointer opacity-0"
+                />
+              </label>
+              <Input
+                id="brand-sidebar"
+                value={brandSidebarColor}
+                placeholder={DEFAULT_BRAND_SIDEBAR_COLOR}
+                aria-label="Sidebar hex"
+                className="max-w-[10rem] font-mono text-[14px]"
+                onChange={(e) => setSidebar(e.target.value)}
+              />
+            </div>
+            {sidebarLowContrast ? (
+              <p
+                className="rounded-[var(--radius-inner)] bg-clay-wash px-3 py-2 text-[13px] font-medium text-clay"
+                role="status"
+              >
+                Light nav text may be hard to read on this sidebar. You can
+                still save it.
+              </p>
+            ) : null}
+            <p className="text-[13px] text-muted">
+              Your workspace navigation rail. Defaults to First Look ink (
+              {DEFAULT_BRAND_SIDEBAR_COLOR}). Couples and public pages are
+              unchanged.
+            </p>
+          </div>
+        ) : null}
 
         {error ? (
           <p className="text-[14px] font-medium text-rosewood" role="alert">

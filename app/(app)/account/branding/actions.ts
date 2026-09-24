@@ -11,6 +11,7 @@ export type UpdateAccountBrandingInput = {
   brandName: string | null;
   brandLogoUrl: string | null;
   brandAccentColor: string | null;
+  brandSidebarColor: string | null;
   whiteLabelEnabled: boolean;
 };
 
@@ -48,6 +49,14 @@ export async function updateAccountBranding(
     };
   }
 
+  const brandSidebarColor = trimOrNull(input.brandSidebarColor);
+  if (brandSidebarColor && !BRAND_ACCENT_HEX.test(brandSidebarColor)) {
+    return {
+      ok: false,
+      error: "Sidebar color must be a 6-digit hex value (e.g. #241C20).",
+    };
+  }
+
   const brandLogoUrl = trimOrNull(input.brandLogoUrl);
 
   const supabase = await createClient();
@@ -71,6 +80,7 @@ export async function updateAccountBranding(
       brand_name: brandName,
       brand_logo_url: brandLogoUrl,
       brand_accent_color: brandAccentColor,
+      brand_sidebar_color: brandSidebarColor,
       white_label_enabled: input.whiteLabelEnabled,
     })
     .eq("id", accountId);

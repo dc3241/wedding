@@ -25,9 +25,10 @@ export function AccountBrandMark({
           src={logoUrl}
           alt={name}
           className={cn(
-            "h-7 w-auto max-w-[180px] object-contain",
-            onDark &&
-              "rounded-[10px] bg-surface px-2 py-1 shadow-[0_1px_2px_rgba(60,30,45,0.06)]",
+            "w-auto object-contain",
+            onDark
+              ? "h-9 max-w-[168px] rounded-[10px] bg-surface px-2.5 py-1.5 shadow-[0_1px_2px_rgba(60,30,45,0.06)]"
+              : "h-7 max-w-[180px]",
           )}
         />
       ) : onDark && brandName ? (

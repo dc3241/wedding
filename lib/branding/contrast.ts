@@ -29,3 +29,25 @@ export function accentFailsWhiteContrast(hex: string): boolean {
   const ratio = contrastAgainstWhite(hex);
   return ratio != null && ratio < BRAND_ACCENT_MIN_CONTRAST;
 }
+
+/** Contrast ratio between two #RRGGBB colors. */
+export function contrastBetween(hexA: string, hexB: string): number | null {
+  const a = relativeLuminance(hexA);
+  const b = relativeLuminance(hexB);
+  if (a == null || b == null) return null;
+  const lighter = Math.max(a, b);
+  const darker = Math.min(a, b);
+  return (lighter + 0.05) / (darker + 0.05);
+}
+
+/**
+ * Sidebar fails if light canvas-colored nav text cannot meet AA on it.
+ * Warn-only — same posture as accentFailsWhiteContrast.
+ */
+export function sidebarFailsNavTextContrast(
+  sidebarHex: string,
+  navTextHex: string,
+): boolean {
+  const ratio = contrastBetween(sidebarHex, navTextHex);
+  return ratio != null && ratio < BRAND_ACCENT_MIN_CONTRAST;
+}

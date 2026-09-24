@@ -33,6 +33,7 @@ export async function getBrandingForProject(
     brandName: row.brand_name,
     brandLogoUrl: row.brand_logo_url,
     brandAccentColor: row.brand_accent_color,
+    brandSidebarColor: null,
   };
 }
 
@@ -50,7 +51,7 @@ async function loadOwnAccountBranding(
   const { data, error } = await supabase
     .from("accounts")
     .select(
-      "plan, white_label_enabled, brand_name, brand_logo_url, brand_accent_color",
+      "plan, white_label_enabled, brand_name, brand_logo_url, brand_accent_color, brand_sidebar_color",
     )
     .eq("id", accountId)
     .maybeSingle();
@@ -67,6 +68,7 @@ async function loadOwnAccountBranding(
     brandName: data.brand_name,
     brandLogoUrl: data.brand_logo_url,
     brandAccentColor: data.brand_accent_color,
+    brandSidebarColor: data.brand_sidebar_color,
   };
 }
 

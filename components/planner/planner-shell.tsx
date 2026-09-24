@@ -93,11 +93,14 @@ export function PlannerShell({
     <div className="flex min-h-screen" style={style}>
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-40 flex w-[min(250px,80vw)] flex-shrink-0 flex-col bg-ink px-3 py-4 text-canvas transition-transform duration-200 ease-out",
+          "fixed inset-y-0 left-0 z-40 flex w-[min(250px,80vw)] flex-shrink-0 flex-col px-3 py-4 text-canvas transition-transform duration-200 ease-out",
+          "bg-[color:var(--brand-sidebar,var(--ink))]",
           "md:sticky md:top-0 md:h-screen md:translate-x-0",
+          // Scroll lives on the inner nav (below), not the aside — keeps the
+          // scrollbar inset inside the rail instead of on the content edge.
           collapsed
             ? "md:w-[68px] md:overflow-visible"
-            : "overflow-x-hidden overflow-y-auto",
+            : "overflow-hidden",
           mobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0",
         )}
       >
@@ -148,11 +151,18 @@ export function PlannerShell({
           </button>
         </div>
 
-        <PlannerProjectSidebar
-          projects={projects}
-          plan={plan}
-          collapsed={collapsed}
-        />
+        <div
+          className={cn(
+            "flex min-h-0 flex-1 flex-col",
+            !collapsed && "overflow-x-hidden overflow-y-auto",
+          )}
+        >
+          <PlannerProjectSidebar
+            projects={projects}
+            plan={plan}
+            collapsed={collapsed}
+          />
+        </div>
       </aside>
 
       {mobileOpen ? (
