@@ -152,6 +152,35 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
+/*
+ * Dark icon-rail scrollers (PlannerShell / AdminShell).
+ * Thin thumb, transparent track; fades in on hover so the OS light bar
+ * never bisects the rail from the canvas.
+ */
+.scrollbar-dark-rail {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+.scrollbar-dark-rail:hover {
+  scrollbar-color: rgba(255, 255, 255, 0.22) transparent;
+}
+.scrollbar-dark-rail::-webkit-scrollbar {
+  width: 6px;
+}
+.scrollbar-dark-rail::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scrollbar-dark-rail::-webkit-scrollbar-thumb {
+  background-color: transparent;
+  border-radius: 999px;
+}
+.scrollbar-dark-rail:hover::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.22);
+}
+.scrollbar-dark-rail::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(255, 255, 255, 0.35);
+}
+
 .shadow-card {
   box-shadow: var(--card-shadow);
 }

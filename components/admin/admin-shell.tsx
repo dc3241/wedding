@@ -206,7 +206,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
           "md:sticky md:top-0 md:h-screen md:translate-x-0",
           collapsed
             ? "md:w-[68px] md:overflow-visible"
-            : "overflow-x-hidden overflow-y-auto",
+            : "scrollbar-dark-rail overflow-x-hidden overflow-y-auto",
           mobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0",
         )}
       >
