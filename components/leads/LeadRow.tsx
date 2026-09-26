@@ -8,6 +8,7 @@ import type { AgentDraftPreview } from "@/components/assistant/types";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Pill } from "@/components/ui/pill";
+import { Select } from "@/components/ui/select";
 import { cn } from "@/lib/cn";
 import { LeadEditModal, friendlyLeadError } from "./LeadEditModal";
 import {
@@ -18,9 +19,6 @@ import {
   type Lead,
   type LeadStage,
 } from "./types";
-
-const selectClasses =
-  "min-w-0 max-w-full flex-1 rounded-[var(--radius-inner)] border border-ring bg-surface px-2 py-1.5 text-[13px] text-ink transition-colors disabled:opacity-50";
 
 export function LeadRow({
   lead,
@@ -168,56 +166,58 @@ export function LeadRow({
             ) : null}
           </div>
 
-          <div className="flex min-w-0 w-full items-center gap-1.5">
+          <div className="flex min-w-0 w-full flex-col gap-2">
             <label className="sr-only" htmlFor={stageFieldId}>
               Stage
             </label>
-            <select
+            <Select
               id={stageFieldId}
               value={lead.stage}
               onChange={handleStageChange}
               disabled={isPending}
-              className={selectClasses}
+              className="py-2 pl-3 pr-10 text-[13px]"
             >
               {LEAD_STAGES.map((stage) => (
                 <option key={stage} value={stage}>
                   {LEAD_STAGE_LABEL[stage]}
                 </option>
               ))}
-            </select>
-            <Button
-              type="button"
-              variant="default"
-              disabled={isPending}
-              onPointerDown={(event) => event.stopPropagation()}
-              onClick={(event) => {
-                event.preventDefault();
-                event.stopPropagation();
-                setEditing(true);
-              }}
-              className="shrink-0 whitespace-nowrap px-3 py-1.5 text-[13px]"
-            >
-              Edit
-            </Button>
-            <button
-              type="button"
-              disabled={isPending}
-              onClick={handleDelete}
-              aria-label={`Delete ${lead.couple_name}`}
-              className="shrink-0 rounded-[var(--radius-inner)] p-1.5 text-muted transition-colors hover:bg-rosewood-wash hover:text-rosewood focus-visible:bg-rosewood-wash focus-visible:text-rosewood focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rosewood disabled:opacity-50"
-            >
-              <svg
-                viewBox="0 0 16 16"
-                className="size-4"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                aria-hidden
+            </Select>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="default"
+                disabled={isPending}
+                onPointerDown={(event) => event.stopPropagation()}
+                onClick={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  setEditing(true);
+                }}
+                className="min-h-9 flex-1 px-4 py-2 text-[13px]"
               >
-                <path d="M3.5 4.5h9M6.5 4.5V3.25a.75.75 0 0 1 .75-.75h1.5a.75.75 0 0 1 .75.75V4.5m1.5 0V12.5a1 1 0 0 1-1 1h-5a1 1 0 0 1-1-1V4.5" />
-                <path d="M7 7v4.5M9 7v4.5" />
-              </svg>
-            </button>
+                Edit
+              </Button>
+              <button
+                type="button"
+                disabled={isPending}
+                onClick={handleDelete}
+                aria-label={`Delete ${lead.couple_name}`}
+                className="inline-flex size-9 shrink-0 items-center justify-center rounded-[var(--radius-inner)] text-muted transition-colors hover:bg-rosewood-wash hover:text-rosewood focus-visible:bg-rosewood-wash focus-visible:text-rosewood focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rosewood disabled:opacity-50"
+              >
+                <svg
+                  viewBox="0 0 16 16"
+                  className="size-4"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  aria-hidden
+                >
+                  <path d="M3.5 4.5h9M6.5 4.5V3.25a.75.75 0 0 1 .75-.75h1.5a.75.75 0 0 1 .75.75V4.5m1.5 0V12.5a1 1 0 0 1-1 1h-5a1 1 0 0 1-1-1V4.5" />
+                  <path d="M7 7v4.5M9 7v4.5" />
+                </svg>
+              </button>
+            </div>
           </div>
           </div>
         </div>

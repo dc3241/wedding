@@ -124,7 +124,7 @@ function LeadColumn({
     <section
       ref={setNodeRef}
       className={cn(
-        "flex w-[240px] min-w-0 shrink-0 flex-col rounded-[var(--radius-card)] border border-hairline bg-surface",
+        "flex min-w-0 flex-1 flex-col rounded-[var(--radius-card)] border border-hairline bg-surface",
         isOver && "border-accent",
       )}
     >
@@ -449,24 +449,22 @@ export function LeadsBoard({
           onDragEnd={handleDragEnd}
           onDragCancel={handleDragCancel}
         >
-          <div className="min-w-0 max-w-full overflow-x-auto pb-2">
-            <div className="flex min-w-max gap-3">
-              {LEAD_STAGES.map((stage) => (
-                <LeadColumn
-                  key={stage}
-                  stage={stage}
-                  leads={columns[stage]}
-                  replyDraftsByLeadId={replyDraftsByLeadId}
-                  onStageChange={handleStageChange}
-                  onOpenReplyDraft={setReviewLeadId}
-                />
-              ))}
-            </div>
+          <div className="flex min-w-0 gap-3">
+            {LEAD_STAGES.map((stage) => (
+              <LeadColumn
+                key={stage}
+                stage={stage}
+                leads={columns[stage]}
+                replyDraftsByLeadId={replyDraftsByLeadId}
+                onStageChange={handleStageChange}
+                onOpenReplyDraft={setReviewLeadId}
+              />
+            ))}
           </div>
 
           <DragOverlay dropAnimation={null}>
             {activeLead ? (
-              <div className="w-[240px] rotate-1 opacity-95">
+              <div className="w-[min(100%,14rem)] rotate-1 opacity-95">
                 <LeadRow
                   lead={activeLead}
                   replyDraft={replyDraftsByLeadId[activeLead.id]}
