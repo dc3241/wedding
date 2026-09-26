@@ -9,10 +9,6 @@ import {
   isContentPostFormat,
   slideCountFor,
 } from "@/lib/admin/content-formats";
-import {
-  CONTENT_QUEUE_BUCKET,
-  CONTENT_QUEUE_SIGNED_TTL_SECONDS,
-} from "@/lib/admin/content-queue";
 import { requestGeneration } from "@/lib/admin/content-queue/generate";
 import { createClient } from "@/utils/supabase/server";
 
@@ -73,7 +69,8 @@ export async function approveContentQueueItem(id: string) {
     body: row.caption ?? "",
     notes: null,
     audience_group: row.audience_group,
-    source_queue_id: id,
+    // Queue row is deleted next; don't keep a dangling FK.
+    source_queue_id: null as string | null,
     image_paths: filledImagePaths(row.image_paths),
   };
 
@@ -90,16 +87,9 @@ export async function approveContentQueueItem(id: string) {
     if (insertBankError) throw new Error(insertBankError.message);
   }
 
-  const now = new Date().toISOString();
-  const { error } = await supabase
-    .from("content_queue")
-    .update({
-      status: "approved",
-      approved_at: now,
-      denied_at: null,
-      updated_at: now,
-    })
-    .eq("id", id);
+  // Bank is the home for approved posts — drop the queue row so the
+  // review inbox stays pending/denied only.
+  const { error } = await supabase.from("content_queue").delete().eq("id", id);
   if (error) throw new Error(error.message);
   revalidateQueueAndBank();
 }
@@ -215,28 +205,6 @@ export async function regenerateContentQueueItem(id: string, prompt: string) {
   }
 
   revalidatePath("/admin/content-queue");
-}
-
-export async function getContentQueueDownloadUrl(id: string, imageIndex: number) {
-  const supabase = await requireAdmin();
-  const { data: row, error: rowError } = await supabase
-    .from("content_queue")
-    .select("image_paths")
-    .eq("id", id)
-    .single();
-  if (rowError || !row) throw new Error("Post not found");
-
-  const paths = filledImagePaths(row.image_paths);
-  const path = paths[imageIndex];
-  if (!path) throw new Error("Image not found");
-
-  const { data, error } = await supabase.storage
-    .from(CONTENT_QUEUE_BUCKET)
-    .createSignedUrl(path, CONTENT_QUEUE_SIGNED_TTL_SECONDS);
-  if (error || !data) {
-    throw new Error(error?.message ?? "Could not create download link");
-  }
-  return data.signedUrl;
 }
 
 export async function revertContentQueueItem(id: string) {

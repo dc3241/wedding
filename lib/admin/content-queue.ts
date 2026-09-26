@@ -11,7 +11,7 @@ const ALL_CONTENT_QUEUE_PLATFORMS: {
   label: string;
   aspectClass: string;
 }[] = [
-  { key: "tiktok", label: "TikTok", aspectClass: "aspect-[9/16]" },
+  { key: "tiktok", label: "TikTok", aspectClass: "aspect-[3/4]" },
   { key: "instagram", label: "Instagram", aspectClass: "aspect-[3/4]" },
   { key: "pinterest", label: "Pinterest", aspectClass: "aspect-[2/3]" },
   { key: "linkedin", label: "LinkedIn", aspectClass: "aspect-square" },
@@ -22,12 +22,12 @@ export const CONTENT_QUEUE_PLATFORMS = ALL_CONTENT_QUEUE_PLATFORMS.filter(
   (p) => p.key !== "instagram",
 );
 
+/** Statuses still shown in the review inbox. Approved rows leave for the bank. */
 export const CONTENT_QUEUE_STATUSES: {
-  key: ContentQueueStatus;
+  key: Exclude<ContentQueueStatus, "approved">;
   label: string;
 }[] = [
   { key: "pending", label: "Pending" },
-  { key: "approved", label: "Approved" },
   { key: "denied", label: "Denied" },
 ];
 

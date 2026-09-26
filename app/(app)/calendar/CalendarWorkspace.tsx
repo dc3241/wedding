@@ -348,17 +348,22 @@ export function CalendarWorkspace({
   const dayDetailItems = dayDetailDate
     ? itemsOnDate(items, dayDetailDate)
     : [];
+  // Don't reserve a desktop rail column when it's empty — let the month grid
+  // use the full content width (matches planner shell max-width).
+  const railActive = panel !== null || upcoming.length > 0;
 
   return (
     <div
       className={cn(
-        "grid min-w-0 grid-cols-1 gap-6 lg:items-start lg:gap-8",
-        railWidth === "fixed"
-          ? "lg:grid-cols-[minmax(0,1fr)_300px]"
-          : "lg:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)]",
+        "grid w-full min-w-0 grid-cols-1 gap-6 lg:items-start lg:gap-8",
+        railActive
+          ? railWidth === "fixed"
+            ? "lg:grid-cols-[minmax(0,1fr)_300px]"
+            : "lg:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)]"
+          : null,
       )}
     >
-      <Card className="min-w-0 overflow-hidden p-5 md:p-6">
+      <Card className="min-w-0 w-full overflow-hidden p-5 md:p-6">
         <div className="mb-4 flex items-center justify-between gap-3 lg:mb-5">
           <h2 className="font-display text-[19px] font-extrabold tracking-[-0.02em] text-ink">
             {formatMonthHeading(year, month)}
@@ -498,91 +503,87 @@ export function CalendarWorkspace({
         </div>
       </Card>
 
-      <div className="flex min-w-0 flex-col gap-4 lg:sticky lg:top-6 lg:self-start">
-        {panel?.type === "create" || panel?.type === "edit" ? (
-          <CalendarEventPanel
-            mode={panel}
-            weddings={weddings}
-            lockedProjectId={lockedProjectId}
-            mutations={mutations}
-            onClose={() => setPanel(null)}
-          />
-        ) : null}
+      {railActive ? (
+        <div className="flex min-w-0 flex-col gap-4 lg:sticky lg:top-6 lg:self-start">
+          {panel?.type === "create" || panel?.type === "edit" ? (
+            <CalendarEventPanel
+              mode={panel}
+              weddings={weddings}
+              lockedProjectId={lockedProjectId}
+              mutations={mutations}
+              onClose={() => setPanel(null)}
+            />
+          ) : null}
 
-        {panel?.type === "day" ? (
-          <Card className="px-5 py-5">
-            <div className="flex items-center justify-between gap-3">
-              <h2 className="font-display text-[19px] font-extrabold tracking-[-0.02em] text-ink">
-                {formatRailDay(panel.date)}
-              </h2>
-              <button
-                type="button"
-                onClick={() => setPanel(null)}
-                className="text-[14px] font-semibold text-muted hover:text-ink"
-              >
-                Close
-              </button>
-            </div>
-            <div className="mt-4 space-y-2">
-              {dayDetailItems.length === 0 ? (
-                <p className="text-[14px] font-medium text-muted">
-                  Nothing scheduled.
-                </p>
-              ) : (
-                dayDetailItems.map((item) => (
-                  <ItemRow
-                    key={item.id}
-                    item={item}
-                    hideProjectName={hideProjectName}
-                    onOpen={setDetailItem}
-                  />
-                ))
-              )}
-            </div>
-            <Button
-              type="button"
-              className="mt-4 w-full"
-              onClick={() => setPanel({ type: "create", date: panel.date })}
-            >
-              Add event
-            </Button>
-          </Card>
-        ) : null}
-
-        {panel === null && upcoming.length === 0 ? (
-          <p className="min-w-0 px-1 text-[14px] font-medium text-muted">
-            Nothing coming up this week.
-          </p>
-        ) : null}
-
-        {panel === null && upcoming.length > 0 ? (
-          <Card className="px-5 py-5">
-            <h2 className="font-display text-[19px] font-extrabold tracking-[-0.02em] text-ink">
-              Upcoming
-            </h2>
-            <p className="mt-1 text-[13px] font-medium text-muted">
-              Next 7 days
-            </p>
-            <div className="mt-4 space-y-4">
-              {groupByDate(upcoming).map(([date, dayItems]) => (
-                <div key={date} className="space-y-2">
-                  <p className="text-[12px] font-semibold uppercase tracking-[0.09em] text-muted">
-                    {formatRailDay(date)}
+          {panel?.type === "day" ? (
+            <Card className="px-5 py-5">
+              <div className="flex items-center justify-between gap-3">
+                <h2 className="font-display text-[19px] font-extrabold tracking-[-0.02em] text-ink">
+                  {formatRailDay(panel.date)}
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => setPanel(null)}
+                  className="text-[14px] font-semibold text-muted hover:text-ink"
+                >
+                  Close
+                </button>
+              </div>
+              <div className="mt-4 space-y-2">
+                {dayDetailItems.length === 0 ? (
+                  <p className="text-[14px] font-medium text-muted">
+                    Nothing scheduled.
                   </p>
-                  {dayItems.map((item) => (
+                ) : (
+                  dayDetailItems.map((item) => (
                     <ItemRow
                       key={item.id}
                       item={item}
                       hideProjectName={hideProjectName}
                       onOpen={setDetailItem}
                     />
-                  ))}
-                </div>
-              ))}
-            </div>
-          </Card>
-        ) : null}
-      </div>
+                  ))
+                )}
+              </div>
+              <Button
+                type="button"
+                className="mt-4 w-full"
+                onClick={() => setPanel({ type: "create", date: panel.date })}
+              >
+                Add event
+              </Button>
+            </Card>
+          ) : null}
+
+          {panel === null && upcoming.length > 0 ? (
+            <Card className="px-5 py-5">
+              <h2 className="font-display text-[19px] font-extrabold tracking-[-0.02em] text-ink">
+                Upcoming
+              </h2>
+              <p className="mt-1 text-[13px] font-medium text-muted">
+                Next 7 days
+              </p>
+              <div className="mt-4 space-y-4">
+                {groupByDate(upcoming).map(([date, dayItems]) => (
+                  <div key={date} className="space-y-2">
+                    <p className="text-[12px] font-semibold uppercase tracking-[0.09em] text-muted">
+                      {formatRailDay(date)}
+                    </p>
+                    {dayItems.map((item) => (
+                      <ItemRow
+                        key={item.id}
+                        item={item}
+                        hideProjectName={hideProjectName}
+                        onOpen={setDetailItem}
+                      />
+                    ))}
+                  </div>
+                ))}
+              </div>
+            </Card>
+          ) : null}
+        </div>
+      ) : null}
 
       {detailItem ? (
         <CalendarEventDetailModal

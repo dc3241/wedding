@@ -3,7 +3,6 @@
 import {
   approveContentQueueItem,
   denyContentQueueItem,
-  getContentQueueDownloadUrl,
   regenerateContentQueueItem,
   revertContentQueueItem,
 } from "@/app/(admin)/admin/content-queue/actions";
@@ -43,7 +42,7 @@ const STATUS_PILL: Record<ContentQueueStatus, { label: string; pill: PillVariant
 };
 
 type PlatformFilter = "all" | ContentQueuePlatform;
-type StatusFilter = "all" | ContentQueueStatus;
+type StatusFilter = "all" | (typeof CONTENT_QUEUE_STATUSES)[number]["key"];
 
 const IMAGE_POLL_MS = 5000;
 const STILL_GENERATING_AFTER_MS = 3 * 60 * 1000;
@@ -227,13 +226,6 @@ function QueueCard({ item }: { item: ContentQueueItem }) {
     });
   }
 
-  function handleDownload() {
-    run(async () => {
-      const url = await getContentQueueDownloadUrl(item.id, imageIndex);
-      window.open(url, "_blank", "noopener,noreferrer");
-    });
-  }
-
   return (
     <Card className="flex flex-col px-5 py-4">
       <div className="mb-3 flex flex-wrap items-center gap-1.5">
@@ -335,27 +327,6 @@ function QueueCard({ item }: { item: ContentQueueItem }) {
                   : "Image generation didn't start."}
               </p>
             ) : null}
-          </>
-        ) : null}
-
-        {item.status === "approved" ? (
-          <>
-            <Button
-              variant="primary"
-              disabled={isPending || item.image_urls.length === 0}
-              onClick={handleDownload}
-              className="px-4 py-2"
-            >
-              Download
-            </Button>
-            <button
-              type="button"
-              disabled={isPending}
-              onClick={() => run(() => revertContentQueueItem(item.id))}
-              className="text-[13px] font-medium text-muted hover:text-ink hover:underline disabled:opacity-50"
-            >
-              Revert
-            </button>
           </>
         ) : null}
       </div>

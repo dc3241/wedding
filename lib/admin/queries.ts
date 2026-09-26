@@ -150,6 +150,7 @@ export async function getContentQueue(
     .from("content_queue")
     .select(QUEUE_SELECT)
     .eq("week_of", resolvedWeek)
+    .neq("status", "approved")
     .order("created_at", { ascending: true });
   if (error) throw new Error(error.message);
 

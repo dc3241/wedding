@@ -3,7 +3,6 @@ import "server-only";
 import { CONTENT_QUEUE_BUCKET } from "@/lib/admin/content-queue";
 import {
   PLATFORM_KIE_ASPECT,
-  type KieImagePlatform,
 } from "@/lib/admin/content-queue/kie-aspect";
 import { appOrigin } from "@/lib/url";
 import { createServiceRoleClient } from "@/utils/supabase/service-role";
@@ -24,15 +23,12 @@ export const KIE_QUALITY = "basic" as const;
 export const PLATFORM_ASPECT = PLATFORM_KIE_ASPECT;
 
 /**
- * Locked templates in content-queue-assets. The bucket holds the full
- * sets under references/lrvn-post/ and references/square/; these two
- * are the ones createTask actually sends (TikTok = 9:16 LRVN,
- * Pin/LinkedIn static = square).
- * Override with CONTENT_QUEUE_REF_LRVN_URL / CONTENT_QUEUE_REF_SQUARE_URL
- * if the files are hosted at a stable public URL instead.
+ * Locked layout template in content-queue-assets (references/square/).
+ * TikTok photo slides and Instagram carousels share 3:4 output + this
+ * reference; Pin/LinkedIn static use it too.
+ * Override with CONTENT_QUEUE_REF_SQUARE_URL for a stable public URL.
  */
 export const CONTENT_QUEUE_REFERENCE_PATHS = {
-  lrvnPost: "references/lrvn-post/LRVN_POST_1.jpg",
   squareSet: "references/square/rsvp-chasing.png",
 } as const;
 
@@ -66,7 +62,7 @@ async function signedReferenceUrl(path: string): Promise<string> {
     .createSignedUrl(path, REFERENCE_SIGNED_TTL_SECONDS);
   if (error || !data?.signedUrl) {
     throw new Error(
-      `Content-queue reference image missing from ${CONTENT_QUEUE_BUCKET}: ${path}. Upload the locked template (or set CONTENT_QUEUE_REF_LRVN_URL / CONTENT_QUEUE_REF_SQUARE_URL) before generating.`,
+      `Content-queue reference image missing from ${CONTENT_QUEUE_BUCKET}: ${path}. Upload the locked template (or set CONTENT_QUEUE_REF_SQUARE_URL) before generating.`,
     );
   }
   return data.signedUrl;
@@ -97,35 +93,24 @@ async function signedProductShotUrl(path: string): Promise<string> {
 }
 
 export async function resolveReferenceUrls(): Promise<{
-  lrvnPost: string;
   squareSet: string;
 }> {
-  const lrvnPost =
-    envUrl("CONTENT_QUEUE_REF_LRVN_URL") ??
-    (await signedReferenceUrl(CONTENT_QUEUE_REFERENCE_PATHS.lrvnPost));
   const squareSet =
     envUrl("CONTENT_QUEUE_REF_SQUARE_URL") ??
     (await signedReferenceUrl(CONTENT_QUEUE_REFERENCE_PATHS.squareSet));
-  return { lrvnPost, squareSet };
+  return { squareSet };
 }
 
 export async function requestGeneration(
   post: Pick<PlannedPost, "platform" | "prompt">,
-  references?: { lrvnPost: string; squareSet: string },
+  references?: { squareSet: string },
 ): Promise<string> {
   const refs = references ?? (await resolveReferenceUrls());
-  const byPlatform: Record<KieImagePlatform, string> = {
-    tiktok: refs.lrvnPost,
-    instagram: refs.squareSet,
-    pinterest: refs.squareSet,
-    linkedin: refs.squareSet,
-  };
-
-  if (!(post.platform in byPlatform)) {
+  if (!(post.platform in PLATFORM_ASPECT)) {
     throw new Error(`${post.platform} posts skip image generation.`);
   }
 
-  const layoutUrl = byPlatform[post.platform as KieImagePlatform];
+  const layoutUrl = refs.squareSet;
   const shot = matchProductShot(post.prompt);
   let imageUrls: string[];
   let prompt: string;

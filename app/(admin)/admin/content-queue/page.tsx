@@ -30,7 +30,6 @@ export default async function AdminContentQueuePage() {
   const { weekOf, items } = await getContentQueue(supabase);
 
   const pending = items.filter((i) => i.status === "pending").length;
-  const approved = items.filter((i) => i.status === "approved").length;
   const denied = items.filter((i) => i.status === "denied").length;
 
   return (
@@ -43,10 +42,9 @@ export default async function AdminContentQueuePage() {
         }
       />
 
-      <div className="mb-4 grid grid-cols-2 gap-3.5 md:grid-cols-4">
+      <div className="mb-4 grid grid-cols-2 gap-3.5 md:grid-cols-3">
         <AdminStat label="Batch total" value={String(items.length)} />
         <AdminStat label="Pending" value={String(pending)} />
-        <AdminStat label="Approved" value={String(approved)} />
         <AdminStat label="Denied" value={String(denied)} />
       </div>
 

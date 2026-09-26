@@ -52,8 +52,8 @@ function platformMeta(key: ContentPlatform) {
 }
 
 function bankAspect(platform: ContentPlatform) {
-  if (platform === "tiktok") return "aspect-[9/16]";
   if (platform === "pinterest") return "aspect-[2/3]";
+  // TikTok photo slides + IG share carousel sizing (4:5).
   return "aspect-[4/5]";
 }
 
@@ -241,7 +241,7 @@ function QueueSourcedCard({
       <div className="mb-2 flex flex-wrap items-center gap-2">
         <Pill variant="default">{meta.label}</Pill>
         {formatText ? <Pill variant="default">{formatText}</Pill> : null}
-        <Pill variant="sage">From queue</Pill>
+        <Pill variant="sage">Ready to post</Pill>
       </div>
 
       {count === 0 ? (
@@ -418,7 +418,11 @@ export function ContentBankBoard({
       ) : (
         <div className="grid gap-3 md:grid-cols-2">
           {filtered.map((item) => {
-            if (item.source_queue_id) {
+            const showSourced =
+              Boolean(item.source_queue_id) ||
+              (item.image_urls?.length ?? 0) > 0 ||
+              (isContentPostFormat(item.format) && !formatNeedsImages(item.format));
+            if (showSourced) {
               return (
                 <QueueSourcedCard key={item.id} item={item} onDelete={handleDelete} />
               );
