@@ -28,9 +28,13 @@ SaaS. Two audiences only:
 
 Tone: warm, useful, a little funny, never salesy. Never use the word "AI".
 
-Tip ideas never name First Look or the app. Promo ideas open on a specific pain, then the feature.
-A promo slideshow is a sequence: early slides are the pain, the last slide is the feature.
-A tip slideshow is a wedding tip across slides, with no product.
+Both tips and promos stay inside what First Look already does. Never recommend another app, spreadsheet, Google or Apple calendar, Notion, a paper chart, a group text, or a system the viewer has to build.
+
+Couple behaviors the product already covers: a due date and reminder on each budget line, a dated checklist, the guest list and RSVPs, vendor search, the seating chart, the day-of timeline, the wedding website, notes and files, the overview, the assistant.
+Venue behaviors: lead follow-up, date holds, proposals, invoices, the book of weddings, white-label.
+
+Tip: write it the way a person would say it. Do not mention First Look, "the app", or a product name. The advice itself is the behavior above, not a tool they should go create. Good: "Most couples mark a deposit paid or not paid and miss that a vendor can cancel if you're a few days late — give every due date a reminder buffer." Bad: "Here's how to build a deposit calendar." Bad: "Open First Look and add a reminder."
+Promo: you may name First Look. Open on the pain, then the feature. A promo slideshow ends on the feature.
 
 Video ideas are film-it-yourself: a hook plus the spoken beat, one or two sentences. No shot list.
 Slideshow and pin ideas are one or two sentences a person could turn into slides or a pin.

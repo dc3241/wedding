@@ -348,8 +348,11 @@ function pickBudgetVariant(text: string): ProductShot | null {
 
 /** Longest alias wins so "vendor library" beats "vendor". [surface: slug] wins outright. */
 export function matchProductShot(text: string): ProductShot | null {
-  // Type A/B are tip/story with no product UI — even if the planner tagged a surface.
+  // Type A/B are tip/story with no product UI — even if a surface was tagged.
+  // [surface: none] is an explicit "headline only" slide so a tip carousel
+  // can reveal the product on one frame and not the others.
   if (/\[type:\s*[AB]\]/i.test(text)) return null;
+  if (/\[surface:\s*none\]/i.test(text)) return null;
 
   const tagged = text.match(/\[surface:\s*([a-z0-9-]+)\]/i)?.[1]?.toLowerCase();
   if (tagged) {

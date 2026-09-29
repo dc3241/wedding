@@ -14,7 +14,7 @@ export type TopicDeckId = "couples_tip" | "couples_promo" | "venue_tip" | "venue
 export const TOPIC_DECKS: Record<TopicDeckId, ContentTopic[]> = {
   couples_tip: [
     { key: "budget-forgotten", label: "Budget · forgotten costs", brief: "Costs couples forget until the invoice arrives." },
-    { key: "budget-deposits", label: "Budget · deposit calendar", brief: "When deposits are due and how to keep the calendar honest." },
+    { key: "budget-deposits", label: "Budget · deposit calendar", brief: "A reminder buffer before each deposit due date, because a few days late can cancel the contract. Everyday words. Do not name a product. Do not tell them to build a calendar." },
     { key: "budget-cuts", label: "Budget · where to cut", brief: "Where to spend less without the day looking cheap." },
     { key: "checklist-first", label: "Checklist · what to lock first", brief: "What to book before anything else." },
     { key: "checklist-months", label: "Checklist · month markers", brief: "What actually matters at 12, 9, 6, 3, and 1 month out." },
@@ -33,7 +33,7 @@ export const TOPIC_DECKS: Record<TopicDeckId, ContentTopic[]> = {
     { key: "morning-of", label: "Morning of", brief: "Morning-of logistics: who is where, and what is already done." },
     { key: "weather-backup", label: "Weather backup", brief: "The backup plan, told before anyone needs it." },
     { key: "headcount", label: "Headcount", brief: "How headcount drifts and what it changes (meals, rentals, seating)." },
-    { key: "timeline-photos", label: "Photo timeline", brief: "Building a photo timeline that still leaves time to eat." },
+    { key: "timeline-photos", label: "Photo timeline", brief: "The photo block on the day-of timeline, with enough time left to eat. Not a separate shot-list tool." },
     { key: "vendor-meals", label: "Vendor meals", brief: "Vendor meals, breaks, and the people couples forget to feed." },
     { key: "ceremony-order", label: "Ceremony order", brief: "A simple ceremony order couples can hand to family." },
     { key: "payment-labels", label: "What each payment is", brief: "Naming what a payment is for so deposits do not blur together." },

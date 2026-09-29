@@ -88,14 +88,19 @@ export function allocateTypes(n: number): ContentType[] {
 
 const SYSTEM_PROMPT = `You write the weekly social batch for First Look, a wedding-planning
 SaaS for couples and for planners/venues. Tone: warm, useful, a little funny, never salesy.
-You are filling copy for APPROVED ideas the founders already liked. Do not change the
-idea's angle. Do not invent a different topic. Do not change platform, format, or audience.
+You are filling copy for APPROVED ideas the founders already liked. Do not invent a
+different topic. Do not change platform, format, or audience. If a tip tells them
+to build an outside calendar or spreadsheet, keep the lesson and drop the outside tool.
 
 Content types (caption flavor only — not the production format):
-- A: pure tip. No product mention.
+- A: pure tip with no product. Only when the idea has no tip/promo intent.
 - B: story. No product mention.
-- C: story with a soft, one-line product mention.
-- D: direct promo of First Look. Still specific, never generic SaaS-speak.
+- C: tip. The words never name First Look, "the app", or a product. The picture can.
+- D: direct promo. You may name First Look. Still specific, never generic SaaS-speak.
+
+Never tell the viewer to build or switch to a spreadsheet, external calendar, Notion, paper chart, group text, or another app.
+
+For a type C slideshow, slides 1 through N-1 are headline tips and MUST include [surface: none]. The last slide keeps the same kind of headline and MUST include one [surface: SLUG] so the real screen shows up with no label saying what it is. For a type C pin, the single image includes that [surface: SLUG] and the headline still does not name the product. Type D may name the product and uses [surface: SLUG] on the plug slide.
 
 Production formats:
 - static / pin: one branded-slide image. Put that prompt in "prompt".
@@ -120,13 +125,12 @@ For each slot return:
   invented UI — a real screenshot is attached separately as a fragment source, and
   describing a full screenshot makes the model paste one. When the idea shows the
   product, add [surface: SLUG] using exactly one of:
-  ${PRODUCT_SHOT_SLUGS.join(", ")}. Type A and B never include [surface:] — even when
-  the topic is budget, guests, or vendors. Those graphics are headline + supporting
-  line only (big numbers are fine: "Venue ~50% / Photo ~12%"). Type C and D about
-  budget pick the matching slug: budget (paid-so-far tracker / allocation band),
-  budget-categories (split / where the money goes / category ramps), or budget-item
-  (a single line, deposit, payment schedule, or next due). Lifestyle or tip posts
-  with no UI omit [surface:].
+  ${PRODUCT_SHOT_SLUGS.join(", ")}. Type A and B omit [surface:]. A type C slideshow puts
+  [surface: none] on every slide except the last, and one real slug on the last
+  slide only. A type C pin puts one slug on its only image. Type D puts one slug
+  on the plug. For budget, pick budget (paid-so-far tracker), budget-categories
+  (where the money goes), or budget-item (one line, its deposit, or the due date).
+  A deposit reminder tip uses budget-item.
   Image-format prompts MUST include the tags [idea: …] and [type: A|B|C|D] using the
   slot's topic label and type.
 - prompts: for carousel only, an array of N image prompts (one per slide), each tagged
@@ -211,7 +215,7 @@ function contentTypeForIntent(
   intent: LikedIdeaSlot["intent"],
   fallback: ContentType,
 ): ContentType {
-  if (intent === "tip") return "A";
+  if (intent === "tip") return "C";
   if (intent === "promo") return "D";
   return fallback;
 }
@@ -304,6 +308,22 @@ Return exactly ${slots.length} object(s) in "posts" — one per idea, no extras,
       }
       prompt = tagPrompt(rawPrompt, topic, slot.content_type);
       prompts = [prompt];
+    }
+
+    if (slot.intent === "tip" && slot.format === "carousel" && prompts.length > 1) {
+      prompts = prompts.map((entry, index) => {
+        const stripped = entry
+          .replace(/\[surface:\s*[a-z0-9-]+\]/gi, "")
+          .replace(/\s+/g, " ")
+          .trim();
+        if (index < prompts.length - 1) return `${stripped} [surface: none]`;
+        const surface = entry.match(/\[surface:\s*([a-z0-9-]+)\]/i)?.[1];
+        if (surface && surface.toLowerCase() !== "none") {
+          return `${stripped} [surface: ${surface.toLowerCase()}]`;
+        }
+        return stripped;
+      });
+      prompt = prompts[0] ?? "";
     }
 
     return {
