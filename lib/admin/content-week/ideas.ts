@@ -61,18 +61,22 @@ function threeStrings(value: unknown): string[] | null {
   return out.slice(0, IDEAS_PER_INTENT);
 }
 
-function pairSchema() {
-  const trio = {
+/** Anthropic structured output only allows minItems 0 or 1, and no maxItems. */
+function ideaListSchema() {
+  return {
     type: "array",
-    minItems: IDEAS_PER_INTENT,
-    maxItems: IDEAS_PER_INTENT,
+    minItems: 1,
+    description: "Exactly 3 distinct ideas.",
     items: { type: "string" },
   };
+}
+
+function pairSchema() {
   return {
     type: "object",
     additionalProperties: false,
     required: ["tip", "promo"],
-    properties: { tip: trio, promo: trio },
+    properties: { tip: ideaListSchema(), promo: ideaListSchema() },
   };
 }
 
@@ -221,12 +225,7 @@ ${taste ? `\n${taste}` : ""}`;
           video: pairSchema(),
           slideshow: pairSchema(),
           pin: pairSchema(),
-          linkedin: {
-            type: "array",
-            minItems: IDEAS_PER_INTENT,
-            maxItems: IDEAS_PER_INTENT,
-            items: { type: "string" },
-          },
+          linkedin: ideaListSchema(),
         },
       },
     });
@@ -348,12 +347,7 @@ ${taste ? `\n${taste}` : ""}`;
         additionalProperties: false,
         required: ["ideas"],
         properties: {
-          ideas: {
-            type: "array",
-            minItems: IDEAS_PER_INTENT,
-            maxItems: IDEAS_PER_INTENT,
-            items: { type: "string" },
-          },
+          ideas: ideaListSchema(),
         },
       };
     } else {
