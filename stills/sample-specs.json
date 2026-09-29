@@ -1,0 +1,80 @@
+{
+  "_note": "Sample content per layout. `theme` and `format` are filled in by the render script / selector.",
+  "headline-card": {
+    "layout": "headline-card",
+    "headline": "RSVP chasing, officially retired.",
+    "support": "Know who’s in, who’s waiting, and who needs a nudge.",
+    "data": {
+      "tabs": ["Guests", "Meals", "Seating"],
+      "rows": [
+        {"label": "Sarah & Malik", "status": "Confirmed", "tone": "good"},
+        {"label": "The Whitmans", "status": "Awaiting reply", "tone": "warn"},
+        {"label": "Grace & Theo", "status": "No response · 12d", "tone": "bad"},
+        {"label": "Devon & Priya", "status": "Confirmed · 2 meals", "tone": "good"}
+      ]
+    }
+  },
+  "headline-phone": {
+    "layout": "headline-phone",
+    "headline": "Budgeting, without the guesswork.",
+    "support": "Every vendor quote, deposit, and due date in one place.",
+    "url": "usefirstlook.app",
+    "data": {
+      "hero": {"label": "Next payment due", "value": "$3,000", "chip": "17 days left", "sub": "Luna & Light Co. — Florals"},
+      "listTitle": "Needs attention",
+      "items": [
+        {"label": "Book catering", "note": "Overdue 3 days", "tone": "bad"},
+        {"label": "Send final deposit", "note": "Due in 6 days", "tone": "warn"}
+      ],
+      "progress": {"label": "Paid so far", "value": "$18,400 of $32,600", "pct": 56},
+      "bulletsTitle": "Everything you need",
+      "bullets": ["Vendor quotes tracked automatically", "Planned vs. actual spend", "Payment due reminders", "Deposit tracking"]
+    }
+  },
+  "big-number": {
+    "layout": "big-number",
+    "headline": "until your florist deposit is due.",
+    "support": "See every payment date before it sneaks up on you.",
+    "data": {"value": "17 days"}
+  },
+  "before-after": {
+    "layout": "before-after",
+    "headline": "Planning, before and after.",
+    "support": "Same wedding. Fewer group chats.",
+    "data": {
+      "beforeTitle": "Before",
+      "before": ["Texting guests for RSVPs", "A spreadsheet per vendor", "Sticky notes for seating"],
+      "afterTitle": "With First Look",
+      "after": ["One guest list, live statuses", "Every quote and deposit tracked", "Drag-and-drop seating"]
+    }
+  },
+  "tip-list": {
+    "layout": "tip-list",
+    "headline": "3 things to confirm with every vendor two weeks out.",
+    "cta": false,
+    "data": {
+      "tips": [
+        {"title": "Final headcount", "body": "Caterers bill on it. Lock it in writing."},
+        {"title": "Arrival and setup time", "body": "Know when they load in, not just when they start."},
+        {"title": "Balance due date", "body": "So the last payment never surprises you."}
+      ]
+    }
+  },
+  "steps": {
+    "layout": "steps",
+    "headline": "Build your seating chart without a single sticky note.",
+    "data": {
+      "steps": [
+        {"word": "Drag.", "caption": "Pull guests from your list."},
+        {"word": "Drop.", "caption": "Place them at any table."},
+        {"word": "Done.", "caption": "Share the floor plan with your venue."}
+      ]
+    }
+  },
+  "statement": {
+    "layout": "statement",
+    "headline": "Your seating chart shouldn’t live on a sticky note.",
+    "support": "Build it once, share it with your venue.",
+    "data": {"highlight": "sticky note"}
+  }
+}

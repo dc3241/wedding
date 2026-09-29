@@ -5,6 +5,7 @@ import {
   denyContentQueueItem,
   regenerateContentQueueItem,
   revertContentQueueItem,
+  shuffleContentQueueItem,
 } from "@/app/(admin)/admin/content-queue/actions";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -297,6 +298,16 @@ function QueueCard({ item }: { item: ContentQueueItem }) {
             >
               Deny
             </Button>
+            {formatNeedsImages(item.format) && imagesReady ? (
+              <Button
+                variant="default"
+                disabled={isPending}
+                onClick={() => run(() => shuffleContentQueueItem(item.id))}
+                className="px-4 py-2"
+              >
+                Shuffle style
+              </Button>
+            ) : null}
             {canRetryImage ? (
               <Button
                 variant="default"
@@ -361,6 +372,16 @@ function QueueCard({ item }: { item: ContentQueueItem }) {
             >
               Regenerate
             </Button>
+            {formatNeedsImages(item.format) ? (
+              <Button
+                variant="default"
+                disabled={isPending}
+                onClick={() => run(() => shuffleContentQueueItem(item.id))}
+                className="px-4 py-2"
+              >
+                Shuffle style
+              </Button>
+            ) : null}
             <Button
               variant="default"
               disabled={isPending}

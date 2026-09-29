@@ -1,21 +1,17 @@
 import "server-only";
 
 import {
+  filledImagePaths,
   formatNeedsImages,
   isContentPostFormat,
   isFormatForPlatform,
   isIdeaFridayReady,
   slideCountFor,
-  type ContentPostFormat,
 } from "@/lib/admin/content-formats";
 import {
   isActiveContentQueuePlatform,
   type ContentQueuePlatform,
 } from "@/lib/admin/content-queue";
-import {
-  requestGeneration,
-  resolveReferenceUrls,
-} from "@/lib/admin/content-queue/generate";
 import {
   DEFAULT_BATCH_SIZE,
   buildWeekPlan,
@@ -23,6 +19,9 @@ import {
   type LikedIdeaSlot,
   type PlannedPost,
 } from "@/lib/admin/content-queue/plan";
+import { renderAndStoreSlides } from "@/lib/admin/content-queue/render-slides";
+import { selectSlideSpecs, type RecentStyle } from "@/lib/admin/content-queue/select-slide";
+import { parseStoredSpecs, stylesFromSpecs, type SlideSpec } from "@/lib/admin/content-queue/slide-spec";
 import { postingWeekMonday } from "@/lib/admin/content-week";
 import type { AudienceGroup } from "@/lib/admin/platform-audience";
 import { createServiceRoleClient } from "@/utils/supabase/service-role";
@@ -57,37 +56,19 @@ export class ProduceIdeaError extends Error {
 }
 
 type ServiceClient = ReturnType<typeof createServiceRoleClient>;
-type ReferenceUrls = Awaited<ReturnType<typeof resolveReferenceUrls>>;
 
-async function attachImageJobs(
+async function loadRecentStyles(
   supabase: ServiceClient,
-  rowId: string,
   platform: ContentQueuePlatform,
-  prompts: string[],
-  references: ReferenceUrls,
-  existingIds: string[] = [],
-): Promise<number> {
-  const taskIds = [...existingIds];
-  let added = 0;
-  for (let i = existingIds.length; i < prompts.length; i += 1) {
-    const prompt = prompts[i];
-    if (!prompt?.trim()) continue;
-    const taskId = await requestGeneration({ platform, prompt }, references);
-    taskIds.push(taskId);
-    added += 1;
-    const { error } = await supabase
-      .from("content_queue")
-      .update({
-        kie_task_id: taskIds[0] ?? null,
-        kie_task_ids: taskIds,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", rowId);
-    if (error) {
-      throw new Error(`Failed to store kie_task_ids: ${error.message}`);
-    }
-  }
-  return added;
+): Promise<RecentStyle[]> {
+  const { data, error } = await supabase
+    .from("content_queue")
+    .select("slide_specs")
+    .eq("platform", platform)
+    .order("created_at", { ascending: false })
+    .limit(6);
+  if (error) throw new Error(error.message);
+  return (data ?? []).flatMap((row) => stylesFromSpecs(row.slide_specs));
 }
 
 function resolveMaxBatch(): number {
@@ -166,43 +147,16 @@ async function loadReadyIdeas(
   });
 }
 
-function promptsForRow(row: {
-  format: ContentPostFormat | null;
-  carousel_slides: number | null;
-  prompt: string;
-  slide_prompts: string[] | null;
-}): string[] {
-  const n = slideCountFor(row.format, row.carousel_slides);
-  if (n === 0) return [];
-  const stored = (row.slide_prompts ?? []).filter((p) => p.trim().length > 0);
-  if (stored.length >= n) return stored.slice(0, n);
-  if (stored.length > 0) {
-    const last = stored[stored.length - 1]!;
-    return Array.from({ length: n }, (_, i) => stored[i] ?? last);
-  }
-  const fallback = row.prompt.trim();
-  return fallback ? Array.from({ length: n }, () => fallback) : [];
-}
-
-function taskIdsForRow(row: {
-  kie_task_id: string | null;
-  kie_task_ids: string[] | null;
-}): string[] {
-  if ((row.kie_task_ids ?? []).length > 0) return row.kie_task_ids ?? [];
-  return row.kie_task_id ? [row.kie_task_id] : [];
-}
-
 async function retryIncompleteJobs(
   supabase: ServiceClient,
   rows: {
     id: string;
+    week_of: string;
     platform: ContentQueuePlatform;
-    prompt: string;
-    kie_task_id: string | null;
-    kie_task_ids: string[] | null;
     format: string | null;
     carousel_slides: number | null;
-    slide_prompts: string[] | null;
+    image_paths: string[] | null;
+    slide_specs: unknown;
   }[],
   errors: string[],
 ): Promise<number> {
@@ -210,38 +164,25 @@ async function retryIncompleteJobs(
     const format = isContentPostFormat(row.format) ? row.format : null;
     if (!formatNeedsImages(format)) return false;
     const expected = slideCountFor(format, row.carousel_slides);
-    const ids = taskIdsForRow(row);
-    return ids.length < expected;
+    return filledImagePaths(row.image_paths).length < expected;
   });
-
   if (retryRows.length === 0) return 0;
-  if (!process.env.KIE_API_KEY?.trim()) {
-    throw new Error("KIE_API_KEY is not configured.");
-  }
 
-  const references = await resolveReferenceUrls();
   let retried = 0;
   for (const row of retryRows) {
+    const format = isContentPostFormat(row.format) ? row.format : null;
+    const expected = slideCountFor(format, row.carousel_slides);
+    const specs = parseStoredSpecs(row.slide_specs);
+    if (specs.length < expected) {
+      errors.push(`${row.id}: missing slide spec`);
+      continue;
+    }
     try {
-      const format = isContentPostFormat(row.format) ? row.format : null;
-      const prompts = promptsForRow({
-        format,
-        carousel_slides: row.carousel_slides,
-        prompt: row.prompt,
-        slide_prompts: row.slide_prompts,
-      });
-      const added = await attachImageJobs(
-        supabase,
-        row.id,
-        row.platform,
-        prompts,
-        references,
-        taskIdsForRow(row),
-      );
-      retried += added;
+      await renderAndStoreSlides(supabase, { id: row.id, week_of: row.week_of }, specs.slice(0, expected));
+      retried += expected;
     } catch (err) {
-      const message = err instanceof Error ? err.message : "createTask failed";
-      console.error("content-queue-generate retry:", row.id, err);
+      const message = err instanceof Error ? err.message : "render failed";
+      console.error("content-queue render retry:", row.id, err);
       errors.push(`${row.id}: ${message}`);
     }
   }
@@ -268,11 +209,7 @@ async function produceQueuePosts(
 
   const supabase = createServiceRoleClient();
   const plan = await buildWeekPlan(ideas);
-  const needsKie = plan.some((post) => formatNeedsImages(post.format));
-  if (needsKie && !process.env.KIE_API_KEY?.trim()) {
-    throw new Error("KIE_API_KEY is not configured.");
-  }
-  const references = needsKie ? await resolveReferenceUrls() : null;
+  const recentByPlatform = new Map<ContentQueuePlatform, RecentStyle[]>();
 
   let inserted = 0;
   let tasked = 0;
@@ -280,6 +217,20 @@ async function produceQueuePosts(
 
   for (const post of plan) {
     const slideCount = slideCountFor(post.format, post.carousel_slides);
+    let recent = recentByPlatform.get(post.platform);
+    if (!recent) {
+      recent = await loadRecentStyles(supabase, post.platform);
+      recentByPlatform.set(post.platform, recent);
+    }
+    const specs: SlideSpec[] = formatNeedsImages(post.format)
+      ? selectSlideSpecs({
+          platform: post.platform,
+          contentType: post.content_type,
+          fragments: post.fragments,
+          recent,
+        })
+      : [];
+    recent.push(...specs.map((spec) => ({ layout: spec.layout, theme: spec.theme })));
     const { data: row, error: insertError } = await supabase
       .from("content_queue")
       .insert({
@@ -296,6 +247,7 @@ async function produceQueuePosts(
         audience_group: post.audience_group,
         carousel_slides: post.carousel_slides,
         slide_prompts: post.prompts,
+        slide_specs: specs,
         kie_task_ids: [],
       })
       .select("id")
@@ -319,20 +271,14 @@ async function produceQueuePosts(
       errors.push(`${post.platform}/${post.pillar}: marked used failed: ${usedError.message}`);
     }
 
-    if (!formatNeedsImages(post.format) || !references) continue;
+    if (!formatNeedsImages(post.format) || specs.length === 0) continue;
 
     try {
-      const added = await attachImageJobs(
-        supabase,
-        row.id,
-        post.platform,
-        post.prompts,
-        references,
-      );
-      tasked += added;
+      await renderAndStoreSlides(supabase, { id: row.id, week_of: weekOf }, specs);
+      tasked += specs.length;
     } catch (err) {
-      const message = err instanceof Error ? err.message : "createTask failed";
-      console.error("content-queue-generate createTask:", row.id, err);
+      const message = err instanceof Error ? err.message : "render failed";
+      console.error("content-queue render:", row.id, err);
       errors.push(`${post.platform}/${post.pillar}: ${message}`);
     }
   }
@@ -353,7 +299,7 @@ export async function runWeeklyContentQueue(
   const { data: existing, error: existingError } = await supabase
     .from("content_queue")
     .select(
-      "id, platform, prompt, kie_task_id, kie_task_ids, format, carousel_slides, slide_prompts",
+      "id, week_of, platform, format, carousel_slides, image_paths, slide_specs",
     )
     .eq("week_of", weekOf)
     .order("created_at", { ascending: true });

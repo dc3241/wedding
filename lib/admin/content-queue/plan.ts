@@ -10,6 +10,11 @@ import type { ContentQueuePlatform } from "@/lib/admin/content-queue";
 import type { AudienceGroup } from "@/lib/admin/platform-audience";
 import type { ContentType } from "@/lib/admin/platforms";
 import { PRODUCT_SHOT_SLUGS } from "@/lib/admin/content-queue/product-shots";
+import {
+  SLIDE_LAYOUTS,
+  slidesFromModel,
+  type SlideFragment,
+} from "@/lib/admin/content-queue/slide-spec";
 import { adminToday } from "@/lib/admin/today";
 import { callClaudeJson, isRecord } from "@/lib/inquiry/llm-json";
 
@@ -36,10 +41,12 @@ export type PlannedPost = {
   content_type: ContentType;
   topic: string;
   caption: string;
-  /** First (or only) image prompt; empty for UGC. */
+  /** First headline, for the review card. Empty for UGC and text. */
   prompt: string;
-  /** One prompt per KIE job. Empty for UGC. */
+  /** One headline per slide. Empty for UGC and text. */
   prompts: string[];
+  /** Validated spec fragments. Theme, format, and final layout are chosen later. */
+  fragments: SlideFragment[];
   format: ContentPostFormat;
   audience_group: AudienceGroup;
   carousel_slides: number | null;
@@ -100,14 +107,25 @@ Content types (caption flavor only — not the production format):
 
 Never tell the viewer to build or switch to a spreadsheet, external calendar, Notion, paper chart, group text, or another app.
 
-For a type C slideshow, slides 1 through N-1 are headline tips and MUST include [surface: none]. The last slide keeps the same kind of headline and MUST include one [surface: SLUG] so the real screen shows up with no label saying what it is. For a type C pin, the single image includes that [surface: SLUG] and the headline still does not name the product. Type D may name the product and uses [surface: SLUG] on the plug slide.
+Layouts (pick one per slide; code may override):
+${SLIDE_LAYOUTS.join(", ")}.
+- headline-card: a short list with a status on each row.
+- headline-phone: a product screen. Use only with a surface slug.
+- big-number: one stat. Put the stat in data.value (for example "17 days"). The headline is the caption under the number.
+- before-after: contrast. data.before and data.after are short lines.
+- tip-list: numbered advice. data.tips have title and body.
+- steps: a process, at most 4. data.steps have a one-word word and a caption.
+- statement: text only. data.highlight is a short phrase that appears inside the headline, or "".
+
+For a type C slideshow, slides 1 through N-1 are headline tips with surface "none". The last slide keeps the same kind of headline and uses one surface slug so the real screen shows up. For a type C pin, the single slide uses that slug and the headline still does not name the product. Type D may name the product and uses a surface slug on the plug slide. Type A and B use surface "none".
+
+When surface is a slug, leave every data array empty and every data string "". The app fills the real product UI. Do not invent screen copy, names, or numbers.
 
 Production formats:
-- static / pin: one branded-slide image. Put that prompt in "prompt".
-- carousel: N branded slides, same locked template, a sequence. Put slide prompts in
-  "prompts" (length N) AND set "prompt" to the first slide.
-- ugc: film-it-yourself video. Caption is the spoken / on-screen script. "prompt" MUST be "".
-- text: LinkedIn copy-only post for venues and planners. Caption is the post body. "prompt" MUST be "".
+- static / pin: exactly one slide.
+- carousel: exactly N slides, a sequence. Slide 1 is a cover (statement or big-number).
+- ugc: film-it-yourself video. Caption is the spoken / on-screen script. slides MUST be [].
+- text: LinkedIn copy-only post. Caption is the post body. slides MUST be [].
 - carousel on TikTok is a photo slideshow, vertical, same slide rules as carousel.
 
 TikTok videos and Pinterest pins are also posted to Facebook. YouTube is a repost of the
@@ -115,30 +133,82 @@ same TikTok video — do not write a YouTube variant. LinkedIn is its own text p
 
 For each slot return:
 - topic: one short label (a few words) for the review card.
-- caption: platform-appropriate post text (TikTok on-screen/spoken-style caption,
-  Pinterest pin description, LinkedIn post) that executes THIS idea.
+- caption: platform-appropriate post text that executes THIS idea.
   For UGC this is the script (TikTok) or the post body (LinkedIn video). For text
   this is the full post.
-- prompt: image-generation prompt for a branded slide, or "" for UGC and text.
-  Headline + one supporting line only. Never describe screens, dashboards, portals,
-  buttons, logos, helper text, chrome, serif type, script type, device frames, or
-  invented UI — a real screenshot is attached separately as a fragment source, and
-  describing a full screenshot makes the model paste one. When the idea shows the
-  product, add [surface: SLUG] using exactly one of:
-  ${PRODUCT_SHOT_SLUGS.join(", ")}. Type A and B omit [surface:]. A type C slideshow puts
-  [surface: none] on every slide except the last, and one real slug on the last
-  slide only. A type C pin puts one slug on its only image. Type D puts one slug
-  on the plug. For budget, pick budget (paid-so-far tracker), budget-categories
+- slides: the array described above. Each slide has headline, support (or ""),
+  layout, surface (a slug or "none"), and data.
+  Headlines are at most 90 characters. Supporting lines are one sentence.
+  Surface slugs, exactly one of: ${PRODUCT_SHOT_SLUGS.join(", ")}.
+  For budget, pick budget (paid-so-far tracker), budget-categories
   (where the money goes), or budget-item (one line, its deposit, or the due date).
   A deposit reminder tip uses budget-item.
-  Image-format prompts MUST include the tags [idea: …] and [type: A|B|C|D] using the
-  slot's topic label and type.
-- prompts: for carousel only, an array of N image prompts (one per slide), each tagged
-  the same way. Empty array for other formats.
 
 Return exactly one object per slot, same order — no extra variants. Never use the word "AI".`;
 
-/** Constrained decoding — same ONB-07 shape as generate-wedding-plan. */
+const slideDataSchema = {
+  type: "object",
+  additionalProperties: false,
+  required: [
+    "tabs",
+    "rows",
+    "value",
+    "before",
+    "after",
+    "beforeTitle",
+    "afterTitle",
+    "tips",
+    "steps",
+    "highlight",
+  ],
+  properties: {
+    tabs: { type: "array", items: { type: "string" } },
+    rows: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["label", "status", "tone"],
+        properties: {
+          label: { type: "string" },
+          status: { type: "string" },
+          tone: { type: "string", enum: ["good", "warn", "bad", "neutral"] },
+        },
+      },
+    },
+    value: { type: "string" },
+    before: { type: "array", items: { type: "string" } },
+    after: { type: "array", items: { type: "string" } },
+    beforeTitle: { type: "string" },
+    afterTitle: { type: "string" },
+    tips: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["title", "body"],
+        properties: {
+          title: { type: "string" },
+          body: { type: "string" },
+        },
+      },
+    },
+    steps: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["word", "caption"],
+        properties: {
+          word: { type: "string" },
+          caption: { type: "string" },
+        },
+      },
+    },
+    highlight: { type: "string" },
+  },
+} as const;
+
 function weeklyPlanJsonSchema(count: number) {
   return {
     type: "object",
@@ -152,24 +222,27 @@ function weeklyPlanJsonSchema(count: number) {
         items: {
           type: "object",
           additionalProperties: false,
-          required: ["topic", "caption", "prompt", "prompts"],
+          required: ["topic", "caption", "slides"],
           properties: {
-            topic: {
-              type: "string",
-              description: "Short review-card label.",
-            },
-            caption: {
-              type: "string",
-              description: "Platform post text or UGC/text-post body.",
-            },
-            prompt: {
-              type: "string",
-              description: "Image prompt, or empty string for UGC and text.",
-            },
-            prompts: {
+            topic: { type: "string", description: "Short review-card label." },
+            caption: { type: "string", description: "Platform post text or UGC/text-post body." },
+            slides: {
               type: "array",
-              items: { type: "string" },
-              description: "Carousel slide prompts; empty for other formats.",
+              items: {
+                type: "object",
+                additionalProperties: false,
+                required: ["headline", "support", "layout", "surface", "data"],
+                properties: {
+                  headline: { type: "string" },
+                  support: { type: "string" },
+                  layout: { type: "string", enum: [...SLIDE_LAYOUTS] },
+                  surface: {
+                    type: "string",
+                    enum: ["none", ...PRODUCT_SHOT_SLUGS],
+                  },
+                  data: slideDataSchema,
+                },
+              },
             },
           },
         },
@@ -182,35 +255,6 @@ function asNonEmptyString(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
-function tagPrompt(prompt: string, topic: string, type: ContentType): string {
-  return prompt.includes(`[idea: ${topic}]`) && prompt.includes(`[type: ${type}]`)
-    ? prompt
-    : `${prompt.trim()} [idea: ${topic}] [type: ${type}]`;
-}
-
-function asPromptList(value: unknown): string[] {
-  if (!Array.isArray(value)) return [];
-  return value
-    .filter((item): item is string => typeof item === "string")
-    .map((item) => item.trim())
-    .filter(Boolean);
-}
-
-function expandCarouselPrompts(
-  base: string,
-  n: number,
-  topic: string,
-  type: ContentType,
-): string[] {
-  return Array.from({ length: n }, (_, i) =>
-    tagPrompt(
-      `${base} Carousel slide ${i + 1} of ${n} — same locked template, continue the sequence.`,
-      topic,
-      type,
-    ),
-  );
-}
-
 function contentTypeForIntent(
   intent: LikedIdeaSlot["intent"],
   fallback: ContentType,
@@ -220,33 +264,13 @@ function contentTypeForIntent(
   return fallback;
 }
 
-export async function buildWeekPlan(ideas: LikedIdeaSlot[]): Promise<PlannedPost[]> {
-  if (ideas.length === 0) return [];
+function promptLine(fragment: SlideFragment): string {
+  return fragment.support ? `${fragment.headline}\n${fragment.support}` : fragment.headline;
+}
 
-  const types = allocateTypes(ideas.length);
-  const slots = ideas.map((idea, i) => ({
-    ...idea,
-    content_type: contentTypeForIntent(idea.intent, types[i] ?? "A"),
-    slides: slideCountFor(idea.format, idea.carousel_slides),
-  }));
+type Slot = LikedIdeaSlot & { content_type: ContentType; slides: number };
 
-  const user = `Fill copy for these ${slots.length} approved ideas, in this exact order.
-Return exactly ${slots.length} object(s) in "posts" — one per idea, no extras, no variants.\n${slots
-    .map((slot, i) => {
-      const note = slot.comment ? ` note=${JSON.stringify(slot.comment)}` : "";
-      const slides =
-        slot.format === "carousel" ? ` slides=${slot.slides}` : "";
-      return `${i + 1}. platform=${slot.platform} format=${slot.format}${slides} audience=${slot.audience_group} type=${slot.content_type} idea=${JSON.stringify(slot.idea_text)}${note}`;
-    })
-    .join("\n")}`;
-
-  const parsed = await callClaudeJson({
-    system: SYSTEM_PROMPT,
-    user,
-    maxTokens: 12288,
-    jsonSchema: weeklyPlanJsonSchema(slots.length),
-  });
-
+function materialize(parsed: unknown, slots: Slot[]): (PlannedPost & { degraded: boolean })[] {
   if (!isRecord(parsed)) {
     const kind = Array.isArray(parsed) ? "array" : typeof parsed;
     throw new Error(`Anthropic weekly plan was not an object (got ${kind}).`);
@@ -280,51 +304,9 @@ Return exactly ${slots.length} object(s) in "posts" — one per idea, no extras,
     }
 
     const needsImages = formatNeedsImages(slot.format);
-    const rawPrompt = asNonEmptyString(row.prompt) ?? "";
-    const listed = asPromptList(row.prompts);
-
-    let prompts: string[] = [];
-    let prompt = "";
-
-    if (!needsImages) {
-      prompt = "";
-      prompts = [];
-    } else if (slot.format === "carousel") {
-      const n = slot.slides;
-      if (listed.length === n) {
-        prompts = listed.map((p) => tagPrompt(p, topic, slot.content_type));
-      } else if (rawPrompt) {
-        prompts = expandCarouselPrompts(rawPrompt, n, topic, slot.content_type);
-      } else if (listed.length > 0) {
-        const base = listed[0]!;
-        prompts = expandCarouselPrompts(base, n, topic, slot.content_type);
-      } else {
-        throw new Error(`Anthropic plan item ${i + 1} is missing carousel prompts.`);
-      }
-      prompt = prompts[0] ?? "";
-    } else {
-      if (!rawPrompt) {
-        throw new Error(`Anthropic plan item ${i + 1} is missing an image prompt.`);
-      }
-      prompt = tagPrompt(rawPrompt, topic, slot.content_type);
-      prompts = [prompt];
-    }
-
-    if (slot.intent === "tip" && slot.format === "carousel" && prompts.length > 1) {
-      prompts = prompts.map((entry, index) => {
-        const stripped = entry
-          .replace(/\[surface:\s*[a-z0-9-]+\]/gi, "")
-          .replace(/\s+/g, " ")
-          .trim();
-        if (index < prompts.length - 1) return `${stripped} [surface: none]`;
-        const surface = entry.match(/\[surface:\s*([a-z0-9-]+)\]/i)?.[1];
-        if (surface && surface.toLowerCase() !== "none") {
-          return `${stripped} [surface: ${surface.toLowerCase()}]`;
-        }
-        return stripped;
-      });
-      prompt = prompts[0] ?? "";
-    }
+    const count = needsImages ? slot.slides : 0;
+    const { fragments, degraded } = slidesFromModel(row.slides, count, topic);
+    const prompts = fragments.map(promptLine);
 
     return {
       sourceIdeaId: slot.id,
@@ -333,8 +315,10 @@ Return exactly ${slots.length} object(s) in "posts" — one per idea, no extras,
       content_type: slot.content_type,
       topic,
       caption,
-      prompt,
+      prompt: prompts[0] ?? "",
       prompts,
+      fragments,
+      degraded,
       format: slot.format,
       audience_group: slot.audience_group,
       carousel_slides:
@@ -343,4 +327,51 @@ Return exactly ${slots.length} object(s) in "posts" — one per idea, no extras,
           : null,
     };
   });
+}
+
+async function requestPlan(slots: Slot[]): Promise<unknown> {
+  const user = `Fill copy for these ${slots.length} approved ideas, in this exact order.
+Return exactly ${slots.length} object(s) in "posts" — one per idea, no extras, no variants.\n${slots
+    .map((slot, i) => {
+      const note = slot.comment ? ` note=${JSON.stringify(slot.comment)}` : "";
+      const slides = slot.format === "carousel" ? ` slides=${slot.slides}` : "";
+      return `${i + 1}. platform=${slot.platform} format=${slot.format}${slides} audience=${slot.audience_group} type=${slot.content_type} idea=${JSON.stringify(slot.idea_text)}${note}`;
+    })
+    .join("\n")}`;
+
+  return callClaudeJson({
+    system: SYSTEM_PROMPT,
+    user,
+    maxTokens: 12288,
+    jsonSchema: weeklyPlanJsonSchema(slots.length),
+  });
+}
+
+export async function buildWeekPlan(ideas: LikedIdeaSlot[]): Promise<PlannedPost[]> {
+  if (ideas.length === 0) return [];
+
+  const types = allocateTypes(ideas.length);
+  const slots: Slot[] = ideas.map((idea, i) => ({
+    ...idea,
+    content_type: contentTypeForIntent(idea.intent, types[i] ?? "A"),
+    slides: slideCountFor(idea.format, idea.carousel_slides),
+  }));
+
+  let posts: (PlannedPost & { degraded: boolean })[] | null = null;
+  try {
+    posts = materialize(await requestPlan(slots), slots);
+  } catch (err) {
+    console.warn("content-queue plan retry:", err);
+  }
+
+  if (!posts || posts.some((post) => post.degraded)) {
+    try {
+      posts = materialize(await requestPlan(slots), slots);
+    } catch (err) {
+      if (!posts) throw err;
+      console.warn("content-queue plan retry failed; using the first pass.", err);
+    }
+  }
+
+  return posts.map(({ degraded: _degraded, ...post }) => post);
 }

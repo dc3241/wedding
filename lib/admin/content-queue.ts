@@ -11,8 +11,8 @@ const ALL_CONTENT_QUEUE_PLATFORMS: {
   label: string;
   aspectClass: string;
 }[] = [
-  { key: "tiktok", label: "TikTok", aspectClass: "aspect-[3/4]" },
-  { key: "instagram", label: "Instagram", aspectClass: "aspect-[3/4]" },
+  { key: "tiktok", label: "TikTok", aspectClass: "aspect-[9/16]" },
+  { key: "instagram", label: "Instagram", aspectClass: "aspect-[4/5]" },
   { key: "pinterest", label: "Pinterest", aspectClass: "aspect-[2/3]" },
   { key: "linkedin", label: "LinkedIn", aspectClass: "aspect-square" },
 ];
