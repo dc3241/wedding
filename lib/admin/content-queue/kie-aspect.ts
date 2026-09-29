@@ -19,11 +19,11 @@ export type KieImagePlatform = "instagram" | "tiktok" | "pinterest" | "linkedin"
 
 /**
  * Closest allowed ratio per platform. IG carousel is 4:5; KIE has no 4:5 → 3:4.
- * TikTok photo slides use the same carousel size (posted as IG carousel ratio).
+ * TikTok slideshows are vertical 9:16.
  */
 export const PLATFORM_KIE_ASPECT: Record<KieImagePlatform, KieAspectRatio> = {
   instagram: "3:4",
-  tiktok: "3:4",
+  tiktok: "9:16",
   pinterest: "2:3",
   linkedin: "1:1",
 };

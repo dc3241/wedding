@@ -24,6 +24,8 @@ export type LikedIdeaSlot = {
   format: ContentPostFormat;
   audience_group: AudienceGroup;
   carousel_slides: number | null;
+  /** Week shortlist. Tips stay pure value; promos name the product. */
+  intent?: "tip" | "promo" | null;
 };
 
 export type PlannedPost = {
@@ -99,12 +101,12 @@ Production formats:
 - static / pin: one branded-slide image. Put that prompt in "prompt".
 - carousel: N branded slides, same locked template, a sequence. Put slide prompts in
   "prompts" (length N) AND set "prompt" to the first slide.
-- ugc: film-it-yourself video. Caption is the spoken / on-screen script (TikTok) or
-  the LinkedIn post copy that accompanies the video. "prompt" MUST be "".
-- text: LinkedIn copy-only post. Caption is the post body. "prompt" MUST be "".
+- ugc: film-it-yourself video. Caption is the spoken / on-screen script. "prompt" MUST be "".
+- text: LinkedIn copy-only post for venues and planners. Caption is the post body. "prompt" MUST be "".
+- carousel on TikTok is a photo slideshow, vertical, same slide rules as carousel.
 
-TikTok and LinkedIn posts are also republished to Facebook and YouTube — do not
-write a separate Facebook or YouTube variant. Pinterest is origin-only.
+TikTok videos and Pinterest pins are also posted to Facebook. YouTube is a repost of the
+same TikTok video — do not write a YouTube variant. LinkedIn is its own text post.
 
 For each slot return:
 - topic: one short label (a few words) for the review card.
@@ -205,13 +207,22 @@ function expandCarouselPrompts(
   );
 }
 
+function contentTypeForIntent(
+  intent: LikedIdeaSlot["intent"],
+  fallback: ContentType,
+): ContentType {
+  if (intent === "tip") return "A";
+  if (intent === "promo") return "D";
+  return fallback;
+}
+
 export async function buildWeekPlan(ideas: LikedIdeaSlot[]): Promise<PlannedPost[]> {
   if (ideas.length === 0) return [];
 
   const types = allocateTypes(ideas.length);
   const slots = ideas.map((idea, i) => ({
     ...idea,
-    content_type: types[i] ?? ("A" as ContentType),
+    content_type: contentTypeForIntent(idea.intent, types[i] ?? "A"),
     slides: slideCountFor(idea.format, idea.carousel_slides),
   }));
 

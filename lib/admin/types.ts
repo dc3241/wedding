@@ -77,6 +77,11 @@ export type IdeationItem = {
   carousel_slides: number | null;
   used_at: string | null;
   created_at: string;
+  lane: "video" | "slideshow" | "pin" | "linkedin" | null;
+  intent: "tip" | "promo" | null;
+  topic_key: string | null;
+  slot_date: string | null;
+  week_start: string | null;
 };
 
 export type ContentQueueItem = {

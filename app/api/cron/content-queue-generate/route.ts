@@ -1,11 +1,11 @@
 /**
- * CONTENT-QUEUE-02 — Friday weekly content-day batch.
- * Same CRON_SECRET bearer gate as the other /api/cron routes.
- * Creates pending rows and kicks off KIE createTask; does not wait for images.
+ * Sunday content-week shortlist. 15:35 UTC = 8:35am America/Phoenix.
+ * Fills Monday–Saturday idea slots. Does not render images — Produce still does that.
  */
 import { NextResponse } from "next/server";
+import { generateContentWeek } from "@/lib/admin/content-week/ideas";
 import { cronAuthorized, unauthorizedCronResponse } from "@/lib/cron/authorize";
-import { runWeeklyContentQueue } from "@/lib/admin/content-queue/run";
+import { createServiceRoleClient } from "@/utils/supabase/service-role";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -17,14 +17,14 @@ export async function GET(request: Request) {
   }
 
   try {
-    const result = await runWeeklyContentQueue();
+    const result = await generateContentWeek(createServiceRoleClient());
     return NextResponse.json({
       ok: result.errors.length === 0,
       ...result,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Cron failed.";
-    console.error("content-queue-generate:", err);
+    console.error("content-week-ideas:", err);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

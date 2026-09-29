@@ -23,6 +23,7 @@ import {
   type LikedIdeaSlot,
   type PlannedPost,
 } from "@/lib/admin/content-queue/plan";
+import { postingWeekMonday } from "@/lib/admin/content-week";
 import type { AudienceGroup } from "@/lib/admin/platform-audience";
 import { createServiceRoleClient } from "@/utils/supabase/service-role";
 
@@ -107,6 +108,8 @@ function asLikedIdeaSlot(row: {
   format: string | null;
   audience_group: string | null;
   carousel_slides: number | null;
+  intent?: string | null;
+  week_start?: string | null;
 }): LikedIdeaSlot | null {
   if (
     !isActiveContentQueuePlatform(row.platform) ||
@@ -136,6 +139,7 @@ function asLikedIdeaSlot(row: {
     format: row.format,
     audience_group: row.audience_group,
     carousel_slides: row.carousel_slides ?? null,
+    intent: row.intent === "tip" || row.intent === "promo" ? row.intent : null,
   };
 }
 
@@ -146,7 +150,7 @@ async function loadReadyIdeas(
   if (limit <= 0) return [];
   const { data, error } = await supabase
     .from("ideation_items")
-    .select("id, idea_text, comment, platform, format, audience_group, carousel_slides")
+    .select("id, idea_text, comment, platform, format, audience_group, carousel_slides, intent")
     .eq("rating", "up")
     .is("used_at", null)
     .not("platform", "is", null)
@@ -404,12 +408,11 @@ export async function produceIdeaNow(ideaId: string): Promise<ProduceIdeaResult>
     throw new Error("MODEL_API_KEY is not configured.");
   }
 
-  const weekOf = contentQueueWeekOf();
   const supabase = createServiceRoleClient();
   const { data: row, error } = await supabase
     .from("ideation_items")
     .select(
-      "id, idea_text, comment, rating, platform, format, audience_group, carousel_slides, used_at",
+      "id, idea_text, comment, rating, platform, format, audience_group, carousel_slides, intent, week_start, used_at",
     )
     .eq("id", ideaId)
     .maybeSingle();
@@ -435,6 +438,10 @@ export async function produceIdeaNow(ideaId: string): Promise<ProduceIdeaResult>
     );
   }
 
+  const weekOf =
+    typeof row.week_start === "string" && row.week_start
+      ? row.week_start
+      : postingWeekMonday();
   const produced = await produceQueuePosts([slot], weekOf);
   return {
     queueId: produced.queueIds[0] ?? null,

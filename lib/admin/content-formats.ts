@@ -32,7 +32,10 @@ export const FORMATS_BY_PLATFORM: Record<
     { key: "carousel", label: "Carousel" },
     { key: "ugc", label: "Video" },
   ],
-  tiktok: [{ key: "ugc", label: "Video" }],
+  tiktok: [
+    { key: "ugc", label: "Video" },
+    { key: "carousel", label: "Slideshow" },
+  ],
   pinterest: [{ key: "pin", label: "Static" }],
   linkedin: [
     { key: "text", label: "Text post" },
@@ -158,7 +161,7 @@ export function applyIdeaTargetPatch(
   if (platform === "pinterest") {
     format = "pin";
   } else if (platform === "tiktok") {
-    format = "ugc";
+    if (format !== "ugc" && format !== "carousel") format = "ugc";
   } else if (platform && format && !isFormatForPlatform(platform, format)) {
     format = null;
   } else if (!platform) {

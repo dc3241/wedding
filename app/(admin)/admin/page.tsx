@@ -4,15 +4,15 @@ import { ButtonLink } from "@/components/ui/button";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { PageHeader } from "@/components/ui/page-header";
 import {
-  getContentBank,
-  getScheduleWeeks,
-  pickCurrentWeek,
-} from "@/lib/admin/queries";
-import { SCHEDULE_PLATFORM_COLS } from "@/lib/admin/platforms";
-import { audienceForPlatform } from "@/lib/admin/platform-audience";
+  formatWeekRange,
+  postingDates,
+  postingWeekMonday,
+  slotLabel,
+} from "@/lib/admin/content-week";
+import { ensureWeekSlots, loadContentWeek } from "@/lib/admin/content-week/load";
+import { getContentBank, getScheduleWeeks } from "@/lib/admin/queries";
 import { adminToday } from "@/lib/admin/today";
 import { createClient } from "@/utils/supabase/server";
-import type { DayCellStatus } from "@/lib/admin/platforms";
 
 function AdminStat({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
@@ -26,59 +26,28 @@ function AdminStat({ label, value, sub }: { label: string; value: string; sub?: 
   );
 }
 
-function TodayChecklistRows({
-  cols,
-  platforms,
-}: {
-  cols: typeof SCHEDULE_PLATFORM_COLS;
-  platforms: Record<string, DayCellStatus>;
-}) {
-  return (
-    <div>
-      {cols.map((c) => {
-        const status = platforms[c.key] ?? "pending";
-        return (
-          <div
-            key={c.key}
-            className="flex items-center justify-between border-b border-hairline py-2.5 text-[15px] font-medium last:border-b-0"
-          >
-            <span>{c.label}</span>
-            <span
-              className={
-                status === "done" ? "font-semibold text-sage" : "text-muted"
-              }
-            >
-              {status === "done" ? "Posted" : "Pending"}
-            </span>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
 export default async function AdminOverviewPage() {
   const supabase = await createClient();
   const today = adminToday();
+  const weekStart = postingWeekMonday(today);
+  await ensureWeekSlots(supabase, weekStart);
 
-  const [weeks, bank] = await Promise.all([
+  const [weeks, bank, board] = await Promise.all([
     getScheduleWeeks(supabase),
     getContentBank(supabase),
+    loadContentWeek(supabase, weekStart),
   ]);
 
-  const currentWeek = pickCurrentWeek(weeks, today);
-  const todayRow = currentWeek?.days.find((d) => d.date === today) ?? null;
-
-  const activeCols = SCHEDULE_PLATFORM_COLS.filter(
-    (c) => todayRow && todayRow.platforms[c.key] !== "off",
+  const postingToday = postingDates(weekStart).includes(today);
+  const laneOrder = { video: 0, slideshow: 1, pin: 2, linkedin: 3 } as const;
+  const todaySlots = (postingToday
+    ? board.slots.filter((slot) => slot.slot_date === today)
+    : []
+  ).sort(
+    (a, b) => laneOrder[a.lane] - laneOrder[b.lane] || a.position - b.position,
   );
-  const doneCols = activeCols.filter((c) => todayRow!.platforms[c.key] === "done");
-  const couplesCols = activeCols.filter(
-    (c) => audienceForPlatform(c.key) === "couples",
-  );
-  const plannerCols = activeCols.filter(
-    (c) => audienceForPlatform(c.key) === "planner",
-  );
+  const postedSlots = todaySlots.filter((slot) => slot.posted_at);
+  const ideasById = new Map(board.ideas.map((idea) => [idea.id, idea]));
 
   const latestPerf = [...weeks]
     .reverse()
@@ -90,14 +59,14 @@ export default async function AdminOverviewPage() {
       <PageHeader
         className="mb-5"
         title="Overview"
-        description={currentWeek ? currentWeek.label : "No schedule week set up yet"}
+        description={formatWeekRange(weekStart)}
       />
 
       <div className="mb-4 grid grid-cols-2 gap-3.5 md:grid-cols-4">
         <AdminStat
           label="Today's checklist"
-          value={todayRow ? `${doneCols.length}/${activeCols.length}` : "—"}
-          sub="posted so far"
+          value={postingToday ? `${postedSlots.length}/${todaySlots.length}` : "Prep"}
+          sub={postingToday ? "posted so far" : "Sunday content day"}
         />
         <AdminStat
           label="Last logged views"
@@ -118,36 +87,47 @@ export default async function AdminOverviewPage() {
       <div className="grid gap-4 md:grid-cols-[1.3fr_1fr] md:items-start">
         <div className="flex flex-col gap-4">
           <Card className="px-6 py-5">
-            <Eyebrow className="mb-3 text-accent">Today — Couples channels</Eyebrow>
-            {todayRow && couplesCols.length > 0 ? (
-              <TodayChecklistRows
-                cols={couplesCols}
-                platforms={todayRow.platforms}
-              />
-            ) : (
-              <EmptyState>
-                {todayRow
-                  ? "No couples channels scheduled today."
-                  : "No schedule set up for today yet."}
-              </EmptyState>
-            )}
-          </Card>
-          <Card className="px-6 py-5">
             <Eyebrow className="mb-3 text-accent">
-              Today — Venues & Planners channels
+              {postingToday ? "Today" : "Sunday — content day"}
             </Eyebrow>
-            {todayRow && plannerCols.length > 0 ? (
-              <TodayChecklistRows
-                cols={plannerCols}
-                platforms={todayRow.platforms}
-              />
+            {postingToday && todaySlots.length > 0 ? (
+              <div>
+                {todaySlots.map((slot) => {
+                  const idea = slot.idea_id ? ideasById.get(slot.idea_id) : undefined;
+                  return (
+                    <div
+                      key={slot.id}
+                      className="flex items-center justify-between gap-3 border-b border-hairline py-2.5 text-[15px] font-medium last:border-b-0"
+                    >
+                      <span className="min-w-0">
+                        <span className="block text-[13px] text-muted">
+                          {slotLabel(slot.lane, slot.position, slot.intent)}
+                        </span>
+                        <span className="block truncate">
+                          {idea?.idea_text ?? "Nothing chosen"}
+                        </span>
+                      </span>
+                      <span
+                        className={
+                          slot.posted_at ? "shrink-0 font-semibold text-sage" : "shrink-0 text-muted"
+                        }
+                      >
+                        {slot.posted_at ? "Posted" : "Pending"}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
             ) : (
-              <EmptyState>
-                {todayRow
-                  ? "No venues & planners channels scheduled today."
-                  : "No schedule set up for today yet."}
+              <EmptyState recessed>
+                {postingToday
+                  ? "Nothing on the schedule for today yet."
+                  : "Ideas for Monday through Saturday land here Sunday morning. Generate the week from Ideation if you want them now."}
               </EmptyState>
             )}
+            <ButtonLink href="/admin/schedule" variant="default" className="mt-4">
+              Open schedule
+            </ButtonLink>
           </Card>
         </div>
 

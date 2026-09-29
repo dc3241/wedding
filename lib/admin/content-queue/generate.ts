@@ -24,8 +24,7 @@ export const PLATFORM_ASPECT = PLATFORM_KIE_ASPECT;
 
 /**
  * Locked layout template in content-queue-assets (references/square/).
- * TikTok photo slides and Instagram carousels share 3:4 output + this
- * reference; Pin/LinkedIn static use it too.
+ * TikTok slideshows use 9:16. Pins use 2:3. The reference is the layout only.
  * Override with CONTENT_QUEUE_REF_SQUARE_URL for a stable public URL.
  */
 export const CONTENT_QUEUE_REFERENCE_PATHS = {

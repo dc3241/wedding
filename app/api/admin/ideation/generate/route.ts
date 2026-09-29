@@ -1,47 +1,17 @@
 /**
- * Admin ideation — "Generate ideas" action. Same server-side-only
- * Anthropic call pattern as other admin generate routes (MODEL_API_KEY
- * never reaches the browser), different prompt: short candidate content
- * ideas rather than a full script/post.
- *
- * Preference-tuned prompting, NOT model fine-tuning: before generating,
- * pull unused liked / passed ideas plus already-produced (used_at) rows
- * as few-shot context so the model leans into taste and does not repeat
- * posts that already ran through the Friday queue.
+ * Admin ideation — week shortlists. Sunday cron and the Generate button
+ * both call generateContentWeek. MODEL_API_KEY stays on the server.
  */
+import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 import { checkIsAdmin } from "@/lib/admin/is-admin";
-import {
-  IDEATION_GENERATE_COUNT,
-  IDEATION_GENERATE_MAX,
-  IDEATION_GENERATE_MIN,
-} from "@/lib/admin/content-formats";
-import { callClaudeJson, isRecord } from "@/lib/inquiry/llm-json";
+import { isContentLane } from "@/lib/admin/content-week";
+import { generateContentWeek } from "@/lib/admin/content-week/ideas";
 import { createClient } from "@/utils/supabase/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
-const SYSTEM_PROMPT = `You are a social content strategist for First Look, a wedding-planning SaaS
-for couples and wedding planners/venues. You are brainstorming short-form
-content ideas the founders will later turn into Pinterest statics, TikTok
-videos, or LinkedIn posts (text, static, or video) from their own
-personal-feeling brand account. Instagram is retired. Facebook and YouTube
-are republish destinations of TikTok (couples) and LinkedIn (planners) —
-never invent a standalone Facebook or YouTube idea.
-
-Tone: warm, useful, a little funny, never salesy. Mix of pure-value tips,
-behind-the-scenes/story content, and soft product mentions — mostly NOT
-direct promo. Ideas should be one or two sentences each: a hook or topic a
-human could turn into a script, a pin, or a LinkedIn post without more research.
-
-Every batch must mix:
-- About half couples-facing (budget, timeline, guests, vendors, real-wedding walkthroughs) — TikTok video hooks or Pinterest static tips
-- About half planner/venue-facing (inquiry speed, lead follow-up, avoiding double-bookings, ops) — LinkedIn text, LinkedIn static, or LinkedIn video
-Do not cluster the whole list on one angle. Never use the word "AI".
-
-Return ONLY strict JSON: {"ideas": ["idea one", "idea two", ...]}. No
-markdown fences, no commentary.`;
+export const maxDuration = 300;
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -57,104 +27,36 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  let body: { topic?: string; count?: number };
+  let body: { date?: string; lane?: string; focus?: string };
   try {
     body = await request.json();
   } catch {
     body = {};
   }
-  const topic = body.topic?.trim() || null;
-  const count = Math.min(
-    Math.max(body.count ?? IDEATION_GENERATE_COUNT, IDEATION_GENERATE_MIN),
-    IDEATION_GENERATE_MAX,
-  );
 
-  const [{ data: liked }, { data: disliked }, { data: used }] = await Promise.all([
-    supabase
-      .from("ideation_items")
-      .select("idea_text, comment")
-      .eq("rating", "up")
-      .is("used_at", null)
-      .order("created_at", { ascending: false })
-      .limit(6),
-    supabase
-      .from("ideation_items")
-      .select("idea_text, comment")
-      .eq("rating", "down")
-      .is("used_at", null)
-      .order("created_at", { ascending: false })
-      .limit(6),
-    supabase
-      .from("ideation_items")
-      .select("idea_text")
-      .not("used_at", "is", null)
-      .order("used_at", { ascending: false })
-      .limit(20),
-  ]);
-
-  const fewShotLines: string[] = [];
-  if (liked?.length) {
-    fewShotLines.push("Ideas the team has liked before (lean into these patterns):");
-    for (const row of liked) {
-      fewShotLines.push(`- "${row.idea_text}"${row.comment ? ` — note: ${row.comment}` : ""}`);
-    }
+  const date = typeof body.date === "string" ? body.date : null;
+  const lane = isContentLane(body.lane) ? body.lane : null;
+  if (body.lane && !lane) {
+    return NextResponse.json({ error: "Unknown post type." }, { status: 400 });
   }
-  if (disliked?.length) {
-    fewShotLines.push("Ideas the team has disliked before (avoid these patterns):");
-    for (const row of disliked) {
-      fewShotLines.push(`- "${row.idea_text}"${row.comment ? ` — note: ${row.comment}` : ""}`);
-    }
-  }
-  if (used?.length) {
-    fewShotLines.push("Ideas already produced as posts — do not repeat or lightly rephrase:");
-    for (const row of used) {
-      fewShotLines.push(`- "${row.idea_text}"`);
-    }
+  if (lane && !date) {
+    return NextResponse.json({ error: "Pick a day to regenerate." }, { status: 400 });
   }
 
-  const userText = [
-    `Generate ${count} new content ideas.`,
-    topic ? `Focus area / topic: ${topic}` : "No specific topic — free brainstorm.",
-    fewShotLines.length ? "\n" + fewShotLines.join("\n") : "",
-    "\nDo not repeat any of the ideas listed above verbatim.",
-  ]
-    .filter(Boolean)
-    .join("\n");
-
-  let parsed: unknown;
   try {
-    parsed = await callClaudeJson({
-      system: SYSTEM_PROMPT,
-      user: userText,
-      maxTokens: 4096,
+    const result = await generateContentWeek(supabase, {
+      requestedBy: user.id,
+      date,
+      lane,
+      focus: typeof body.focus === "string" ? body.focus : null,
     });
+    revalidatePath("/admin/ideation");
+    revalidatePath("/admin/schedule");
+    revalidatePath("/admin");
+    return NextResponse.json(result);
   } catch (err) {
-    const message =
-      err instanceof Error ? err.message : "The model returned an unexpected response.";
+    const message = err instanceof Error ? err.message : "Could not generate ideas.";
+    console.error("ideation-generate:", err);
     return NextResponse.json({ error: message }, { status: 502 });
   }
-
-  if (!isRecord(parsed)) {
-    return NextResponse.json({ error: "The model returned an unexpected response." }, { status: 502 });
-  }
-  const rawIdeas = parsed.ideas;
-  if (!Array.isArray(rawIdeas)) {
-    return NextResponse.json({ error: "The model returned an unexpected response." }, { status: 502 });
-  }
-
-  const ideas = rawIdeas.filter((i): i is string => typeof i === "string" && i.trim().length > 0);
-  if (ideas.length === 0) {
-    return NextResponse.json({ error: "No ideas were generated." }, { status: 502 });
-  }
-
-  const { data: inserted, error } = await supabase
-    .from("ideation_items")
-    .insert(ideas.map((idea_text) => ({ idea_text, requested_by: user.id })))
-    .select("id, idea_text, requested_by, rating, comment, platform, format, audience_group, carousel_slides, used_at, created_at");
-
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
-
-  return NextResponse.json({ items: inserted ?? [] });
 }

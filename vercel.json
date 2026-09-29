@@ -34,7 +34,7 @@
     },
     {
       "path": "/api/cron/content-queue-generate",
-      "schedule": "35 15 * * 5"
+      "schedule": "35 15 * * 0"
     }
   ]
 }

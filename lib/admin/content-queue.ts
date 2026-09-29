@@ -47,10 +47,10 @@ export function isActiveContentQueuePlatform(
   return CONTENT_QUEUE_PLATFORMS.some((p) => p.key === value);
 }
 
-/** TikTok and LinkedIn are also posted to Facebook + YouTube. Pinterest is origin-only. */
+/** Videos and pins are cross-posted to Facebook. YouTube reuses the TikTok video. */
 export function queueRepublishHint(platform: ContentQueuePlatform): string | null {
-  if (platform === "tiktok" || platform === "linkedin") {
-    return "Also posts to Facebook + YouTube";
+  if (platform === "tiktok" || platform === "pinterest") {
+    return "Also post to Facebook";
   }
   return null;
 }

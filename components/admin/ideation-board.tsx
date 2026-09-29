@@ -11,7 +11,6 @@ import {
   AUDIENCE_OPTIONS,
   DEFAULT_CAROUSEL_SLIDES,
   formatsForPlatform,
-  IDEATION_GENERATE_COUNT,
   isIdeaFridayReady,
   MAX_CAROUSEL_SLIDES,
   MIN_CAROUSEL_SLIDES,
@@ -75,9 +74,9 @@ function fridayHint(item: IdeationItem): string | null {
   if (!isActiveContentQueuePlatform(item.platform)) {
     return item.platform
       ? "Pick TikTok, Pinterest, or LinkedIn — Instagram is retired."
-      : "Pick a platform so Friday can produce this.";
+      : "Pick a platform so this can be produced.";
   }
-  if (!item.format) return "Pick a format so Friday knows what to make.";
+  if (!item.format) return "Pick a format so we know what to make.";
   if (!item.audience_group) return "Pick an audience so this files in the right bank.";
   return null;
 }
@@ -334,9 +333,6 @@ function IdeaCard({
 export function IdeationBoard({ items }: { items: IdeationItem[] }) {
   const [localItems, setLocalItems] = useState(items);
   const [filter, setFilter] = useState<Filter>("all");
-  const [topic, setTopic] = useState("");
-  const [generating, setGenerating] = useState(false);
-  const [genError, setGenError] = useState<string | null>(null);
   const [producedNotice, setProducedNotice] = useState(false);
   const [producedWarning, setProducedWarning] = useState<string | null>(null);
 
@@ -354,86 +350,33 @@ export function IdeationBoard({ items }: { items: IdeationItem[] }) {
     setProducedWarning(warning ?? null);
   }
 
-  const fridayReady = localItems.filter(isIdeaFridayReady).length;
-
   const filtered = localItems.filter((i) => {
     if (filter === "all") return true;
     if (filter === "unrated") return i.rating == null;
     return i.rating === filter;
   });
 
-  async function handleGenerate() {
-    setGenerating(true);
-    setGenError(null);
-    try {
-      const res = await fetch("/api/admin/ideation/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          topic: topic.trim() || undefined,
-          count: IDEATION_GENERATE_COUNT,
-        }),
-      });
-      const data = (await res.json()) as { items?: IdeationItem[]; error?: string };
-      if (!res.ok || !data.items) {
-        setGenError(data.error ?? "Could not generate ideas.");
-        return;
-      }
-      setLocalItems((prev) => [...data.items!, ...prev]);
-    } catch {
-      setGenError("Network error reaching the ideation route.");
-    } finally {
-      setGenerating(false);
-    }
-  }
-
   return (
     <div>
-      <Card className="mb-5 px-5 py-4">
-        <div className="flex flex-wrap items-end gap-3">
-          <div className="min-w-[220px] flex-1">
-            <label className="mb-1 block text-[12px] font-semibold tracking-[0.09em] text-muted uppercase">
-              Topic (optional)
-            </label>
-            <Input
-              value={topic}
-              onChange={(e) => setTopic(e.target.value)}
-              placeholder="e.g. budget tips, day-of timeline, vendor red flags"
-            />
-          </div>
-          <Button variant="primary" onClick={handleGenerate} disabled={generating}>
-            {generating ? "Generating…" : "✨ Generate ideas"}
-          </Button>
-        </div>
-        {genError ? <p className="mt-2 text-[13px] text-rosewood">{genError}</p> : null}
-        <p className="mt-2 text-[13px] text-muted">
-          Liked ideas with a platform, format, and audience become Friday&apos;s
-          content-queue batch (up to 12), or Produce now. Generate{" "}
-          {IDEATION_GENERATE_COUNT} so you can pass a few and still like 9–12.
-          Passed ideas steer the next generate away. Produced likes leave this
-          list.
-          {fridayReady > 0 ? ` ${fridayReady} ready to produce.` : ""}
-        </p>
-        {producedNotice ? (
-          producedWarning ? (
-            <p className="mt-2 text-[13px] text-rosewood">
-              Sent to the{" "}
-              <Link href="/admin/content-queue" className="font-semibold text-accent hover:underline">
-                content queue
-              </Link>
-              , but image generation failed: {producedWarning}
-            </p>
-          ) : (
-            <p className="mt-2 text-[13px] text-sage">
-              Sent to the{" "}
-              <Link href="/admin/content-queue" className="font-semibold text-accent hover:underline">
-                content queue
-              </Link>
-              .
-            </p>
-          )
-        ) : null}
-      </Card>
+      {producedNotice ? (
+        producedWarning ? (
+          <p className="mb-4 text-[13px] text-rosewood">
+            Sent to the{" "}
+            <Link href="/admin/content-queue" className="font-semibold text-accent hover:underline">
+              content queue
+            </Link>
+            , but image generation failed: {producedWarning}
+          </p>
+        ) : (
+          <p className="mb-4 text-[13px] text-sage">
+            Sent to the{" "}
+            <Link href="/admin/content-queue" className="font-semibold text-accent hover:underline">
+              content queue
+            </Link>
+            .
+          </p>
+        )
+      ) : null}
 
       <div className="mb-4 flex gap-2">
         {(["all", "up", "down", "unrated"] as Filter[]).map((f) => (
