@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import type { PlaceResult } from "@/app/(app)/projects/[projectId]/vendors/search/actions";
+import type { VendorMarketContext } from "@/lib/vendors/market-context";
 
 export type VendorSearchCacheParams = {
   categoryId: string;
@@ -19,6 +20,7 @@ export type VendorSearchCacheEntry = {
   results: PlaceResult[];
   composedQuery: string;
   filteredCount: number;
+  market: VendorMarketContext | null;
 };
 
 type VendorSearchCacheContextValue = {

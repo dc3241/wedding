@@ -5,6 +5,18 @@ export type PlacesPriceLevel =
   | "PRICE_LEVEL_EXPENSIVE"
   | "PRICE_LEVEL_VERY_EXPENSIVE";
 
+/** Google Money. `units` is a whole-dollar string; `nanos` is the fraction. */
+export type PlacesMoney = {
+  currencyCode?: string;
+  units?: string;
+  nanos?: number;
+};
+
+export type PlacesPriceRange = {
+  startPrice?: PlacesMoney;
+  endPrice?: PlacesMoney;
+};
+
 export type PlacesTextSearchPlace = {
   id: string;
   name: string;
@@ -17,6 +29,7 @@ export type PlacesTextSearchPlace = {
   /** First photo resource name (`places/.../photos/...`), if any. */
   photoName?: string;
   priceLevel?: PlacesPriceLevel;
+  priceRange?: PlacesPriceRange;
   openNow?: boolean;
 };
 
@@ -39,6 +52,7 @@ type GooglePlace = {
   types?: string[];
   photos?: GooglePlacePhoto[];
   priceLevel?: PlacesPriceLevel | "PRICE_LEVEL_UNSPECIFIED";
+  priceRange?: PlacesPriceRange;
   regularOpeningHours?: { openNow?: boolean };
 };
 
@@ -48,7 +62,7 @@ type GoogleSearchResponse = {
 };
 
 const FIELD_MASK =
-  "places.id,places.displayName,places.formattedAddress,places.rating,places.userRatingCount,places.websiteUri,places.primaryType,places.types,places.photos,places.priceLevel,places.regularOpeningHours";
+  "places.id,places.displayName,places.formattedAddress,places.rating,places.userRatingCount,places.websiteUri,places.primaryType,places.types,places.photos,places.priceLevel,places.priceRange,places.regularOpeningHours";
 
 function mapPriceLevel(
   value: GooglePlace["priceLevel"],
@@ -63,6 +77,16 @@ function mapPriceLevel(
     return value;
   }
   return undefined;
+}
+
+function mapPriceRange(
+  value: PlacesPriceRange | undefined,
+): PlacesPriceRange | undefined {
+  if (!value?.startPrice && !value?.endPrice) return undefined;
+  return {
+    startPrice: value.startPrice,
+    endPrice: value.endPrice,
+  };
 }
 
 export async function placesTextSearch(options: {
@@ -155,6 +179,7 @@ export async function placesTextSearch(options: {
         types: place.types,
         photoName: photoName?.trim() || undefined,
         priceLevel: mapPriceLevel(place.priceLevel),
+        priceRange: mapPriceRange(place.priceRange),
         openNow: place.regularOpeningHours?.openNow,
       };
     });

@@ -9,7 +9,7 @@ import type { PlaceResult } from "@/app/(app)/projects/[projectId]/vendors/searc
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
 import {
-  formatPriceLevel,
+  describePlacePrice,
   googleMapsPlaceUrl,
   placePhotoSrc,
   placeTypeChips,
@@ -109,7 +109,7 @@ export function PlaceResultCard({
   const host = websiteHost(place.websiteUri);
   const chips = placeTypeChips(place.primaryType, place.types);
   const hasRating = place.rating !== undefined;
-  const priceLabel = formatPriceLevel(place.priceLevel);
+  const price = describePlacePrice(place, categoryId);
   const nameHref = place.websiteUri?.trim() || googleMapsPlaceUrl(place.id);
 
   function handleAdd() {
@@ -192,29 +192,42 @@ export function PlaceResultCard({
           )}
         </div>
 
-        {hasRating || priceLabel ? (
-          <div className="mt-2.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px]">
-            {hasRating ? (
-              <>
-                <StarRow rating={place.rating!} />
-                <span className="tabnum font-bold text-ink">
-                  {place.rating!.toFixed(1)}
-                </span>
-                {place.userRatingCount != null ? (
-                  <span className="text-muted">
-                    ·{" "}
-                    <span className="tabnum">
-                      {place.userRatingCount.toLocaleString()}
-                    </span>{" "}
-                    {place.userRatingCount === 1 ? "review" : "reviews"}
+        {hasRating || price ? (
+          <div className="mt-2.5 space-y-1">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px]">
+              {hasRating ? (
+                <>
+                  <StarRow rating={place.rating!} />
+                  <span className="tabnum font-bold text-ink">
+                    {place.rating!.toFixed(1)}
                   </span>
-                ) : null}
-              </>
+                  {place.userRatingCount != null ? (
+                    <span className="text-muted">
+                      ·{" "}
+                      <span className="tabnum">
+                        {place.userRatingCount.toLocaleString()}
+                      </span>{" "}
+                      {place.userRatingCount === 1 ? "review" : "reviews"}
+                    </span>
+                  ) : null}
+                </>
+              ) : null}
+              {price ? (
+                <span className="font-semibold text-ink">
+                  {hasRating ? <span className="text-muted">· </span> : null}
+                  <span className="tabnum">{price.primary}</span>
+                  {price.source ? (
+                    <span className="font-medium text-muted">
+                      {" "}
+                      · {price.source}
+                    </span>
+                  ) : null}
+                </span>
+              ) : null}
+            </div>
+            {price?.detail ? (
+              <p className="text-[13px] text-muted">{price.detail}</p>
             ) : null}
-            <span className="font-semibold text-muted">
-              {hasRating ? "· " : null}
-              {priceLabel}
-            </span>
           </div>
         ) : null}
 

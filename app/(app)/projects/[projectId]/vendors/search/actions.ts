@@ -7,7 +7,12 @@ import {
 import {
   placesTextSearch,
   type PlacesPriceLevel,
+  type PlacesPriceRange,
 } from "@/lib/places-text-search";
+import type { VendorMarketContext } from "@/lib/vendors/market-context";
+import { loadVendorMarketContext } from "@/lib/vendors/market-spend";
+import { resolveVendorSitePrices } from "@/lib/vendors/site-price";
+import type { VendorSitePrice } from "@/lib/vendors/site-price-extract";
 import { createClient } from "@/utils/supabase/server";
 
 export type PlaceResult = {
@@ -21,6 +26,9 @@ export type PlaceResult = {
   types?: string[];
   photoName?: string;
   priceLevel?: PlacesPriceLevel;
+  priceRange?: PlacesPriceRange;
+  /** Undefined until the site pass finishes. Null means the site listed no price. */
+  sitePrice?: VendorSitePrice | null;
   openNow?: boolean;
 };
 
@@ -30,6 +38,7 @@ export type SearchPlacesResponse =
       results: PlaceResult[];
       filteredCount: number;
       composedQuery: string;
+      market: VendorMarketContext;
     }
   | { ok: false; error: string };
 
@@ -101,6 +110,7 @@ export async function searchPlaces(
     types: place.types,
     photoName: place.photoName,
     priceLevel: place.priceLevel,
+    priceRange: place.priceRange,
     openNow: place.openNow,
   }));
 
@@ -115,10 +125,52 @@ export async function searchPlaces(
     filteredCount = mapped.length - results.length;
   }
 
+  const market = await loadVendorMarketContext(
+    projectId,
+    category.id,
+    category.label,
+  );
+
   return {
     ok: true,
     results,
     filteredCount,
     composedQuery: textQuery,
+    market,
   };
+}
+
+export async function enrichVendorSitePrices(
+  projectId: string,
+  categoryId: string,
+  places: { id: string; websiteUri?: string }[],
+): Promise<
+  | { ok: true; prices: Record<string, VendorSitePrice | null> }
+  | { ok: false; error: string }
+> {
+  const category = getVendorCategoryById(categoryId.trim());
+  if (!category) {
+    return { ok: false, error: "Choose a valid vendor category." };
+  }
+
+  const supabase = await createClient();
+  const { data: project } = await supabase
+    .from("projects")
+    .select("id")
+    .eq("id", projectId)
+    .maybeSingle();
+
+  if (!project) {
+    return { ok: false, error: "Project not found." };
+  }
+
+  const prices = await resolveVendorSitePrices(
+    category.id,
+    places.slice(0, 20).map((place) => ({
+      id: place.id,
+      websiteUri: place.websiteUri,
+    })),
+  );
+
+  return { ok: true, prices };
 }

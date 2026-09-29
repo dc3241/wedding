@@ -4,7 +4,11 @@ import type { PlaceResult } from "@/app/(app)/projects/[projectId]/vendors/searc
 import { Card } from "@/components/ui/card";
 import { CollapseSection } from "@/components/ui/collapse-section";
 import { cn } from "@/lib/cn";
-import { priceLevelToPip, type PricePip } from "./place-result-utils";
+import {
+  describePlacePrice,
+  priceLevelToPip,
+  type PricePip,
+} from "./place-result-utils";
 
 export type ResultsSort = "best" | "rating" | "reviews";
 
@@ -47,6 +51,7 @@ export function applyResultsFilters(
   results: PlaceResult[],
   filters: ResultsFilterState,
   addedPlaceIds: Set<string>,
+  categoryId: string,
 ): PlaceResult[] {
   let next = results.filter((place) => {
     if (filters.minRating > 0) {
@@ -61,7 +66,7 @@ export function applyResultsFilters(
         return false;
       }
     } else if (!filters.includeUnpriced) {
-      if (priceLevelToPip(place.priceLevel) == null) return false;
+      if (describePlacePrice(place, categoryId) == null) return false;
     }
 
     if (filters.openNow && place.openNow !== true) return false;

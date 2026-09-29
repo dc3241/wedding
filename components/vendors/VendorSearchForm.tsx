@@ -1,10 +1,14 @@
 "use client";
 
-import { useOptimistic, useState, useTransition } from "react";
+import { useOptimistic, useRef, useState, useTransition } from "react";
 import {
+  enrichVendorSitePrices,
   searchPlaces,
   type PlaceResult,
 } from "@/app/(app)/projects/[projectId]/vendors/search/actions";
+import { formatCurrency } from "@/lib/format-currency";
+import type { VendorMarketContext } from "@/lib/vendors/market-context";
+import type { VendorSitePrice } from "@/lib/vendors/site-price-extract";
 import { VENDOR_CATEGORIES } from "@/lib/vendor-categories";
 import { PlaceResultCard } from "./PlaceResultCard";
 import { useVendorSearchCache } from "./VendorSearchCacheProvider";
@@ -52,6 +56,10 @@ export function VendorSearchForm({
   const [filteredCount, setFilteredCount] = useState(
     () => cached?.filteredCount ?? 0,
   );
+  const [market, setMarket] = useState<VendorMarketContext | null>(
+    () => cached?.market ?? null,
+  );
+  const searchRequestRef = useRef(0);
   // Fresh every mount from the server page — never from the search cache.
   const [addedPlaceIds, setAddedPlaceIds] = useState(
     () => new Set(initialAddedPlaceIds),
@@ -79,10 +87,13 @@ export function VendorSearchForm({
       return;
     }
 
+    const requestId = ++searchRequestRef.current;
+
     startTransition(async () => {
       setError(null);
       setHasSearched(true);
       setFilters(createDefaultResultsFilters());
+      setMarket(null);
 
       const response = await searchPlaces(
         projectId,
@@ -90,10 +101,13 @@ export function VendorSearchForm({
         trimmedLocation,
       );
 
+      if (requestId !== searchRequestRef.current) return;
+
       if (!response.ok) {
         setResults(null);
         setComposedQuery(null);
         setFilteredCount(0);
+        setMarket(null);
         setError(response.error);
         return;
       }
@@ -101,6 +115,7 @@ export function VendorSearchForm({
       setResults(response.results);
       setComposedQuery(response.composedQuery);
       setFilteredCount(response.filteredCount);
+      setMarket(response.market);
       searchCache.set(projectId, {
         params: {
           categoryId: nextCategoryId,
@@ -109,8 +124,59 @@ export function VendorSearchForm({
         results: response.results,
         composedQuery: response.composedQuery,
         filteredCount: response.filteredCount,
+        market: response.market,
       });
+
+      void loadSitePrices(
+        requestId,
+        nextCategoryId,
+        trimmedLocation,
+        response.composedQuery,
+        response.filteredCount,
+        response.market,
+        response.results,
+      );
     });
+  }
+
+  async function loadSitePrices(
+    requestId: number,
+    nextCategoryId: string,
+    trimmedLocation: string,
+    composed: string,
+    filtered: number,
+    marketContext: VendorMarketContext,
+    places: PlaceResult[],
+  ) {
+    const targets = places.filter((place) => place.websiteUri?.trim());
+    if (targets.length === 0) return;
+
+    let merged = places;
+    for (let i = 0; i < targets.length; i += 5) {
+      if (requestId !== searchRequestRef.current) return;
+      const batch = targets.slice(i, i + 5);
+      const response = await enrichVendorSitePrices(
+        projectId,
+        nextCategoryId,
+        batch.map((place) => ({
+          id: place.id,
+          websiteUri: place.websiteUri,
+        })),
+      );
+      if (!response.ok || requestId !== searchRequestRef.current) return;
+      merged = mergeSitePrices(merged, response.prices);
+      setResults(merged);
+      searchCache.set(projectId, {
+        params: {
+          categoryId: nextCategoryId,
+          location: trimmedLocation,
+        },
+        results: merged,
+        composedQuery: composed,
+        filteredCount: filtered,
+        market: marketContext,
+      });
+    }
   }
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -136,7 +202,7 @@ export function VendorSearchForm({
   const hasResults = Boolean(results && results.length > 0);
   const visibleResults =
     results && results.length > 0
-      ? applyResultsFilters(results, filters, optimisticAdded)
+      ? applyResultsFilters(results, filters, optimisticAdded, categoryId)
       : [];
 
   const filterSlot = hasResults ? (
@@ -160,8 +226,8 @@ export function VendorSearchForm({
             Search vendors
           </h2>
           <p className="mt-1 text-[13px] text-muted">
-            Live results from Google Places — ratings and reviews load on the
-            vendor detail page after you add them.
+            Live results from Google Places. A price shows when Google or the
+            vendor&apos;s site lists one.
           </p>
         </div>
 
@@ -217,6 +283,30 @@ export function VendorSearchForm({
   const resultsSection =
     hasSearched && !error && !isPending ? (
       <section className="space-y-2.5" aria-live="polite">
+        {market && (market.medianQuote != null || market.yourBudget != null) ? (
+          <p className="rounded-[var(--radius-inner)] bg-well px-4 py-3 text-[13px] leading-relaxed text-muted shadow-recessed">
+            {market.medianQuote != null ? (
+              <>
+                Typical {market.categoryLabel} quotes saved in the app are
+                about{" "}
+                <span className="tabnum font-semibold text-ink">
+                  {formatCurrency(market.medianQuote)}
+                </span>
+                .
+              </>
+            ) : null}
+            {market.yourBudget != null ? (
+              <>
+                {market.medianQuote != null ? " " : null}
+                Your {market.categoryLabel} budget is{" "}
+                <span className="tabnum font-semibold text-ink">
+                  {formatCurrency(market.yourBudget)}
+                </span>
+                .
+              </>
+            ) : null}
+          </p>
+        ) : null}
         {hasResults ? (
           <>
             <div className="flex items-baseline justify-between gap-3">
@@ -351,4 +441,14 @@ export function VendorSearchForm({
   }
 
   return main;
+}
+
+function mergeSitePrices(
+  places: PlaceResult[],
+  prices: Record<string, VendorSitePrice | null>,
+): PlaceResult[] {
+  return places.map((place) => {
+    if (!(place.id in prices)) return place;
+    return { ...place, sitePrice: prices[place.id] };
+  });
 }
