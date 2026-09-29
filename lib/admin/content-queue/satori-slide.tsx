@@ -5,8 +5,16 @@ import type { CSSProperties } from "react";
 import { StillWordmark } from "@/lib/admin/content-queue/StillWordmark";
 import type { SlideSpec, SlideTone } from "@/lib/admin/content-queue/slide-spec";
 
-/** Layouts the pin-size Satori check covers. Other layouts stay on the render host. */
-export const SATORI_LAYOUTS = ["headline-card", "headline-phone"] as const;
+/** Every still layout. Drawn in-process; no render host required. */
+export const SATORI_LAYOUTS = [
+  "headline-card",
+  "headline-phone",
+  "big-number",
+  "before-after",
+  "tip-list",
+  "steps",
+  "statement",
+] as const;
 
 export function satoriSupports(layout: string): boolean {
   return (SATORI_LAYOUTS as readonly string[]).includes(layout);
@@ -50,6 +58,7 @@ const themes = {
     ctaFg: "#FFFFFF",
     url: "#C0396B",
     hi: "#C0396B",
+    rule: "#E2D6D9",
   },
   white: {
     bg: "#FBF8F7",
@@ -62,6 +71,7 @@ const themes = {
     ctaFg: "#FFFFFF",
     url: "#C0396B",
     hi: "#C0396B",
+    rule: "#E8DEDB",
   },
   ink: {
     bg: "#241C20",
@@ -74,6 +84,7 @@ const themes = {
     ctaFg: "#FFFFFF",
     url: "#F08DB2",
     hi: "#F08DB2",
+    rule: "#4A3C42",
   },
   rose: {
     bg: "#C0396B",
@@ -86,6 +97,7 @@ const themes = {
     ctaFg: "#C0396B",
     url: "#FFFFFF",
     hi: "#FFE3EE",
+    rule: "#D9749A",
   },
   sage: {
     bg: "#E2EEE7",
@@ -98,6 +110,7 @@ const themes = {
     ctaFg: "#FFFFFF",
     url: "#C0396B",
     hi: "#C0396B",
+    rule: "#C4D8CD",
   },
 } as const;
 
@@ -112,6 +125,7 @@ type Theme = {
   ctaFg: string;
   url: string;
   hi: string;
+  rule: string;
 };
 
 const toneInk: Record<SlideTone, [string, string]> = {
@@ -156,33 +170,77 @@ function loadFonts() {
   return fontCache;
 }
 
+function headlineParts(text: string, highlight?: string): { text: string; hi: boolean }[] {
+  const words = text.split(/\s+/).filter((word) => word.length > 0);
+  if (!highlight || !text.includes(highlight)) return words.map((word) => ({ text: word, hi: false }));
+  const marked = highlight.split(/\s+/).filter((word) => word.length > 0);
+  const parts: { text: string; hi: boolean }[] = [];
+  for (let i = 0; i < words.length; i += 1) {
+    const slice = words.slice(i, i + marked.length).join(" ");
+    if (marked.length > 0 && slice === marked.join(" ")) {
+      for (const word of marked) parts.push({ text: word, hi: true });
+      i += marked.length - 1;
+    } else {
+      parts.push({ text: words[i], hi: false });
+    }
+  }
+  return parts;
+}
+
 function Headline({
   text,
   color,
   avail,
   max,
   align,
+  highlight,
+  highlightColor,
 }: {
   text: string;
   color: string;
   avail: number;
   max: number;
   align: "left" | "center";
+  highlight?: string;
+  highlightColor?: string;
 }) {
   const size = fitSize(text, avail, max);
+  const type = {
+    fontFamily: "Figtree",
+    fontWeight: 800,
+    fontSize: size,
+    lineHeight: 1.04,
+    letterSpacing: -size * 0.03,
+    color,
+  } as const;
+  if (!highlight || !text.includes(highlight)) {
+    return (
+      <div style={flex({ ...type, textAlign: align, width: "100%" })}>
+        {text}
+      </div>
+    );
+  }
+  const parts = headlineParts(text, highlight);
   return (
     <div
       style={flex({
-        fontFamily: "Figtree",
-        fontWeight: 800,
-        fontSize: size,
-        lineHeight: 1.04,
-        letterSpacing: -size * 0.03,
-        textAlign: align,
-        color,
+        ...type,
+        width: "100%",
+        flexWrap: "wrap",
+        justifyContent: align === "center" ? "center" : "flex-start",
       })}
     >
-      {text}
+      {parts.map((part, index) => (
+        <span
+          key={`${part.text}-${index}`}
+          style={{
+            color: part.hi ? highlightColor : color,
+            marginRight: index === parts.length - 1 ? 0 : size * 0.28,
+          }}
+        >
+          {part.text}
+        </span>
+      ))}
     </div>
   );
 }
@@ -244,6 +302,14 @@ function Check({ color, size }: { color: string; size: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" style={{ marginTop: size * 0.12 }}>
       <path d="M5 12.5l4.5 4.5L19 7.5" stroke={color} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function Cross({ color, size }: { color: string; size: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" style={{ marginTop: size * 0.12 }}>
+      <path d="M6 6l12 12M18 6L6 18" stroke={color} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
@@ -532,11 +598,291 @@ function HeadlinePhone({
   );
 }
 
+function BigNumber({ spec, t, u, W }: { spec: SlideSpec; t: Theme; u: number; W: number }) {
+  const value = String((spec.data as { value?: string } | undefined)?.value ?? "");
+  const size = fitSize(value, W - 140 * u, 300 * u);
+  return (
+    <div style={flex({ flexDirection: "column", alignItems: "center", width: "100%" })}>
+      <div
+        style={flex({
+          fontFamily: "Figtree",
+          fontWeight: 800,
+          fontSize: size,
+          lineHeight: 1,
+          letterSpacing: -size * 0.04,
+          color: t.hi,
+          justifyContent: "center",
+          width: "100%",
+        })}
+      >
+        {value}
+      </div>
+      <div
+        style={flex({
+          marginTop: 30 * u,
+          fontFamily: "Figtree",
+          fontWeight: 800,
+          fontSize: 60 * u,
+          lineHeight: 1.08,
+          letterSpacing: -1.5 * u,
+          color: t.fg,
+          textAlign: "center",
+          justifyContent: "center",
+          width: "100%",
+        })}
+      >
+        {spec.headline}
+      </div>
+      <Support text={spec.support} color={t.fg2} u={u} align="center" />
+    </div>
+  );
+}
+
+function BeforeAfter({
+  spec,
+  t,
+  u,
+  W,
+  H,
+}: {
+  spec: SlideSpec;
+  t: Theme;
+  u: number;
+  W: number;
+  H: number;
+}) {
+  const data = (spec.data ?? {}) as {
+    beforeTitle?: string;
+    before?: string[];
+    afterTitle?: string;
+    after?: string[];
+  };
+  const side = H / W < 1.4;
+  const before = (data.before ?? []).slice(0, 4);
+  const after = (data.after ?? []).slice(0, 4);
+  const lines = (items: string[], good: boolean) =>
+    items.map((item, index) => (
+      <div key={`${item}-${index}`} style={flex({ gap: 16 * u, alignItems: "flex-start", marginBottom: 20 * u })}>
+        {good ? <Check color={tokens.sage} size={31 * u} /> : <Cross color={tokens.red} size={31 * u} />}
+        <div
+          style={flex({
+            flex: 1,
+            fontFamily: "Figtree",
+            fontSize: 31 * u,
+            lineHeight: 1.25,
+            fontWeight: 500,
+            color: tokens.ink,
+          })}
+        >
+          {item}
+        </div>
+      </div>
+    ));
+  return (
+    <div style={flex({ flexDirection: "column", width: "100%", alignItems: "center" })}>
+      <div style={flex({ flexDirection: "column", alignItems: "center", width: "100%" })}>
+        <Headline text={spec.headline} color={t.fg} avail={W - 140 * u} max={100 * u} align="center" />
+        <Support text={spec.support} color={t.fg2} u={u} align="center" />
+      </div>
+      <div
+        style={flex({
+          flexDirection: side ? "row" : "column",
+          gap: 28 * u,
+          width: "100%",
+          marginTop: 48 * u,
+        })}
+      >
+        <div
+          style={flex({
+            flexDirection: "column",
+            flex: side ? 1 : undefined,
+            width: side ? undefined : "100%",
+            background: "#EFE8EA",
+            borderRadius: 40 * u,
+            padding: `${34 * u}px ${44 * u}px`,
+            color: tokens.ink,
+          })}
+        >
+          <div
+            style={flex({
+              fontFamily: "Figtree",
+              fontSize: 26 * u,
+              fontWeight: 700,
+              color: tokens.muted,
+              marginBottom: 22 * u,
+              letterSpacing: 1.5 * u,
+            })}
+          >
+            {(data.beforeTitle || "Before").toUpperCase()}
+          </div>
+          {lines(before, false)}
+        </div>
+        <div
+          style={flex({
+            flexDirection: "column",
+            flex: side ? 1 : undefined,
+            width: side ? undefined : "100%",
+            background: "#fff",
+            borderRadius: 40 * u,
+            boxShadow: softStack,
+            padding: `${34 * u}px ${44 * u}px`,
+            color: tokens.ink,
+          })}
+        >
+          <div
+            style={flex({
+              fontFamily: "Figtree",
+              fontSize: 26 * u,
+              fontWeight: 700,
+              color: tokens.accent,
+              marginBottom: 22 * u,
+              letterSpacing: 1.5 * u,
+            })}
+          >
+            {(data.afterTitle || "After").toUpperCase()}
+          </div>
+          {lines(after, true)}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TipList({ spec, t, u, W }: { spec: SlideSpec; t: Theme; u: number; W: number }) {
+  const tips = ((spec.data as { tips?: { title: string; body?: string }[] } | undefined)?.tips ?? []).slice(0, 5);
+  return (
+    <div style={flex({ flexDirection: "column", width: "100%", alignItems: "flex-start" })}>
+      <Headline text={spec.headline} color={t.fg} avail={W - 140 * u} max={92 * u} align="left" />
+      <Support text={spec.support} color={t.fg2} u={u} align="left" />
+      <div style={flex({ flexDirection: "column", width: "100%", marginTop: 36 * u })}>
+        {tips.map((tip, index) => (
+          <div
+            key={`${tip.title}-${index}`}
+            style={flex({
+              gap: 32 * u,
+              alignItems: "flex-start",
+              padding: `${28 * u}px 0`,
+              borderTop: `${2 * u}px solid ${t.rule}`,
+              width: "100%",
+            })}
+          >
+            <div
+              style={flex({
+                fontFamily: "Figtree",
+                fontWeight: 800,
+                fontSize: 84 * u,
+                lineHeight: 1,
+                color: t.hi,
+                width: 90 * u,
+              })}
+            >
+              {index + 1}
+            </div>
+            <div style={flex({ flexDirection: "column", flex: 1 })}>
+              <div style={flex({ fontFamily: "Figtree", fontWeight: 700, fontSize: 44 * u, lineHeight: 1.15, color: t.fg })}>
+                {tip.title}
+              </div>
+              {tip.body ? (
+                <div
+                  style={flex({
+                    fontFamily: "Figtree",
+                    fontWeight: 500,
+                    fontSize: 34 * u,
+                    lineHeight: 1.3,
+                    marginTop: 8 * u,
+                    color: t.fg2,
+                  })}
+                >
+                  {tip.body}
+                </div>
+              ) : null}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function Steps({ spec, t, u, W }: { spec: SlideSpec; t: Theme; u: number; W: number }) {
+  const steps = ((spec.data as { steps?: { word: string; caption?: string }[] } | undefined)?.steps ?? []).slice(0, 4);
+  return (
+    <div style={flex({ flexDirection: "column", width: "100%", alignItems: "flex-start" })}>
+      <Headline text={spec.headline} color={t.fg} avail={W - 140 * u} max={76 * u} align="left" />
+      <div style={flex({ flexDirection: "column", width: "100%", marginTop: 36 * u })}>
+        {steps.map((step, index) => (
+          <div
+            key={`${step.word}-${index}`}
+            style={flex({
+              flexDirection: "column",
+              padding: `${26 * u}px 0`,
+              borderTop: `${2 * u}px solid ${t.rule}`,
+              width: "100%",
+            })}
+          >
+            <div style={flex({ alignItems: "flex-end", gap: 26 * u })}>
+              <div style={flex({ fontFamily: "Figtree", fontWeight: 700, fontSize: 34 * u, color: t.hi })}>
+                0{index + 1}
+              </div>
+              <div
+                style={flex({
+                  fontFamily: "Figtree",
+                  fontWeight: 800,
+                  fontSize: 118 * u,
+                  lineHeight: 1,
+                  letterSpacing: -3 * u,
+                  color: t.fg,
+                })}
+              >
+                {step.word}
+              </div>
+            </div>
+            {step.caption ? (
+              <div
+                style={flex({
+                  fontFamily: "Figtree",
+                  fontWeight: 500,
+                  fontSize: 36 * u,
+                  marginTop: 10 * u,
+                  marginLeft: 76 * u,
+                  color: t.fg2,
+                })}
+              >
+                {step.caption}
+              </div>
+            ) : null}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function Statement({ spec, t, u, W }: { spec: SlideSpec; t: Theme; u: number; W: number }) {
+  const highlight = (spec.data as { highlight?: string } | undefined)?.highlight;
+  return (
+    <div style={flex({ flexDirection: "column", width: "100%", alignItems: "flex-start" })}>
+      <Headline
+        text={spec.headline}
+        color={t.fg}
+        avail={W - 140 * u}
+        max={132 * u}
+        align="left"
+        highlight={highlight}
+        highlightColor={t.hi}
+      />
+      <Support text={spec.support} color={t.fg2} u={u} align="left" size={40} maxWidth={820 * u} />
+    </div>
+  );
+}
+
+const LEFT_LAYOUTS = new Set(["headline-phone", "tip-list", "steps", "statement"]);
+
 export function SlideImage({ spec, width, height }: { spec: SlideSpec; width: number; height: number }) {
   const t = themes[spec.theme] ?? themes.blush;
   const u = width / 1080;
   const tall = height / width > 1.6;
-  const left = spec.layout === "headline-phone";
+  const left = LEFT_LAYOUTS.has(spec.layout);
   const showCta = spec.cta !== false && spec.layout !== "headline-phone";
   return (
     <div
@@ -556,6 +902,16 @@ export function SlideImage({ spec, width, height }: { spec: SlideSpec; width: nu
       <StillWordmark size={(left ? 54 : 62) * u} color={t.wm} dot={t.dot} />
       {spec.layout === "headline-phone" ? (
         <HeadlinePhone spec={spec} t={t} u={u} W={width} H={height} />
+      ) : spec.layout === "big-number" ? (
+        <BigNumber spec={spec} t={t} u={u} W={width} />
+      ) : spec.layout === "before-after" ? (
+        <BeforeAfter spec={spec} t={t} u={u} W={width} H={height} />
+      ) : spec.layout === "tip-list" ? (
+        <TipList spec={spec} t={t} u={u} W={width} />
+      ) : spec.layout === "steps" ? (
+        <Steps spec={spec} t={t} u={u} W={width} />
+      ) : spec.layout === "statement" ? (
+        <Statement spec={spec} t={t} u={u} W={width} />
       ) : (
         <HeadlineCard spec={spec} t={t} u={u} W={width} />
       )}
@@ -572,13 +928,15 @@ export function SlideImage({ spec, width, height }: { spec: SlideSpec; width: nu
               borderRadius: 999,
             })}
           >
-            Start free
+            {spec.ctaLabel || "Start free"}
           </div>
           <div style={flex({ color: t.url, fontFamily: "Figtree", fontWeight: 700, fontSize: 34 * u })}>
-            usefirstlook.app
+            {spec.url || "usefirstlook.app"}
           </div>
         </div>
-      ) : null}
+      ) : spec.layout === "headline-phone" ? null : (
+        <div style={flex()} />
+      )}
     </div>
   );
 }

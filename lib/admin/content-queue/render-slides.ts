@@ -8,9 +8,8 @@ import type { SlideSpec } from "@/lib/admin/content-queue/slide-spec";
 export type StillRenderer = "satori" | "still-host";
 
 /**
- * Headline-card and headline-phone render in-process. The pin-size check
- * (stills/satori-check) kept the type on the frame, the phone bezel and
- * inner clip, and a visible soft shadow. Other layouts need STILL_RENDER_URL.
+ * All seven still layouts render in-process. STILL_RENDER_URL, when set,
+ * sends every slide to that host instead.
  */
 export const USE_SATORI_FOR_SUPPORTED_LAYOUTS = true;
 
@@ -48,7 +47,7 @@ export async function renderSlidePngs(
     const layouts = unsupported.map((spec) => spec.layout).join(", ");
     throw new Error(
       layouts
-        ? `STILL_RENDER_URL is not configured. Satori only covers headline-card and headline-phone (this post needs ${layouts}).`
+        ? `STILL_RENDER_URL is not configured. These layouts are not drawn in the app (${layouts}).`
         : "STILL_RENDER_URL is not configured.",
     );
   }
