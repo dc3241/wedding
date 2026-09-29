@@ -43,7 +43,7 @@ const FREE_COPY: Record<AccountKind, string> = {
   personal:
     "Start your 7-day free trial to unlock the full couple experience.",
   business:
-    "You're on the free plan. Subscribe to unlock the full planner workspace.",
+    "The workspace is locked until you subscribe.",
 };
 
 export default async function BillingPage({

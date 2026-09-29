@@ -8,13 +8,13 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Pricing",
   description:
-    "Couples plan free and upgrade when the big stuff kicks in. Planners run their whole book from one account.",
+    "Couples open the workspace on a 7-day trial, then the Couple plan. Planners run their whole book from one account.",
 };
 
 const FAQS = [
   {
     q: "Do I keep paying after the wedding?",
-    a: "No. Couples cancel anytime — most keep the Couple plan through the honeymoon, then switch back to Free. Your site and plan stay viewable.",
+    a: "No. Cancel anytime. The workspace locks until you subscribe again. A site already published at its public address stays up, and nothing is deleted.",
   },
   {
     q: "Can I switch plans later?",
@@ -26,7 +26,7 @@ const FAQS = [
   },
   {
     q: "What happens to my data if I cancel?",
-    a: "Nothing disappears. Your account drops to read-only on the free feature set — you keep access to your plan, guest list, and website.",
+    a: "Nothing is deleted. The workspace locks until you subscribe again, and a site already published at its public address stays up.",
   },
 ] as const;
 
@@ -42,9 +42,9 @@ export default function PricingPage() {
               One workspace. Two sides of the aisle.
             </h1>
             <p className="mt-4 text-[15px] leading-relaxed text-muted md:text-[16px]">
-              Couples plan free and upgrade when the big stuff kicks in.
-              Planners run their whole book from one account. No setup fees,
-              cancel anytime.
+              Couples open the workspace on a 7-day trial, then the Couple
+              plan. Planners run their whole book from one account. No setup
+              fees, cancel anytime.
             </p>
           </div>
 

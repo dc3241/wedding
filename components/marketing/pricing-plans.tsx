@@ -16,7 +16,6 @@ const COUPLE_MONTHLY_PRICE = 10;
 const COUPLE_LIFETIME_PRICE = 99;
 
 const COUPLE_FEATURES = [
-  "Everything in Free",
   "Planning assistant & vendor outreach",
   "Full budget with vendor links",
   "Seating chart, RSVP & registry",
