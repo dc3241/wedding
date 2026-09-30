@@ -120,7 +120,7 @@ function LeadColumn({
 
   return (
     <section ref={setNodeRef} className="flex min-w-0 flex-1 flex-col">
-      <div className="mb-2 flex items-baseline justify-between gap-2 px-1">
+      <div className="mb-2 flex items-baseline gap-1.5 px-1">
         <Eyebrow>{LEAD_STAGE_LABEL[stage]}</Eyebrow>
         <span className="text-[13px] tabular-nums text-muted">{leads.length}</span>
       </div>
