@@ -72,16 +72,7 @@ export async function getContentBank(
       "id, platform, idea, type, format, title, body, notes, audience_group, source_queue_id, image_paths, created_at",
     )
     .order("created_at", { ascending: false });
-  const rows = (data ?? []) as Omit<ContentBankItem, "image_urls">[];
-  return Promise.all(
-    rows.map(async (row) => ({
-      ...row,
-      image_urls: await signQueueImagePaths(
-        supabase,
-        (row.image_paths ?? []).filter((p) => p.trim().length > 0),
-      ),
-    })),
-  );
+  return (data ?? []) as ContentBankItem[];
 }
 
 export async function getMediaAssets(

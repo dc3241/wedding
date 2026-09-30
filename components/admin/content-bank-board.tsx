@@ -3,7 +3,6 @@
 import {
   createBankItem,
   deleteBankItem,
-  getContentBankDownloadUrl,
   updateBankItem,
   type BankItemInput,
 } from "@/app/(admin)/admin/bank/actions";
@@ -16,6 +15,7 @@ import { Pill } from "@/components/ui/pill";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import {
+  filledImagePaths,
   formatLabel,
   formatNeedsImages,
   isContentPostFormat,
@@ -55,6 +55,13 @@ function bankAspect(platform: ContentPlatform) {
   if (platform === "pinterest") return "aspect-[2/3]";
   // TikTok photo slides + IG share carousel sizing (4:5).
   return "aspect-[4/5]";
+}
+
+/** Same-origin URL. The route signs the object when the browser asks for it. */
+function bankImageSrc(id: string, index: number, download = false) {
+  const params = new URLSearchParams({ id, index: String(index) });
+  if (download) params.set("download", "1");
+  return `/api/admin/bank-image?${params.toString()}`;
 }
 
 function BankForm({
@@ -213,10 +220,9 @@ function QueueSourcedCard({
 }) {
   const [imageIndex, setImageIndex] = useState(0);
   const [copied, setCopied] = useState(false);
-  const [isPending, startTransition] = useTransition();
   const meta = platformMeta(item.platform);
-  const urls = item.image_urls ?? [];
-  const count = urls.length;
+  const count = filledImagePaths(item.image_paths).length;
+  const safeIndex = Math.min(imageIndex, Math.max(count - 1, 0));
   const formatText = isContentPostFormat(item.format)
     ? formatLabel(item.format)
     : item.format;
@@ -226,13 +232,6 @@ function QueueSourcedCard({
     void navigator.clipboard.writeText(item.body).then(() => {
       setCopied(true);
       window.setTimeout(() => setCopied(false), 1500);
-    });
-  }
-
-  function handleDownload() {
-    startTransition(async () => {
-      const url = await getContentBankDownloadUrl(item.id, imageIndex);
-      window.open(url, "_blank", "noopener,noreferrer");
     });
   }
 
@@ -264,14 +263,18 @@ function QueueSourcedCard({
             bankAspect(item.platform),
           )}
         >
-          {/* eslint-disable-next-line @next/next/no-img-element -- short-lived signed URL */}
-          <img src={urls[Math.min(imageIndex, count - 1)]} alt="" className="size-full object-cover" />
+          {/* eslint-disable-next-line @next/next/no-img-element -- signed on request, not at page render */}
+          <img
+            src={bankImageSrc(item.id, safeIndex)}
+            alt=""
+            className="size-full object-cover"
+          />
           {count > 1 ? (
             <>
               <button
                 type="button"
                 aria-label="Previous image"
-                onClick={() => setImageIndex((imageIndex - 1 + count) % count)}
+                onClick={() => setImageIndex((safeIndex - 1 + count) % count)}
                 className="absolute top-1/2 left-2 flex size-8 -translate-y-1/2 items-center justify-center rounded-[var(--radius-pill)] bg-surface/90 text-[15px] font-semibold text-ink"
               >
                 ‹
@@ -279,7 +282,7 @@ function QueueSourcedCard({
               <button
                 type="button"
                 aria-label="Next image"
-                onClick={() => setImageIndex((imageIndex + 1) % count)}
+                onClick={() => setImageIndex((safeIndex + 1) % count)}
                 className="absolute top-1/2 right-2 flex size-8 -translate-y-1/2 items-center justify-center rounded-[var(--radius-pill)] bg-surface/90 text-[15px] font-semibold text-ink"
               >
                 ›
@@ -300,14 +303,14 @@ function QueueSourcedCard({
           {copied ? "Copied" : "Copy caption"}
         </button>
         {count > 0 ? (
-          <button
-            type="button"
-            disabled={isPending}
-            onClick={handleDownload}
-            className="text-[13px] font-medium text-accent hover:underline disabled:opacity-50"
+          <a
+            href={bankImageSrc(item.id, safeIndex, true)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-[13px] font-medium text-accent hover:underline"
           >
             Download
-          </button>
+          </a>
         ) : null}
         <button
           type="button"
@@ -357,7 +360,6 @@ export function ContentBankBoard({
         audience_group: audience,
         source_queue_id: null,
         image_paths: [],
-        image_urls: [],
         ...input,
       };
       setLocalItems((prev) => [temp, ...prev]);
@@ -420,7 +422,7 @@ export function ContentBankBoard({
           {filtered.map((item) => {
             const showSourced =
               Boolean(item.source_queue_id) ||
-              (item.image_urls?.length ?? 0) > 0 ||
+              filledImagePaths(item.image_paths).length > 0 ||
               (isContentPostFormat(item.format) && !formatNeedsImages(item.format));
             if (showSourced) {
               return (

@@ -50,7 +50,6 @@ export type ContentBankItem = {
   source_queue_id: string | null;
   image_paths: string[];
   created_at: string;
-  image_urls: string[];
 };
 
 export type MediaAsset = {
