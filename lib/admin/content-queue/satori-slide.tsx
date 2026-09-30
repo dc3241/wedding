@@ -928,10 +928,10 @@ export function SlideImage({ spec, width, height }: { spec: SlideSpec; width: nu
               borderRadius: 999,
             })}
           >
-            {spec.ctaLabel || "Start free"}
+            Start free
           </div>
           <div style={flex({ color: t.url, fontFamily: "Figtree", fontWeight: 700, fontSize: 34 * u })}>
-            {spec.url || "usefirstlook.app"}
+            usefirstlook.app
           </div>
         </div>
       ) : spec.layout === "headline-phone" ? null : (

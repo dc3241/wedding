@@ -1,12 +1,12 @@
 import fs from "node:fs/promises";
 import { renderSatoriSlide } from "../lib/admin/content-queue/satori-slide";
-import type { SlideFormat, SlideLayout, SlideSpec, SlideTheme } from "../lib/admin/content-queue/slide-spec";
+import type { SlideFormat, SlideSpec, SlideTheme } from "../lib/admin/content-queue/slide-spec";
 
 const themes: SlideTheme[] = ["blush", "white", "ink", "rose", "sage"];
 const formats: SlideFormat[] = ["pin", "tiktok"];
-const layouts: SlideLayout[] = ["statement", "tip-list", "before-after", "steps", "big-number"];
+const layouts = ["statement", "tip-list", "before-after", "steps", "big-number"] as const;
 
-const copy: Record<(typeof layouts)[number], Omit<SlideSpec, "format" | "theme">> = {
+const copy: Record<(typeof layouts)[number], SlideSpec> = {
   statement: {
     format: "pin",
     layout: "statement",
