@@ -1,10 +1,13 @@
 import { cn } from "@/lib/cn";
 import type { SelectHTMLAttributes } from "react";
 
-type SelectProps = SelectHTMLAttributes<HTMLSelectElement>;
+type SelectProps = SelectHTMLAttributes<HTMLSelectElement> & {
+  /** Shorter recessed control for dense rows. */
+  compact?: boolean;
+};
 
 const fieldClasses =
-  "peer w-full appearance-none rounded-[var(--radius-inner)] border border-ring bg-surface py-2.5 pl-3.5 pr-10 text-[15px] font-medium text-ink transition-colors disabled:opacity-50";
+  "peer w-full appearance-none rounded-[var(--radius-inner)] border font-medium text-ink transition-colors disabled:opacity-50";
 
 function SelectChevron() {
   return (
@@ -23,10 +26,19 @@ function SelectChevron() {
   );
 }
 
-export function Select({ className, ...props }: SelectProps) {
+export function Select({ className, compact = false, ...props }: SelectProps) {
   return (
     <span className="relative block w-full min-w-0">
-      <select className={cn(fieldClasses, className)} {...props} />
+      <select
+        className={cn(
+          fieldClasses,
+          compact
+            ? "border-transparent bg-well py-1.5 pl-3 pr-8 text-[13px] shadow-recessed"
+            : "border-ring bg-surface py-2.5 pl-3.5 pr-10 text-[15px]",
+          className,
+        )}
+        {...props}
+      />
       <SelectChevron />
     </span>
   );

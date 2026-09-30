@@ -25,7 +25,6 @@ import { reorderLeads } from "@/app/(app)/leads/actions";
 import type { AgentDraftPreview } from "@/components/assistant/types";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Eyebrow } from "@/components/ui/eyebrow";
-import { Pill } from "@/components/ui/pill";
 import type { AccountPlan } from "@/lib/account-context";
 import { cn } from "@/lib/cn";
 import { getCopy } from "@/lib/venue-copy";
@@ -42,7 +41,6 @@ import {
 } from "./leads-board-utils";
 import {
   LEAD_STAGE_LABEL,
-  LEAD_STAGE_VARIANT,
   LEAD_STAGES,
   type Lead,
   type LeadStage,
@@ -93,7 +91,7 @@ function SortableLeadCard({
             {...attributes}
             {...listeners}
             aria-label={`Drag ${lead.couple_name}`}
-            className="mt-0.5 flex h-6 w-4 shrink-0 cursor-grab touch-none flex-col items-center justify-center gap-0.5 rounded text-muted hover:text-ink active:cursor-grabbing"
+            className="mt-0.5 flex h-7 w-4 shrink-0 cursor-grab touch-none flex-col items-center justify-center gap-0.5 rounded text-muted hover:text-ink active:cursor-grabbing"
           >
             <span className="block h-0.5 w-2.5 rounded-full bg-current" />
             <span className="block h-0.5 w-2.5 rounded-full bg-current" />
@@ -121,22 +119,21 @@ function LeadColumn({
   const { setNodeRef, isOver } = useDroppable({ id: stage });
 
   return (
-    <section
-      ref={setNodeRef}
-      className={cn(
-        "flex min-w-0 flex-1 flex-col rounded-[var(--radius-card)] border border-hairline bg-surface",
-        isOver && "border-accent",
-      )}
-    >
-      <div className="flex items-center gap-2 border-b border-hairline px-3 py-2.5">
+    <section ref={setNodeRef} className="flex min-w-0 flex-1 flex-col">
+      <div className="mb-2 flex items-baseline justify-between gap-2 px-1">
         <Eyebrow>{LEAD_STAGE_LABEL[stage]}</Eyebrow>
-        <Pill variant={LEAD_STAGE_VARIANT[stage]}>{leads.length}</Pill>
+        <span className="text-[13px] tabular-nums text-muted">{leads.length}</span>
       </div>
       <SortableContext
         items={leads.map((lead) => lead.id)}
         strategy={verticalListSortingStrategy}
       >
-        <ul className="flex min-h-[120px] min-w-0 flex-1 flex-col gap-2 p-2">
+        <ul
+          className={cn(
+            "flex min-h-[120px] min-w-0 flex-1 flex-col gap-2.5 rounded-[var(--radius-inner)] p-1 transition-colors",
+            isOver && "bg-well",
+          )}
+        >
           {leads.map((lead) => (
             <li key={lead.id} className="min-w-0">
               <SortableLeadCard
