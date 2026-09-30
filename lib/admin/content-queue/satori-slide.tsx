@@ -159,14 +159,20 @@ let fontCache: { name: string; data: Buffer; weight: 400 | 500 | 600 | 700 | 800
 
 function loadFonts() {
   if (fontCache) return fontCache;
-  const dir = path.join(process.cwd(), "lib/admin/content-queue/fonts");
-  const weights = [400, 500, 600, 700, 800] as const;
-  fontCache = weights.map((weight) => ({
+  const font = (file: string, weight: 400 | 500 | 600 | 700 | 800) => ({
     name: "Figtree",
-    data: fs.readFileSync(path.join(dir, `figtree-latin-${weight}-normal.woff`)),
+    data: fs.readFileSync(file),
     weight,
     style: "normal" as const,
-  }));
+  });
+  const dir = path.join(process.cwd(), "lib/admin/content-queue/fonts");
+  fontCache = [
+    font(path.join(dir, "figtree-latin-400-normal.woff"), 400),
+    font(path.join(dir, "figtree-latin-500-normal.woff"), 500),
+    font(path.join(dir, "figtree-latin-600-normal.woff"), 600),
+    font(path.join(dir, "figtree-latin-700-normal.woff"), 700),
+    font(path.join(dir, "figtree-latin-800-normal.woff"), 800),
+  ];
   return fontCache;
 }
 
