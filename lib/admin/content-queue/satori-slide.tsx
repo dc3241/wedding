@@ -165,7 +165,9 @@ function websiteShotSrc(shot: unknown): string | null {
   const cached = shotCache.get(shot);
   if (cached) return cached;
   const file = path.join(process.cwd(), "stills/public/website", `${shot}.png`);
-  if (!fs.existsSync(file)) return null;
+  if (!fs.existsSync(file)) {
+    throw new Error(`Wedding website screenshot missing: stills/public/website/${shot}.png`);
+  }
   const src = `data:image/png;base64,${fs.readFileSync(file).toString("base64")}`;
   shotCache.set(shot, src);
   return src;

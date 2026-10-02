@@ -2,10 +2,17 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   // Satori reads these at runtime. A joined filename is not traced into the
-  // server bundle, so production render throws ENOENT for the font file.
+  // server bundle. A missing font throws; a missing website screenshot used
+  // to draw the placeholder phone instead.
   outputFileTracingIncludes: {
-    "/admin/content-queue": ["./lib/admin/content-queue/fonts/**/*"],
-    "/api/admin/ideation/produce": ["./lib/admin/content-queue/fonts/**/*"],
+    "/admin/content-queue": [
+      "./lib/admin/content-queue/fonts/**/*",
+      "./stills/public/website/**/*",
+    ],
+    "/api/admin/ideation/produce": [
+      "./lib/admin/content-queue/fonts/**/*",
+      "./stills/public/website/**/*",
+    ],
   },
   experimental: {
     // Opt out of Turbopack's persisted .next cache. On this machine it has been
