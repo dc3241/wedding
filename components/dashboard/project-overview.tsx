@@ -207,6 +207,9 @@ export function ProjectOverview({
   // Cap display width at 100; over-budget flips fill color.
   const budgetBarPct = budgetOver ? 100 : budgetPct;
   const budgetFill = budgetOver ? "rosewood" : "accent";
+  const nextPaymentPill = nextPayment
+    ? overviewDuePill(nextPayment.due_on, todayKey, nextPayment.pastDue)
+    : null;
 
   const countdownError = errors.project;
   const checklistError = errors.tasks;
@@ -393,42 +396,35 @@ export function ProjectOverview({
             <div className="mt-4">
               <LoadError label="payment schedule" />
             </div>
-          ) : nextPayment ? (
+          ) : nextPayment && nextPaymentPill ? (
             <>
-              <div className="mt-4 flex flex-wrap items-center gap-4 rounded-[var(--radius-inner)] bg-well px-[18px] py-4 shadow-recessed">
-                <div className="min-w-0 flex-1">
-                  <p className="text-[15px] font-semibold text-ink">
+              <div className="mt-4 rounded-[var(--radius-inner)] bg-well px-4 py-3.5 shadow-recessed">
+                <div className="flex items-start justify-between gap-3">
+                  <p className="min-w-0 text-[15px] font-medium leading-snug text-ink">
                     {nextPayment.primary}
                   </p>
-                  <p className="mt-0.5 text-[13px] font-medium text-muted">
+                  <span
+                    className={cn(
+                      "shrink-0 rounded-[var(--radius-pill)] px-3 py-1.5 text-[12px] font-bold uppercase tracking-[0.04em]",
+                      nextPaymentPill.urgent
+                        ? "bg-rosewood-wash text-rosewood"
+                        : "bg-clay-wash text-clay",
+                    )}
+                  >
+                    {nextPaymentPill.label}
+                  </span>
+                </div>
+                <div className="mt-2 flex items-end justify-between gap-3">
+                  <p className="min-w-0 text-[13px] font-medium leading-snug text-muted">
                     {nextPayment.label?.trim()
                       ? `${nextPayment.label.trim()} · `
                       : ""}
                     due {formatShortDate(nextPayment.due_on)}
                   </p>
+                  <p className="shrink-0 font-display text-[22px] font-extrabold tracking-[-0.03em] tabular-nums text-ink">
+                    {formatCurrency(nextPayment.amount)}
+                  </p>
                 </div>
-                <p className="font-display text-[30px] font-extrabold tracking-[-0.03em] tabular-nums text-ink">
-                  {formatCurrency(nextPayment.amount)}
-                </p>
-                {(() => {
-                  const pill = overviewDuePill(
-                    nextPayment.due_on,
-                    todayKey,
-                    nextPayment.pastDue,
-                  );
-                  return (
-                    <span
-                      className={cn(
-                        "rounded-[var(--radius-pill)] px-3 py-1.5 text-[12px] font-bold uppercase tracking-[0.04em]",
-                        pill.urgent
-                          ? "bg-rosewood-wash text-rosewood"
-                          : "bg-clay-wash text-clay",
-                      )}
-                    >
-                      {pill.label}
-                    </span>
-                  );
-                })()}
               </div>
               {nextPayment.moreThisQuarter.count > 0 ? (
                 <p className="mt-3 text-[13px] font-medium text-muted">
