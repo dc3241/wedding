@@ -1,5 +1,5 @@
 import React from 'react';
-import {AbsoluteFill} from 'remotion';
+import {AbsoluteFill, Img, staticFile} from 'remotion';
 import {tokens, themes, softStack, fontSans} from './brand.js';
 import {Wordmark} from './Wordmark.jsx';
 
@@ -188,8 +188,11 @@ const HeadlineCard = ({spec, t, u, W, H}) => {
   );
 };
 
-const PhoneShell = ({w, ring = 'transparent', children}) => {
+const WEBSITE_SHOTS = new Set(['where-when', 'timeline', 'look']);
+
+const PhoneShell = ({w, ring = 'transparent', shot, children}) => {
   const p = w / 500;
+  const baked = WEBSITE_SHOTS.has(shot);
   return (
     <div
       style={{
@@ -211,11 +214,27 @@ const PhoneShell = ({w, ring = 'transparent', children}) => {
           background: tokens.canvas,
           overflow: 'hidden',
           position: 'relative',
-          padding: `${74 * p}px ${28 * p}px ${28 * p}px`,
+          padding: baked ? 0 : `${74 * p}px ${28 * p}px ${28 * p}px`,
           boxSizing: 'border-box',
           color: tokens.ink,
         }}
       >
+        {baked ? (
+          <Img
+            src={staticFile(`website/${shot}.png`)}
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+              objectPosition: 'top center',
+            }}
+          />
+        ) : (
+          children(p)
+        )}
         <div
           style={{
             position: 'absolute',
@@ -228,7 +247,6 @@ const PhoneShell = ({w, ring = 'transparent', children}) => {
             background: '#1B1417',
           }}
         />
-        {children(p)}
       </div>
     </div>
   );
@@ -259,7 +277,7 @@ const HeadlinePhone = ({spec, t, u, W, H}) => {
         }}
       >
         <div style={{transform: `translateY(${phoneW * 0.06}px)`}}>
-          <PhoneShell w={phoneW} ring={t.ring}>
+          <PhoneShell w={phoneW} ring={t.ring} shot={d.shot}>
             {(p) => (
               <div>
                 <div style={{background: '#fff', borderRadius: 28 * p, padding: 26 * p, boxShadow: softStack}}>

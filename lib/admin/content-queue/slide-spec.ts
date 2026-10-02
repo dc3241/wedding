@@ -72,6 +72,7 @@ export const layoutDataSchemas = {
       .max(5),
   }),
   "headline-phone": z.object({
+    shot: z.enum(["where-when", "timeline", "look"]).optional(),
     hero: z.object({
       label: clip(32),
       value: clip(24),
@@ -242,12 +243,14 @@ export function slidesFromModel(
   return { fragments, degraded };
 }
 
-export function stylesFromSpecs(value: unknown): { layout: SlideLayout; theme: SlideTheme }[] {
+export function stylesFromSpecs(value: unknown): { layout: SlideLayout; theme: SlideTheme; shot?: string }[] {
   if (!Array.isArray(value)) return [];
   return value.flatMap((item) => {
     const row = asRecord(item);
     if (!row || !isSlideLayout(row.layout) || !isSlideTheme(row.theme)) return [];
-    return [{ layout: row.layout, theme: row.theme }];
+    const data = asRecord(row.data);
+    const shot = typeof data?.shot === "string" ? data.shot : undefined;
+    return [{ layout: row.layout, theme: row.theme, ...(shot ? { shot } : {}) }];
   });
 }
 

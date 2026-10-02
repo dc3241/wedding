@@ -2,12 +2,31 @@ import type { SlideLayout } from "@/lib/admin/content-queue/slide-spec";
 
 /**
  * Authored UI for each product-shot slug. Labels and figures come from
- * design/product-shots and the hero copy in product-shots.ts. The still
- * never embeds the screenshot.
+ * design/product-shots and the hero copy in product-shots.ts.
  *
  * List surfaces use headline-card. Budget, overview, and the other
  * "one motif" surfaces use headline-phone.
+ *
+ * The wedding website is the exception: a redrawn phone cannot carry the
+ * guest-site templates, so that surface fills the bezel with a baked
+ * screenshot from stills/public/website.
  */
+
+export const WEBSITE_SHOTS = ["where-when", "timeline", "look"] as const;
+export type WebsiteShot = (typeof WEBSITE_SHOTS)[number];
+
+export function isWebsiteShot(value: unknown): value is WebsiteShot {
+  return (WEBSITE_SHOTS as readonly string[]).includes(String(value));
+}
+
+/** Prefer a shot that has not appeared in the recent queue. */
+export function pickWebsiteShot(recent: readonly string[], avoid: readonly string[] = []): WebsiteShot {
+  const blocked = new Set([...avoid, ...recent]);
+  const fresh = WEBSITE_SHOTS.find((shot) => !blocked.has(shot));
+  if (fresh) return fresh;
+  const rotated = WEBSITE_SHOTS.find((shot) => !avoid.includes(shot));
+  return rotated ?? "where-when";
+}
 
 type CardData = {
   tabs?: string[];
@@ -15,6 +34,7 @@ type CardData = {
 };
 
 type PhoneData = {
+  shot?: WebsiteShot;
   hero: { label: string; value: string; chip?: string; sub?: string };
   listTitle?: string;
   items?: { label: string; note?: string; tone?: "good" | "warn" | "bad" | "neutral" }[];
@@ -22,6 +42,31 @@ type PhoneData = {
   bulletsTitle?: string;
   bullets?: string[];
 };
+
+const WEBSITE_COPY: Record<WebsiteShot, { bulletsTitle: string; bullets: string[] }> = {
+  "where-when": {
+    bulletsTitle: "On the page",
+    bullets: ["Ceremony", "Reception", "The address"],
+  },
+  timeline: {
+    bulletsTitle: "The day",
+    bullets: ["Getting ready", "Ceremony", "Dinner and toasts"],
+  },
+  look: {
+    bulletsTitle: "Their site",
+    bullets: ["Five templates", "A palette they pick", "A live preview"],
+  },
+};
+
+function websiteSurface(shot: WebsiteShot): PhoneData {
+  const copy = WEBSITE_COPY[shot];
+  return {
+    shot,
+    hero: { label: "Wedding site", value: "Garden", chip: "Sage", sub: "Template and palette" },
+    bulletsTitle: copy.bulletsTitle,
+    bullets: copy.bullets,
+  };
+}
 
 const CARD: Record<string, CardData> = {
   guests: {
@@ -162,11 +207,6 @@ const PHONE: Record<string, PhoneData> = {
     bulletsTitle: "How it goes",
     bullets: ["Drag a guest", "Drop them at a table", "Share the plan"],
   },
-  website: {
-    hero: { label: "Wedding site", value: "Romance", chip: "Live", sub: "Template and palette" },
-    bulletsTitle: "On the page",
-    bullets: ["Schedule", "Travel", "RSVP"],
-  },
   branding: {
     hero: { label: "Your brand", value: "Accent", chip: "Live", sub: "Name, logo, and color" },
     bulletsTitle: "What couples see",
@@ -175,12 +215,13 @@ const PHONE: Record<string, PhoneData> = {
 };
 
 export function surfaceLayout(slug: string): Extract<SlideLayout, "headline-card" | "headline-phone"> | null {
-  if (PHONE[slug]) return "headline-phone";
+  if (slug === "website" || PHONE[slug]) return "headline-phone";
   if (CARD[slug]) return "headline-card";
   return null;
 }
 
-export function surfaceData(slug: string): Record<string, unknown> | null {
+export function surfaceData(slug: string, shot?: WebsiteShot): Record<string, unknown> | null {
+  if (slug === "website") return websiteSurface(shot && isWebsiteShot(shot) ? shot : "where-when");
   if (PHONE[slug]) return PHONE[slug];
   if (CARD[slug]) return CARD[slug];
   return null;

@@ -13,9 +13,15 @@ import {
   type SlideSpec,
   type SlideTheme,
 } from "@/lib/admin/content-queue/slide-spec";
-import { surfaceData, surfaceLayout } from "@/lib/admin/content-queue/surface-data";
+import {
+  isWebsiteShot,
+  pickWebsiteShot,
+  surfaceData,
+  surfaceLayout,
+  type WebsiteShot,
+} from "@/lib/admin/content-queue/surface-data";
 
-export type RecentStyle = { layout: SlideLayout; theme: SlideTheme };
+export type RecentStyle = { layout: SlideLayout; theme: SlideTheme; shot?: string };
 
 const THEME_ORDER = SLIDE_THEMES;
 
@@ -144,9 +150,13 @@ function chooseLayout(
   return varied ?? pool[0] ?? "statement";
 }
 
-function dataFor(layout: SlideLayout, fragment: SlideFragment): Record<string, unknown> {
+function dataFor(
+  layout: SlideLayout,
+  fragment: SlideFragment,
+  websiteShot?: WebsiteShot,
+): Record<string, unknown> {
   if (fragment.surface && (layout === "headline-card" || layout === "headline-phone")) {
-    return surfaceData(fragment.surface) ?? {};
+    return surfaceData(fragment.surface, fragment.surface === "website" ? websiteShot : undefined) ?? {};
   }
   if (layout === "statement") {
     const highlight = fragment.data.highlight;
@@ -173,6 +183,7 @@ export function selectSlideSpecs(args: {
   recent?: RecentStyle[];
   avoidThemes?: readonly SlideTheme[];
   avoidLayout?: SlideLayout;
+  avoidShots?: readonly string[];
 }): SlideSpec[] {
   const size = stillFormatFor(
     args.platform,
@@ -181,6 +192,10 @@ export function selectSlideSpecs(args: {
   if (!size || args.fragments.length === 0) return [];
 
   const recent = args.recent ?? [];
+  const websiteShot = pickWebsiteShot(
+    recent.map((style) => style.shot).filter(isWebsiteShot),
+    (args.avoidShots ?? []).filter(isWebsiteShot),
+  );
   const fragments = normalizeFragments(args.fragments, args.contentType);
   const used = new Set<SlideLayout>();
   const layouts = fragments.map((fragment, index) => {
@@ -201,7 +216,7 @@ export function selectSlideSpecs(args: {
       ...(support ? { support } : {}),
       cta: ctaFor(args.contentType, layout, index, fragments.length),
       surface: fragment.surface,
-      data: dataFor(layout, fragment),
+      data: dataFor(layout, fragment, websiteShot),
     };
   });
 }
@@ -226,8 +241,16 @@ export function shuffleSlideSpecs(
     platform,
     contentType,
     fragments,
-    recent: [...recent, ...specs.map((spec) => ({ layout: spec.layout, theme: spec.theme }))],
+    recent: [
+      ...recent,
+      ...specs.map((spec) => ({
+        layout: spec.layout,
+        theme: spec.theme,
+        shot: typeof spec.data?.shot === "string" ? spec.data.shot : undefined,
+      })),
+    ],
     avoidThemes: currentTheme ? [currentTheme] : [],
     avoidLayout: specs.length === 1 && !specs[0]?.surface ? specs[0]?.layout : undefined,
+    avoidShots: specs.flatMap((spec) => (typeof spec.data?.shot === "string" ? [spec.data.shot] : [])),
   });
 }

@@ -4,6 +4,7 @@ import { ImageResponse } from "next/og";
 import type { CSSProperties } from "react";
 import { StillWordmark } from "@/lib/admin/content-queue/StillWordmark";
 import type { SlideSpec, SlideTone } from "@/lib/admin/content-queue/slide-spec";
+import { isWebsiteShot } from "@/lib/admin/content-queue/surface-data";
 
 /** Every still layout. Drawn in-process; no render host required. */
 export const SATORI_LAYOUTS = [
@@ -156,6 +157,19 @@ function fitSize(text: string, avail: number, max: number): number {
 
 let fontCache: { name: string; data: Buffer; weight: 400 | 500 | 600 | 700 | 800; style: "normal" }[] | null =
   null;
+
+const shotCache = new Map<string, string>();
+
+function websiteShotSrc(shot: unknown): string | null {
+  if (!isWebsiteShot(shot)) return null;
+  const cached = shotCache.get(shot);
+  if (cached) return cached;
+  const file = path.join(process.cwd(), "stills/public/website", `${shot}.png`);
+  if (!fs.existsSync(file)) return null;
+  const src = `data:image/png;base64,${fs.readFileSync(file).toString("base64")}`;
+  shotCache.set(shot, src);
+  return src;
+}
 
 function loadFonts() {
   if (fontCache) return fontCache;
@@ -518,18 +532,23 @@ function HeadlinePhone({
   u,
   W,
   H,
+  shotSrc,
 }: {
   spec: SlideSpec;
   t: Theme;
   u: number;
   W: number;
   H: number;
+  shotSrc?: string | null;
 }) {
   const data = (spec.data ?? {}) as { bulletsTitle?: string; bullets?: string[] };
   const bullets = (data.bullets ?? []).slice(0, 5);
   const visible = H - 640 * u;
   const phoneW = Math.min(500 * u, visible / 1.54);
   const p = phoneW / 500;
+  const baked = Boolean(shotSrc);
+  const screenW = phoneW - 24 * p;
+  const screenH = phoneW * 2.05 - 24 * p;
   return (
     <div style={flex({ flexDirection: "column", width: "100%" })}>
       <div style={flex({ flexDirection: "column", alignItems: "flex-start", marginTop: 44 * u, width: "100%" })}>
@@ -551,15 +570,30 @@ function HeadlinePhone({
             <div
               style={flex({
                 flexDirection: "column",
-                width: "100%",
-                height: "100%",
+                width: baked ? screenW : "100%",
+                height: baked ? screenH : "100%",
                 borderRadius: 62 * p,
                 background: tokens.canvas,
                 overflow: "hidden",
-                padding: `${74 * p}px ${28 * p}px ${28 * p}px`,
+                padding: baked ? 0 : `${74 * p}px ${28 * p}px ${28 * p}px`,
                 position: "relative",
               })}
             >
+              {baked ? (
+                <img
+                  alt=""
+                  src={shotSrc ?? ""}
+                  width={Math.round(screenW)}
+                  height={Math.round(screenH)}
+                  style={{
+                    width: Math.round(screenW),
+                    height: Math.round(screenH),
+                    objectFit: "cover",
+                  }}
+                />
+              ) : (
+                <PhoneBody spec={spec} p={p} />
+              )}
               <div
                 style={flex({
                   position: "absolute",
@@ -571,7 +605,6 @@ function HeadlinePhone({
                   background: "#1B1417",
                 })}
               />
-              <PhoneBody spec={spec} p={p} />
             </div>
           </div>
         </div>
@@ -884,7 +917,17 @@ function Statement({ spec, t, u, W }: { spec: SlideSpec; t: Theme; u: number; W:
 
 const LEFT_LAYOUTS = new Set(["headline-phone", "tip-list", "steps", "statement"]);
 
-export function SlideImage({ spec, width, height }: { spec: SlideSpec; width: number; height: number }) {
+export function SlideImage({
+  spec,
+  width,
+  height,
+  shotSrc,
+}: {
+  spec: SlideSpec;
+  width: number;
+  height: number;
+  shotSrc?: string | null;
+}) {
   const t = themes[spec.theme] ?? themes.blush;
   const u = width / 1080;
   const tall = height / width > 1.6;
@@ -907,7 +950,7 @@ export function SlideImage({ spec, width, height }: { spec: SlideSpec; width: nu
     >
       <StillWordmark size={(left ? 54 : 62) * u} color={t.wm} dot={t.dot} />
       {spec.layout === "headline-phone" ? (
-        <HeadlinePhone spec={spec} t={t} u={u} W={width} H={height} />
+        <HeadlinePhone spec={spec} t={t} u={u} W={width} H={height} shotSrc={shotSrc} />
       ) : spec.layout === "big-number" ? (
         <BigNumber spec={spec} t={t} u={u} W={width} />
       ) : spec.layout === "before-after" ? (
@@ -952,7 +995,8 @@ export async function renderSatoriSlide(spec: SlideSpec): Promise<Buffer> {
     throw new Error(`Satori does not render ${spec.layout}.`);
   }
   const [width, height] = FORMATS[spec.format] ?? FORMATS.pin;
-  const response = new ImageResponse(<SlideImage spec={spec} width={width} height={height} />, {
+  const shotSrc = websiteShotSrc((spec.data as { shot?: unknown } | undefined)?.shot);
+  const response = new ImageResponse(<SlideImage spec={spec} width={width} height={height} shotSrc={shotSrc} />, {
     width,
     height,
     fonts: loadFonts(),

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { selectSlideSpecs, shuffleSlideSpecs } from "../lib/admin/content-queue/select-slide";
 import { parseSlideFragment, slidesFromModel } from "../lib/admin/content-queue/slide-spec";
-import { surfaceData, surfaceLayout } from "../lib/admin/content-queue/surface-data";
+import { pickWebsiteShot, surfaceData, surfaceLayout } from "../lib/admin/content-queue/surface-data";
 
 const budget = surfaceData("budget");
 assert.equal(surfaceLayout("budget"), "headline-phone");
@@ -77,6 +77,26 @@ assert.equal(carousel[0]?.theme, carousel[1]?.theme);
 const shuffled = shuffleSlideSpecs(specs, [], "D", "pinterest");
 assert.equal(shuffled[0]?.layout, "headline-card");
 assert.notEqual(shuffled[0]?.theme, specs[0]?.theme);
+
+const site = parseSlideFragment(
+  {
+    headline: "A site guests actually open.",
+    support: "Schedule, travel, and RSVP.",
+    layout: "headline-phone",
+    surface: "website",
+    data: {},
+  },
+  "fallback",
+);
+const siteSpecs = selectSlideSpecs({
+  platform: "pinterest",
+  contentType: "D",
+  fragments: [site],
+  recent: [{ layout: "headline-phone", theme: "white", shot: "where-when" }],
+});
+assert.equal(siteSpecs[0]?.layout, "headline-phone");
+assert.equal((siteSpecs[0]?.data as { shot?: string }).shot, "timeline");
+assert.equal(pickWebsiteShot(["where-when", "timeline"], ["look"]), "where-when");
 
 const bad = parseSlideFragment({ headline: "Hi", layout: "tip-list", surface: "none", data: {} }, "Hi");
 assert.equal(bad.degraded, true);
