@@ -25,6 +25,23 @@ export type RecentStyle = { layout: SlideLayout; theme: SlideTheme; shot?: strin
 
 const THEME_ORDER = SLIDE_THEMES;
 
+/**
+ * Shuffle steps through this cycle. Blush and white sit next to each other in
+ * SLIDE_THEMES and read as the same card, so a click there looked like a no-op
+ * and the following click stepped back.
+ */
+const SHUFFLE_THEME_CYCLE: readonly SlideTheme[] = ["blush", "ink", "white", "rose", "sage"];
+
+export function nextShuffleTheme(current: SlideTheme | undefined): SlideTheme {
+  const cycle = SHUFFLE_THEME_CYCLE.filter((theme) => !DISABLED_THEMES.includes(theme));
+  const pool = cycle.length > 0 ? cycle : THEME_ORDER.filter((theme) => !DISABLED_THEMES.includes(theme));
+  if (pool.length === 0) return "ink";
+  if (!current) return pool[0] ?? "ink";
+  const index = pool.indexOf(current);
+  if (index === -1) return pool[0] ?? "ink";
+  return pool[(index + 1) % pool.length] ?? pool[0] ?? "ink";
+}
+
 const PRODUCT_LAYOUTS = new Set<SlideLayout>(["headline-card", "headline-phone"]);
 
 export function stillFormatFor(
@@ -184,6 +201,7 @@ export function selectSlideSpecs(args: {
   avoidThemes?: readonly SlideTheme[];
   avoidLayout?: SlideLayout;
   avoidShots?: readonly string[];
+  theme?: SlideTheme;
 }): SlideSpec[] {
   const size = stillFormatFor(
     args.platform,
@@ -203,7 +221,10 @@ export function selectSlideSpecs(args: {
     used.add(layout);
     return layout;
   });
-  const theme = pickTheme(recent, layouts[0] ?? "statement", args.avoidThemes);
+  const theme =
+    args.theme && !DISABLED_THEMES.includes(args.theme)
+      ? args.theme
+      : pickTheme(recent, layouts[0] ?? "statement", args.avoidThemes);
 
   return fragments.map((fragment, index) => {
     const layout = layouts[index] ?? "statement";
@@ -249,7 +270,7 @@ export function shuffleSlideSpecs(
         shot: typeof spec.data?.shot === "string" ? spec.data.shot : undefined,
       })),
     ],
-    avoidThemes: currentTheme ? [currentTheme] : [],
+    theme: nextShuffleTheme(currentTheme),
     avoidLayout: specs.length === 1 && !specs[0]?.surface ? specs[0]?.layout : undefined,
     avoidShots: specs.flatMap((spec) => (typeof spec.data?.shot === "string" ? [spec.data.shot] : [])),
   });

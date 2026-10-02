@@ -63,12 +63,15 @@ export async function renderAndStoreSlides(
   specs: SlideSpec[],
 ): Promise<StillRenderer> {
   const { pngs, renderer } = await renderSlidePngs(specs);
+  const folder = `generated/${row.week_of}/${row.id}`;
+  const stamp = Date.now().toString(36);
   const paths: string[] = [];
   for (let i = 0; i < pngs.length; i += 1) {
-    const objectPath = `generated/${row.week_of}/${row.id}/${i}.png`;
+    const objectPath = `${folder}/${stamp}-${i}.png`;
     const { error } = await supabase.storage.from(CONTENT_QUEUE_BUCKET).upload(objectPath, pngs[i], {
       contentType: "image/png",
-      upsert: true,
+      cacheControl: "0",
+      upsert: false,
     });
     if (error) throw new Error(error.message);
     paths.push(objectPath);
@@ -83,5 +86,27 @@ export async function renderAndStoreSlides(
     })
     .eq("id", row.id);
   if (error) throw new Error(error.message);
+  await removeReplacedSlides(supabase, folder, paths);
   return renderer;
+}
+
+/** Drop earlier renders of this post. The preview URL is the object path, so
+ *  overwriting 0.png left the browser on the cached file. */
+async function removeReplacedSlides(
+  supabase: SupabaseClient,
+  folder: string,
+  keep: string[],
+): Promise<void> {
+  const { data, error } = await supabase.storage.from(CONTENT_QUEUE_BUCKET).list(folder);
+  if (error || !data) return;
+  const keepNames = new Set(keep.map((path) => path.slice(folder.length + 1)));
+  const stale = data
+    .filter((file) => file.name.endsWith(".png") && !keepNames.has(file.name))
+    .map((file) => `${folder}/${file.name}`);
+  if (stale.length === 0) return;
+  try {
+    await supabase.storage.from(CONTENT_QUEUE_BUCKET).remove(stale);
+  } catch {
+    // The new file is already saved. A leftover PNG is not a failed shuffle.
+  }
 }

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { selectSlideSpecs, shuffleSlideSpecs } from "../lib/admin/content-queue/select-slide";
+import { nextShuffleTheme, selectSlideSpecs, shuffleSlideSpecs } from "../lib/admin/content-queue/select-slide";
 import { parseSlideFragment, slidesFromModel } from "../lib/admin/content-queue/slide-spec";
 import { pickWebsiteShot, surfaceData, surfaceLayout } from "../lib/admin/content-queue/surface-data";
 
@@ -74,9 +74,33 @@ assert.equal(carousel[1]?.layout, "headline-card");
 assert.equal(carousel[1]?.cta, true);
 assert.equal(carousel[0]?.theme, carousel[1]?.theme);
 
+assert.equal(nextShuffleTheme("blush"), "ink");
+assert.equal(nextShuffleTheme("ink"), "white");
+assert.equal(nextShuffleTheme("white"), "rose");
+assert.equal(nextShuffleTheme("rose"), "sage");
+assert.equal(nextShuffleTheme("sage"), "blush");
+
+const blushPin = selectSlideSpecs({
+  platform: "pinterest",
+  contentType: "D",
+  fragments: [guest],
+  recent: [],
+});
+assert.equal(blushPin[0]?.theme, "blush");
+const once = shuffleSlideSpecs(blushPin, [], "D", "pinterest");
+assert.equal(once[0]?.layout, "headline-card");
+assert.equal(once[0]?.theme, "ink");
+const twice = shuffleSlideSpecs(
+  once,
+  [{ layout: "headline-card", theme: "white" }],
+  "D",
+  "pinterest",
+);
+assert.equal(twice[0]?.theme, "white");
+
 const shuffled = shuffleSlideSpecs(specs, [], "D", "pinterest");
 assert.equal(shuffled[0]?.layout, "headline-card");
-assert.notEqual(shuffled[0]?.theme, specs[0]?.theme);
+assert.equal(shuffled[0]?.theme, nextShuffleTheme(specs[0]?.theme));
 
 const site = parseSlideFragment(
   {

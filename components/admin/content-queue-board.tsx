@@ -132,7 +132,7 @@ function QueueImage({
       aria-busy={generating}
     >
       {/* eslint-disable-next-line @next/next/no-img-element -- short-lived signed URL */}
-      <img src={url} alt="" className="size-full object-cover" />
+      <img key={url} src={url} alt="" className="size-full object-cover" />
       {generating ? (
         <div className="absolute top-2 left-1/2 flex -translate-x-1/2 items-center gap-1.5 rounded-[var(--radius-pill)] bg-surface/90 px-2.5 py-1">
           <KieSpinner className="size-3" />
@@ -185,6 +185,7 @@ function QueueCard({ item }: { item: ContentQueueItem }) {
   const [promptDraft, setPromptDraft] = useState(item.prompt);
   const [imageIndex, setImageIndex] = useState(0);
   const [retryingImage, setRetryingImage] = useState(false);
+  const [shuffling, setShuffling] = useState(false);
   const router = useRouter();
   const platform = contentQueuePlatformMeta(item.platform);
   const statusMeta = STATUS_PILL[item.status];
@@ -206,6 +207,23 @@ function QueueCard({ item }: { item: ContentQueueItem }) {
   useEffect(() => {
     if (jobStarted) setRetryingImage(false);
   }, [jobStarted]);
+
+  const imageKey = item.image_paths.join("\0");
+  useEffect(() => {
+    setShuffling(false);
+  }, [imageKey]);
+
+  function shuffleStyle() {
+    setShuffling(true);
+    run(async () => {
+      try {
+        await shuffleContentQueueItem(item.id);
+      } catch (err) {
+        setShuffling(false);
+        throw err;
+      }
+    });
+  }
 
   function run(fn: () => Promise<void>) {
     setError(null);
@@ -243,20 +261,22 @@ function QueueCard({ item }: { item: ContentQueueItem }) {
       ) : null}
 
       <QueueImage
-        urls={item.image_urls}
+        urls={shuffling ? [] : item.image_urls}
         platform={item.platform}
         format={item.format}
         index={imageIndex}
         onIndexChange={setImageIndex}
-        generating={generating}
+        generating={generating || shuffling}
         waitingLabel={
-          generating
-            ? jobStarted
-              ? generatingCopy(item)
-              : "Starting generation…"
-            : formatNeedsImages(item.format)
-              ? "Image generation didn't start"
-              : queueNoImageCopy(item.format)
+          shuffling
+            ? "Shuffling style…"
+            : generating
+              ? jobStarted
+                ? generatingCopy(item)
+                : "Starting generation…"
+              : formatNeedsImages(item.format)
+                ? "Image generation didn't start"
+                : queueNoImageCopy(item.format)
         }
       />
 
@@ -302,10 +322,10 @@ function QueueCard({ item }: { item: ContentQueueItem }) {
               <Button
                 variant="default"
                 disabled={isPending}
-                onClick={() => run(() => shuffleContentQueueItem(item.id))}
+                onClick={shuffleStyle}
                 className="px-4 py-2"
               >
-                Shuffle style
+                {shuffling ? "Shuffling…" : "Shuffle style"}
               </Button>
             ) : null}
             {canRetryImage ? (
@@ -376,10 +396,10 @@ function QueueCard({ item }: { item: ContentQueueItem }) {
               <Button
                 variant="default"
                 disabled={isPending}
-                onClick={() => run(() => shuffleContentQueueItem(item.id))}
+                onClick={shuffleStyle}
                 className="px-4 py-2"
               >
-                Shuffle style
+                {shuffling ? "Shuffling…" : "Shuffle style"}
               </Button>
             ) : null}
             <Button
