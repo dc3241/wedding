@@ -8,6 +8,8 @@ import {
   postingDates,
   postingWeekMonday,
   slotLabel,
+  videoFormatLine,
+  videoSlotTitle,
 } from "@/lib/admin/content-week";
 import { ensureWeekSlots, loadContentWeek } from "@/lib/admin/content-week/load";
 import { getContentBank, getScheduleWeeks } from "@/lib/admin/queries";
@@ -101,10 +103,14 @@ export default async function AdminOverviewPage() {
                     >
                       <span className="min-w-0">
                         <span className="block text-[13px] text-muted">
-                          {slotLabel(slot.lane, slot.position, slot.intent)}
+                          {slot.lane === "video"
+                            ? videoSlotTitle(slot.position, slot.feature_key)
+                            : slotLabel(slot.lane, slot.position, slot.intent)}
                         </span>
                         <span className="block truncate">
-                          {idea?.idea_text ?? "Nothing chosen"}
+                          {slot.lane === "video"
+                            ? videoFormatLine(slot.position, slot.feature_key)
+                            : (idea?.idea_text ?? "Nothing chosen")}
                         </span>
                       </span>
                       <span
@@ -112,7 +118,11 @@ export default async function AdminOverviewPage() {
                           slot.posted_at ? "shrink-0 font-semibold text-sage" : "shrink-0 text-muted"
                         }
                       >
-                        {slot.posted_at ? "Posted" : "Pending"}
+                        {slot.posted_at
+                          ? "Posted"
+                          : slot.lane === "video" && slot.filmed_at
+                            ? "Filmed"
+                            : "Pending"}
                       </span>
                     </div>
                   );
@@ -122,7 +132,7 @@ export default async function AdminOverviewPage() {
               <EmptyState recessed>
                 {postingToday
                   ? "Nothing on the schedule for today yet."
-                  : "Ideas for Monday through Saturday land here Sunday morning. Generate the week from Ideation if you want them now."}
+                  : "Slideshows, pins, and LinkedIn land here Sunday morning. Videos for the week are already on the schedule."}
               </EmptyState>
             )}
             <ButtonLink href="/admin/schedule" variant="default" className="mt-4">

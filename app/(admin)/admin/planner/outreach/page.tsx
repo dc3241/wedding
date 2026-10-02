@@ -1,82 +1,56 @@
-import { Card } from "@/components/ui/card";
-import { Eyebrow } from "@/components/ui/eyebrow";
+import { OutreachBoard } from "@/components/admin/outreach-board";
 import { PageHeader } from "@/components/ui/page-header";
+import { formatDayHeading, addDays } from "@/lib/admin/content-week";
+import { parseOutreachDate } from "@/lib/admin/outreach";
+import { ensureOutreachDay } from "@/lib/admin/outreach/load";
+import { adminToday } from "@/lib/admin/today";
+import { createClient } from "@/utils/supabase/server";
+import Link from "next/link";
 
-const STATS = [
-  { label: "Targets loaded", value: "596", sub: "Arizona pilot" },
-  { label: "Emails sent", value: "—", sub: "wires to Resend" },
-  { label: "Follow-ups due", value: "—", sub: "wires to Resend" },
-  { label: "Replies", value: "—", sub: "Reply-To → Dom's Gmail" },
-];
+export const maxDuration = 60;
 
-const VARIANTS = [
-  { id: "V1", angle: "Pain-point", share: "~149 targets" },
-  { id: "V2", angle: "Peer-credibility", share: "~149 targets" },
-  { id: "V3", angle: "Ultra-short", share: "~149 targets" },
-  { id: "V4", angle: "Curiosity", share: "~149 targets" },
-];
+export default async function PlannerOutreachPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ date?: string }>;
+}) {
+  const supabase = await createClient();
+  const today = adminToday();
+  const { date: dateParam } = await searchParams;
+  const date = parseOutreachDate(dateParam, today);
+  const rows = await ensureOutreachDay(supabase, date);
+  const sent = rows.filter((row) => row.sent_at).length;
+  const heading = formatDayHeading(date);
+  const when = date === today ? `Today, ${heading}` : heading;
 
-export default function PlannerOutreachPage() {
   return (
     <div>
       <PageHeader
-        className="mb-5"
+        className="mb-4"
         title="Venue outreach"
-        description="Arizona pilot — cold email via Resend, four variants assigned by row number"
+        description={`${when}. Five venues and five planners. Type a name or TikTok, generate the message, copy it, then mark it sent. ${sent}/10 sent.`}
       />
-
-      <div className="mb-4 grid grid-cols-2 gap-3.5 md:grid-cols-4">
-        {STATS.map((stat) => (
-          <Card key={stat.label} className="px-5 py-4">
-            <div className="mb-1.5 text-[14px] font-medium text-muted">
-              {stat.label}
-            </div>
-            <div className="font-display text-[32px] font-extrabold leading-none tracking-[-0.03em] tabular-nums text-ink">
-              {stat.value}
-            </div>
-            <div className="mt-1 text-[13px] text-muted">{stat.sub}</div>
-          </Card>
-        ))}
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        {parseOutreachDate(addDays(date, -1), today) === addDays(date, -1) ? (
+          <DayLink date={addDays(date, -1)} label="Previous day" />
+        ) : null}
+        {date !== today ? <DayLink date={today} label="Today" /> : null}
+        {parseOutreachDate(addDays(date, 1), today) === addDays(date, 1) ? (
+          <DayLink date={addDays(date, 1)} label="Next day" />
+        ) : null}
       </div>
-
-      <Card className="px-6 py-5">
-        <Eyebrow className="mb-3 text-accent">
-          Variant split (by row number mod 4)
-        </Eyebrow>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-[15px] font-medium text-ink">
-            <thead>
-              <tr className="border-b border-hairline text-[13px] text-muted">
-                <th className="py-2 pr-4 font-semibold">Variant</th>
-                <th className="py-2 pr-4 font-semibold">Angle</th>
-                <th className="py-2 font-semibold">Share</th>
-              </tr>
-            </thead>
-            <tbody>
-              {VARIANTS.map((row) => (
-                <tr key={row.id} className="border-b border-hairline last:border-b-0">
-                  <td className="py-2.5 pr-4 tabular-nums">{row.id}</td>
-                  <td className="py-2.5 pr-4">{row.angle}</td>
-                  <td className="py-2.5 tabular-nums text-muted">{row.share}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        <p className="mt-4 rounded-[var(--radius-inner)] bg-well px-3.5 py-3 text-[13px] text-muted shadow-recessed">
-          Sent from Jordyn &lt;jordyn@inquiries.usefirstlook.app&gt;, Reply-To
-          routed to Dom&apos;s personal Gmail. Dedupe relies on Resend&apos;s
-          sent-history, not sheet writes. Stat cards above are placeholders —
-          the real build reads these live from Resend.
-        </p>
-        <p className="mt-3 text-[13px] text-muted">
-          Confirm the DMARC record for{" "}
-          <span className="font-medium text-ink">
-            _dmarc.inquiries.usefirstlook.app
-          </span>{" "}
-          is set up before outreach volume scales past the pilot.
-        </p>
-      </Card>
+      <OutreachBoard rows={rows} />
     </div>
+  );
+}
+
+function DayLink({ date, label }: { date: string; label: string }) {
+  return (
+    <Link
+      href={`/admin/planner/outreach?date=${date}`}
+      className="inline-flex items-center rounded-[var(--radius-pill)] border-[1.5px] border-hairline bg-surface px-3.5 py-1.5 text-[14px] font-medium text-muted hover:border-accent hover:text-accent"
+    >
+      {label}
+    </Link>
   );
 }

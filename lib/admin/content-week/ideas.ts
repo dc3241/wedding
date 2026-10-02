@@ -23,7 +23,7 @@ const IDEAS_PER_INTENT = 3;
 
 const SYSTEM_PROMPT = `You brainstorm short-form social ideas for First Look, a wedding-planning
 SaaS. Two audiences only:
-- Couples, for TikTok videos, TikTok slideshows, and Pinterest pins.
+- Couples, for TikTok slideshows and Pinterest pins.
 - Venues and planners, for LinkedIn text posts. Never write a couples tip as a LinkedIn post.
 
 Tone: warm, useful, a little funny, never salesy. Never use the word "AI".
@@ -36,7 +36,6 @@ Venue behaviors: lead follow-up, date holds, proposals, invoices, the book of we
 Tip: write it the way a person would say it. Do not mention First Look, "the app", or a product name. The advice itself is the behavior above, not a tool they should go create. Good: "Most couples mark a deposit paid or not paid and miss that a vendor can cancel if you're a few days late — give every due date a reminder buffer." Bad: "Here's how to build a deposit calendar." Bad: "Open First Look and add a reminder."
 Promo: you may name First Look. Open on the pain, then the feature. A promo slideshow ends on the feature.
 
-Video ideas are film-it-yourself: a hook plus the spoken beat, one or two sentences. No shot list.
 Slideshow and pin ideas are one or two sentences a person could turn into slides or a pin.
 LinkedIn ideas are one or two sentences for a text post.
 
@@ -50,7 +49,6 @@ export type GenerateWeekResult = {
 };
 
 type DayTopics = {
-  video: { tip: ContentTopic; promo: ContentTopic };
   slideshow: { tip: ContentTopic; promo: ContentTopic };
   pin: { tip: ContentTopic; promo: ContentTopic };
   linkedin: { intent: ContentIntent; topic: ContentTopic };
@@ -161,7 +159,8 @@ async function dayHasIdeas(supabase: SupabaseClient, date: string): Promise<bool
     .from("ideation_items")
     .select("id", { count: "exact", head: true })
     .eq("slot_date", date)
-    .not("lane", "is", null);
+    .not("lane", "is", null)
+    .neq("lane", "video");
   if (error) throw new Error(error.message);
   return (count ?? 0) > 0;
 }
@@ -177,8 +176,8 @@ async function generateDay(
   requestedBy: string | null,
   focus: string | null,
 ): Promise<void> {
-  const tips = await takeTopics(supabase, "couples_tip", 3);
-  const promos = await takeTopics(supabase, "couples_promo", 3);
+  const tips = await takeTopics(supabase, "couples_tip", 2);
+  const promos = await takeTopics(supabase, "couples_promo", 2);
   const venueDeck: TopicDeckId = linkedInIntent(date) === "tip" ? "venue_tip" : "venue_promo";
   const venue = await takeTopics(supabase, venueDeck, 1);
   const taken = [
@@ -188,9 +187,8 @@ async function generateDay(
   ] as const;
 
   const topics: DayTopics = {
-    video: { tip: tips.topics[0]!, promo: promos.topics[0]! },
-    slideshow: { tip: tips.topics[1]!, promo: promos.topics[1]! },
-    pin: { tip: tips.topics[2]!, promo: promos.topics[2]! },
+    slideshow: { tip: tips.topics[0]!, promo: promos.topics[0]! },
+    pin: { tip: tips.topics[1]!, promo: promos.topics[1]! },
     linkedin: { intent: linkedInIntent(date), topic: venue.topics[0]! },
   };
 
@@ -199,10 +197,6 @@ async function generateDay(
     const focusLine = focus ? `\nBias every idea toward this focus: ${focus}` : "";
     const user = `Day: ${formatDayHeading(date)}.
 Write 3 distinct hooks for each topic below. Same topic, different angles. Do not swap topics between lanes.
-
-Video (couples, film-it-yourself)
-- ${topicLine("tip", topics.video.tip)}
-- ${topicLine("promo", topics.video.promo)}
 
 Slideshow (couples, about 5 slides)
 - ${topicLine("tip", topics.slideshow.tip)}
@@ -224,9 +218,8 @@ ${taste ? `\n${taste}` : ""}`;
       jsonSchema: {
         type: "object",
         additionalProperties: false,
-        required: ["video", "slideshow", "pin", "linkedin"],
+        required: ["slideshow", "pin", "linkedin"],
         properties: {
-          video: pairSchema(),
           slideshow: pairSchema(),
           pin: pairSchema(),
           linkedin: ideaListSchema(),
@@ -235,17 +228,14 @@ ${taste ? `\n${taste}` : ""}`;
     });
 
     if (!isRecord(parsed)) throw new Error("The model returned an unexpected response.");
-    const video = readPair(parsed.video);
     const slideshow = readPair(parsed.slideshow);
     const pin = readPair(parsed.pin);
     const linkedin = threeStrings(parsed.linkedin);
-    if (!video || !slideshow || !pin || !linkedin) {
+    if (!slideshow || !pin || !linkedin) {
       throw new Error("The model left a lane short.");
     }
 
     const rows = [
-      ...rowsForLane("video", date, weekStart, requestedBy, topics.video.tip, video.tip, "tip"),
-      ...rowsForLane("video", date, weekStart, requestedBy, topics.video.promo, video.promo, "promo"),
       ...rowsForLane("slideshow", date, weekStart, requestedBy, topics.slideshow.tip, slideshow.tip, "tip"),
       ...rowsForLane("slideshow", date, weekStart, requestedBy, topics.slideshow.promo, slideshow.promo, "promo"),
       ...rowsForLane("pin", date, weekStart, requestedBy, topics.pin.tip, pin.tip, "tip"),
@@ -310,6 +300,9 @@ async function generateLane(
   requestedBy: string | null,
   focus: string | null,
 ): Promise<void> {
+  if (lane === "video") {
+    throw new Error("Videos are assigned on the schedule.");
+  }
   const intentForLinkedIn = linkedInIntent(date);
   const tipTake =
     lane === "linkedin"

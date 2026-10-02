@@ -35,7 +35,7 @@ export default async function AdminIdeationPage({
       <PageHeader
         className="mb-5"
         title="Ideation"
-        description={`Monday–Saturday of ${formatWeekRange(weekStart)}. Choose ideas, then produce them. Sunday morning fills the week; Generate does it on demand.`}
+        description={`Monday–Saturday of ${formatWeekRange(weekStart)}. Choose slideshow, pin, and LinkedIn ideas, then produce them. Videos are on the schedule.`}
       />
 
       <ContentWeekIdeas

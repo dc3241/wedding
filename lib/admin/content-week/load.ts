@@ -10,12 +10,14 @@ import {
   CONTENT_LANES,
   isContentLane,
   isSlotIntent,
+  nextVideoFeatureKeys,
   postingDates,
   slotsForLane,
   type ContentSlot,
   type IdeaDraft,
 } from "@/lib/admin/content-week";
 import type { IdeationItem } from "@/lib/admin/types";
+import { adminToday } from "@/lib/admin/today";
 
 const IDEA_COLUMNS =
   "id, idea_text, requested_by, rating, comment, platform, format, audience_group, carousel_slides, used_at, created_at, lane, intent, topic_key, slot_date, week_start";
@@ -41,6 +43,43 @@ export async function ensureWeekSlots(
     ignoreDuplicates: true,
   });
   if (error) throw new Error(error.message);
+  await assignVideoFeatures(supabase);
+}
+
+/**
+ * Stamp unposted video slots from today forward that do not have a tab yet.
+ * Earlier slots stay unlabeled, so the cycle starts at Overview on the next video.
+ */
+async function assignVideoFeatures(supabase: SupabaseClient): Promise<void> {
+  const { count, error: countError } = await supabase
+    .from("content_slots")
+    .select("id", { count: "exact", head: true })
+    .eq("lane", "video")
+    .not("feature_key", "is", null);
+  if (countError) throw new Error(countError.message);
+
+  const { data, error } = await supabase
+    .from("content_slots")
+    .select("id")
+    .eq("lane", "video")
+    .is("feature_key", null)
+    .is("posted_at", null)
+    .gte("slot_date", adminToday())
+    .order("slot_date", { ascending: true })
+    .order("position", { ascending: true });
+  if (error) throw new Error(error.message);
+
+  const pending = data ?? [];
+  if (pending.length === 0) return;
+  const keys = nextVideoFeatureKeys(count ?? 0, pending.length);
+  for (let index = 0; index < pending.length; index++) {
+    const { error: updateError } = await supabase
+      .from("content_slots")
+      .update({ feature_key: keys[index] })
+      .eq("id", pending[index]!.id)
+      .is("feature_key", null);
+    if (updateError) throw new Error(updateError.message);
+  }
 }
 
 export async function listContentWeekStarts(supabase: SupabaseClient): Promise<string[]> {
@@ -80,6 +119,7 @@ function asSlot(row: Record<string, unknown>): ContentSlot | null {
     intent: row.intent,
     position: row.position,
     idea_id: typeof row.idea_id === "string" ? row.idea_id : null,
+    feature_key: typeof row.feature_key === "string" ? row.feature_key : null,
     filmed_at: typeof row.filmed_at === "string" ? row.filmed_at : null,
     posted_at: typeof row.posted_at === "string" ? row.posted_at : null,
     fb_posted_at: typeof row.fb_posted_at === "string" ? row.fb_posted_at : null,
@@ -99,7 +139,9 @@ export async function loadContentWeek(
 ): Promise<ContentWeekData> {
   const { data: slotRows, error: slotError } = await supabase
     .from("content_slots")
-    .select("id, week_start, slot_date, lane, intent, position, idea_id, filmed_at, posted_at, fb_posted_at")
+    .select(
+      "id, week_start, slot_date, lane, intent, position, idea_id, feature_key, filmed_at, posted_at, fb_posted_at",
+    )
     .eq("week_start", weekStart)
     .order("slot_date", { ascending: true })
     .order("position", { ascending: true });

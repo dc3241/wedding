@@ -13,6 +13,10 @@ import {
   formatWeekRange,
   slotAllowsFacebook,
   slotLabel,
+  videoFeatureByKey,
+  videoFormatLine,
+  videoSlotTitle,
+  VIDEO_FEATURES,
   type ContentSlot,
   type IdeaDraft,
 } from "@/lib/admin/content-week";
@@ -86,6 +90,8 @@ export function ContentWeekSchedule({
         </label>
       </div>
 
+      <VideoCycle slots={slots} />
+
       <div className="mb-4 flex gap-2 overflow-x-auto pb-1">
         {dates.map((date) => {
           const rows = slots.filter((slot) => slot.slot_date === date);
@@ -118,8 +124,8 @@ export function ContentWeekSchedule({
           {formatDayHeading(day)}
         </h2>
         <p className="mb-4 text-[13px] text-muted">
-          Draft means the script or images are ready. Posted is you, after it is live.
-          A new week shows up on its own when Sunday arrives. This week stays in the list.
+          Videos are the tab for that slot. Filmed means you made it. Posted is you, after it is live.
+          Slideshows, pins, and LinkedIn still come from Ideation.
         </p>
         <ul className="flex flex-col gap-3">
           {daySlots.map((slot) => {
@@ -204,15 +210,22 @@ function SlotRow({
 }) {
   const [error, setError] = useState<string | null>(null);
   const [, startTransition] = useTransition();
-  const status = !idea
-    ? "Empty"
-    : draft?.pending
-      ? "Generating"
-      : draft?.ready
-        ? "Draft"
-        : idea.used_at
-          ? "Produced"
-          : "Chosen";
+  const video = slot.lane === "video";
+  const status = video
+    ? slot.posted_at
+      ? "Posted"
+      : slot.filmed_at
+        ? "Filmed"
+        : "To film"
+    : !idea
+      ? "Empty"
+      : draft?.pending
+        ? "Generating"
+        : draft?.ready
+          ? "Draft"
+          : idea.used_at
+            ? "Produced"
+            : "Chosen";
 
   function run(action: () => Promise<void>) {
     setError(null);
@@ -230,10 +243,14 @@ function SlotRow({
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
           <div className="text-[12px] font-semibold tracking-[0.09em] text-accent uppercase">
-            {slotLabel(slot.lane, slot.position, slot.intent)}
+            {video
+              ? videoSlotTitle(slot.position, slot.feature_key)
+              : slotLabel(slot.lane, slot.position, slot.intent)}
           </div>
           <p className="mt-1 text-[15px] font-medium text-ink">
-            {idea?.idea_text ?? "Nothing chosen yet."}
+            {video
+              ? videoFormatLine(slot.position, slot.feature_key)
+              : (idea?.idea_text ?? "Nothing chosen yet.")}
           </p>
         </div>
         <span
@@ -245,13 +262,9 @@ function SlotRow({
           {slot.posted_at ? "Posted" : status}
         </span>
       </div>
-      {!idea ? (
-        <Link href="/admin/ideation" className="mt-2 inline-block text-[13px] font-semibold text-accent">
-          Choose on Ideation
-        </Link>
-      ) : (
+      {video || idea ? (
         <div className="mt-3 flex flex-wrap items-center gap-3">
-          {slot.lane === "video" ? (
+          {video ? (
             <Check
               label="Filmed"
               on={Boolean(slot.filmed_at)}
@@ -270,29 +283,77 @@ function SlotRow({
               onToggle={() => run(() => setSlotCheck(slot.id, "facebook", !slot.fb_posted_at))}
             />
           ) : null}
-          <label className="min-w-[180px] flex-1">
-            <span className="sr-only">Move to another day</span>
-            <Select
-              aria-label={`Move ${slotLabel(slot.lane, slot.position, slot.intent)}`}
-              value={slot.slot_date}
-              onChange={(e) => {
-                const next = e.target.value;
-                setError(null);
-                if (next === slot.slot_date) return;
-                run(() => moveSlotToDay(slot.id, next));
-              }}
-            >
-              {dates.map((date) => (
-                <option key={date} value={date}>
-                  {formatDayHeading(date)}
-                </option>
-              ))}
-            </Select>
-          </label>
+          {video ? null : (
+            <label className="min-w-[180px] flex-1">
+              <span className="sr-only">Move to another day</span>
+              <Select
+                aria-label={`Move ${slotLabel(slot.lane, slot.position, slot.intent)}`}
+                value={slot.slot_date}
+                onChange={(e) => {
+                  const next = e.target.value;
+                  setError(null);
+                  if (next === slot.slot_date) return;
+                  run(() => moveSlotToDay(slot.id, next));
+                }}
+              >
+                {dates.map((date) => (
+                  <option key={date} value={date}>
+                    {formatDayHeading(date)}
+                  </option>
+                ))}
+              </Select>
+            </label>
+          )}
         </div>
+      ) : (
+        <Link href="/admin/ideation" className="mt-2 inline-block text-[13px] font-semibold text-accent">
+          Choose on Ideation
+        </Link>
       )}
       {error ? <p className="mt-2 text-[13px] text-rosewood">{error}</p> : null}
     </li>
+  );
+}
+
+function VideoCycle({ slots }: { slots: ContentSlot[] }) {
+  const next = slots
+    .filter((slot) => slot.lane === "video" && slot.feature_key && !slot.posted_at)
+    .sort((a, b) => a.slot_date.localeCompare(b.slot_date) || a.position - b.position)[0];
+  const feature = next ? videoFeatureByKey(next.feature_key) : null;
+  const videos = slots.filter((slot) => slot.lane === "video");
+  const allPosted = videos.length > 0 && videos.every((slot) => slot.posted_at);
+
+  return (
+    <Card className="mb-4 px-5 py-4">
+      <h2 className="mb-1 text-[19px] font-extrabold tracking-[-0.02em] text-ink">Video rotation</h2>
+      <p className="mb-3 text-[13px] text-muted">
+        {next && feature
+          ? `Next up: ${videoSlotTitle(next.position, next.feature_key)}.`
+          : allPosted
+            ? "This week’s videos are posted."
+            : "Each video takes the next tab. The first of the day is a duet. The second is straight to camera."}
+      </p>
+      <ol className="flex flex-wrap gap-2">
+        {VIDEO_FEATURES.map((item, index) => {
+          const current = feature?.key === item.key;
+          return (
+            <li
+              key={item.key}
+              aria-current={current ? "step" : undefined}
+              className={cn(
+                "rounded-[var(--radius-pill)] border-[1.5px] px-3 py-1.5 text-[14px] font-medium",
+                current
+                  ? "border-accent bg-accent-wash text-accent"
+                  : "border-hairline bg-surface text-muted",
+              )}
+            >
+              <span className="mr-1.5 tabular-nums">{index + 1}</span>
+              {item.label}
+            </li>
+          );
+        })}
+      </ol>
+    </Card>
   );
 }
 

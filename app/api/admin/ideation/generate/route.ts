@@ -36,6 +36,9 @@ export async function POST(request: Request) {
 
   const date = typeof body.date === "string" ? body.date : null;
   const lane = isContentLane(body.lane) ? body.lane : null;
+  if (lane === "video") {
+    return NextResponse.json({ error: "Videos are assigned on the schedule." }, { status: 400 });
+  }
   if (body.lane && !lane) {
     return NextResponse.json({ error: "Unknown post type." }, { status: 400 });
   }

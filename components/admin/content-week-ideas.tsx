@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Pill } from "@/components/ui/pill";
 import { Select } from "@/components/ui/select";
 import {
-  CONTENT_LANES,
+  IDEATION_LANES,
   formatDayHeading,
   formatWeekRange,
   LANE_LABEL,
@@ -127,10 +127,9 @@ export function ContentWeekIdeas({
           </Button>
         </div>
         <p className="mt-2 text-[13px] text-muted">
-          Sunday morning fills Monday–Saturday: 3 tip and 3 promo ideas for videos,
-          slideshows, and pins, plus 3 LinkedIn ideas for that day’s tip or promo.
-          Choose what to keep, then Produce. The schedule is where you move a day
-          and check it off.
+          Sunday morning fills Monday–Saturday: 3 tip and 3 promo ideas for slideshows
+          and pins, plus 3 LinkedIn ideas for that day’s tip or promo. Videos stay
+          on the schedule. Choose what to keep, then Produce.
         </p>
         {error ? <p className="mt-2 text-[13px] text-rosewood">{error}</p> : null}
         {notice ? <p className="mt-2 text-[13px] text-sage">{notice}</p> : null}
@@ -138,8 +137,9 @@ export function ContentWeekIdeas({
 
       <div className="mb-4 flex gap-2 overflow-x-auto pb-1">
         {dates.map((date) => {
-          const filled = slots.filter((slot) => slot.slot_date === date && slot.idea_id).length;
-          const total = slots.filter((slot) => slot.slot_date === date).length;
+          const daySlots = slots.filter((slot) => slot.slot_date === date && slot.lane !== "video");
+          const filled = daySlots.filter((slot) => slot.idea_id).length;
+          const total = daySlots.length;
           const active = date === day;
           return (
             <button
@@ -176,7 +176,7 @@ export function ContentWeekIdeas({
       </div>
 
       <div className="flex flex-col gap-4">
-        {CONTENT_LANES.map((lane) => (
+        {IDEATION_LANES.map((lane) => (
           <LaneBlock
             key={lane}
             lane={lane}
@@ -234,8 +234,8 @@ function LaneBlock({
         {groups.map((intent) => {
           const group = ideas.filter((idea) => idea.intent === intent);
           const topic = topicByKey(group[0]?.topic_key);
-          const taken = slots.filter((slot) => slot.idea_id && (lane === "video" || slot.intent === intent)).length;
-          const cap = lane === "video" ? 2 : slots.filter((slot) => slot.intent === intent).length;
+          const taken = slots.filter((slot) => slot.idea_id && slot.intent === intent).length;
+          const cap = slots.filter((slot) => slot.intent === intent).length;
           return (
             <div key={intent}>
               <div className="mb-2 flex items-center gap-2">
@@ -243,7 +243,7 @@ function LaneBlock({
                   {intent === "promo" ? "Promo" : "Tip"}
                 </Pill>
                 <span className="text-[13px] text-muted tabular-nums">
-                  {lane === "video" ? `${slots.filter((slot) => slot.idea_id).length}/2 chosen` : `${taken}/${cap} chosen`}
+                  {taken}/{cap} chosen
                 </span>
               </div>
               {topic ? <p className="mb-2 text-[13px] text-muted">{topic.label}</p> : null}

@@ -128,7 +128,9 @@ export async function moveSlotToDay(slotId: string, targetDate: string) {
     .eq("id", slotId)
     .maybeSingle();
   if (error) throw new Error(error.message);
-  if (!source?.idea_id || !isContentLane(source.lane)) throw new Error("That slot is empty.");
+  if (!source || !isContentLane(source.lane)) throw new Error("That slot is empty.");
+  if (source.lane === "video") throw new Error("A video stays on its day.");
+  if (!source.idea_id) throw new Error("That slot is empty.");
   if (!postingDates(source.week_start).includes(targetDate)) {
     throw new Error("Pick a Monday–Saturday in this week.");
   }
@@ -198,7 +200,9 @@ export async function setSlotCheck(
   if (!isContentLane(slot.lane)) throw new Error("Slot not found.");
   if (field === "filmed" && slot.lane !== "video") return;
   if (field === "facebook" && slot.lane !== "video" && slot.lane !== "pin") return;
-  if (on && !slot.idea_id) throw new Error("Choose an idea for this slot first.");
+  if (on && slot.lane !== "video" && !slot.idea_id) {
+    throw new Error("Choose an idea for this slot first.");
+  }
 
   const column = field === "filmed" ? "filmed_at" : field === "posted" ? "posted_at" : "fb_posted_at";
   const { error: updateError } = await supabase

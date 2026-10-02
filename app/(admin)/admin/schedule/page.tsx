@@ -48,7 +48,7 @@ export default async function AdminSchedulePage({
       <PageHeader
         className="mb-5"
         title="Schedule"
-        description={`${formatWeekRange(weekStart)}. Open a day, see what is set, and check it off once it is drafted and posted.`}
+        description={`${formatWeekRange(weekStart)}. TikTok videos rotate through the app, one tab at a time. Check a video off once it is filmed and posted.`}
       />
 
       <ContentWeekSchedule
