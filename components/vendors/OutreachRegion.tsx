@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useCallback, useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { loadVendorComparison } from "@/app/(app)/projects/[projectId]/vendors/compare-actions";
 import { draftOutreach } from "@/app/(app)/projects/[projectId]/vendors/outreach/actions";
 import {
   AddVendorForm,
@@ -10,6 +11,7 @@ import {
 } from "@/components/vendors/AddVendorForm";
 import { DeclinedVendorsGroup } from "@/components/vendors/DeclinedVendorsGroup";
 import { OutreachShortlistRow } from "@/components/vendors/OutreachVendorRow";
+import { VendorComparePanel } from "@/components/vendors/VendorComparePanel";
 import {
   IN_FLIGHT_STATUSES,
   OUTREACH_STATUS_HEADING,
@@ -25,6 +27,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import type { OutreachBrief } from "@/lib/generate-outreach-draft";
 import { cn } from "@/lib/cn";
+import { compareSelection } from "@/lib/vendors/compare-selection";
+import type { VendorComparison } from "@/lib/vendors/vendor-comparison";
 
 type StatusFilter = "all" | InFlightStatus;
 
@@ -59,6 +63,9 @@ export function OutreachRegion({
   const [showDraftForm, setShowDraftForm] = useState(false);
   const [draftError, setDraftError] = useState<string | null>(null);
   const [isDraftPending, startDraftTransition] = useTransition();
+  const [comparison, setComparison] = useState<VendorComparison | null>(null);
+  const [compareError, setCompareError] = useState<string | null>(null);
+  const [isComparePending, startCompareTransition] = useTransition();
   /** Bumps when a #add-vendor deep link should scroll (works if form already open). */
   const [addScrollNonce, setAddScrollNonce] = useState(0);
 
@@ -120,6 +127,26 @@ export function OutreachRegion({
     items.some((item) => item.id === id && item.status === "to_contact"),
   );
 
+  const selectedItems = items.filter((item) => selected.has(item.id));
+  const selection = compareSelection(
+    selectedItems.map((item) => ({
+      id: item.id,
+      category: item.vendor.category,
+    })),
+  );
+  const compareHint =
+    selectedItems.length < 2
+      ? null
+      : selection.ok
+        ? null
+        : selection.reason === "too_many"
+          ? "Compare up to 4 vendors."
+          : "Pick vendors in one category.";
+
+  const closeComparison = useCallback(() => {
+    setComparison(null);
+  }, []);
+
   const allVisibleSelected =
     visibleItems.length > 0 &&
     visibleItems.every((item) => selected.has(item.id));
@@ -177,6 +204,21 @@ export function OutreachRegion({
     });
   }
 
+  function openCompare() {
+    if (!selection.ok) return;
+    const ids = selection.ids;
+    setCompareError(null);
+    startCompareTransition(async () => {
+      const result = await loadVendorComparison(projectId, ids);
+      if (!result.ok) {
+        setCompareError(result.error);
+        setComparison(null);
+        return;
+      }
+      setComparison(result.comparison);
+    });
+  }
+
   return (
     <div className="space-y-4">
       <Card className="px-5 py-5">
@@ -210,6 +252,19 @@ export function OutreachRegion({
             </div>
             <Button
               type="button"
+              variant="default"
+              disabled={!selection.ok || isComparePending}
+              aria-describedby={
+                compareHint || compareError ? "compare-hint" : undefined
+              }
+              onClick={openCompare}
+              className="w-full whitespace-nowrap !px-2.5 !py-1.5 text-[13px] sm:w-fit sm:!px-5 sm:!py-2.5"
+            >
+              {isComparePending ? "Comparing…" : "Compare"}
+              {selection.ok ? ` (${selection.ids.length})` : ""}
+            </Button>
+            <Button
+              type="button"
               variant="primary"
               disabled={selectedToContactIds.length === 0 || isDraftPending}
               onClick={() => {
@@ -225,6 +280,16 @@ export function OutreachRegion({
             </Button>
           </div>
         </div>
+
+        {compareHint || compareError ? (
+          <p id="compare-hint" className="mt-2 text-[13px] text-muted">
+            {compareError ? (
+              <span className="text-rosewood">{compareError}</span>
+            ) : (
+              compareHint
+            )}
+          </p>
+        ) : null}
 
         {showAdd ? (
           <div className="mt-4 border-t border-hairline pt-4">
@@ -439,6 +504,14 @@ export function OutreachRegion({
       </Card>
 
       <DeclinedVendorsGroup projectId={projectId} items={declinedItems} />
+
+      {comparison ? (
+        <VendorComparePanel
+          projectId={projectId}
+          comparison={comparison}
+          onClose={closeComparison}
+        />
+      ) : null}
     </div>
   );
 }

@@ -14,11 +14,14 @@ export function Modal({
   onClose,
   labelledBy,
   className,
+  panelClassName,
 }: {
   children: ReactNode;
   onClose: () => void;
   labelledBy: string;
   className?: string;
+  /** Width of the dialog shell. Defaults to `max-w-xl`. */
+  panelClassName?: string;
 }) {
   const panelRef = useRef<HTMLDivElement>(null);
   const [mounted, setMounted] = useState(false);
@@ -86,7 +89,7 @@ export function Modal({
         role="dialog"
         aria-modal="true"
         aria-labelledby={labelledBy}
-        className="relative z-10 w-full max-w-xl"
+        className={cn("relative z-10 w-full", panelClassName ?? "max-w-xl")}
       >
         <Card
           className={cn(
