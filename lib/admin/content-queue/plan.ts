@@ -117,25 +117,27 @@ ${SLIDE_LAYOUTS.join(", ")}.
 - steps: a process, at most 4. data.steps have a one-word word and a caption.
 - statement: text only. data.highlight is a short phrase that appears inside the headline, or "".
 
-For a type C slideshow, slides 1 through N-1 are headline tips with surface "none". The last slide keeps the same kind of headline and uses one surface slug so the real screen shows up. For a type C pin, the single slide uses that slug and the headline still does not name the product. Type D may name the product and uses a surface slug on the plug slide. Type A and B use surface "none".
+For a type C slideshow, slides 1 through N-1 are headline tips with surface "none". The last slide keeps the same kind of headline and uses one surface slug so the real screen shows up. For a type C pin or a type C LinkedIn static, the single slide uses that slug and the headline still does not name the product. Type D may name the product and uses a surface slug on the plug slide. Type A and B use surface "none".
 
 When surface is a slug, leave every data array empty and every data string "". The app fills the real product UI. Do not invent screen copy, names, or numbers.
 
 Production formats:
 - static / pin: exactly one slide.
+- LinkedIn static: exactly one slide, same rules as a pin. Caption is the full LinkedIn post. The image is square. When audience is planner, the surface is one of: leads, dashboard, invoices, automations, calendar, vendor-library, white-label, branding. Do not use a couple screen.
 - carousel: exactly N slides, a sequence. Slide 1 is a cover (statement or big-number).
 - ugc: film-it-yourself video. Caption is the spoken / on-screen script. slides MUST be [].
-- text: LinkedIn copy-only post. Caption is the post body. slides MUST be [].
+- text: copy-only post. Caption is the post body. slides MUST be [].
 - carousel on TikTok is a photo slideshow, vertical, same slide rules as carousel.
 
 TikTok videos and Pinterest pins are also posted to Facebook. YouTube is a repost of the
-same TikTok video — do not write a YouTube variant. LinkedIn is its own text post.
+same TikTok video — do not write a YouTube variant. A LinkedIn static post stands alone:
+the caption is the post, and it also gets one square image.
 
 For each slot return:
 - topic: one short label (a few words) for the review card.
 - caption: platform-appropriate post text that executes THIS idea.
   For UGC this is the script (TikTok) or the post body (LinkedIn video). For text
-  this is the full post.
+  this is the full post. For LinkedIn static this is the full post, and slides has one slide.
 - slides: the array described above. Each slide has headline, support (or ""),
   layout, surface (a slug or "none"), and data.
   Headlines are at most 90 characters. Supporting lines are one sentence.

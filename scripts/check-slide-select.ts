@@ -22,6 +22,27 @@ const guest = parseSlideFragment(
 assert.equal(guest.degraded, false);
 assert.equal(guest.surface, "guests");
 
+const linkedin = selectSlideSpecs({
+  platform: "linkedin",
+  contentType: "D",
+  fragments: [
+    parseSlideFragment(
+      {
+        headline: "The inquiry should not live in an inbox.",
+        support: "A lead with a next step.",
+        layout: "headline-card",
+        surface: "leads",
+        data: {},
+      },
+      "fallback",
+    ),
+  ],
+});
+assert.equal(linkedin.length, 1);
+assert.equal(linkedin[0]?.format, "square");
+assert.equal(linkedin[0]?.layout, "headline-card");
+assert.equal((linkedin[0]?.data as { rows?: unknown[] }).rows?.length, 2);
+
 const specs = selectSlideSpecs({
   platform: "pinterest",
   contentType: "D",

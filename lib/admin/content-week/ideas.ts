@@ -24,7 +24,7 @@ const IDEAS_PER_INTENT = 3;
 const SYSTEM_PROMPT = `You brainstorm short-form social ideas for First Look, a wedding-planning
 SaaS. Two audiences only:
 - Couples, for TikTok slideshows and Pinterest pins.
-- Venues and planners, for LinkedIn text posts. Never write a couples tip as a LinkedIn post.
+- Venues and planners, for LinkedIn posts that each get one square image. Never write a couples tip as a LinkedIn post.
 
 Tone: warm, useful, a little funny, never salesy. Never use the word "AI".
 
@@ -37,7 +37,7 @@ Tip: write it the way a person would say it. Do not mention First Look, "the app
 Promo: you may name First Look. Open on the pain, then the feature. A promo slideshow ends on the feature.
 
 Slideshow and pin ideas are one or two sentences a person could turn into slides or a pin.
-LinkedIn ideas are one or two sentences for a text post.
+LinkedIn ideas are one or two sentences. Each one becomes a post with one square image, so the sentence should be a hook a headline can carry.
 
 Return ONLY the JSON shape you are given. No markdown, no extra keys.`;
 
@@ -206,7 +206,7 @@ Pin (couples, one image)
 - ${topicLine("tip", topics.pin.tip)}
 - ${topicLine("promo", topics.pin.promo)}
 
-LinkedIn (venues and planners, text post, ${topics.linkedin.intent} only)
+LinkedIn (venues and planners, one square image, ${topics.linkedin.intent} only)
 - ${topicLine(topics.linkedin.intent, topics.linkedin.topic)}
 ${focusLine}
 ${taste ? `\n${taste}` : ""}`;
@@ -335,7 +335,7 @@ async function generateLane(
     if (lane === "linkedin") {
       const topic = venueTake!.topics[0]!;
       user = `Day: ${formatDayHeading(date)}.
-Write 3 LinkedIn text-post ideas for venues and planners. Intent: ${intentForLinkedIn}.
+Write 3 LinkedIn ideas for venues and planners. Each one becomes a post with one square image. Intent: ${intentForLinkedIn}.
 Topic: ${topicLine(intentForLinkedIn, topic)}
 ${focusLine}
 ${taste ? `\n${taste}` : ""}`;

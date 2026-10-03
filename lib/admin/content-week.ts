@@ -3,7 +3,7 @@ import type { ContentPostFormat } from "@/lib/admin/content-formats";
 import type { ContentQueuePlatform } from "@/lib/admin/content-queue";
 import type { AudienceGroup } from "@/lib/admin/platform-audience";
 
-/** Couples lanes plus one LinkedIn text post for venues and planners. */
+/** Couples lanes plus one LinkedIn post with a square image for venues and planners. */
 export type ContentLane = "video" | "slideshow" | "pin" | "linkedin";
 export type ContentIntent = "tip" | "promo";
 /** Video slots accept either intent. LinkedIn, slideshows, and pins are fixed. */
@@ -22,7 +22,7 @@ export const LANE_QUOTA_HINT: Record<ContentLane, string> = {
   video: "Two a day. The first is a duet, the second is straight to camera. Also post them to Facebook.",
   slideshow: "Pick 1 tip and 1 promo. The promo one is a pain, then the app.",
   pin: "Pick 2 tips and 1 promo. All three also go to Facebook.",
-  linkedin: "Pick 1. Venues and planners only. The day alternates tip and promo.",
+  linkedin: "Pick 1. Venues and planners only. One square image with the post. The day alternates tip and promo.",
 };
 
 /** Lanes that still get a Sunday shortlist. Videos are assigned on the schedule. */
@@ -146,7 +146,7 @@ export function laneProduction(lane: ContentLane): LaneProduction {
     case "linkedin":
       return {
         platform: "linkedin",
-        format: "text",
+        format: "static",
         audience_group: "planner",
         carousel_slides: null,
       };

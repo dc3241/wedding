@@ -86,8 +86,8 @@ export default async function AdminOverviewPage() {
         />
       </div>
 
-      <div className="grid gap-4 md:grid-cols-[1.3fr_1fr] md:items-start">
-        <div className="flex flex-col gap-4">
+      <div className="grid min-w-0 gap-4 md:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] md:items-start">
+        <div className="flex min-w-0 flex-col gap-4">
           <Card className="px-6 py-5">
             <Eyebrow className="mb-3 text-accent">
               {postingToday ? "Today" : "Sunday — content day"}
@@ -99,7 +99,7 @@ export default async function AdminOverviewPage() {
                   return (
                     <div
                       key={slot.id}
-                      className="flex items-center justify-between gap-3 border-b border-hairline py-2.5 text-[15px] font-medium last:border-b-0"
+                      className="flex items-start justify-between gap-3 border-b border-hairline py-2.5 text-[15px] font-medium last:border-b-0"
                     >
                       <span className="min-w-0">
                         <span className="block text-[13px] text-muted">
@@ -107,7 +107,7 @@ export default async function AdminOverviewPage() {
                             ? videoSlotTitle(slot.position, slot.feature_key)
                             : slotLabel(slot.lane, slot.position, slot.intent)}
                         </span>
-                        <span className="block truncate">
+                        <span className="block break-words">
                           {slot.lane === "video"
                             ? videoFormatLine(slot.position, slot.feature_key)
                             : (idea?.idea_text ?? "Nothing chosen")}
@@ -141,7 +141,7 @@ export default async function AdminOverviewPage() {
           </Card>
         </div>
 
-        <div className="flex flex-col gap-4">
+        <div className="flex min-w-0 flex-col gap-4">
           <Card className="px-6 py-5">
             <Eyebrow className="mb-3 text-accent">Latest performance</Eyebrow>
             {latestPerf ? (
