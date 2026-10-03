@@ -1,14 +1,13 @@
 /**
- * Named product screens for KIE i2i. Source PNGs live in
- * design/product-shots/{slug}.png; the same files must exist at
- * content-queue-assets/product/{slug}.png. Generate throws if a matched
- * shot is missing — never silently fall back to inventing UI.
+ * Named product screens. Built-in PNGs live in design/product-shots and
+ * content-queue-assets/product/. An admin upload on Product screens
+ * (product_shot_uploads) replaces the primary image for that angle.
  *
  * KIE must isolate 1–2 UI fragments from the shot and compose them as
  * designed graphic elements. Never paste the screenshot (or a crop of it)
  * as a floating window / device frame. That phone-frame ban is a Seedream
- * guard. The still renderer draws a bezel on headline-phone and does not
- * use this prompt.
+ * guard. The still renderer draws a bezel and fills it with the uploaded
+ * screenshot when one exists for the angle.
  */
 export type ProductShotScreen = {
   path: string;

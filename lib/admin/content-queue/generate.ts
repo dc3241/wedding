@@ -12,6 +12,7 @@ import {
   matchProductShot,
   screensForShot,
 } from "@/lib/admin/content-queue/product-shots";
+import { uploadedProductShotPath } from "@/lib/admin/content-queue/product-shot-sources";
 
 export const KIE_CREATE_TASK_URL = "https://api.kie.ai/api/v1/jobs/createTask";
 export const KIE_RECORD_INFO_URL = "https://api.kie.ai/api/v1/jobs/recordInfo";
@@ -75,9 +76,12 @@ async function signedProductShotUrl(path: string): Promise<string> {
   const { data: listed, error: listError } = await supabase.storage
     .from(CONTENT_QUEUE_BUCKET)
     .list(dir, { search: name, limit: 20 });
+  const library = path.startsWith("product-library/");
   if (listError || !listed?.some((entry) => entry.name === name)) {
     throw new Error(
-      `Product screenshot missing from ${CONTENT_QUEUE_BUCKET}: ${path}. Upload design/product-shots/${name} to production storage before generating.`,
+      library
+        ? `Uploaded product screenshot missing from ${CONTENT_QUEUE_BUCKET}: ${path}. Re-upload it on Product screens.`
+        : `Product screenshot missing from ${CONTENT_QUEUE_BUCKET}: ${path}. Upload design/product-shots/${name} to production storage before generating.`,
     );
   }
   const { data, error } = await supabase.storage
@@ -114,8 +118,12 @@ export async function requestGeneration(
   let imageUrls: string[];
   let prompt: string;
   if (shot) {
+    const override = await uploadedProductShotPath(createServiceRoleClient(), shot.slug);
+    const screens = screensForShot(shot);
     const productUrls = await Promise.all(
-      screensForShot(shot).map((screen) => signedProductShotUrl(screen.path)),
+      screens.map((screen, index) =>
+        signedProductShotUrl(index === 0 && override ? override : screen.path),
+      ),
     );
     imageUrls = [...productUrls, layoutUrl];
     prompt = kiePromptForProductShot(shot, post.prompt);

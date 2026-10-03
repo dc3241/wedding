@@ -161,15 +161,17 @@ let fontCache: { name: string; data: Buffer; weight: 400 | 500 | 600 | 700 | 800
 const shotCache = new Map<string, string>();
 
 function websiteShotSrc(shot: unknown): string | null {
-  if (!isWebsiteShot(shot)) return null;
-  const cached = shotCache.get(shot);
+  // Older slides stored the retired "look" editor. Show a guest page instead.
+  const name = shot === "look" ? "where-when" : shot;
+  if (!isWebsiteShot(name)) return null;
+  const cached = shotCache.get(name);
   if (cached) return cached;
-  const file = path.join(process.cwd(), "stills/public/website", `${shot}.png`);
+  const file = path.join(process.cwd(), "stills/public/website", `${name}.png`);
   if (!fs.existsSync(file)) {
-    throw new Error(`Wedding website screenshot missing: stills/public/website/${shot}.png`);
+    throw new Error(`Wedding website screenshot missing: stills/public/website/${name}.png`);
   }
   const src = `data:image/png;base64,${fs.readFileSync(file).toString("base64")}`;
-  shotCache.set(shot, src);
+  shotCache.set(name, src);
   return src;
 }
 
@@ -535,6 +537,7 @@ function HeadlinePhone({
   W,
   H,
   shotSrc,
+  shotFit = "cover",
 }: {
   spec: SlideSpec;
   t: Theme;
@@ -542,6 +545,8 @@ function HeadlinePhone({
   W: number;
   H: number;
   shotSrc?: string | null;
+  /** Uploaded desktop screens stay whole. Baked website shots fill the bezel. */
+  shotFit?: "cover" | "contain";
 }) {
   const data = (spec.data ?? {}) as { bulletsTitle?: string; bullets?: string[] };
   const bullets = (data.bullets ?? []).slice(0, 5);
@@ -590,7 +595,8 @@ function HeadlinePhone({
                   style={{
                     width: Math.round(screenW),
                     height: Math.round(screenH),
-                    objectFit: "cover",
+                    objectFit: shotFit,
+                    background: tokens.canvas,
                   }}
                 />
               ) : (
@@ -924,11 +930,13 @@ export function SlideImage({
   width,
   height,
   shotSrc,
+  shotFit = "cover",
 }: {
   spec: SlideSpec;
   width: number;
   height: number;
   shotSrc?: string | null;
+  shotFit?: "cover" | "contain";
 }) {
   const t = themes[spec.theme] ?? themes.blush;
   const u = width / 1080;
@@ -952,7 +960,7 @@ export function SlideImage({
     >
       <StillWordmark size={(left ? 54 : 62) * u} color={t.wm} dot={t.dot} />
       {spec.layout === "headline-phone" ? (
-        <HeadlinePhone spec={spec} t={t} u={u} W={width} H={height} shotSrc={shotSrc} />
+        <HeadlinePhone spec={spec} t={t} u={u} W={width} H={height} shotSrc={shotSrc} shotFit={shotFit} />
       ) : spec.layout === "big-number" ? (
         <BigNumber spec={spec} t={t} u={u} W={width} />
       ) : spec.layout === "before-after" ? (
@@ -992,17 +1000,34 @@ export function SlideImage({
   );
 }
 
-export async function renderSatoriSlide(spec: SlideSpec): Promise<Buffer> {
+export async function renderSatoriSlide(spec: SlideSpec, uploadedShotSrc?: string | null): Promise<Buffer> {
   if (!satoriSupports(spec.layout)) {
     throw new Error(`Satori does not render ${spec.layout}.`);
   }
   const [width, height] = FORMATS[spec.format] ?? FORMATS.pin;
-  const shotSrc = websiteShotSrc((spec.data as { shot?: unknown } | undefined)?.shot);
-  const response = new ImageResponse(<SlideImage spec={spec} width={width} height={height} shotSrc={shotSrc} />, {
-    width,
-    height,
-    fonts: loadFonts(),
-  });
+  const uploaded = uploadedShotSrc?.trim() ? uploadedShotSrc : null;
+  const productFrame =
+    uploaded && (spec.layout === "headline-phone" || spec.layout === "headline-card");
+  const view: SlideSpec = productFrame ? { ...spec, layout: "headline-phone" } : spec;
+  const shotSrc =
+    uploaded ??
+    (view.layout === "headline-phone"
+      ? websiteShotSrc((spec.data as { shot?: unknown } | undefined)?.shot)
+      : null);
+  const response = new ImageResponse(
+    <SlideImage
+      spec={view}
+      width={width}
+      height={height}
+      shotSrc={shotSrc}
+      shotFit={uploaded ? "contain" : "cover"}
+    />,
+    {
+      width,
+      height,
+      fonts: loadFonts(),
+    },
+  );
   const bytes = Buffer.from(await response.arrayBuffer());
   if (bytes.length < 8 || bytes[0] !== 0x89) {
     throw new Error("Satori did not return a PNG.");

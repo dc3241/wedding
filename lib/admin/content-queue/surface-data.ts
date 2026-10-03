@@ -12,7 +12,8 @@ import type { SlideLayout } from "@/lib/admin/content-queue/slide-spec";
  * screenshot from stills/public/website.
  */
 
-export const WEBSITE_SHOTS = ["where-when", "timeline", "look"] as const;
+/** "look" (template and palette names on a white editor) is retired from the rotation. */
+export const WEBSITE_SHOTS = ["where-when", "timeline"] as const;
 export type WebsiteShot = (typeof WEBSITE_SHOTS)[number];
 
 export function isWebsiteShot(value: unknown): value is WebsiteShot {
@@ -51,10 +52,6 @@ const WEBSITE_COPY: Record<WebsiteShot, { bulletsTitle: string; bullets: string[
   timeline: {
     bulletsTitle: "The day",
     bullets: ["Getting ready", "Ceremony", "Dinner and toasts"],
-  },
-  look: {
-    bulletsTitle: "Their site",
-    bullets: ["Five templates", "A palette they pick", "A live preview"],
   },
 };
 

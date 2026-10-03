@@ -48,6 +48,12 @@ const queueIcon = (
     <path d="M3 7v9.5A1.5 1.5 0 0 0 4.5 18H15" />
   </>
 );
+const productShotIcon = (
+  <>
+    <rect x="6" y="2.5" width="8" height="15" rx="2" />
+    <path d="M8.5 4.2h3" />
+  </>
+);
 const ideationIcon = (
   <path d="M10 2a5 5 0 0 0-3 9c.6.5 1 1.2 1 2h4c0-.8.4-1.5 1-2a5 5 0 0 0-3-9ZM7.5 15h5M8.5 17.5h3" />
 );
@@ -68,6 +74,7 @@ const NAV: NavBlock[] = [
       { href: "/admin/performance", label: "Performance", tooltip: "Performance", icon: performanceIcon },
       { href: "/admin/media", label: "Media library", tooltip: "Media library", icon: mediaIcon },
       { href: "/admin/content-queue", label: "Content queue", tooltip: "Content queue", icon: queueIcon },
+      { href: "/admin/product-shots", label: "Product screens", tooltip: "Product screens", icon: productShotIcon },
       { href: "/admin/ideation", label: "Ideation", tooltip: "Ideation", icon: ideationIcon },
     ],
   },

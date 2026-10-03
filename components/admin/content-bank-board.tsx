@@ -64,6 +64,11 @@ function bankImageSrc(id: string, index: number, download = false) {
   return `/api/admin/bank-image?${params.toString()}`;
 }
 
+function bankSlidesZipSrc(id: string) {
+  const params = new URLSearchParams({ id, download: "all" });
+  return `/api/admin/bank-image?${params.toString()}`;
+}
+
 function BankForm({
   initial,
   platforms,
@@ -302,7 +307,14 @@ function QueueSourcedCard({
         >
           {copied ? "Copied" : "Copy caption"}
         </button>
-        {count > 0 ? (
+        {item.platform === "tiktok" && count > 1 ? (
+          <a
+            href={bankSlidesZipSrc(item.id)}
+            className="text-[13px] font-medium text-accent hover:underline"
+          >
+            Download
+          </a>
+        ) : count > 0 ? (
           <a
             href={bankImageSrc(item.id, safeIndex, true)}
             target="_blank"

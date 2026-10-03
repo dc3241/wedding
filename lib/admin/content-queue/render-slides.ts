@@ -3,13 +3,15 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { CONTENT_QUEUE_BUCKET } from "@/lib/admin/content-queue";
 import { renderSatoriSlide, satoriSupports } from "@/lib/admin/content-queue/satori-slide";
+import { loadProductShotDataUrls } from "@/lib/admin/content-queue/product-shot-sources";
 import type { SlideSpec } from "@/lib/admin/content-queue/slide-spec";
 
 export type StillRenderer = "satori" | "still-host";
 
 /**
  * All seven still layouts render in-process. STILL_RENDER_URL, when set,
- * sends every slide to that host instead.
+ * sends slides to that host — unless an admin product screenshot is
+ * attached, in which case the slide is drawn here so the upload is included.
  */
 export const USE_SATORI_FOR_SUPPORTED_LAYOUTS = true;
 
@@ -34,9 +36,11 @@ async function renderViaHost(url: string, spec: SlideSpec): Promise<Buffer> {
 
 export async function renderSlidePngs(
   specs: SlideSpec[],
+  shotSrcBySurface?: ReadonlyMap<string, string>,
 ): Promise<{ pngs: Buffer[]; renderer: StillRenderer }> {
   const host = process.env.STILL_RENDER_URL?.trim().replace(/\/$/, "");
-  if (host) {
+  const hasUpload = Boolean(shotSrcBySurface && [...shotSrcBySurface.values()].some(Boolean));
+  if (host && !hasUpload) {
     const pngs: Buffer[] = [];
     for (const spec of specs) pngs.push(await renderViaHost(host, spec));
     return { pngs, renderer: "still-host" };
@@ -53,7 +57,10 @@ export async function renderSlidePngs(
   }
 
   const pngs: Buffer[] = [];
-  for (const spec of specs) pngs.push(await renderSatoriSlide(spec));
+  for (const spec of specs) {
+    const uploaded = spec.surface ? shotSrcBySurface?.get(spec.surface) : null;
+    pngs.push(await renderSatoriSlide(spec, uploaded));
+  }
   return { pngs, renderer: "satori" };
 }
 
@@ -62,7 +69,8 @@ export async function renderAndStoreSlides(
   row: { id: string; week_of: string },
   specs: SlideSpec[],
 ): Promise<StillRenderer> {
-  const { pngs, renderer } = await renderSlidePngs(specs);
+  const shotSrcBySurface = await loadProductShotDataUrls(supabase, specs);
+  const { pngs, renderer } = await renderSlidePngs(specs, shotSrcBySurface);
   const folder = `generated/${row.week_of}/${row.id}`;
   const stamp = Date.now().toString(36);
   const paths: string[] = [];

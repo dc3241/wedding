@@ -72,7 +72,7 @@ export const layoutDataSchemas = {
       .max(5),
   }),
   "headline-phone": z.object({
-    shot: z.enum(["where-when", "timeline", "look"]).optional(),
+    shot: z.enum(["where-when", "timeline"]).optional(),
     hero: z.object({
       label: clip(32),
       value: clip(24),

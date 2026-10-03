@@ -141,7 +141,8 @@ const siteSpecs = selectSlideSpecs({
 });
 assert.equal(siteSpecs[0]?.layout, "headline-phone");
 assert.equal((siteSpecs[0]?.data as { shot?: string }).shot, "timeline");
-assert.equal(pickWebsiteShot(["where-when", "timeline"], ["look"]), "where-when");
+assert.equal(pickWebsiteShot(["where-when"], []), "timeline");
+assert.equal(pickWebsiteShot(["where-when", "timeline"], []), "where-when");
 
 const bad = parseSlideFragment({ headline: "Hi", layout: "tip-list", surface: "none", data: {} }, "Hi");
 assert.equal(bad.degraded, true);
