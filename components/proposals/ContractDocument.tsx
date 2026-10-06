@@ -13,6 +13,7 @@ type ContractDocumentProps = {
   total: number;
   terms: string | null;
   acceptedAt: string | null;
+  signedName: string | null;
   leadId: string;
 };
 
@@ -41,6 +42,7 @@ export function ContractDocument({
   total,
   terms,
   acceptedAt,
+  signedName,
   leadId,
 }: ContractDocumentProps) {
   return (
@@ -96,6 +98,7 @@ export function ContractDocument({
           {acceptedAt ? (
             <p className="mt-1 text-[13px] text-sage">
               Accepted {formatAcceptedDate(acceptedAt)}
+              {signedName ? ` · Signed by ${signedName}` : ""}
             </p>
           ) : null}
         </header>
@@ -167,11 +170,19 @@ export function ContractDocument({
               <p className="mt-1 text-[12px] text-muted">Date: __________</p>
             </div>
             <div>
+              {signedName ? (
+                <p className="text-[15px] font-medium text-ink">{signedName}</p>
+              ) : null}
               <div className="border-b border-ink pb-1" />
               <p className="mt-2 text-[13px] text-muted">
                 {coupleName} (Client)
               </p>
-              <p className="mt-1 text-[12px] text-muted">Date: __________</p>
+              <p className="mt-1 text-[12px] text-muted">
+                Date:{" "}
+                {signedName && acceptedAt
+                  ? formatAcceptedDate(acceptedAt)
+                  : "__________"}
+              </p>
             </div>
           </div>
         </section>

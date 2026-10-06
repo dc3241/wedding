@@ -236,6 +236,9 @@ export function ProposalBuilder({
               {proposal.accepted_at ? (
                 <p className="mt-1 text-[13px] text-sage">
                   Accepted {formatAcceptedAt(proposal.accepted_at)}
+                  {proposal.signed_name
+                    ? ` · Signed by ${proposal.signed_name}`
+                    : ""}
                 </p>
               ) : null}
             </div>
@@ -258,6 +261,7 @@ export function ProposalBuilder({
           <ProposalStatusControl
             proposalId={proposal.id}
             initialStatus={proposal.status}
+            locked={Boolean(proposal.signed_name)}
           />
           {canSend || proposal.access_token ? (
             <div className="flex flex-wrap gap-2">
@@ -531,7 +535,9 @@ export function ProposalBuilder({
         </div>
       ) : (
         <p className="mt-4 text-[13px] text-muted">
-          This proposal is locked. Change status to Draft to edit again.
+          {proposal.signed_name
+            ? "This proposal was signed and can't be edited."
+            : "This proposal is locked. Change status to Draft to edit again."}
         </p>
       )}
     </Card>

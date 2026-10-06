@@ -137,7 +137,10 @@ export default async function PublicProposalPage({
             </Pill>
           </div>
           {proposal.status === "accepted" && acceptedLabel ? (
-            <p className="text-[13px] text-sage">Accepted {acceptedLabel}</p>
+            <p className="text-[13px] text-sage">
+              Accepted {acceptedLabel}
+              {proposal.signed_name ? ` · Signed by ${proposal.signed_name}` : ""}
+            </p>
           ) : null}
           {proposal.status === "declined" ? (
             <p className="text-[13px] text-rosewood">This proposal was declined.</p>

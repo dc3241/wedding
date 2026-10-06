@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { respondToPublicProposal } from "@/app/proposal/actions";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { buttonVariantClasses } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
 
@@ -15,6 +16,7 @@ export function PublicProposalActions({
   canRespond: boolean;
 }) {
   const router = useRouter();
+  const [name, setName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [invoiceUrl, setInvoiceUrl] = useState<string | null>(null);
   const [convertNote, setConvertNote] = useState<string | null>(null);
@@ -27,8 +29,17 @@ export function PublicProposalActions({
 
   function handle(decision: "accept" | "decline") {
     setError(null);
+    const signedName = name.trim().replace(/\s+/g, " ");
+    if (decision === "accept" && !signedName) {
+      setError("Type your name to accept.");
+      return;
+    }
     startTransition(async () => {
-      const result = await respondToPublicProposal(token, decision);
+      const result = await respondToPublicProposal(
+        token,
+        decision,
+        decision === "accept" ? signedName : undefined,
+      );
       if (!result.ok) {
         setError(result.error);
         return;
@@ -46,7 +57,7 @@ export function PublicProposalActions({
     return (
       <div className="space-y-3 rounded-[var(--radius-inner)] bg-well px-4 py-4 shadow-recessed">
         <p className="text-[15px] font-medium text-sage">
-          You&apos;ve accepted this proposal. Your planner will be in touch.
+          {`You signed this proposal as ${name.trim().replace(/\s+/g, " ")}. Your planner will be in touch.`}
         </p>
         {convertNote ? (
           <p className="text-[13px] text-muted">
@@ -81,6 +92,21 @@ export function PublicProposalActions({
 
   return (
     <div className="space-y-3">
+      <div className="space-y-1.5">
+        <label htmlFor="proposal-sign-name" className="text-[14px] font-medium text-ink">
+          Your name
+        </label>
+        <Input
+          id="proposal-sign-name"
+          name="signed-name"
+          autoComplete="name"
+          maxLength={200}
+          value={name}
+          disabled={isPending}
+          placeholder="Type your name to accept"
+          onChange={(event) => setName(event.target.value)}
+        />
+      </div>
       <div className="flex flex-wrap gap-3">
         <Button
           type="button"

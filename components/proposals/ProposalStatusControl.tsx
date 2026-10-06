@@ -16,9 +16,12 @@ const ACTIVE_CLASS: Record<ProposalStatus, string> = {
 export function ProposalStatusControl({
   proposalId,
   initialStatus,
+  locked = false,
 }: {
   proposalId: string;
   initialStatus: ProposalStatus;
+  /** Couple signature. Status can no longer be changed. */
+  locked?: boolean;
 }) {
   const router = useRouter();
   const [status, setStatus] = useState(initialStatus);
@@ -30,7 +33,7 @@ export function ProposalStatusControl({
   }, [initialStatus]);
 
   function handleSelect(next: ProposalStatus) {
-    if (next === status || isPending) return;
+    if (locked || next === status || isPending) return;
 
     const previous = status;
     setError(null);
@@ -65,7 +68,7 @@ export function ProposalStatusControl({
               type="button"
               role="tab"
               aria-selected={active}
-              disabled={isPending}
+              disabled={isPending || locked}
               onClick={() => handleSelect(value)}
               className={cn(
                 "cursor-pointer rounded-full border-none bg-transparent px-2.5 py-1 text-[12px] font-medium text-muted transition-[color,background] duration-150 disabled:cursor-not-allowed",

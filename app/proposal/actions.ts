@@ -38,6 +38,18 @@ function hasBillableLineItems(lineItems: unknown): boolean {
   );
 }
 
+/** Typed signature stored on accept. Empty and over-long names are refused. */
+function normalizeSignedName(value: string | undefined): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim().replace(/\s+/g, " ");
+  if (!trimmed || trimmed.length > 200) return null;
+  return trimmed;
+}
+
+function isSignedName(value: unknown): boolean {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
 /**
  * Public Accept / Decline. Accept marks accepted, fires automations, then
  * converts to project + invoice. Convert failure still keeps accepted.
@@ -45,6 +57,7 @@ function hasBillableLineItems(lineItems: unknown): boolean {
 export async function respondToPublicProposal(
   token: string,
   decision: "accept" | "decline",
+  signedName?: string,
 ): Promise<PublicProposalRespondResult> {
   const trimmed = token.trim();
   if (!trimmed) {
@@ -55,7 +68,7 @@ export async function respondToPublicProposal(
   const { data: proposal, error } = await admin
     .from("proposals")
     .select(
-      "id, account_id, lead_id, status, line_items, access_token",
+      "id, account_id, lead_id, status, line_items, access_token, signed_name",
     )
     .eq("access_token", trimmed)
     .maybeSingle();
@@ -69,6 +82,9 @@ export async function respondToPublicProposal(
   }
 
   if (decision === "decline") {
+    if (isSignedName(proposal.signed_name)) {
+      return { ok: false, error: "This proposal was already signed." };
+    }
     if (proposal.status === "accepted") {
       return { ok: false, error: "This proposal was already accepted." };
     }
@@ -109,11 +125,19 @@ export async function respondToPublicProposal(
   }
 
   if (proposal.status !== "accepted") {
+    if (isSignedName(proposal.signed_name)) {
+      return { ok: false, error: "This proposal was already signed." };
+    }
+    const name = normalizeSignedName(signedName);
+    if (!name) {
+      return { ok: false, error: "Type your name to accept." };
+    }
     const { error: updateError } = await admin
       .from("proposals")
       .update({
         status: "accepted",
         accepted_at: new Date().toISOString(),
+        signed_name: name,
         updated_at: new Date().toISOString(),
       })
       .eq("id", proposal.id);
@@ -131,6 +155,12 @@ export async function respondToPublicProposal(
   const converted = await convertAcceptedProposal(proposal.id, admin);
   revalidatePath(`/leads/${proposal.lead_id}`);
   revalidatePath("/leads");
+  revalidatePath(
+    `/leads/${proposal.lead_id}/proposals/${proposal.id}/contract`,
+  );
+  if (converted.ok) {
+    revalidatePath(`/projects/${converted.projectId}/contracts`);
+  }
 
   if (!converted.ok) {
     return {

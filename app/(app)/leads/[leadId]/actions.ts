@@ -139,12 +139,19 @@ export async function updateProposal(
 
   const { data: existing, error: loadError } = await supabase
     .from("proposals")
-    .select("lead_id, status")
+    .select("lead_id, status, signed_name")
     .eq("id", id)
     .maybeSingle();
 
   if (loadError || !existing) {
     return { ok: false, error: loadError?.message ?? "Proposal not found." };
+  }
+
+  if (typeof existing.signed_name === "string" && existing.signed_name.trim()) {
+    return {
+      ok: false,
+      error: "This proposal was signed and can't be changed.",
+    };
   }
 
   if (existing.status === "accepted") {
@@ -204,7 +211,7 @@ export async function updateProposalStatus(
 
   const { data: existing, error: loadError } = await supabase
     .from("proposals")
-    .select("lead_id, account_id, status")
+    .select("lead_id, account_id, status, signed_name")
     .eq("id", id)
     .maybeSingle();
 
@@ -215,6 +222,13 @@ export async function updateProposalStatus(
   if (existing.status === status) {
     revalidateProposalPaths(existing.lead_id, id);
     return { ok: true };
+  }
+
+  if (typeof existing.signed_name === "string" && existing.signed_name.trim()) {
+    return {
+      ok: false,
+      error: "This proposal was signed and can't be changed.",
+    };
   }
 
   const { error } = await supabase
@@ -257,12 +271,19 @@ export async function deleteProposal(
 
   const { data: existing, error: loadError } = await supabase
     .from("proposals")
-    .select("lead_id")
+    .select("lead_id, signed_name")
     .eq("id", id)
     .maybeSingle();
 
   if (loadError || !existing) {
     return { ok: false, error: loadError?.message ?? "Proposal not found." };
+  }
+
+  if (typeof existing.signed_name === "string" && existing.signed_name.trim()) {
+    return {
+      ok: false,
+      error: "This proposal was signed and can't be deleted.",
+    };
   }
 
   const { error } = await supabase.from("proposals").delete().eq("id", id);

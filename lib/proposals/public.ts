@@ -18,6 +18,7 @@ export type PublicProposal = {
   total: number;
   line_items: ProposalLineItem[];
   accepted_at: string | null;
+  signed_name: string | null;
   couple_name: string;
   wedding_date: string | null;
   account_name: string;
@@ -76,6 +77,10 @@ export async function getPublicProposalByToken(
     total,
     line_items: lineItems,
     accepted_at: typeof row.accepted_at === "string" ? row.accepted_at : null,
+    signed_name:
+      typeof row.signed_name === "string" && row.signed_name.trim()
+        ? row.signed_name.trim()
+        : null,
     couple_name:
       typeof row.couple_name === "string" ? row.couple_name : "there",
     wedding_date:

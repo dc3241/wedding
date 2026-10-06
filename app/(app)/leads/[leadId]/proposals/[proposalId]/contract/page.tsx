@@ -35,7 +35,7 @@ export default async function ProposalContractPage({
       supabase
         .from("proposals")
         .select(
-          "id, lead_id, title, line_items, total, status, terms, accepted_at",
+          "id, lead_id, title, line_items, total, status, terms, accepted_at, signed_name",
         )
         .eq("id", proposalId)
         .maybeSingle(),
@@ -68,6 +68,11 @@ export default async function ProposalContractPage({
         total={Number(proposalRow.total)}
         terms={proposalRow.terms}
         acceptedAt={proposalRow.accepted_at}
+        signedName={
+          typeof proposalRow.signed_name === "string"
+            ? proposalRow.signed_name
+            : null
+        }
         leadId={leadId}
       />
     </div>
