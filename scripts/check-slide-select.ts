@@ -191,7 +191,7 @@ const again = selectSlideSpecs({
   platform: "pinterest",
   contentType: "A",
   fragments: [statement(shownHeadline)],
-  recent: [{ layout: "statement", theme: "ink", snippet: shown[0]?.snippet }],
+  recent: [{ layout: "statement", theme: "ink", snippet: shown[0]?.snippet ?? undefined }],
 });
 assert.notEqual(again[0]?.snippet, shown[0]?.snippet);
 
