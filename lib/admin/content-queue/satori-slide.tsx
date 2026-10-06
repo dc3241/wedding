@@ -159,6 +159,22 @@ let fontCache: { name: string; data: Buffer; weight: 400 | 500 | 600 | 700 | 800
   null;
 
 const shotCache = new Map<string, string>();
+const productShotCache = new Map<string, string>();
+
+function builtinProductShotSrc(slug: string): string {
+  if (!/^[a-z0-9-]+$/.test(slug)) {
+    throw new Error(`Unknown product screenshot: ${slug}`);
+  }
+  const cached = productShotCache.get(slug);
+  if (cached) return cached;
+  const file = path.join(process.cwd(), "design/product-shots", `${slug}.png`);
+  if (!fs.existsSync(file)) {
+    throw new Error(`Product screenshot missing: design/product-shots/${slug}.png`);
+  }
+  const src = `data:image/png;base64,${fs.readFileSync(file).toString("base64")}`;
+  productShotCache.set(slug, src);
+  return src;
+}
 
 function websiteShotSrc(shot: unknown): string | null {
   // Older slides stored the retired "look" editor. Show a guest page instead.
@@ -925,24 +941,132 @@ function Statement({ spec, t, u, W }: { spec: SlideSpec; t: Theme; u: number; W:
 
 const LEFT_LAYOUTS = new Set(["headline-phone", "tip-list", "steps", "statement"]);
 
+/** Full app shells. The crop keeps the main column and drops the planner rail. */
+const SHELL_SHOTS = new Set([
+  "guests",
+  "seating",
+  "overview",
+  "vendors",
+  "timeline",
+  "dashboard",
+  "leads",
+  "calendar",
+  "automations",
+  "branding",
+  "invoices",
+  "vendor-library",
+  "white-label",
+  "website",
+]);
+
+function snippetImageBox(slug: string, innerW: number, innerH: number) {
+  const shell = SHELL_SHOTS.has(slug);
+  const wide = slug === "budget" || slug === "budget-categories";
+  const [nw, nh] = wide ? [1904, slug === "budget" ? 900 : 510] : slug === "budget-item" ? [1200, 820] : [1235, 954];
+  if (!shell && slug !== "budget-categories") {
+    return { width: innerW, height: innerH, marginLeft: 0, marginTop: 0 };
+  }
+  const visibleFrac = shell ? 0.74 : 0.9;
+  let scale = innerW / (nw * visibleFrac);
+  let drawW = nw * scale;
+  let drawH = nh * scale;
+  if (drawH < innerH) {
+    scale = innerH / nh;
+    drawW = nw * scale;
+    drawH = nh * scale;
+  }
+  const extraW = Math.max(0, drawW - innerW);
+  const extraH = Math.max(0, drawH - innerH);
+  return {
+    width: Math.round(drawW),
+    height: Math.round(drawH),
+    marginLeft: Math.round(-extraW * (shell ? 0.78 : 0)),
+    marginTop: Math.round(-extraH * 0.28),
+  };
+}
+
+/** Cropped app screen. Sits under the type so the slide still reads as a text post. */
+function SnippetCard({ src, slug, u, W }: { src: string; slug: string; u: number; W: number }) {
+  const outerW = Math.round(W - 140 * u);
+  const pad = Math.round(12 * u);
+  const innerW = outerW - pad * 2;
+  const innerH = Math.round(innerW * 0.5);
+  const box = snippetImageBox(slug, innerW, innerH);
+  return (
+    <div
+      style={flex({
+        width: outerW,
+        marginTop: "auto",
+        background: "#fff",
+        borderRadius: 40 * u,
+        padding: pad,
+        boxShadow: softStack,
+      })}
+    >
+      <div
+        style={flex({
+          width: innerW,
+          height: innerH,
+          borderRadius: 28 * u,
+          overflow: "hidden",
+          background: tokens.canvas,
+        })}
+      >
+        <img
+          alt=""
+          src={src}
+          width={box.width}
+          height={box.height}
+          style={{
+            width: box.width,
+            height: box.height,
+            marginLeft: box.marginLeft,
+            marginTop: box.marginTop,
+            objectFit: "fill",
+          }}
+        />
+      </div>
+    </div>
+  );
+}
+
 export function SlideImage({
   spec,
   width,
   height,
   shotSrc,
   shotFit = "cover",
+  snippetSrc,
 }: {
   spec: SlideSpec;
   width: number;
   height: number;
   shotSrc?: string | null;
   shotFit?: "cover" | "contain";
+  snippetSrc?: string | null;
 }) {
   const t = themes[spec.theme] ?? themes.blush;
   const u = width / 1080;
   const tall = height / width > 1.6;
   const left = LEFT_LAYOUTS.has(spec.layout);
   const showCta = spec.cta !== false && spec.layout !== "headline-phone";
+  const showSnippet = Boolean(snippetSrc) && spec.layout !== "headline-phone" && spec.layout !== "headline-card";
+  const body =
+    spec.layout === "headline-phone" ? (
+      <HeadlinePhone spec={spec} t={t} u={u} W={width} H={height} shotSrc={shotSrc} shotFit={shotFit} />
+    ) : spec.layout === "big-number" ? (
+      <BigNumber spec={spec} t={t} u={u} W={width} />
+    ) : spec.layout === "before-after" ? (
+      <BeforeAfter spec={spec} t={t} u={u} W={width} H={height} />
+    ) : spec.layout === "tip-list" ? (
+      <TipList spec={spec} t={t} u={u} W={width} />
+    ) : spec.layout === "steps" ? (
+      <Steps spec={spec} t={t} u={u} W={width} />
+    ) : spec.layout === "statement" ? (
+      <Statement spec={spec} t={t} u={u} W={width} />
+    ) : (
+      <HeadlineCard spec={spec} t={t} u={u} W={width} />
+    );
   return (
     <div
       style={flex({
@@ -952,30 +1076,23 @@ export function SlideImage({
         background: t.bg,
         fontFamily: "Figtree",
         alignItems: left ? "flex-start" : "center",
-        justifyContent: "space-between",
+        justifyContent: showSnippet ? "flex-start" : "space-between",
         padding: `${(tall ? 130 : 70) * u}px ${70 * u}px ${spec.layout === "headline-phone" ? 0 : (tall ? 130 : 70) * u}px`,
         overflow: "hidden",
         color: t.fg,
       })}
     >
       <StillWordmark size={(left ? 54 : 62) * u} color={t.wm} dot={t.dot} />
-      {spec.layout === "headline-phone" ? (
-        <HeadlinePhone spec={spec} t={t} u={u} W={width} H={height} shotSrc={shotSrc} shotFit={shotFit} />
-      ) : spec.layout === "big-number" ? (
-        <BigNumber spec={spec} t={t} u={u} W={width} />
-      ) : spec.layout === "before-after" ? (
-        <BeforeAfter spec={spec} t={t} u={u} W={width} H={height} />
-      ) : spec.layout === "tip-list" ? (
-        <TipList spec={spec} t={t} u={u} W={width} />
-      ) : spec.layout === "steps" ? (
-        <Steps spec={spec} t={t} u={u} W={width} />
-      ) : spec.layout === "statement" ? (
-        <Statement spec={spec} t={t} u={u} W={width} />
+      {showSnippet ? (
+        <div style={flex({ flexDirection: "column", width: "100%", marginTop: 48 * u })}>{body}</div>
       ) : (
-        <HeadlineCard spec={spec} t={t} u={u} W={width} />
+        body
       )}
+      {showSnippet && snippetSrc ? (
+        <SnippetCard src={snippetSrc} slug={spec.snippet?.trim() || ""} u={u} W={width} />
+      ) : null}
       {showCta ? (
-        <div style={flex({ alignItems: "center", gap: 22 * u })}>
+        <div style={flex({ alignItems: "center", gap: 22 * u, marginTop: showSnippet ? 32 * u : undefined })}>
           <div
             style={flex({
               background: t.ctaBg,
@@ -993,14 +1110,18 @@ export function SlideImage({
             usefirstlook.app
           </div>
         </div>
-      ) : spec.layout === "headline-phone" ? null : (
+      ) : spec.layout === "headline-phone" || showSnippet ? null : (
         <div style={flex()} />
       )}
     </div>
   );
 }
 
-export async function renderSatoriSlide(spec: SlideSpec, uploadedShotSrc?: string | null): Promise<Buffer> {
+export async function renderSatoriSlide(
+  spec: SlideSpec,
+  uploadedShotSrc?: string | null,
+  uploadedSnippetSrc?: string | null,
+): Promise<Buffer> {
   if (!satoriSupports(spec.layout)) {
     throw new Error(`Satori does not render ${spec.layout}.`);
   }
@@ -1014,6 +1135,11 @@ export async function renderSatoriSlide(spec: SlideSpec, uploadedShotSrc?: strin
     (view.layout === "headline-phone"
       ? websiteShotSrc((spec.data as { shot?: unknown } | undefined)?.shot)
       : null);
+  const snippetSlug = view.snippet?.trim();
+  const snippetSrc =
+    snippetSlug && view.layout !== "headline-phone" && view.layout !== "headline-card"
+      ? uploadedSnippetSrc?.trim() || builtinProductShotSrc(snippetSlug)
+      : null;
   const response = new ImageResponse(
     <SlideImage
       spec={view}
@@ -1021,6 +1147,7 @@ export async function renderSatoriSlide(spec: SlideSpec, uploadedShotSrc?: strin
       height={height}
       shotSrc={shotSrc}
       shotFit={uploaded ? "contain" : "cover"}
+      snippetSrc={snippetSrc}
     />,
     {
       width,

@@ -1,6 +1,7 @@
 import type { ContentPostFormat } from "@/lib/admin/content-formats";
 import { formatNeedsImages } from "@/lib/admin/content-formats";
 import type { ContentQueuePlatform } from "@/lib/admin/content-queue";
+import { matchProductShot, PRODUCT_SHOT_SLUGS } from "@/lib/admin/content-queue/product-shots";
 import type { ContentType } from "@/lib/admin/platforms";
 import {
   DISABLED_LAYOUTS,
@@ -21,7 +22,80 @@ import {
   type WebsiteShot,
 } from "@/lib/admin/content-queue/surface-data";
 
-export type RecentStyle = { layout: SlideLayout; theme: SlideTheme; shot?: string };
+export type RecentStyle = { layout: SlideLayout; theme: SlideTheme; shot?: string; snippet?: string };
+
+/**
+ * Text layouts that can hold one cropped product screenshot without
+ * replacing the type. About half of posts get one, on a single slide.
+ */
+const SNIPPET_LAYOUTS = new Set<SlideLayout>(["statement", "big-number", "tip-list", "steps"]);
+
+/** Generic tips rotate through couple screens. A matched alias wins instead. */
+const SNIPPET_POOL = ["checklist", "budget", "guests", "overview", "seating", "timeline", "vendors"] as const;
+
+function textHash(value: string): number {
+  let hash = 2166136261;
+  for (let i = 0; i < value.length; i += 1) {
+    hash ^= value.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
+/** Stable coin flip so regenerate keeps the same choice and a batch lands near half. */
+export function postGetsSnippet(headlines: readonly string[]): boolean {
+  return textHash(headlines.join("\n")) % 2 === 0;
+}
+
+function snippetFits(spec: SlideSpec): boolean {
+  if (spec.format !== "pin" && spec.format !== "tiktok" && spec.format !== "ig") return false;
+  if (!SNIPPET_LAYOUTS.has(spec.layout)) return false;
+  const count =
+    spec.layout === "tip-list"
+      ? ((spec.data as { tips?: unknown[] } | undefined)?.tips?.length ?? 0)
+      : spec.layout === "steps"
+        ? ((spec.data as { steps?: unknown[] } | undefined)?.steps?.length ?? 0)
+        : 0;
+  if (spec.layout === "tip-list" || spec.layout === "steps") {
+    if (count === 0) return false;
+    return spec.format === "tiktok" ? count <= 3 : count <= 2;
+  }
+  return true;
+}
+
+function knownSnippet(value: string | null | undefined): string | null {
+  if (!value) return null;
+  return (PRODUCT_SHOT_SLUGS as readonly string[]).includes(value) ? value : null;
+}
+
+function pickSnippetSlug(headlines: readonly string[], recent: readonly RecentStyle[]): string {
+  const matched = matchProductShot(headlines.join("\n"));
+  if (matched) return matched.slug;
+  const used = new Set(recent.map((style) => style.snippet).filter((slug): slug is string => Boolean(slug)));
+  const fresh = SNIPPET_POOL.filter((slug) => !used.has(slug));
+  const pool = fresh.length > 0 ? fresh : SNIPPET_POOL;
+  return pool[textHash(headlines.join("\n")) % pool.length] ?? "checklist";
+}
+
+/** One cropped screen on the first text slide, for about half of posts. */
+function withProductSnippet(
+  specs: SlideSpec[],
+  recent: readonly RecentStyle[],
+  keep?: string | null,
+): SlideSpec[] {
+  const headlines = specs.map((spec) => spec.headline);
+  const index = specs.findIndex(snippetFits);
+  const slug =
+    index >= 0 && postGetsSnippet(headlines)
+      ? (knownSnippet(keep) ?? pickSnippetSlug(headlines, recent))
+      : null;
+  return specs.map((spec, specIndex) => {
+    if (specIndex === index && slug) return { ...spec, snippet: slug };
+    if (!spec.snippet) return spec;
+    const { snippet: _omit, ...rest } = spec;
+    return rest;
+  });
+}
 
 const THEME_ORDER = SLIDE_THEMES;
 
@@ -202,6 +276,8 @@ export function selectSlideSpecs(args: {
   avoidLayout?: SlideLayout;
   avoidShots?: readonly string[];
   theme?: SlideTheme;
+  /** Shuffle keeps the screen already chosen for this post. */
+  keepSnippet?: string | null;
 }): SlideSpec[] {
   const size = stillFormatFor(
     args.platform,
@@ -226,20 +302,24 @@ export function selectSlideSpecs(args: {
       ? args.theme
       : pickTheme(recent, layouts[0] ?? "statement", args.avoidThemes);
 
-  return fragments.map((fragment, index) => {
-    const layout = layouts[index] ?? "statement";
-    const support = fragment.support.trim();
-    return {
-      format: size,
-      layout,
-      theme,
-      headline: fragment.headline,
-      ...(support ? { support } : {}),
-      cta: ctaFor(args.contentType, layout, index, fragments.length),
-      surface: fragment.surface,
-      data: dataFor(layout, fragment, websiteShot),
-    };
-  });
+  return withProductSnippet(
+    fragments.map((fragment, index) => {
+      const layout = layouts[index] ?? "statement";
+      const support = fragment.support.trim();
+      return {
+        format: size,
+        layout,
+        theme,
+        headline: fragment.headline,
+        ...(support ? { support } : {}),
+        cta: ctaFor(args.contentType, layout, index, fragments.length),
+        surface: fragment.surface,
+        data: dataFor(layout, fragment, websiteShot),
+      };
+    }),
+    recent,
+    args.keepSnippet,
+  );
 }
 
 export function shuffleSlideSpecs(
@@ -273,5 +353,6 @@ export function shuffleSlideSpecs(
     theme: nextShuffleTheme(currentTheme),
     avoidLayout: specs.length === 1 && !specs[0]?.surface ? specs[0]?.layout : undefined,
     avoidShots: specs.flatMap((spec) => (typeof spec.data?.shot === "string" ? [spec.data.shot] : [])),
+    keepSnippet: specs.find((spec) => spec.snippet)?.snippet ?? null,
   });
 }

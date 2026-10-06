@@ -154,6 +154,11 @@ export type SlideSpec = {
   support?: string;
   cta?: boolean;
   surface?: string | null;
+  /**
+   * Product-shot slug drawn as a cropped screenshot on a text layout.
+   * Absent on product layouts and on the posts that stay type-only.
+   */
+  snippet?: string | null;
   data?: Record<string, unknown>;
 };
 
@@ -243,14 +248,24 @@ export function slidesFromModel(
   return { fragments, degraded };
 }
 
-export function stylesFromSpecs(value: unknown): { layout: SlideLayout; theme: SlideTheme; shot?: string }[] {
+export function stylesFromSpecs(
+  value: unknown,
+): { layout: SlideLayout; theme: SlideTheme; shot?: string; snippet?: string }[] {
   if (!Array.isArray(value)) return [];
   return value.flatMap((item) => {
     const row = asRecord(item);
     if (!row || !isSlideLayout(row.layout) || !isSlideTheme(row.theme)) return [];
     const data = asRecord(row.data);
     const shot = typeof data?.shot === "string" ? data.shot : undefined;
-    return [{ layout: row.layout, theme: row.theme, ...(shot ? { shot } : {}) }];
+    const snippet = typeof row.snippet === "string" && row.snippet.trim() ? row.snippet.trim() : undefined;
+    return [
+      {
+        layout: row.layout,
+        theme: row.theme,
+        ...(shot ? { shot } : {}),
+        ...(snippet ? { snippet } : {}),
+      },
+    ];
   });
 }
 

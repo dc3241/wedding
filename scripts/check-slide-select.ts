@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { nextShuffleTheme, selectSlideSpecs, shuffleSlideSpecs } from "../lib/admin/content-queue/select-slide";
+import { nextShuffleTheme, postGetsSnippet, selectSlideSpecs, shuffleSlideSpecs } from "../lib/admin/content-queue/select-slide";
 import { parseSlideFragment, slidesFromModel } from "../lib/admin/content-queue/slide-spec";
 import { pickWebsiteShot, surfaceData, surfaceLayout } from "../lib/admin/content-queue/surface-data";
 
@@ -147,5 +147,93 @@ assert.equal(pickWebsiteShot(["where-when", "timeline"], []), "where-when");
 const bad = parseSlideFragment({ headline: "Hi", layout: "tip-list", surface: "none", data: {} }, "Hi");
 assert.equal(bad.degraded, true);
 assert.equal(bad.layout, "statement");
+
+function statement(headline: string) {
+  return parseSlideFragment(
+    { headline, support: "Keep the date.", layout: "statement", surface: "none", data: {} },
+    headline,
+  );
+}
+
+function headlineWith(show: boolean, base: string): string {
+  for (let i = 0; i < 40; i += 1) {
+    const headline = i === 0 ? base : `${base} ${i}`;
+    if (postGetsSnippet([headline]) === show) return headline;
+  }
+  throw new Error(`no ${show ? "shown" : "plain"} headline for ${base}`);
+}
+
+const shownHeadline = headlineWith(true, "Leave a little buffer");
+const plainHeadline = headlineWith(false, "Leave a little buffer");
+const shown = selectSlideSpecs({
+  platform: "pinterest",
+  contentType: "A",
+  fragments: [statement(shownHeadline)],
+});
+assert.equal(shown[0]?.layout, "statement");
+assert.equal(typeof shown[0]?.snippet, "string");
+const plain = selectSlideSpecs({
+  platform: "pinterest",
+  contentType: "A",
+  fragments: [statement(plainHeadline)],
+});
+assert.equal(plain[0]?.snippet ?? null, null);
+
+const rsvpHeadline = headlineWith(true, "The RSVP list can wait");
+const rsvp = selectSlideSpecs({
+  platform: "tiktok",
+  contentType: "B",
+  fragments: [statement(rsvpHeadline)],
+});
+assert.equal(rsvp[0]?.snippet, "guests");
+
+const again = selectSlideSpecs({
+  platform: "pinterest",
+  contentType: "A",
+  fragments: [statement(shownHeadline)],
+  recent: [{ layout: "statement", theme: "ink", snippet: shown[0]?.snippet }],
+});
+assert.notEqual(again[0]?.snippet, shown[0]?.snippet);
+
+const kept = shuffleSlideSpecs(shown, [], "A", "pinterest");
+assert.equal(kept[0]?.snippet, shown[0]?.snippet);
+assert.notEqual(kept[0]?.theme, shown[0]?.theme);
+
+const packed = selectSlideSpecs({
+  platform: "pinterest",
+  contentType: "A",
+  fragments: [
+    parseSlideFragment(
+      {
+        headline: headlineWith(true, "Five things before you book"),
+        support: "",
+        layout: "tip-list",
+        surface: "none",
+        data: {
+          tips: [
+            { title: "Date", body: "Hold it." },
+            { title: "Venue", body: "Tour two." },
+            { title: "Count", body: "Guess high." },
+            { title: "Style", body: "Pick one." },
+            { title: "Budget", body: "Write it down." },
+          ],
+        },
+      },
+      "Five things",
+    ),
+  ],
+});
+assert.equal(packed[0]?.layout, "tip-list");
+assert.equal(packed[0]?.snippet ?? null, null);
+
+assert.equal(productSnippetCount(carousel), carouselGetsSnippet(carousel) ? 1 : 0);
+assert.equal(carousel.find((spec) => spec.snippet)?.layout ?? "statement", "statement");
+
+function productSnippetCount(specs: { snippet?: string | null }[]): number {
+  return specs.filter((spec) => spec.snippet).length;
+}
+function carouselGetsSnippet(specs: { headline: string }[]): boolean {
+  return postGetsSnippet(specs.map((spec) => spec.headline));
+}
 
 console.log("slide spec checks ok");

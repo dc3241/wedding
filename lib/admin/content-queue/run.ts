@@ -230,7 +230,13 @@ async function produceQueuePosts(
           recent,
         })
       : [];
-    recent.push(...specs.map((spec) => ({ layout: spec.layout, theme: spec.theme })));
+    recent.push(
+      ...specs.map((spec) => ({
+        layout: spec.layout,
+        theme: spec.theme,
+        ...(spec.snippet ? { snippet: spec.snippet } : {}),
+      })),
+    );
     const { data: row, error: insertError } = await supabase
       .from("content_queue")
       .insert({

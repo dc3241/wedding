@@ -16,7 +16,9 @@ export async function loadProductShotDataUrls(
   specs: SlideSpec[],
 ): Promise<Map<string, string>> {
   const surfaces = [
-    ...new Set(specs.map((spec) => spec.surface).filter((surface): surface is string => Boolean(surface))),
+    ...new Set(
+      specs.flatMap((spec) => [spec.surface, spec.snippet]).filter((surface): surface is string => Boolean(surface)),
+    ),
   ];
   const out = new Map<string, string>();
   if (surfaces.length === 0) return out;

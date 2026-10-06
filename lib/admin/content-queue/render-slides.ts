@@ -40,7 +40,8 @@ export async function renderSlidePngs(
 ): Promise<{ pngs: Buffer[]; renderer: StillRenderer }> {
   const host = process.env.STILL_RENDER_URL?.trim().replace(/\/$/, "");
   const hasUpload = Boolean(shotSrcBySurface && [...shotSrcBySurface.values()].some(Boolean));
-  if (host && !hasUpload) {
+  const hasSnippet = specs.some((spec) => Boolean(spec.snippet));
+  if (host && !hasUpload && !hasSnippet) {
     const pngs: Buffer[] = [];
     for (const spec of specs) pngs.push(await renderViaHost(host, spec));
     return { pngs, renderer: "still-host" };
@@ -59,7 +60,8 @@ export async function renderSlidePngs(
   const pngs: Buffer[] = [];
   for (const spec of specs) {
     const uploaded = spec.surface ? shotSrcBySurface?.get(spec.surface) : null;
-    pngs.push(await renderSatoriSlide(spec, uploaded));
+    const snippet = spec.snippet ? shotSrcBySurface?.get(spec.snippet) : null;
+    pngs.push(await renderSatoriSlide(spec, uploaded, snippet));
   }
   return { pngs, renderer: "satori" };
 }
