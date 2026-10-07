@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { PublicProposalActions } from "@/app/proposal/[token]/PublicProposalActions";
+import { ProposalPayButton } from "@/app/proposal/[token]/ProposalPayButton";
 import { AccountBrandMark } from "@/components/branding/account-brand-mark";
 import { Card } from "@/components/ui/card";
 import { Eyebrow } from "@/components/ui/eyebrow";
@@ -93,10 +94,12 @@ function formatAcceptedAt(iso: string | null) {
 
 export default async function PublicProposalPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ token: string }>;
+  searchParams: Promise<{ checkout?: string }>;
 }) {
-  const { token: rawToken } = await params;
+  const [{ token: rawToken }, query] = await Promise.all([params, searchParams]);
   const token = decodeURIComponent(rawToken);
   const proposal = await getPublicProposalByToken(token);
 
@@ -194,6 +197,16 @@ export default async function PublicProposalPage({
               {proposal.terms}
             </p>
           </div>
+        ) : null}
+
+        {proposal.payments_ready && proposal.total > 0 && proposal.status !== "declined" ? (
+          <ProposalPayButton
+            token={token}
+            total={proposal.total}
+            accountName={proposal.account_name}
+            paymentStatus={proposal.payment_status}
+            checkoutReturned={query.checkout === "returned"}
+          />
         ) : null}
 
         <PublicProposalActions token={token} canRespond={canRespond} />

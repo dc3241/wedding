@@ -118,6 +118,12 @@ const brandingIcon = (
     <path d="M10 3v2.5M10 14.5V17M3 10h2.5M14.5 10H17" />
   </>
 );
+const paymentsIcon = (
+  <>
+    <rect x="2.5" y="4.5" width="15" height="11" rx="1.5" />
+    <path d="M2.5 8h15M5.5 11.5h2.5" />
+  </>
+);
 const billingIcon = (
   <>
     <rect x="2.5" y="5" width="15" height="10.5" rx="1.5" />
@@ -286,6 +292,12 @@ export function PlannerProjectSidebar({
       label: "Branding",
       tooltip: "Branding",
       icon: brandingIcon,
+    },
+    {
+      href: "/account/payments",
+      label: "Payments",
+      tooltip: "Payments",
+      icon: paymentsIcon,
     },
     {
       href: "/account/billing",

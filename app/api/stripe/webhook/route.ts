@@ -47,6 +47,13 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid signature." }, { status: 400 });
   }
 
+  // Direct charges on a connected account carry event.account. Leave
+  // those to the Connect webhook so a proposal payment cannot write
+  // a subscription row.
+  if (event.account) {
+    return NextResponse.json({ received: true });
+  }
+
   try {
     switch (event.type) {
       case "checkout.session.completed":

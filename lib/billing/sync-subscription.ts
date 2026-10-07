@@ -327,6 +327,10 @@ async function applyCoupleLifetimeFromCheckout(
 export async function applyCheckoutSession(
   session: Stripe.Checkout.Session,
 ): Promise<void> {
+  if (session.metadata?.purpose === "proposal_payment") {
+    return;
+  }
+
   if (session.mode === "payment") {
     if (session.metadata?.charge_stage !== "couple_lifetime") {
       return;

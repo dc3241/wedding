@@ -23,6 +23,8 @@ export type PublicProposal = {
   wedding_date: string | null;
   account_name: string;
   branding: ProjectBranding | null;
+  payments_ready: boolean;
+  payment_status: "pending" | "paid" | "failed" | null;
 };
 
 function asStatus(value: unknown): ProposalStatus | null {
@@ -88,5 +90,12 @@ export async function getPublicProposalByToken(
     account_name:
       typeof row.account_name === "string" ? row.account_name : "",
     branding: asBranding(row as Record<string, unknown>),
+    payments_ready: row.payments_ready === true,
+    payment_status:
+      row.payment_status === "paid" ||
+      row.payment_status === "pending" ||
+      row.payment_status === "failed"
+        ? row.payment_status
+        : null,
   };
 }
