@@ -330,7 +330,7 @@ const HeadlinePhone = ({spec, t, u, W, H}) => {
             )}
           </PhoneShell>
         </div>
-        <div style={{width: 340 * u, paddingBottom: 130 * u, color: t.fg}}>
+        <div style={{width: 340 * u, paddingBottom: (H / W > 1.6 ? 280 : 130) * u, color: t.fg}}>
           {d.bulletsTitle && <div style={{fontSize: 34 * u, fontWeight: 800, marginBottom: 20 * u}}>{d.bulletsTitle}</div>}
           {bullets.map((b) => (
             <div key={b} style={{display: 'flex', gap: 14 * u, fontSize: 27 * u, lineHeight: 1.25, fontWeight: 500, marginBottom: 16 * u}}>
@@ -456,6 +456,8 @@ export const Slide = ({spec, width, height}) => {
   const t = themes[spec.theme] || themes.blush;
   const u = width / 1080;
   const tall = height / width > 1.6;
+  // Same 280px TikTok inset as satori-slide.tsx. Equal top and bottom.
+  const edge = (tall ? 280 : 70) * u;
   const Layout = layouts[spec.layout] || Statement;
   const left = ['headline-phone', 'tip-list', 'steps', 'statement'].includes(spec.layout);
   const showCta = spec.cta !== false;
@@ -466,7 +468,7 @@ export const Slide = ({spec, width, height}) => {
         fontFamily: fontSans,
         alignItems: left ? 'flex-start' : 'center',
         justifyContent: 'space-between',
-        padding: `${(tall ? 130 : 70) * u}px ${70 * u}px ${spec.layout === 'headline-phone' ? 0 : (tall ? 130 : 70) * u}px`,
+        padding: `${edge}px ${70 * u}px ${spec.layout === 'headline-phone' ? 0 : edge}px`,
         overflow: 'hidden',
         color: t.fg,
       }}

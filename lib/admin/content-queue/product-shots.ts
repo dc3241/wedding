@@ -122,7 +122,7 @@ export const PRODUCT_SHOTS: ProductShot[] = [
     aliases: ["overview", "countdown", "needs attention"],
     description: "Wedding overview with progress cards",
     heroElement:
-      "one raised white overview card (countdown, a progress band, one needs-attention row)",
+      "one raised white countdown card (130 days, Sunday February 14 2027) — the whole card, not a cropped page",
   },
   {
     slug: "checklist",
@@ -130,7 +130,7 @@ export const PRODUCT_SHOTS: ProductShot[] = [
     aliases: ["checklist", "task", "phases"],
     description: "Checklist board with phase groups",
     heroElement:
-      "one raised white card of a single phase group with a few recessed task rows",
+      "one raised white progress card: 30% done, 130 days to go, the phase pills, and the progress band — the whole card",
   },
   {
     slug: "budget",
@@ -147,7 +147,7 @@ export const PRODUCT_SHOTS: ProductShot[] = [
     description:
       "Budget tracker — 15% paid-so-far band with allocated / paid / committed wells",
     heroElement:
-      "the wide 15% paid-so-far allocation band with the five money wells (Allocated $32,600, Unallocated $12,400, Actual $17,700, Paid so far $6,700, Committed $25,900) — keep those exact labels and numbers. Never relabel the wells as vendor categories. Never a pie, donut, or circular progress",
+      "the raised paid-so-far card: 14% of $72,000, the progress band, and the wells Allocated $56,700, Unallocated $15,300, Actual $30,000, Paid so far $10,000, Committed $46,700. Keep those labels and numbers. Never a pie, donut, or circular progress",
     composition: FILL_COMPOSITION,
   },
   {
@@ -181,7 +181,7 @@ export const PRODUCT_SHOTS: ProductShot[] = [
     description:
       "Expanded attire budget item — paid ramp, deposit ledger, and notes",
     heroElement:
-      "the expanded attire item card as a tall raised graphic filling the pin: sage paid ramp, Budget $3,500 with +$2,300, and the Payments row $1,200 · Jul 1, 2026 · Suit deposit. Omit the empty payment-schedule form, vendor dropdown, and notes field if they clutter. Never a second window",
+      "the photo line card: category photo, 1 unpaid, $6,200, the paid ramp, Total paid $2,000, Budget $6,200. The whole card, not a cropped page",
     composition: FILL_COMPOSITION,
   },
   {
@@ -190,7 +190,7 @@ export const PRODUCT_SHOTS: ProductShot[] = [
     aliases: ["guest", "rsvp", "headcount", "meal tally"],
     description: "Guest list with RSVP counts",
     heroElement:
-      "one raised white card of a few guest/RSVP rows and a headcount figure",
+      "one raised white RSVP count card: 140 people, 94 attending, 13 declined, 33 pending — all four figures, nothing cut off",
   },
   {
     slug: "seating",
@@ -198,7 +198,7 @@ export const PRODUCT_SHOTS: ProductShot[] = [
     aliases: ["seating", "floor plan", "table chart", "sweetheart"],
     description: "Seating canvas with tables and guest roster",
     heroElement:
-      "one raised white fragment of a few tables, or the guest roster list — not the full seating chrome",
+      "the seating floor plan card: the tables, sweetheart table, and dance floor, complete, not a cropped corner of the page",
   },
   {
     slug: "website",
@@ -206,7 +206,7 @@ export const PRODUCT_SHOTS: ProductShot[] = [
     aliases: ["website", "wedding site", "template", "romance"],
     description: "Website editor with template and palette",
     heroElement:
-      "one raised white card of the site preview or a template/palette chip",
+      "the Choose your look card: template chips (Romance selected) and the palette swatches, the whole control, not a cropped editor",
   },
   {
     slug: "vendors",
@@ -214,7 +214,7 @@ export const PRODUCT_SHOTS: ProductShot[] = [
     aliases: ["vendor outreach", "shortlist", "still to book", "contacted"],
     description: "Project vendor outreach pipeline",
     heroElement:
-      "one raised white card of vendor outreach rows with status pills (contacted, booked)",
+      "the Still to book card: Florist, Find vendors, and Ignore — the whole card",
   },
   {
     slug: "timeline",
@@ -222,7 +222,7 @@ export const PRODUCT_SHOTS: ProductShot[] = [
     aliases: ["timeline", "day-of", "run sheet", "ceremony", "cocktail hour"],
     description: "Day-of timeline with ceremony and reception",
     heroElement:
-      "one raised white card of a few day-of timeline rows (ceremony, cocktail hour)",
+      "the Ceremony card and the Reception card (cocktail hour, dinner, dancing), both complete",
   },
   {
     slug: "invoices",

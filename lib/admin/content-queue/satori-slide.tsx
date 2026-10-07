@@ -28,6 +28,13 @@ const FORMATS: Record<string, [number, number]> = {
   square: [1080, 1080],
 };
 
+/**
+ * TikTok photo chrome covers the top search bar and the bottom caption.
+ * Matched insets keep the headline on the same center. 280px clears the
+ * search bar on a posted 1080×1920 slide without crowding dense layouts.
+ */
+const TIKTOK_EDGE = 280;
+
 const tokens = {
   canvas: "#F3EEF0",
   ink: "#241C20",
@@ -632,7 +639,14 @@ function HeadlinePhone({
             </div>
           </div>
         </div>
-        <div style={flex({ flexDirection: "column", width: 340 * u, paddingBottom: 130 * u, color: t.fg })}>
+        <div
+          style={flex({
+            flexDirection: "column",
+            width: 340 * u,
+            paddingBottom: (H / W > 1.6 ? TIKTOK_EDGE : 130) * u,
+            color: t.fg,
+          })}
+        >
           {data.bulletsTitle ? (
             <div style={flex({ fontFamily: "Figtree", fontSize: 34 * u, fontWeight: 800, marginBottom: 20 * u })}>
               {data.bulletsTitle}
@@ -941,13 +955,12 @@ function Statement({ spec, t, u, W }: { spec: SlideSpec; t: Theme; u: number; W:
 
 const LEFT_LAYOUTS = new Set(["headline-phone", "tip-list", "steps", "statement"]);
 
-/** Full app shells. The crop keeps the main column and drops the planner rail. */
+/**
+ * Full desktop shells. The crop keeps the main column and drops the planner rail.
+ * Component crops (guests, budget, timeline, and the other phone shots) are not
+ * in this set — those images are already the feature, and get shown whole.
+ */
 const SHELL_SHOTS = new Set([
-  "guests",
-  "seating",
-  "overview",
-  "vendors",
-  "timeline",
   "dashboard",
   "leads",
   "calendar",
@@ -956,7 +969,6 @@ const SHELL_SHOTS = new Set([
   "invoices",
   "vendor-library",
   "white-label",
-  "website",
 ]);
 
 function snippetImageBox(slug: string, innerW: number, innerH: number) {
@@ -985,18 +997,84 @@ function snippetImageBox(slug: string, innerW: number, innerH: number) {
   };
 }
 
+/** PNG or JPEG pixel size from a data URL. Component shots are framed to this. */
+function imagePixelSize(src: string): { width: number; height: number } | null {
+  const comma = src.indexOf(",");
+  if (!src.startsWith("data:image/") || comma < 0) return null;
+  const buf = Buffer.from(src.slice(comma + 1), "base64");
+  if (buf.length >= 24 && buf[0] === 0x89 && buf[1] === 0x50) {
+    return { width: buf.readUInt32BE(16), height: buf.readUInt32BE(20) };
+  }
+  if (buf.length < 4 || buf[0] !== 0xff || buf[1] !== 0xd8) return null;
+  let i = 2;
+  while (i + 9 < buf.length) {
+    if (buf[i] !== 0xff) {
+      i += 1;
+      continue;
+    }
+    const marker = buf[i + 1];
+    if (marker === 0xd8 || marker === 0xd9) {
+      i += 2;
+      continue;
+    }
+    const len = buf.readUInt16BE(i + 2);
+    const sof =
+      marker >= 0xc0 &&
+      marker <= 0xcf &&
+      marker !== 0xc4 &&
+      marker !== 0xc8 &&
+      marker !== 0xcc;
+    if (sof) {
+      return { width: buf.readUInt16BE(i + 7), height: buf.readUInt16BE(i + 5) };
+    }
+    if (len < 2) return null;
+    i += 2 + len;
+  }
+  return null;
+}
+
 /** Cropped app screen. Sits under the type so the slide still reads as a text post. */
-function SnippetCard({ src, slug, u, W }: { src: string; slug: string; u: number; W: number }) {
-  const outerW = Math.round(W - 140 * u);
+function SnippetCard({
+  src,
+  slug,
+  u,
+  W,
+  imageWidth,
+  imageHeight,
+}: {
+  src: string;
+  slug: string;
+  u: number;
+  W: number;
+  imageWidth: number;
+  imageHeight: number;
+}) {
   const pad = Math.round(12 * u);
-  const innerW = outerW - pad * 2;
-  const innerH = Math.round(innerW * 0.5);
-  const box = snippetImageBox(slug, innerW, innerH);
+  const maxOuter = Math.round(W - 140 * u);
+  const natural =
+    imageWidth > 0 &&
+    imageHeight > 0 &&
+    !SHELL_SHOTS.has(slug) &&
+    slug !== "budget-categories";
+  let innerW = maxOuter - pad * 2;
+  let innerH = Math.round(innerW * 0.5);
+  let box = snippetImageBox(slug, innerW, innerH);
+  if (natural) {
+    const maxH = Math.round(maxOuter * 0.78);
+    const aspect = imageWidth / imageHeight;
+    innerH = Math.round(innerW / aspect);
+    if (innerH > maxH - pad * 2) {
+      innerH = Math.max(1, maxH - pad * 2);
+      innerW = Math.max(1, Math.round(innerH * aspect));
+    }
+    box = { width: innerW, height: innerH, marginLeft: 0, marginTop: 0 };
+  }
+  const outerW = innerW + pad * 2;
   return (
     <div
       style={flex({
         width: outerW,
-        marginTop: "auto",
+        marginTop: 56 * u,
         background: "#fff",
         borderRadius: 40 * u,
         padding: pad,
@@ -1048,9 +1126,11 @@ export function SlideImage({
   const t = themes[spec.theme] ?? themes.blush;
   const u = width / 1080;
   const tall = height / width > 1.6;
+  const edge = (tall ? TIKTOK_EDGE : 70) * u;
   const left = LEFT_LAYOUTS.has(spec.layout);
   const showCta = spec.cta !== false && spec.layout !== "headline-phone";
   const showSnippet = Boolean(snippetSrc) && spec.layout !== "headline-phone" && spec.layout !== "headline-card";
+  const snippetSize = snippetSrc ? imagePixelSize(snippetSrc) : null;
   const body =
     spec.layout === "headline-phone" ? (
       <HeadlinePhone spec={spec} t={t} u={u} W={width} H={height} shotSrc={shotSrc} shotFit={shotFit} />
@@ -1077,7 +1157,7 @@ export function SlideImage({
         fontFamily: "Figtree",
         alignItems: left ? "flex-start" : "center",
         justifyContent: showSnippet ? "flex-start" : "space-between",
-        padding: `${(tall ? 130 : 70) * u}px ${70 * u}px ${spec.layout === "headline-phone" ? 0 : (tall ? 130 : 70) * u}px`,
+        padding: `${edge}px ${70 * u}px ${spec.layout === "headline-phone" ? 0 : edge}px`,
         overflow: "hidden",
         color: t.fg,
       })}
@@ -1089,7 +1169,14 @@ export function SlideImage({
         body
       )}
       {showSnippet && snippetSrc ? (
-        <SnippetCard src={snippetSrc} slug={spec.snippet?.trim() || ""} u={u} W={width} />
+        <SnippetCard
+          src={snippetSrc}
+          slug={spec.snippet?.trim() || ""}
+          u={u}
+          W={width}
+          imageWidth={snippetSize?.width ?? 0}
+          imageHeight={snippetSize?.height ?? 0}
+        />
       ) : null}
       {showCta ? (
         <div style={flex({ alignItems: "center", gap: 22 * u, marginTop: showSnippet ? 32 * u : undefined })}>
