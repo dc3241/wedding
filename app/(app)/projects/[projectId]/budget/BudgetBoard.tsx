@@ -127,57 +127,45 @@ function AllocationBand({
     unallocated,
   } = aggregates;
 
-  const overAllocated = unallocated !== null && unallocated < 0;
-  const showBar = totalBudget !== null;
+  const overBudget = unallocated !== null && unallocated < 0;
+  // Bar is paid vs the plan (budgeted line items). The ceiling comparison
+  // lives in Unallocated / Over budget, so the fill never changes denominator.
+  const showBar = allocated > 0;
 
-  // "Paid so far" bar = paidTotal / total_budget (ledger only — never actual).
   let paidPct = 0;
-  let committedPct = 0;
-  if (showBar && totalBudget > 0) {
-    if (overAllocated) {
-      const fillBase = allocated > 0 ? allocated : totalBudget;
-      paidPct = Math.min(100, (paidTotal / fillBase) * 100);
-      committedPct = Math.min(100 - paidPct, (committed / fillBase) * 100);
-    } else {
-      paidPct = Math.min(100, (paidTotal / totalBudget) * 100);
-      committedPct = Math.min(
-        100 - paidPct,
-        (committed / totalBudget) * 100,
-      );
-    }
-  } else if (showBar && overAllocated) {
-    paidPct = allocated > 0 ? Math.min(100, (paidTotal / allocated) * 100) : 0;
-    committedPct = Math.min(100 - paidPct, 100);
+  let leftPct = 0;
+  if (showBar) {
+    paidPct = Math.min(100, (paidTotal / allocated) * 100);
+    leftPct = Math.min(100 - paidPct, (committed / allocated) * 100);
   }
 
-  const headlinePct =
-    totalBudget !== null && totalBudget > 0
-      ? Math.round((paidTotal / totalBudget) * 100)
-      : null;
+  const paidPastPlan = allocated > 0 && paidTotal > allocated;
+  const planCaption =
+    allocated <= 0
+      ? "Nothing budgeted yet"
+      : paidPastPlan
+        ? `${formatCurrency(paidTotal - allocated)} past the ${formatCurrency(allocated)} plan`
+        : `${formatCurrency(committed)} left on the ${formatCurrency(allocated)} plan`;
+  const barLabel =
+    allocated <= 0
+      ? "Nothing budgeted yet"
+      : paidPastPlan
+        ? `Paid ${formatCurrency(paidTotal)}, ${formatCurrency(paidTotal - allocated)} past the ${formatCurrency(allocated)} plan`
+        : `Paid ${formatCurrency(paidTotal)}, ${formatCurrency(committed)} left to pay on the ${formatCurrency(allocated)} plan`;
 
   return (
     <Card className="p-[30px]">
       <div className="mb-6 flex flex-wrap items-end justify-between gap-6">
         <div>
-          {headlinePct != null ? (
-            <>
-              <p className="font-display text-[40px] font-extrabold leading-none tracking-[-0.035em] tabular-nums text-ink md:text-[52px]">
-                {headlinePct}%
-              </p>
-              <p className="mt-2 text-[14px] font-medium text-muted">
-                paid so far of {formatCurrency(totalBudget!)}
-              </p>
-            </>
-          ) : (
-            <>
-              <p className="font-display text-[40px] font-extrabold leading-none tracking-[-0.035em] tabular-nums text-ink md:text-[52px]">
-                {formatCurrency(allocated)}
-              </p>
-              <p className="mt-2 text-[14px] font-medium text-muted">
-                allocated · set a total to track %
-              </p>
-            </>
-          )}
+          <p className="text-[12px] font-semibold uppercase tracking-[0.09em] text-muted">
+            Paid
+          </p>
+          <p className="mt-2 font-display text-[40px] font-extrabold leading-none tracking-[-0.035em] tabular-nums text-ink md:text-[52px]">
+            {formatCurrency(paidTotal)}
+          </p>
+          <p className="mt-2 text-[14px] font-medium text-muted">
+            {planCaption}
+          </p>
         </div>
         <div className="text-left md:text-right">
           <TotalBudgetEditor projectId={projectId} totalBudget={totalBudget} />
@@ -188,11 +176,7 @@ function AllocationBand({
         <div
           className="flex h-4 overflow-hidden rounded-[var(--radius-pill)] bg-[#EDE4E8] p-[3px]"
           role="img"
-          aria-label={
-            overAllocated
-              ? "Budget fully allocated, over target"
-              : `Paid ${formatCurrency(paidTotal)}, committed ${formatCurrency(committed)} of ${formatCurrency(totalBudget)}`
-          }
+          aria-label={barLabel}
         >
           {paidPct > 0 ? (
             <div
@@ -200,13 +184,10 @@ function AllocationBand({
               style={{ width: `${paidPct}%` }}
             />
           ) : null}
-          {committedPct > 0 ? (
+          {leftPct > 0 ? (
             <div
-              className={cn(
-                "h-full rounded-[var(--radius-pill)] transition-[width] duration-300",
-                overAllocated ? "bg-rosewood" : "bg-accent",
-              )}
-              style={{ width: `${committedPct}%` }}
+              className="h-full rounded-[var(--radius-pill)] bg-accent transition-[width] duration-300"
+              style={{ width: `${leftPct}%` }}
             />
           ) : null}
         </div>
@@ -220,21 +201,17 @@ function AllocationBand({
             : "grid-cols-2 sm:grid-cols-3 lg:grid-cols-5",
         )}
       >
-        <StatCell label="Allocated" value={formatCurrency(allocated)} />
+        <StatCell label="Budgeted" value={formatCurrency(allocated)} />
         {unallocated !== null ? (
           <StatCell
-            label="Unallocated"
-            value={
-              unallocated < 0
-                ? `${formatCurrency(Math.abs(unallocated))} over`
-                : formatCurrency(unallocated)
-            }
-            tone={unallocated < 0 ? "rosewood" : "default"}
+            label={overBudget ? "Over budget" : "Unallocated"}
+            value={formatCurrency(Math.abs(unallocated))}
+            tone={overBudget ? "rosewood" : "default"}
           />
         ) : null}
         <StatCell label="Actual" value={formatCurrency(actualTotal)} />
         <StatCell label="Paid so far" value={formatCurrency(paidTotal)} />
-        <StatCell label="Committed" value={formatCurrency(committed)} />
+        <StatCell label="Left to pay" value={formatCurrency(committed)} />
       </dl>
     </Card>
   );

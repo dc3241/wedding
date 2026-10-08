@@ -197,15 +197,12 @@ export function ProjectOverview({
 
   const budgetOver =
     totalBudget != null && totalBudget > 0 && paidTotal > totalBudget;
-  const budgetPct =
-    totalBudget != null && totalBudget > 0
-      ? Math.min(
-          100,
-          Math.round((paidTotal / totalBudget) * 100),
-        )
-      : 0;
   // Cap display width at 100; over-budget flips fill color.
-  const budgetBarPct = budgetOver ? 100 : budgetPct;
+  const budgetBarPct = budgetOver
+    ? 100
+    : totalBudget != null && totalBudget > 0
+      ? Math.min(100, Math.round((paidTotal / totalBudget) * 100))
+      : 0;
   const budgetFill = budgetOver ? "rosewood" : "accent";
   const nextPaymentPill = nextPayment
     ? overviewDuePill(nextPayment.due_on, todayKey, nextPayment.pastDue)
@@ -279,7 +276,9 @@ export function ProjectOverview({
           value={formatCurrency(paidTotal)}
           footer={
             totalBudget != null
-              ? `of ${formatCurrency(totalBudget)} · ${budgetPct}% spent`
+              ? budgetOver
+                ? `over the ${formatCurrency(totalBudget)} budget`
+                : `of ${formatCurrency(totalBudget)}`
               : "of —"
           }
         >

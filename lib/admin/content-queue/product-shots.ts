@@ -145,9 +145,9 @@ export const PRODUCT_SHOTS: ProductShot[] = [
       "unallocated",
     ],
     description:
-      "Budget tracker — 15% paid-so-far band with allocated / paid / committed wells",
+      "Budget tracker — paid vs plan band with budgeted / unallocated / left-to-pay wells",
     heroElement:
-      "the raised paid-so-far card: 14% of $72,000, the progress band, and the wells Allocated $56,700, Unallocated $15,300, Actual $30,000, Paid so far $10,000, Committed $46,700. Keep those labels and numbers. Never a pie, donut, or circular progress",
+      "the raised paid card: $10,000 paid, $46,700 left on the $56,700 plan, the progress band (green paid, berry left to pay), and the wells Budgeted $56,700, Unallocated $15,300, Actual $30,000, Paid so far $10,000, Left to pay $46,700. Keep those labels and numbers. Never a percent of the total, and never a pie, donut, or circular progress",
     composition: FILL_COMPOSITION,
   },
   {
@@ -164,7 +164,7 @@ export const PRODUCT_SHOTS: ProductShot[] = [
     description:
       "Budget category cards — attire, florals, food, misc, photo, venue with paid ramps",
     heroElement:
-      "the six category cards as a designed grid filling the pin: attire, florals, food, misc, photo, venue — each with its real ramp bar, total paid, next-due line, and budget figure from the shot. Do not invent category names or swap in the 15% paid-so-far band",
+      "the six category cards as a designed grid filling the pin: attire, florals, food, misc, photo, venue — each with its real ramp bar, total paid, next-due line, and budget figure from the shot. Do not invent category names or swap in the paid-vs-plan summary band",
     composition: FILL_COMPOSITION,
   },
   {

@@ -61,7 +61,7 @@ export const READ_TOOL_DEFINITIONS = [
   {
     name: "get_budget",
     description:
-      "Get budget target, allocated/actual/paid/committed totals, and line items (estimate, actual, paid, difference). Paid is from the payment ledger only. Use for budget remaining and spending questions.",
+      "Get the budget ceiling (target), budgeted total (sum of line-item Budget amounts, not vendor quotes), actual costs, paid (payment ledger only), and left to pay (budgeted minus paid, never below zero). Field names: allocated = budgeted, committed = left to pay. unallocated is target minus budgeted: positive means room left to assign, negative means over budget by that amount. Say Over budget when unallocated is negative; say Unallocated only when it is zero or positive. Use for budget remaining and spending questions.",
     input_schema: {
       type: "object" as const,
       properties: {},

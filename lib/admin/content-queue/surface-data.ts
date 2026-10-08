@@ -140,22 +140,31 @@ const CARD: Record<string, CardData> = {
 
 const PHONE: Record<string, PhoneData> = {
   budget: {
-    hero: { label: "Paid so far", value: "15%", chip: "$6,700", sub: "of $45,000 total" },
+    hero: {
+      label: "Paid",
+      value: "$6,700",
+      chip: "$25,900 left",
+      sub: "on the $32,600 plan",
+    },
     listTitle: "The wells",
     items: [
-      { label: "Allocated", note: "$32,600", tone: "neutral" },
+      { label: "Budgeted", note: "$32,600", tone: "neutral" },
       { label: "Unallocated", note: "$12,400", tone: "warn" },
       { label: "Actual", note: "$17,700", tone: "neutral" },
-      { label: "Committed", note: "$25,900", tone: "good" },
+      { label: "Left to pay", note: "$25,900", tone: "good" },
     ],
-    progress: { label: "Paid so far", value: "$6,700 of $45,000", pct: 15 },
+    progress: {
+      label: "Paid",
+      value: "$6,700 paid · $25,900 left on the $32,600 plan",
+      pct: 21,
+    },
     bulletsTitle: "On this wedding",
     bullets: [
-      "Allocated $32,600",
+      "Budgeted $32,600",
       "Unallocated $12,400",
       "Actual $17,700",
       "Paid so far $6,700",
-      "Committed $25,900",
+      "Left to pay $25,900",
     ],
   },
   "budget-categories": {
