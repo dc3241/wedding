@@ -414,7 +414,9 @@ export function BrandingForm({
           ) : null}
           <p className="text-[13px] text-muted">
             Hex only (<code className="text-[12px]">#RRGGBB</code>). Overrides
-            selection and primary buttons — not status colors.
+            selection and primary buttons — not status colors. Also fills the
+            inquiry form header
+            {showSidebarColor ? ", unless a sidebar color is set" : ""}.
           </p>
         </div>
 
@@ -477,9 +479,10 @@ export function BrandingForm({
               </p>
             ) : null}
             <p className="text-[13px] text-muted">
-              Your workspace navigation rail. Defaults to First Look ink (
-              {DEFAULT_BRAND_SIDEBAR_COLOR}). Couples and public pages are
-              unchanged.
+              Your workspace navigation rail and the inquiry form header.
+              Defaults to First Look ink ({DEFAULT_BRAND_SIDEBAR_COLOR}). When
+              this is empty, the inquiry header uses your accent color.
+              Invited couples still only see the accent.
             </p>
           </div>
         ) : null}

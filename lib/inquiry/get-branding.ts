@@ -11,13 +11,15 @@ type InquiryBrandingRow = {
   brand_name: string | null;
   brand_logo_url: string | null;
   brand_accent_color: string | null;
+  brand_sidebar_color: string | null;
 };
 
 function hasBrandFields(row: InquiryBrandingRow): boolean {
   return Boolean(
     row.brand_name?.trim() ||
       row.brand_logo_url?.trim() ||
-      row.brand_accent_color?.trim(),
+      row.brand_accent_color?.trim() ||
+      row.brand_sidebar_color?.trim(),
   );
 }
 
@@ -56,6 +58,7 @@ export async function getInquiryBranding(
       brandName: row.brand_name,
       brandLogoUrl: row.brand_logo_url,
       brandAccentColor: row.brand_accent_color,
+      brandSidebarColor: row.brand_sidebar_color,
     },
   };
 }

@@ -6,7 +6,9 @@ import { Card } from "@/components/ui/card";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { Wordmark } from "@/components/ui/topbar";
 import { brandAccentStyle } from "@/lib/branding/accent-style";
+import { inquiryHeaderTheme } from "@/lib/branding/inquiry-header";
 import type { ProjectBranding } from "@/lib/branding/types";
+import { cn } from "@/lib/cn";
 import { getInquiryBranding } from "@/lib/inquiry/get-branding";
 import { isInquirySlug } from "@/lib/inquiry/parse";
 
@@ -80,16 +82,44 @@ export default async function InquirePage({
     );
   }
 
+  const header = inquiryHeaderTheme(result.branding);
+  const light = header?.tone !== "dark";
+
   return (
     <InquireShell branding={result.branding}>
-      <div className="rounded-[28px] bg-deep px-8 py-10 text-center shadow-[0_18px_44px_-14px_rgba(61,36,48,0.45)]">
-        <p className="text-[12px] font-semibold uppercase tracking-[0.09em] text-[var(--deep-eyebrow)]">
+      <div
+        className={cn(
+          "rounded-[28px] px-8 py-10 text-center shadow-[0_18px_44px_-14px_rgba(61,36,48,0.45)]",
+          !header && "bg-deep",
+        )}
+        style={header ? { backgroundColor: header.background } : undefined}
+      >
+        <p
+          className={cn(
+            "text-[12px] font-semibold uppercase tracking-[0.09em]",
+            light
+              ? header
+                ? "text-white/80"
+                : "text-[var(--deep-eyebrow)]"
+              : "text-ink/70",
+          )}
+        >
           Inquiry
         </p>
-        <h1 className="mt-3 text-[32px] font-extrabold leading-none tracking-[-0.03em] text-white md:text-[40px]">
+        <h1
+          className={cn(
+            "mt-3 text-[32px] font-extrabold leading-none tracking-[-0.03em] md:text-[40px]",
+            light ? "text-white" : "text-ink",
+          )}
+        >
           Get in touch
         </h1>
-        <p className="mx-auto mt-4 max-w-md text-[15px] leading-relaxed text-white/70">
+        <p
+          className={cn(
+            "mx-auto mt-4 max-w-md text-[15px] leading-relaxed",
+            light ? "text-white/70" : "text-ink/75",
+          )}
+        >
           Tell them a little about your wedding. This goes straight to their
           inquiry list — nothing is sent until they reply.
         </p>
