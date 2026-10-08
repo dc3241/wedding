@@ -4,6 +4,11 @@ import type { SelectHTMLAttributes } from "react";
 type SelectProps = SelectHTMLAttributes<HTMLSelectElement> & {
   /** Shorter recessed control for dense rows. */
   compact?: boolean;
+  /**
+   * Hug the selected label. The default wrapper is full width, which collapses
+   * sibling flex items (a checklist due date wraps one word per line).
+   */
+  fit?: boolean;
 };
 
 const fieldClasses =
@@ -26,15 +31,26 @@ function SelectChevron() {
   );
 }
 
-export function Select({ className, compact = false, ...props }: SelectProps) {
+export function Select({
+  className,
+  compact = false,
+  fit = false,
+  ...props
+}: SelectProps) {
   return (
-    <span className="relative block w-full min-w-0">
+    <span
+      className={cn(
+        "relative block min-w-0",
+        fit ? "w-auto shrink-0" : "w-full",
+      )}
+    >
       <select
         className={cn(
           fieldClasses,
           compact
             ? "border-transparent bg-well py-1.5 pl-3 pr-8 text-[13px] shadow-recessed"
             : "border-ring bg-surface py-2.5 pl-3.5 pr-10 text-[15px]",
+          fit && "!w-auto",
           className,
         )}
         {...props}
