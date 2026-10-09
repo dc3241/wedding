@@ -5,7 +5,6 @@ import { checkIsAdmin } from "@/lib/admin/is-admin";
 import {
   formatDayHeading,
   isContentLane,
-  linkedInIntent,
   postingDates,
   slotLabel,
   slotsForLane,
@@ -135,13 +134,6 @@ export async function moveSlotToDay(slotId: string, targetDate: string) {
     throw new Error("Pick a Monday–Saturday in this week.");
   }
   if (targetDate === source.slot_date) return;
-
-  if (source.lane === "linkedin" && linkedInIntent(targetDate) !== source.intent) {
-    const next = linkedInIntent(targetDate);
-    throw new Error(
-      `${formatDayHeading(targetDate)} is a LinkedIn ${next}. This post is a ${source.intent}.`,
-    );
-  }
 
   const { data: targets, error: targetError } = await supabase
     .from("content_slots")

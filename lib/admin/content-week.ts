@@ -20,9 +20,9 @@ export const LANE_LABEL: Record<ContentLane, string> = {
 
 export const LANE_QUOTA_HINT: Record<ContentLane, string> = {
   video: "Two a day. The first is a duet, the second is straight to camera. Also post them to Facebook.",
-  slideshow: "Pick 1 tip and 1 promo. The promo one is a pain, then the app.",
+  slideshow: "Pick 1 tip and 1 second post. Monday, Wednesday, and Friday that post is a list: real advice, one light mention of First Look, and a screen on the slides that show that job. Other days it is a pain, then the app.",
   pin: "Pick 2 tips and 1 promo. All three also go to Facebook.",
-  linkedin: "Pick 1. Venues and planners only. One square image with the post. The day alternates tip and promo.",
+  linkedin: "Pick 1. Venues and planners only. One square image. Every post is a problem the product handles, including the couple working in that wedding.",
 };
 
 /** Lanes that still get a Sunday shortlist. Videos are assigned on the schedule. */
@@ -196,9 +196,14 @@ export function postingDates(weekMonday: string): string[] {
   return Array.from({ length: 6 }, (_, i) => addDays(weekMonday, i));
 }
 
-/** Monday tip, Tuesday promo, and so on through Saturday. */
-export function linkedInIntent(iso: string): ContentIntent {
-  return weekdayIndex(iso) % 2 === 1 ? "tip" : "promo";
+/** LinkedIn is a product post every day. Couples lanes still mix tip and promo. */
+export function linkedInIntent(_iso: string): ContentIntent {
+  return "promo";
+}
+
+/** Monday, Wednesday, and Friday the slideshow's second post is a list. */
+export function slideshowSecond(iso: string): "list" | "promo" {
+  return weekdayIndex(iso) % 2 === 1 ? "list" : "promo";
 }
 
 export function slotsForLane(lane: ContentLane, iso: string): SlotSpec[] {
@@ -221,7 +226,7 @@ export function slotLabel(lane: ContentLane, position: number, intent: SlotInten
   if (lane === "pin") {
     return intent === "promo" ? `Pin ${position} · promo` : `Pin ${position} · tip`;
   }
-  return intent === "promo" ? "LinkedIn · promo" : "LinkedIn · tip";
+  return "LinkedIn";
 }
 
 export function formatDayHeading(iso: string): string {

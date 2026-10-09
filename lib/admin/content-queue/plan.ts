@@ -117,13 +117,15 @@ ${SLIDE_LAYOUTS.join(", ")}.
 - steps: a process, at most 4. data.steps have a one-word word and a caption.
 - statement: text only. data.highlight is a short phrase that appears inside the headline, or "".
 
-For a type C slideshow, slides 1 through N-1 are headline tips with surface "none". The last slide keeps the same kind of headline and uses one surface slug so the real screen shows up. For a type C pin or a type C LinkedIn static, the single slide uses that slug and the headline still does not name the product. Type D may name the product and uses a surface slug on the plug slide. Type A and B use surface "none".
+For a type C slideshow, slides 1 through N-1 are headline tips with surface "none". The last slide keeps the same kind of headline and uses one surface slug so the real screen shows up. For a type C pin or a type C LinkedIn static, the single slide uses that slug and the headline still does not name the product. Type D may name the product. A pain-then-feature promo uses a surface slug on the plug slide. Type A and B use surface "none".
+
+When the idea is a list (a cover plus several pieces of advice): the cover uses surface "none". Any later slide may use a surface slug for the feature that slide is about. Use the screen the idea names. Mention First Look once, in one support line, as a light aside. Do not put the product name in the cover headline or on every slide. Do not collapse the list into a single pain-then-feature promo.
 
 When surface is a slug, leave every data array empty and every data string "". The app fills the real product UI. Do not invent screen copy, names, or numbers.
 
 Production formats:
 - static / pin: exactly one slide.
-- LinkedIn static: exactly one slide, same rules as a pin. Caption is the full LinkedIn post. The image is square. When audience is planner, the surface is one of: leads, dashboard, invoices, automations, calendar, vendor-library, white-label, branding. Do not use a couple screen.
+- LinkedIn static: exactly one slide, same rules as a pin. Caption is the full LinkedIn post. The image is square. When audience is planner, the caption speaks to a venue or planner. Pick the surface that matches the idea. Business system: leads, dashboard, invoices, automations, calendar, vendor-library, white-label, branding. Couple working inside that wedding: overview, checklist, budget, guests, seating, website, vendors, timeline. Use a couple screen only when the idea is about the invited couple doing that job in the planner or venue's book. A leads, invoice, proposal, or pipeline post stays on a business screen.
 - carousel: exactly N slides, a sequence. Slide 1 is a cover (statement or big-number).
 - ugc: film-it-yourself video. Caption is the spoken / on-screen script. slides MUST be [].
 - text: copy-only post. Caption is the post body. slides MUST be [].

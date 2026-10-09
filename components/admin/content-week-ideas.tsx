@@ -15,7 +15,6 @@ import {
   formatWeekRange,
   LANE_LABEL,
   LANE_QUOTA_HINT,
-  linkedInIntent,
   type ContentLane,
   type ContentSlot,
   type IdeaDraft,
@@ -180,7 +179,6 @@ export function ContentWeekIdeas({
           <LaneBlock
             key={lane}
             lane={lane}
-            day={day}
             ideas={ideas.filter(
               (idea) => idea.slot_date === day && idea.lane === lane && idea.rating !== "down",
             )}
@@ -196,9 +194,25 @@ export function ContentWeekIdeas({
   );
 }
 
+function groupsForLane(
+  lane: ContentLane,
+  ideas: IdeationItem[],
+  slots: ContentSlot[],
+): Array<"tip" | "promo"> {
+  if (lane !== "linkedin") return ["tip", "promo"];
+  const present = new Set<"tip" | "promo">();
+  for (const slot of slots) {
+    if (slot.intent === "tip" || slot.intent === "promo") present.add(slot.intent);
+  }
+  for (const idea of ideas) {
+    if (idea.intent === "tip" || idea.intent === "promo") present.add(idea.intent);
+  }
+  if (present.size === 0) return ["promo"];
+  return (["promo", "tip"] as const).filter((intent) => present.has(intent));
+}
+
 function LaneBlock({
   lane,
-  day,
   ideas,
   slots,
   drafts,
@@ -207,7 +221,6 @@ function LaneBlock({
   onMore,
 }: {
   lane: ContentLane;
-  day: string;
   ideas: IdeationItem[];
   slots: ContentSlot[];
   drafts: Record<string, IdeaDraft>;
@@ -215,9 +228,7 @@ function LaneBlock({
   locked: boolean;
   onMore: () => void;
 }) {
-  const linkedinIntent = lane === "linkedin" ? linkedInIntent(day) : null;
-  const groups: Array<"tip" | "promo"> =
-    linkedinIntent === "promo" ? ["promo"] : linkedinIntent === "tip" ? ["tip"] : ["tip", "promo"];
+  const groups = groupsForLane(lane, ideas, slots);
 
   return (
     <Card className="px-5 py-4">
