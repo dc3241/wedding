@@ -41,7 +41,11 @@ function extractProjectId(pathname: string): string | null {
 
 function isPathActive(pathname: string, href: string) {
   if (href === "/dashboard") {
-    return pathname === "/dashboard" || pathname.startsWith("/dashboard?");
+    return (
+      pathname === "/dashboard" ||
+      pathname.startsWith("/dashboard?") ||
+      pathname === "/demo"
+    );
   }
   return pathname === href || pathname.startsWith(href + "/");
 }
@@ -219,11 +223,13 @@ export function PlannerProjectSidebar({
   plan = "planner",
   collapsed = false,
   className,
+  homeHref = "/dashboard",
 }: {
   projects: SidebarProject[];
   plan?: AccountPlan;
   collapsed?: boolean;
   className?: string;
+  homeHref?: string;
 }) {
   const pathname = usePathname();
   const activeProjectId = extractProjectId(pathname);
@@ -231,7 +237,7 @@ export function PlannerProjectSidebar({
 
   const primaryNav: NavItem[] = [
     {
-      href: "/dashboard",
+      href: homeHref,
       label: "Dashboard",
       tooltip: "Dashboard",
       icon: dashboardIcon,

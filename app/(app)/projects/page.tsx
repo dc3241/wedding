@@ -151,7 +151,7 @@ export default async function ProjectsPage({
   }
 
   if (accountContext.kind === "business") {
-    redirect("/dashboard");
+    redirect(accountContext.isDemo ? "/demo" : "/dashboard");
   }
 
   return null;

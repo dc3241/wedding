@@ -11,8 +11,8 @@ function isDemoThrottled(message: string | undefined): boolean {
  * (try_record_demo_start via PostgREST request.headers). Maps demo_throttled
  * from that exception — never surfaces raw Postgres errors.
  *
- * Caller supplies the Supabase client so a server action and a GET route
- * can each attach session cookies to their own response.
+ * Caller supplies the Supabase client so the /demo route can attach
+ * session cookies to its redirect.
  */
 export async function performStartDemo(
   supabase: SupabaseClient,

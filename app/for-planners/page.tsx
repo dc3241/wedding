@@ -7,6 +7,11 @@ export const metadata: Metadata = {
     "Leads, contracts, seating, billing, and a branded client experience. First Look replaces the spreadsheet-and-five-tools stack most planning businesses run on today.",
 };
 
-export default function ForPlannersRoute() {
-  return <ForPlannersPage />;
+export default async function ForPlannersRoute({
+  searchParams,
+}: {
+  searchParams: Promise<{ demo_error?: string }>;
+}) {
+  const { demo_error: demoError } = await searchParams;
+  return <ForPlannersPage demoError={demoError} />;
 }

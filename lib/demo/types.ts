@@ -2,7 +2,7 @@ export type DemoAccountKind = "personal" | "business";
 
 export type StartDemoResult =
   | { status: "ok"; accountId: string }
-  /** Real (non-anonymous) session — RPC skipped; redirected to /projects. */
+  /** Real (non-anonymous) session — RPC skipped. */
   | { status: "existing" }
   /** No is_demo_template account for this kind yet. */
   | { status: "unavailable" }

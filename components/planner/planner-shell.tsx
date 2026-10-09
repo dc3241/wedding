@@ -65,14 +65,18 @@ export function PlannerShell({
   projects,
   branding = null,
   plan = "planner",
+  homeHref = "/dashboard",
 }: {
   children: ReactNode;
   projects: SidebarProject[];
   branding?: ProjectBranding | null;
   plan?: AccountPlan;
+  /** Demo sessions stay on /demo so that URL can be forwarded. */
+  homeHref?: string;
 }) {
   const style = brandAccentStyle(branding);
   const pathname = usePathname();
+  const dashboardHref = homeHref;
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [lastPathname, setLastPathname] = useState(pathname);
@@ -111,7 +115,7 @@ export function PlannerShell({
           )}
         >
           <Link
-            href="/dashboard"
+            href={dashboardHref}
             className={cn(
               "min-w-0 no-underline",
               collapsed && "md:hidden",
@@ -126,7 +130,7 @@ export function PlannerShell({
           </Link>
           {collapsed ? (
             <Link
-              href="/dashboard"
+              href={dashboardHref}
               className="hidden font-sans text-[17px] font-extrabold text-canvas no-underline md:block"
               aria-label="Dashboard"
             >
@@ -161,6 +165,7 @@ export function PlannerShell({
             projects={projects}
             plan={plan}
             collapsed={collapsed}
+            homeHref={dashboardHref}
           />
         </div>
       </aside>
@@ -184,7 +189,7 @@ export function PlannerShell({
           >
             <MenuIcon />
           </button>
-          <Link href="/dashboard" className="min-w-0 no-underline" aria-label="Dashboard">
+          <Link href={dashboardHref} className="min-w-0 no-underline" aria-label="Dashboard">
             {branding ? (
               <AccountBrandMark branding={branding} />
             ) : (

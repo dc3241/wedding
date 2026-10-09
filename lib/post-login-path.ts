@@ -22,7 +22,7 @@ export async function getPostLoginPath(
   }
 
   if (account.kind === "business") {
-    return "/dashboard";
+    return account.isDemo ? "/demo" : "/dashboard";
   }
 
   if (account.singleProjectId) {

@@ -62,6 +62,7 @@ export async function AuthenticatedAppShell({
             projects={plannerProjects}
             branding={plannerBranding}
             plan={account?.plan ?? "planner"}
+            homeHref={showDemoBanner ? "/demo" : "/dashboard"}
           >
             {children}
           </PlannerShell>

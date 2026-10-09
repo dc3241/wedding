@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { demoKindFromParam, demoWorkspacePath } from "@/lib/demo/entry-path";
 import {
   ACCOUNT_INVITE_COOKIE,
   INVITE_COOKIE,
@@ -6,6 +7,31 @@ import {
 } from "@/lib/invitations/pending-invite-config";
 import { hasSupabaseAuthCookie } from "@/lib/supabase-auth-cookie";
 import { updateSession } from "@/utils/supabase/middleware";
+
+/**
+ * /demo stays in the address bar so the URL is safe to forward.
+ * Once a session exists, render the workspace without a browser redirect
+ * to /dashboard (that path sends cookieless visitors to /login).
+ */
+function rewriteDemoWorkspace(
+  request: NextRequest,
+  requestHeaders: Headers,
+  sessionResponse: NextResponse,
+) {
+  const kind = demoKindFromParam(request.nextUrl.searchParams.get("kind"));
+  const url = request.nextUrl.clone();
+  url.pathname = demoWorkspacePath(kind);
+  url.search = "";
+  requestHeaders.set("x-pathname", url.pathname);
+
+  const rewrite = NextResponse.rewrite(url, {
+    request: { headers: requestHeaders },
+  });
+  for (const cookie of sessionResponse.headers.getSetCookie()) {
+    rewrite.headers.append("set-cookie", cookie);
+  }
+  return rewrite;
+}
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -19,6 +45,14 @@ export async function middleware(request: NextRequest) {
   }
 
   const { response, user } = await updateSession(request, requestHeaders);
+
+  if (
+    user &&
+    pathname === "/demo" &&
+    (request.method === "GET" || request.method === "HEAD")
+  ) {
+    return rewriteDemoWorkspace(request, requestHeaders, response);
+  }
 
   if (!user) {
     // Account seats: /invite/account/[token] — separate cookie from project invites.

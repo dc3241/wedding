@@ -33,7 +33,17 @@ const CHANGES = [
   },
 ] as const;
 
-export function ForPlannersPage() {
+function demoErrorMessage(code: string | undefined) {
+  if (code === "throttled") return "Please wait a moment and try again.";
+  if (code === "unavailable") {
+    return "Demo isn't available right now. Check back soon — or sign up to start for real.";
+  }
+  if (code === "1") return "Something went wrong. Try again.";
+  return null;
+}
+
+export function ForPlannersPage({ demoError }: { demoError?: string }) {
+  const demoMessage = demoErrorMessage(demoError);
   return (
     <div className="min-h-full bg-canvas text-ink">
       <MarketingTopbar />
@@ -59,6 +69,14 @@ export function ForPlannersPage() {
               </ButtonLink>
               <DemoCta kind="business" compact />
             </div>
+            {demoMessage ? (
+              <p
+                role="alert"
+                className="mt-4 text-[13px] leading-relaxed text-rosewood"
+              >
+                {demoMessage}
+              </p>
+            ) : null}
             <p className="mt-5">
               <Link
                 href="/for-venues"
