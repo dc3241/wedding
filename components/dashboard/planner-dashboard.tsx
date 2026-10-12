@@ -1,30 +1,17 @@
 import { TourHelpButton } from "@/components/tour/TourHelpButton";
 import { ProjectOverview } from "@/components/dashboard/project-overview";
 import type { OverviewData } from "@/components/dashboard/overview-data";
-import { EventToolsCard } from "@/components/projects/event-tools-card";
-import type { EventType, HideableTool } from "@/lib/event-type";
 
 type PlannerDashboardProps = {
   overview: OverviewData;
-  eventType: EventType;
-  hiddenTools: readonly HideableTool[];
 };
 
-export function PlannerDashboard({
-  overview,
-  eventType,
-  hiddenTools,
-}: PlannerDashboardProps) {
+export function PlannerDashboard({ overview }: PlannerDashboardProps) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-end">
         <TourHelpButton />
       </div>
-      <EventToolsCard
-        projectId={overview.projectId}
-        eventType={eventType}
-        hiddenTools={hiddenTools}
-      />
       <ProjectOverview data={overview} showLastContact />
     </div>
   );

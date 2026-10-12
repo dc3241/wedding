@@ -3,13 +3,15 @@
 import { SlimHero } from "@/components/ui/slim-hero";
 import { shellLayoutClass } from "@/lib/density";
 import type { AccountKind } from "@/lib/account-context";
-import { cn } from "@/lib/cn";
+import type { EventType, HideableTool } from "@/lib/event-type";
 
 type ProjectShellProps = {
   projectId: string;
   coupleNames: string;
   weddingDate: string | null;
   accountKind: AccountKind;
+  eventType?: EventType;
+  hiddenTools?: readonly HideableTool[];
   children: React.ReactNode;
 };
 
@@ -18,6 +20,8 @@ export function ProjectShell({
   coupleNames,
   weddingDate,
   accountKind,
+  eventType,
+  hiddenTools,
   children,
 }: ProjectShellProps) {
   const isPlanner = accountKind === "business";
@@ -30,6 +34,8 @@ export function ProjectShell({
             coupleNames={coupleNames}
             weddingDate={weddingDate}
             projectId={projectId}
+            eventType={eventType}
+            hiddenTools={hiddenTools}
           />
         </div>
       ) : null}

@@ -9,7 +9,6 @@ import { PlannerDashboard, buildLastContactMap } from "@/components/dashboard/pl
 import type { OutreachVendor } from "@/components/vendors/outreach-vendor";
 import type { RsvpStatus } from "./guests/types";
 import { getAccountContext } from "@/lib/account-context";
-import { parseEventType, parseHiddenTools } from "@/lib/event-type";
 import { displayCoupleNames } from "@/lib/wedding-date";
 import { createClient } from "@/utils/supabase/server";
 
@@ -43,7 +42,7 @@ export default async function ProjectPage({
   ] = await Promise.all([
     supabase
       .from("projects")
-      .select("id, name, wedding_date, total_budget, event_type, hidden_tools")
+      .select("id, name, wedding_date, total_budget")
       .eq("id", projectId)
       .maybeSingle(),
     supabase
@@ -214,11 +213,7 @@ export default async function ProjectPage({
 
   if (isPlanner) {
     return (
-      <PlannerDashboard
-        overview={overview}
-        eventType={parseEventType(project.event_type)}
-        hiddenTools={parseHiddenTools(project.hidden_tools)}
-      />
+      <PlannerDashboard overview={overview} />
     );
   }
 

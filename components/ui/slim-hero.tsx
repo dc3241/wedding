@@ -1,7 +1,13 @@
 "use client";
 
+import {
+  EventSettingsPanel,
+  EventSettingsProvider,
+  EventSettingsTrigger,
+} from "@/components/projects/event-settings-editor";
 import { WeddingDateEditor } from "@/components/ui/wedding-date-editor";
 import { cn } from "@/lib/cn";
+import type { EventType, HideableTool } from "@/lib/event-type";
 import { displayCoupleNames } from "@/lib/wedding-date";
 import { useEffect, useState } from "react";
 
@@ -13,6 +19,9 @@ type SlimHeroProps = {
   dateLabel?: string | null;
   /** When false, hide the right-side countdown (e.g. Overview stats own it). */
   showCountdown?: boolean;
+  /** Planner/venue only. Collapsed type label; seating and website live inside it. */
+  eventType?: EventType;
+  hiddenTools?: readonly HideableTool[];
   className?: string;
 };
 
@@ -57,41 +66,62 @@ export function SlimHero({
   projectId,
   dateLabel,
   showCountdown = true,
+  eventType,
+  hiddenTools,
   className,
 }: SlimHeroProps) {
   const displayDate =
     dateLabel ?? (weddingDate ? formatSlimDate(weddingDate) : null);
   const canEdit = Boolean(projectId);
   const title = displayCoupleNames(coupleNames);
+  const showEventSettings = Boolean(canEdit && projectId && eventType);
 
-  return (
+  const hero = (
     <div
       className={cn(
-        "mb-6 flex flex-col items-start gap-3 rounded-[var(--radius-card)] bg-surface px-6 py-4 shadow-raised sm:flex-row sm:items-center sm:justify-between sm:gap-6",
+        "mb-6 flex flex-col gap-3 rounded-[var(--radius-card)] bg-surface px-6 py-4 shadow-raised",
         className,
       )}
     >
-      <div className="flex min-w-0 flex-wrap items-baseline gap-x-4 gap-y-2">
-        <span className="font-display text-[22px] font-extrabold leading-none tracking-[-0.02em] break-words text-ink max-sm:leading-snug">
-          {title}
-        </span>
-        {displayDate ? (
-          <span className="truncate text-[14px] font-medium tabular-nums text-muted">
-            {displayDate}
+      <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
+        <div className="flex min-w-0 flex-wrap items-baseline gap-x-4 gap-y-2">
+          <span className="font-display text-[22px] font-extrabold leading-none tracking-[-0.02em] break-words text-ink max-sm:leading-snug">
+            {title}
           </span>
-        ) : (
-          <span className="text-[14px] font-medium text-muted">No date set</span>
-        )}
-        {canEdit && projectId ? (
-          <WeddingDateEditor
-            projectId={projectId}
-            weddingDate={weddingDate}
-          />
+          {displayDate ? (
+            <span className="truncate text-[14px] font-medium tabular-nums text-muted">
+              {displayDate}
+            </span>
+          ) : (
+            <span className="text-[14px] font-medium text-muted">No date set</span>
+          )}
+          {canEdit && projectId ? (
+            <WeddingDateEditor
+              projectId={projectId}
+              weddingDate={weddingDate}
+            />
+          ) : null}
+          {showEventSettings ? <EventSettingsTrigger /> : null}
+        </div>
+        {showCountdown && weddingDate ? (
+          <SlimCountdown weddingDate={weddingDate} />
         ) : null}
       </div>
-      {showCountdown && weddingDate ? (
-        <SlimCountdown weddingDate={weddingDate} />
-      ) : null}
+      {showEventSettings ? <EventSettingsPanel /> : null}
     </div>
+  );
+
+  if (!showEventSettings || !projectId || !eventType) {
+    return hero;
+  }
+
+  return (
+    <EventSettingsProvider
+      projectId={projectId}
+      eventType={eventType}
+      hiddenTools={hiddenTools ?? []}
+    >
+      {hero}
+    </EventSettingsProvider>
   );
 }

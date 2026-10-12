@@ -172,6 +172,8 @@ export default async function ProjectLayout({
           coupleNames={displayCoupleNames(project.name)}
           weddingDate={project.wedding_date}
           accountKind={accountKind}
+          eventType={accountKind === "business" ? eventType : undefined}
+          hiddenTools={accountKind === "business" ? hiddenTools : undefined}
         >
           <ProjectWorkspaceNav
             projectId={projectId}
