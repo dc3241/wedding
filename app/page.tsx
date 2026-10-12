@@ -16,7 +16,9 @@ export default async function HomePage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (user) {
+  // Anonymous demo sessions stay on the marketing site so Back and the
+  // wordmark can leave the workspace. Real accounts still go to the app.
+  if (user && user.is_anonymous !== true) {
     redirect(await getPostLoginPath(supabase));
   }
 

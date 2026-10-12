@@ -1,6 +1,5 @@
 "use client";
 
-import { logout } from "@/app/login/actions";
 import type { AccountPlan } from "@/lib/account-context";
 import { cn } from "@/lib/cn";
 import { getCopy } from "@/lib/venue-copy";
@@ -350,7 +349,7 @@ export function PlannerProjectSidebar({
             collapsed={collapsed}
           />
         ))}
-        <form action={logout}>
+        <form action="/logout" method="post">
           <LogoutSubmit collapsed={collapsed} />
         </form>
       </div>

@@ -2,7 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
+import {
+  DEMO_BOOT_COOKIE,
+  demoBootCookieOptions,
+} from "@/lib/demo/bootstrap-cookie";
 import { consumePendingInvites } from "@/lib/invitations/pending-invite";
 import { getPostLoginPath } from "@/lib/post-login-path";
 import { createClient } from "@/utils/supabase/server";
@@ -99,6 +103,9 @@ export async function logout() {
   if (error) {
     redirect(`/login?error=${encodeURIComponent(error.message)}`);
   }
+
+  const cookieStore = await cookies();
+  cookieStore.set(DEMO_BOOT_COOKIE, "", demoBootCookieOptions(0));
 
   revalidatePath("/", "layout");
   redirect("/");

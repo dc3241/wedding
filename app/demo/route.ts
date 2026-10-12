@@ -1,13 +1,14 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import {
+  DEMO_BOOT_COOKIE,
+  demoBootCookieOptions,
+} from "@/lib/demo/bootstrap-cookie";
 import { demoEntryPath, demoKindFromParam } from "@/lib/demo/entry-path";
 import { performStartDemo } from "@/lib/demo/perform-start-demo";
 import type { StartDemoResult } from "@/lib/demo/types";
 
 export const dynamic = "force-dynamic";
-
-/** Set on the hop that mints a session. Stops a redirect loop if the auth cookie never sticks. */
-const BOOT_COOKIE = "demo_bootstrap";
 
 type CookieToSet = {
   name: string;
@@ -64,10 +65,10 @@ export async function GET(request: NextRequest) {
       data: { user },
     } = await supabase.auth.getUser();
 
-    if (!user && request.cookies.get(BOOT_COOKIE)?.value === "1") {
+    if (!user && request.cookies.get(DEMO_BOOT_COOKIE)?.value === "1") {
       const failed = NextResponse.redirect(`${origin}${fallbackPath("error")}`);
       failed.headers.set("Cache-Control", "private, no-store");
-      failed.cookies.set(BOOT_COOKIE, "", { path: "/", maxAge: 0 });
+      failed.cookies.set(DEMO_BOOT_COOKIE, "", demoBootCookieOptions(0));
       return failed;
     }
 
@@ -75,15 +76,9 @@ export async function GET(request: NextRequest) {
 
     if (result.status === "ok") {
       cookiesToSet.push({
-        name: BOOT_COOKIE,
+        name: DEMO_BOOT_COOKIE,
         value: "1",
-        options: {
-          path: "/",
-          maxAge: 120,
-          httpOnly: true,
-          sameSite: "lax",
-          secure: process.env.NODE_ENV === "production",
-        },
+        options: demoBootCookieOptions(120),
       });
       return redirectWithCookies(
         `${origin}${demoEntryPath(kind)}`,

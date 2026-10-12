@@ -1,6 +1,5 @@
 "use client";
 
-import { logout } from "@/app/login/actions";
 import { Button } from "@/components/ui/button";
 import { useFormStatus } from "react-dom";
 
@@ -21,7 +20,7 @@ function LogoutSubmitButton() {
 
 export function LogoutButton() {
   return (
-    <form action={logout} className="shrink-0">
+    <form action="/logout" method="post" className="shrink-0">
       <LogoutSubmitButton />
     </form>
   );
