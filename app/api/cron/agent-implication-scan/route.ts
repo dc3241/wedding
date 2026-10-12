@@ -8,8 +8,9 @@ import { NextResponse } from "next/server";
 import { runAssistantWithTools } from "@/lib/assistant/call-assistant";
 import {
   buildImplicationSystemPrompt,
-  IMPLICATION_USER_TEXT,
+  implicationUserText,
 } from "@/lib/assistant/implication-prompt";
+import { parseEventType, parseHiddenTools } from "@/lib/event-type";
 import {
   executeWriteTool,
   type WriteToolName,
@@ -76,23 +77,28 @@ export async function GET(request: Request) {
     for (const project of eligible) {
       const account = asOne(project.accounts);
       const accountKind = accountKindFromEmbed(account?.kind);
+      const eventType = parseEventType(project.event_type);
+      const hiddenTools = parseHiddenTools(project.hidden_tools);
       const startedAt = new Date().toISOString();
 
       const result = await runAssistantWithTools(
         supabase,
         project.id,
         [],
-        IMPLICATION_USER_TEXT,
+        implicationUserText(eventType),
         {
           projectName: project.name,
           weddingDate: project.wedding_date,
           accountKind,
+          eventType,
+          hiddenTools,
         },
         {
           systemPrompt: buildImplicationSystemPrompt({
             projectName: project.name,
             weddingDate: project.wedding_date,
             accountKind,
+            eventType,
           }),
           allowedWriteTools: ["add_note"],
           deferWrites: true,

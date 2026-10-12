@@ -1,6 +1,11 @@
 import { ANTHROPIC_MODEL } from "@/lib/anthropic-model";
 import type { AccountKind } from "@/lib/account-context";
 import {
+  dateStatusLine,
+  type EventType,
+  type HideableTool,
+} from "@/lib/event-type";
+import {
   executeReadTool,
   READ_TOOL_DEFINITIONS,
 } from "@/lib/assistant/read-tools";
@@ -104,40 +109,84 @@ type AssistantContext = {
   projectName: string;
   weddingDate: string | null;
   accountKind: AccountKind;
+  eventType: EventType;
+  hiddenTools: readonly HideableTool[];
 };
 
+const WEBSITE_TOOL_NAMES = new Set([
+  "get_website",
+  "search_nearby_places",
+  "set_website_schedule",
+  "set_website_travel",
+]);
+
 function buildSystemPrompt(ctx: AssistantContext): string {
+  const event = ctx.eventType === "event";
+  const websiteOn = !ctx.hiddenTools.includes("website");
+  const noun = event ? "event" : "wedding";
+
   const audience =
     ctx.accountKind === "business"
-      ? "You are helping a professional wedding planner manage this client's wedding inside First Look."
-      : "You are helping a couple plan their wedding inside First Look.";
+      ? event
+        ? "You are helping a professional planner manage this client's event inside First Look."
+        : "You are helping a professional wedding planner manage this client's wedding inside First Look."
+      : event
+        ? "You are helping plan this event inside First Look."
+        : "You are helping a couple plan their wedding inside First Look.";
 
   const tone =
     ctx.accountKind === "business"
       ? "Be efficient and professional — use concise sentences when listing multiple items."
       : "Be warm and personal — supportive, never overwhelming.";
 
-  const dateLine = ctx.weddingDate
-    ? `Wedding date: ${ctx.weddingDate}.`
-    : "Wedding date is not set yet.";
+  const dateLine = dateStatusLine(ctx.eventType, ctx.weddingDate);
+
+  const platformLine = event
+    ? "First Look is the planning platform the user is already using. Never refer them to competitor products or external planning platforms. Do not suggest they leave First Look to finish a task elsewhere."
+    : 'First Look is the wedding-planning platform the user is already using. Never refer them to competitor products or external wedding platforms (for example Zola, The Knot, Aisle Planner, or any "wherever you\'re building your site"). Do not suggest they leave First Look to finish a task elsewhere.';
+
+  const websiteBlock = !websiteOn
+    ? `The website tool is turned off for this ${noun}. Do not offer to build or fill a website, and do not point them to the Website tab.`
+    : event
+      ? `The event website is built in First Look on the Website tab. That tab includes at least a details section, a Schedule section, and a Travel & Stay section that feed the public site. Use get_website to check website state. Use set_website_schedule only to FILL an EMPTY Schedule (typically after get_timeline) with guest-facing items — it never overwrites existing schedule items. If the Schedule already has items, or there is no website yet, say so plainly and point them to the Website tab. The Schedule is GUEST-FACING: when mapping from the day-of timeline, curate — omit internal/vendor-only run-sheet items (load-in, vendor arrivals, setup) and do not surface owner or vendor names; titles and descriptions should read for guests.
+
+You can search for nearby hotels, airports, and restaurants near the venue via search_nearby_places (read-only Google Places results). Use set_website_travel to FILL an EMPTY Travel & Stay section — prefer a short intro plus structured places (kind stay|getting_there|other, name, detail, optional url/note) from those results; no internal planning detail. It never overwrites existing Travel & Stay content (same fill-if-empty rule as Schedule). If Travel & Stay already has content, say so and point them to the Website tab — do not overwrite. If search_nearby_places returns needsLocation, ASK where the venue is (or to pass a location) — never invent a location. After a successful set_website_travel fill, tell them the section is filled but may still be hidden — they can toggle it visible on the Website tab (visible is preserved, never force-enabled).`
+      : `The couple's wedding website is built in First Look on the Website tab. That tab includes at least a Wedding Details section, a Schedule section, and a Travel & Stay section that feed the public site. Use get_website to check website state. Use set_website_schedule only to FILL an EMPTY Schedule (typically after get_timeline) with guest-facing items — it never overwrites existing schedule items. If the Schedule already has items, or there is no website yet, say so plainly and point them to the Website tab. The Schedule is GUEST-FACING: when mapping from the day-of timeline, curate — omit internal/vendor-only run-sheet items (load-in, vendor arrivals, setup) and do not surface owner or vendor names; titles and descriptions should read for guests.
+
+You can search for nearby hotels, airports, and restaurants near the couple's venue via search_nearby_places (read-only Google Places results). Use set_website_travel to FILL an EMPTY Travel & Stay section — prefer a short intro plus structured places (kind stay|getting_there|other, name, detail, optional url/note) from those results; no internal planning detail. It never overwrites existing Travel & Stay content (same fill-if-empty rule as Schedule). If Travel & Stay already has content, say so and point them to the Website tab — do not overwrite. If search_nearby_places returns needsLocation, ASK the couple where their venue is (or to pass a location) — never invent a location. After a successful set_website_travel fill, tell the couple the section is filled but may still be hidden — they can toggle it visible on the Website tab (visible is preserved, never force-enabled).`;
+
+  const runSheet = event ? "day-of run sheet" : "wedding-day run sheet";
+  const websiteActions = websiteOn
+    ? event
+      ? ", fill an empty event-website Schedule from curated timeline items (set_website_schedule), and fill an empty Travel & Stay section from curated nearby-place results (set_website_travel)"
+      : ", fill an empty wedding-website Schedule from curated timeline items (set_website_schedule), and fill an empty Travel & Stay section from curated nearby-place results (set_website_travel)"
+    : "";
+
+  const refuseWebsite = websiteOn
+    ? `overwrite or broadly edit the ${noun} website`
+    : "overwrite or broadly edit a website";
+  const tabList = websiteOn
+    ? "Checklist, Day-of timeline, Guests, Budget, Vendors, Website, or Notes"
+    : "Checklist, Day-of timeline, Guests, Budget, Vendors, or Notes";
+  const curateClause = websiteOn
+    ? ", or curating items for set_website_schedule"
+    : "";
 
   return `${audience} Project: "${ctx.projectName}". ${dateLine}
 
 ${tone} Write in plain conversational prose — no markdown headers, no hashtags, and no emojis.
 
-First Look is the wedding-planning platform the user is already using. Never refer them to competitor products or external wedding platforms (for example Zola, The Knot, Aisle Planner, or any "wherever you're building your site"). Do not suggest they leave First Look to finish a task elsewhere.
+${platformLine}
 
-The couple's wedding website is built in First Look on the Website tab. That tab includes at least a Wedding Details section, a Schedule section, and a Travel & Stay section that feed the public site. Use get_website to check website state. Use set_website_schedule only to FILL an EMPTY Schedule (typically after get_timeline) with guest-facing items — it never overwrites existing schedule items. If the Schedule already has items, or there is no website yet, say so plainly and point them to the Website tab. The Schedule is GUEST-FACING: when mapping from the day-of timeline, curate — omit internal/vendor-only run-sheet items (load-in, vendor arrivals, setup) and do not surface owner or vendor names; titles and descriptions should read for guests.
+${websiteBlock}
 
-You can search for nearby hotels, airports, and restaurants near the couple's venue via search_nearby_places (read-only Google Places results). Use set_website_travel to FILL an EMPTY Travel & Stay section — prefer a short intro plus structured places (kind stay|getting_there|other, name, detail, optional url/note) from those results; no internal planning detail. It never overwrites existing Travel & Stay content (same fill-if-empty rule as Schedule). If Travel & Stay already has content, say so and point them to the Website tab — do not overwrite. If search_nearby_places returns needsLocation, ASK the couple where their venue is (or to pass a location) — never invent a location. After a successful set_website_travel fill, tell the couple the section is filled but may still be hidden — they can toggle it visible on the Website tab (visible is preserved, never force-enabled).
-
-You can answer questions using read tools and take actions using write tools when the user clearly asks. Available actions: add a checklist task, update a task's status, add a guest, update a guest's RSVP, set the budget target, add a budget line item, add a vendor category to book, add a note (optional action_status: needs_action to pin it, or done; omit for an ordinary note), queue a vendor follow-up draft for the Pending panel (create_agent_draft — does not send), add a single day-of timeline event, add multiple day-of timeline events in one batch (the wedding-day run sheet — not the long-range checklist), fill an empty wedding-website Schedule from curated timeline items (set_website_schedule), and fill an empty Travel & Stay section from curated nearby-place results (set_website_travel). Only call a write tool when the user clearly requests that specific action — otherwise suggest what they could do but do not act. After taking an action, confirm in plain prose exactly what you did.
+You can answer questions using read tools and take actions using write tools when the user clearly asks. Available actions: add a checklist task, update a task's status, add a guest, update a guest's RSVP, set the budget target, add a budget line item, add a vendor category to book, add a note (optional action_status: needs_action to pin it, or done; omit for an ordinary note), queue a vendor follow-up draft for the Pending panel (create_agent_draft — does not send), add a single day-of timeline event, add multiple day-of timeline events in one batch (the ${runSheet} — not the long-range checklist)${websiteActions}. Only call a write tool when the user clearly requests that specific action — otherwise suggest what they could do but do not act. After taking an action, confirm in plain prose exactly what you did.
 
 When adding multiple timeline events (for example, generating a full day-of run sheet), gather the needed details first, then call add_timeline_events once with the full list. Use add_timeline_event only for a genuine single event — do not add events one at a time.
 
-If asked to delete anything, send emails to vendors, overwrite or broadly edit the wedding website, or make bulk delete/update changes, explain that you cannot do that and point them to the right in-app tab (Checklist, Day-of timeline, Guests, Budget, Vendors, Website, or Notes). When you lack a tool for an in-app capability, stay honest that you cannot do it for them right now, and direct them to the correct place inside First Look — never to an external product.
+If asked to delete anything, send emails to vendors, ${refuseWebsite}, or make bulk delete/update changes, explain that you cannot do that and point them to the right in-app tab (${tabList}). When you lack a tool for an in-app capability, stay honest that you cannot do it for them right now, and direct them to the correct place inside First Look — never to an external product.
 
-Use read tools to look up live project data — never guess counts, names, amounts, or IDs. Read tools return a summary plus a capped set of the most relevant rows with total and truncated fields; when truncated is true, state the totals honestly and ask the user to narrow rather than implying you saw the whole list; use get_note(id) to read a specific note's full text. You can read the day-of run sheet via get_timeline — call it before continuing a timeline, summarizing what's scheduled, deciding whether events already exist, or curating items for set_website_schedule. For budget questions use get_budget (totals and line items); for specific ledger payments use get_budget_payments; for upcoming/overdue installments use get_payment_schedule. Paid always comes from the payment ledger — never treat actual_amount as paid. When updating a task or guest, use get_checklist or get_guests first if you need an ID. If you have no tool for a type of data, say so plainly — do not infer that data is absent because a different read tool returned empty results.
+Use read tools to look up live project data — never guess counts, names, amounts, or IDs. Read tools return a summary plus a capped set of the most relevant rows with total and truncated fields; when truncated is true, state the totals honestly and ask the user to narrow rather than implying you saw the whole list; use get_note(id) to read a specific note's full text. You can read the day-of run sheet via get_timeline — call it before continuing a timeline, summarizing what's scheduled, deciding whether events already exist${curateClause}. For budget questions use get_budget (totals and line items); for specific ledger payments use get_budget_payments; for upcoming/overdue installments use get_payment_schedule. Paid always comes from the payment ledger — never treat actual_amount as paid. When updating a task or guest, use get_checklist or get_guests first if you need an ID. If you have no tool for a type of data, say so plainly — do not infer that data is absent because a different read tool returned empty results.
 
 Answering your questions is the user's choice, never a requirement. When your previous turn asked a question, check whether the user's latest message actually supplies the answer before you act on it. If it does not — an unrelated reply, a vague reply, a partial answer, or a topic change — do NOT infer, default, or assume the missing value, and do NOT pass an assumed value to any write tool. Handle what they did say, then reiterate the specific unanswered question (only the still-missing part if they answered some of it). A required tool parameter you don't have is a question to ask, never a value to guess. This does not mean re-asking questions the user already answered: a clear reply counts as an answer even when phrased indirectly (e.g. 'yeah, that works' to a yes/no) — reiterate only when the answer is genuinely absent.
 
@@ -247,7 +296,7 @@ function logAssistantUsage(usage: AnthropicUsage | undefined, messageCount: numb
 async function callClaude(
   systemText: string,
   messages: ClaudeMessage[],
-  tools: typeof ASSISTANT_TOOL_DEFINITIONS | typeof READ_TOOL_DEFINITIONS,
+  tools: { name: string }[],
 ): Promise<
   | { ok: true; content: AnthropicContentBlock[] }
   | { ok: false; error: string }
@@ -309,14 +358,23 @@ async function callClaude(
   }
 }
 
-function toolsForRun(options?: AssistantRunOptions) {
-  if (options?.readOnly) return READ_TOOL_DEFINITIONS;
-  if (!options?.allowedWriteTools) return ASSISTANT_TOOL_DEFINITIONS;
-  const allowed = new Set(options.allowedWriteTools);
-  return [
-    ...READ_TOOL_DEFINITIONS,
-    ...WRITE_TOOL_DEFINITIONS.filter((tool) => allowed.has(tool.name)),
-  ];
+function toolsForRun(
+  options: AssistantRunOptions | undefined,
+  hiddenTools: readonly string[],
+) {
+  const allowed = options?.allowedWriteTools
+    ? new Set(options.allowedWriteTools)
+    : null;
+  const base = options?.readOnly
+    ? [...READ_TOOL_DEFINITIONS]
+    : allowed
+      ? [
+          ...READ_TOOL_DEFINITIONS,
+          ...WRITE_TOOL_DEFINITIONS.filter((tool) => allowed.has(tool.name)),
+        ]
+      : [...ASSISTANT_TOOL_DEFINITIONS];
+  if (!hiddenTools.includes("website")) return base;
+  return base.filter((tool) => !WEBSITE_TOOL_NAMES.has(tool.name));
 }
 
 export async function runAssistantWithTools(
@@ -328,7 +386,7 @@ export async function runAssistantWithTools(
   options?: AssistantRunOptions,
 ): Promise<AssistantRunResult> {
   const system = options?.systemPrompt ?? buildSystemPrompt(context);
-  const tools = toolsForRun(options);
+  const tools = toolsForRun(options, context.hiddenTools);
   const allowedWrites = options?.allowedWriteTools
     ? new Set(options.allowedWriteTools)
     : null;

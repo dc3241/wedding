@@ -43,12 +43,15 @@ type TourProviderProps = {
   projectId: string;
   /** Tour keys the user has already dismissed (completed or skipped). */
   dismissedTourKeys: string[];
+  /** Tabs turned off for this project. Matching tours do not start. */
+  hiddenTools?: readonly string[];
   children: ReactNode;
 };
 
 export function TourProvider({
   projectId,
   dismissedTourKeys,
+  hiddenTools = [],
   children,
 }: TourProviderProps) {
   const pathname = usePathname();
@@ -89,6 +92,7 @@ export function TourProvider({
   );
 
   const startTour = useCallback((tourKey: string) => {
+    if (hiddenTools.includes(tourKey)) return;
     const config = getTourConfig(tourKey);
     if (!config) return;
 
@@ -102,7 +106,7 @@ export function TourProvider({
     setActiveTourKey(tourKey);
     setActiveConfig({ ...config, steps: present });
     setStepIndex(0);
-  }, []);
+  }, [hiddenTools]);
 
   // Auto-fire once per tourable tab when no dismissal row exists.
   useEffect(() => {
@@ -122,6 +126,7 @@ export function TourProvider({
       setStepIndex(0);
     }
 
+    if (hiddenTools.includes(tourKeyForTab)) return;
     if (dismissed.has(tourKeyForTab)) return;
     if (autoStartedRef.current === tourKeyForTab) return;
     if (activeTourKey) return;
@@ -137,7 +142,7 @@ export function TourProvider({
 
     autoStartedRef.current = tourKeyForTab;
     startTour(tourKeyForTab);
-  }, [tourKeyForTab, dismissed, activeTourKey, startTour]);
+  }, [tourKeyForTab, dismissed, activeTourKey, startTour, hiddenTools]);
 
   const goNext = useCallback(() => {
     if (!activeConfig) return;

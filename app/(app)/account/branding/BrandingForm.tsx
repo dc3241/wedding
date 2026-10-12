@@ -186,7 +186,7 @@ export function BrandingForm({
               </p>
               <div className="mt-3">
                 <span className="rounded-[var(--radius-pill)] bg-accent px-3 py-1.5 text-[12px] font-semibold text-surface">
-                  + New booking
+                  + New event
                 </span>
               </div>
             </div>

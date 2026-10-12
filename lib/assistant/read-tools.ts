@@ -41,7 +41,7 @@ export const READ_TOOL_DEFINITIONS = [
   {
     name: "get_checklist",
     description:
-      "Get checklist tasks for this wedding: summary counts plus the most relevant overdue and incomplete tasks. Use for overdue items, progress, and what's next.",
+      "Get checklist tasks for this project: summary counts plus the most relevant overdue and incomplete tasks. Use for overdue items, progress, and what's next.",
     input_schema: {
       type: "object" as const,
       properties: {},
@@ -91,7 +91,7 @@ export const READ_TOOL_DEFINITIONS = [
   {
     name: "get_vendors",
     description:
-      "Get vendors linked to this wedding: status counts plus a capped list with quotes and contact info. Use for vendor pipeline questions.",
+      "Get vendors linked to this project: status counts plus a capped list with quotes and contact info. Use for vendor pipeline questions.",
     input_schema: {
       type: "object" as const,
       properties: {},
@@ -133,7 +133,7 @@ export const READ_TOOL_DEFINITIONS = [
   {
     name: "get_timeline",
     description:
-      "Get the day-of wedding run sheet: summary counts plus time-ordered events (not the long-range checklist). Use before continuing or summarizing an existing timeline.",
+      "Get the day-of run sheet: summary counts plus time-ordered events (not the long-range checklist). Use before continuing or summarizing an existing timeline.",
     input_schema: {
       type: "object" as const,
       properties: {},
@@ -143,7 +143,7 @@ export const READ_TOOL_DEFINITIONS = [
   {
     name: "get_website",
     description:
-      "Get a compact summary of this project's wedding website: whether it exists, schedule item count/titles, and whether Wedding Details are populated. Use before filling the Schedule or answering website-state questions.",
+      "Get a compact summary of this project's website: whether it exists, schedule item count/titles, and whether the details section is populated. Use before filling the Schedule or answering website-state questions.",
     input_schema: {
       type: "object" as const,
       properties: {},

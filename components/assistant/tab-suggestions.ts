@@ -1,4 +1,8 @@
-import { ASSISTANT_PREFILLS } from "@/components/assistant/prefills";
+import {
+  assistantPrefill,
+  type AssistantPrefillKey,
+} from "@/components/assistant/prefills";
+import type { EventType } from "@/lib/event-type";
 
 export type TabSuggestion = {
   tooltip: string;
@@ -17,49 +21,58 @@ export function pathnameToTabSegment(
   return pathname.slice(base.length + 1).split("/")[0] ?? "";
 }
 
-export function getTabSuggestion(segment: string): TabSuggestion | null {
+export function getTabSuggestion(
+  segment: string,
+  eventType: EventType = "wedding",
+): TabSuggestion | null {
   if (SUPPRESSED_SEGMENTS.has(segment)) return null;
+
+  const prefill = (key: AssistantPrefillKey) =>
+    assistantPrefill(key, eventType);
+  const event = eventType === "event";
 
   switch (segment) {
     case "":
       return {
         tooltip: "Ask me what to tackle next",
-        prefill: ASSISTANT_PREFILLS.overview,
+        prefill: prefill("overview"),
       };
     case "checklist":
       return {
         tooltip: "Ask me to build your checklist",
-        prefill: ASSISTANT_PREFILLS.checklist,
+        prefill: prefill("checklist"),
       };
     case "timeline":
       return {
         tooltip: "Ask me to build your day-of timeline",
-        prefill: ASSISTANT_PREFILLS.timeline,
+        prefill: prefill("timeline"),
       };
     case "budget":
       return {
         tooltip: "Ask me to estimate your budget",
-        prefill: ASSISTANT_PREFILLS.budget,
+        prefill: prefill("budget"),
       };
     case "vendors":
       return {
         tooltip: "Ask me to find vendors",
-        prefill: ASSISTANT_PREFILLS.vendors,
+        prefill: prefill("vendors"),
       };
     case "guests":
       return {
         tooltip: "Ask me to help organize your guest list",
-        prefill: ASSISTANT_PREFILLS.guests,
+        prefill: prefill("guests"),
       };
     case "website":
       return {
-        tooltip: "Ask me for ideas on your wedding site copy",
-        prefill: ASSISTANT_PREFILLS.website,
+        tooltip: event
+          ? "Ask me for ideas on your event site copy"
+          : "Ask me for ideas on your wedding site copy",
+        prefill: prefill("website"),
       };
     case "notes":
       return {
         tooltip: "Ask me to jot down a note",
-        prefill: ASSISTANT_PREFILLS.notes,
+        prefill: prefill("notes"),
       };
     default:
       return null;

@@ -112,7 +112,7 @@ export const WRITE_TOOL_DEFINITIONS = [
   {
     name: "set_budget_target",
     description:
-      "Set the overall wedding budget target amount. Use when the user clearly asks to set or change the total budget.",
+      "Set the overall budget target amount. Use when the user clearly asks to set or change the total budget.",
     input_schema: {
       type: "object" as const,
       properties: {
@@ -191,7 +191,7 @@ export const WRITE_TOOL_DEFINITIONS = [
   {
     name: "create_agent_draft",
     description:
-      "Queue a vendor follow-up email on the Pending review panel. Does not send. target_id is the account vendor UUID (vendors.id), not a project_vendors row. Only for a vendor already tracked on this wedding.",
+      "Queue a vendor follow-up email on the Pending review panel. Does not send. target_id is the account vendor UUID (vendors.id), not a project_vendors row. Only for a vendor already tracked on this project.",
     input_schema: {
       type: "object" as const,
       properties: {
@@ -208,7 +208,7 @@ export const WRITE_TOOL_DEFINITIONS = [
   {
     name: "add_timeline_event",
     description:
-      "Add an event to the day-of wedding timeline (run sheet). Use when the user clearly asks to add something to the day-of timeline — not the long-range checklist.",
+      "Add an event to the day-of timeline (run sheet). Use when the user clearly asks to add something to the day-of timeline — not the long-range checklist.",
     input_schema: {
       type: "object" as const,
       properties: {
@@ -240,7 +240,7 @@ export const WRITE_TOOL_DEFINITIONS = [
   {
     name: "add_timeline_events",
     description:
-      "Add multiple events to the day-of wedding timeline in one batch. Use when generating a full run sheet or adding several events at once — not for a single event.",
+      "Add multiple events to the day-of timeline in one batch. Use when generating a full run sheet or adding several events at once — not for a single event.",
     input_schema: {
       type: "object" as const,
       properties: {
@@ -285,7 +285,7 @@ export const WRITE_TOOL_DEFINITIONS = [
   {
     name: "set_website_schedule",
     description:
-      "Fill an EMPTY wedding-website Schedule from guest-facing items (usually curated from get_timeline). Refuses if no website exists or if Schedule already has items — never overwrites. Do not include internal/vendor-only run-sheet events or owner names.",
+      "Fill an EMPTY website Schedule from guest-facing items (usually curated from get_timeline). Refuses if no website exists or if Schedule already has items — never overwrites. Do not include internal/vendor-only run-sheet events or owner names.",
     input_schema: {
       type: "object" as const,
       properties: {
@@ -319,7 +319,7 @@ export const WRITE_TOOL_DEFINITIONS = [
   {
     name: "set_website_travel",
     description:
-      "Fill an EMPTY wedding-website Travel & Stay section with guest-facing content (usually from search_nearby_places). Prefer structured places (hotels/airports) plus a short intro. Refuses if no website exists or if Travel & Stay already has content — never overwrites. Do not force the section visible.",
+      "Fill an EMPTY website Travel & Stay section with guest-facing content (usually from search_nearby_places). Prefer structured places (hotels/airports) plus a short intro. Refuses if no website exists or if Travel & Stay already has content — never overwrites. Do not force the section visible.",
     input_schema: {
       type: "object" as const,
       properties: {

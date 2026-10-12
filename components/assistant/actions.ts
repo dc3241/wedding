@@ -7,6 +7,7 @@ import type {
   AssistantMessage,
   SendAssistantResult,
 } from "@/components/assistant/types";
+import { parseEventType, parseHiddenTools } from "@/lib/event-type";
 import { createClient } from "@/utils/supabase/server";
 
 /** ASSIST-THREAD-01: same kind === null signal CAL-04 uses for invited members. */
@@ -54,7 +55,7 @@ export async function sendAssistantMessage(
   const [{ data: project }, { data: history }] = await Promise.all([
     supabase
       .from("projects")
-      .select("id, name, wedding_date")
+      .select("id, name, wedding_date, event_type, hidden_tools")
       .eq("id", projectId)
       .maybeSingle(),
     supabase
@@ -84,6 +85,8 @@ export async function sendAssistantMessage(
       projectName: project.name,
       weddingDate: project.wedding_date,
       accountKind,
+      eventType: parseEventType(project.event_type),
+      hiddenTools: parseHiddenTools(project.hidden_tools),
     },
   );
 

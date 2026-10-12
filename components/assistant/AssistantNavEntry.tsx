@@ -19,6 +19,7 @@ export function AssistantNavEntry({ projectId }: { projectId: string }) {
     openAssistant,
     hasShownTabSuggestion,
     markTabSuggestionShown,
+    eventType,
   } = useAssistant();
   const [suggestion, setSuggestion] = useState<TabSuggestion | null>(null);
   const [visible, setVisible] = useState(false);
@@ -46,7 +47,7 @@ export function AssistantNavEntry({ projectId }: { projectId: string }) {
     dismissSuggestion();
 
     const segment = pathnameToTabSegment(pathname, projectId);
-    const config = getTabSuggestion(segment);
+    const config = getTabSuggestion(segment, eventType);
     if (!config || hasShownTabSuggestion(segment)) return;
 
     markTabSuggestionShown(segment);
@@ -73,6 +74,7 @@ export function AssistantNavEntry({ projectId }: { projectId: string }) {
     dismissSuggestion,
     hasShownTabSuggestion,
     markTabSuggestionShown,
+    eventType,
   ]);
 
   useEffect(() => {

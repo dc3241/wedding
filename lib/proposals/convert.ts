@@ -6,6 +6,7 @@ import {
   parseProposalLineItems,
 } from "@/components/proposals/types";
 import { dispatchLeadAutomation } from "@/lib/automations/run";
+import { defaultHiddenTools, parseEventType } from "@/lib/event-type";
 import { invoiceLineAmount } from "@/lib/invoices/lines";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -42,7 +43,7 @@ export async function convertAcceptedProposal(
   const { data: proposal, error: proposalError } = await client
     .from("proposals")
     .select(
-      "id, account_id, lead_id, status, notes, terms, line_items, leads!inner(account_id, couple_name, contact_email, wedding_date, project_id, stage)",
+      "id, account_id, lead_id, status, notes, terms, line_items, leads!inner(account_id, couple_name, contact_email, wedding_date, event_type, project_id, stage)",
     )
     .eq("id", proposalId)
     .maybeSingle();
@@ -101,11 +102,14 @@ export async function convertAcceptedProposal(
         : null;
 
     projectId = randomUUID();
+    const eventType = parseEventType(lead.event_type);
     const { error: insertError } = await client.from("projects").insert({
       id: projectId,
       account_id: proposal.account_id,
       name,
       wedding_date: weddingDate,
+      event_type: eventType,
+      hidden_tools: defaultHiddenTools(eventType),
     });
 
     if (insertError) {

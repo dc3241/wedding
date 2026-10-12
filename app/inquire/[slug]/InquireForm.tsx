@@ -4,13 +4,16 @@ import { useState, useTransition } from "react";
 import { submitInquiry } from "@/app/inquire/[slug]/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { EVENT_TYPE_OPTIONS, type EventType } from "@/lib/event-type";
 
 type FormState = "idle" | "success" | "error" | "throttled";
 
 export function InquireForm({ slug }: { slug: string }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [eventType, setEventType] = useState<EventType>("wedding");
   const [weddingDate, setWeddingDate] = useState("");
   const [guestCount, setGuestCount] = useState("");
   const [message, setMessage] = useState("");
@@ -28,12 +31,14 @@ export function InquireForm({ slug }: { slug: string }) {
         message,
         weddingDate,
         guestCount,
+        eventType,
         honeypot,
       });
       if (result.ok) {
         setFormState("success");
         setName("");
         setEmail("");
+        setEventType("wedding");
         setWeddingDate("");
         setGuestCount("");
         setMessage("");
@@ -64,6 +69,27 @@ export function InquireForm({ slug }: { slug: string }) {
           value={honeypot}
           onChange={(e) => setHoneypot(e.target.value)}
         />
+      </div>
+
+      <div className="space-y-1.5">
+        <label htmlFor="inquire-type" className="text-sm font-medium text-ink">
+          Type
+        </label>
+        <Select
+          id="inquire-type"
+          name="event_type"
+          disabled={isPending}
+          value={eventType}
+          onChange={(e) =>
+            setEventType(e.target.value === "event" ? "event" : "wedding")
+          }
+        >
+          {EVENT_TYPE_OPTIONS.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </Select>
       </div>
 
       <div className="space-y-1.5">
@@ -105,7 +131,7 @@ export function InquireForm({ slug }: { slug: string }) {
             htmlFor="inquire-date"
             className="text-sm font-medium text-ink"
           >
-            Wedding date
+            Event date
           </label>
           <Input
             id="inquire-date"

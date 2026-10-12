@@ -27,6 +27,7 @@ import {
   isWithinOutreachWindow,
   loadOutreachCandidates,
 } from "@/lib/cron/outreach-candidates";
+import { parseEventType, parseHiddenTools } from "@/lib/event-type";
 import { createServiceRoleClient } from "@/utils/supabase/service-role";
 
 export const runtime = "nodejs";
@@ -105,6 +106,8 @@ export async function GET(request: Request) {
       }
 
       const accountKind = accountKindFromEmbed(account?.kind);
+      const eventType = parseEventType(project.event_type);
+      const hiddenTools = parseHiddenTools(project.hidden_tools);
       const result = await runAssistantWithTools(
         supabase,
         project.id,
@@ -114,12 +117,15 @@ export async function GET(request: Request) {
           projectName: project.name,
           weddingDate: project.wedding_date,
           accountKind,
+          eventType,
+          hiddenTools,
         },
         {
           systemPrompt: buildOutreachSystemPrompt({
             projectName: project.name,
             weddingDate: project.wedding_date,
             accountKind,
+            eventType,
           }),
           allowedWriteTools: ["create_agent_draft"],
           deferWrites: true,

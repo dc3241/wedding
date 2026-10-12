@@ -4,12 +4,14 @@ import { revalidatePath } from "next/cache";
 import { friendlyLeadError } from "@/components/leads/friendly-lead-error";
 import { LEAD_STAGES, type LeadStage } from "@/components/leads/types";
 import { dispatchLeadAutomation } from "@/lib/automations/run";
+import { parseEventType, type EventType } from "@/lib/event-type";
 import { createClient } from "@/utils/supabase/server";
 
 const LEADS_PATH = "/leads";
 
 export type LeadInput = {
   couple_name: string;
+  event_type?: EventType;
   contact_email?: string;
   contact_phone?: string;
   wedding_date?: string;
@@ -21,6 +23,7 @@ export type LeadInput = {
 
 export type LeadUpdateFields = {
   couple_name?: string;
+  event_type?: EventType;
   contact_email?: string | null;
   contact_phone?: string | null;
   wedding_date?: string | null;
@@ -82,6 +85,7 @@ export async function createLead(
       .insert({
         account_id: membership.account_id,
         couple_name: coupleName,
+        event_type: parseEventType(input.event_type),
         contact_email: trimOrNull(input.contact_email),
         contact_phone: trimOrNull(input.contact_phone),
         wedding_date: trimOrNull(input.wedding_date),
@@ -123,6 +127,9 @@ export async function updateLead(
     updated_at: new Date().toISOString(),
   };
 
+  if (fields.event_type !== undefined) {
+    payload.event_type = parseEventType(fields.event_type);
+  }
   if (fields.couple_name !== undefined) {
     const coupleName = fields.couple_name.trim();
     if (!coupleName) {

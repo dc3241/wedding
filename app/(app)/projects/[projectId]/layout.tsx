@@ -9,6 +9,7 @@ import { ProjectWorkspaceNav } from "@/components/projects/project-workspace-nav
 import { getAccountContext } from "@/lib/account-context";
 import { getBrandingForProject } from "@/lib/branding/get-branding";
 import { coupleOnboardingRedirect } from "@/lib/onboarding-gate";
+import { parseEventType, parseHiddenTools } from "@/lib/event-type";
 import { displayCoupleNames } from "@/lib/wedding-date";
 import { createClient } from "@/utils/supabase/server";
 
@@ -46,7 +47,7 @@ export default async function ProjectLayout({
 
   const { data: project } = await supabase
     .from("projects")
-    .select("id, name, wedding_date")
+    .select("id, name, wedding_date, event_type, hidden_tools")
     .eq("id", projectId)
     .maybeSingle();
 
@@ -150,17 +151,21 @@ export default async function ProjectLayout({
     (row) => row.tour_key,
   );
   const projectMemberRole = memberRoleResult.data?.role ?? null;
+  const eventType = parseEventType(project.event_type);
+  const hiddenTools = parseHiddenTools(project.hidden_tools);
 
   return (
     <AssistantWorkspace
       projectId={projectId}
       accountKind={accountKind}
+      eventType={eventType}
       initialMessages={initialMessages}
       pendingDrafts={pendingDrafts}
     >
       <TourProvider
         projectId={projectId}
         dismissedTourKeys={dismissedTourKeys}
+        hiddenTools={hiddenTools}
       >
         <ProjectShell
           projectId={projectId}
@@ -172,6 +177,7 @@ export default async function ProjectLayout({
             projectId={projectId}
             accountKind={tabAudience}
             projectMemberRole={projectMemberRole}
+            hiddenTools={hiddenTools}
           />
           {children}
         </ProjectShell>

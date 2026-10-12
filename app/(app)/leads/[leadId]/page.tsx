@@ -19,6 +19,7 @@ import {
 import { ButtonLink } from "@/components/ui/button";
 import { Pill } from "@/components/ui/pill";
 import { getAccountContext } from "@/lib/account-context";
+import { eventTypeLabel, parseEventType } from "@/lib/event-type";
 import { getCopy } from "@/lib/venue-copy";
 import { createClient } from "@/utils/supabase/server";
 
@@ -47,7 +48,7 @@ export default async function LeadDetailPage({
       supabase
         .from("leads")
         .select(
-          "id, couple_name, contact_email, contact_phone, wedding_date, estimated_budget, venue, source, stage, notes, project_id",
+          "id, couple_name, event_type, contact_email, contact_phone, wedding_date, estimated_budget, venue, source, stage, notes, project_id",
         )
         .eq("id", leadId)
         .maybeSingle(),
@@ -73,6 +74,7 @@ export default async function LeadDetailPage({
   const lead: Lead = {
     id: leadRow.id,
     couple_name: leadRow.couple_name,
+    event_type: parseEventType(leadRow.event_type),
     contact_email: leadRow.contact_email,
     contact_phone: leadRow.contact_phone,
     wedding_date: leadRow.wedding_date,
@@ -173,6 +175,7 @@ export default async function LeadDetailPage({
               <Pill variant={LEAD_STAGE_VARIANT[lead.stage]}>
                 {LEAD_STAGE_LABEL[lead.stage]}
               </Pill>
+              <Pill variant="default">{eventTypeLabel(lead.event_type)}</Pill>
               {weddingDate ? (
                 <span className="text-[13px] text-muted">{weddingDate}</span>
               ) : null}

@@ -1,6 +1,7 @@
 import "server-only";
 
 import type { AccountKind } from "@/lib/account-context";
+import { dateStatusLine, type EventType } from "@/lib/event-type";
 
 /**
  * Unattended weekly synthesis prompt — distinct from chat.
@@ -11,20 +12,25 @@ export function buildSynthesisSystemPrompt(ctx: {
   projectName: string;
   weddingDate: string | null;
   accountKind: AccountKind;
+  eventType?: EventType;
 }): string {
+  const event = ctx.eventType === "event";
+  const noun = event ? "event" : "wedding";
   const audience =
     ctx.accountKind === "business"
-      ? `You are writing an unattended weekly note for a wedding planner about their client's wedding "${ctx.projectName}" inside First Look.`
-      : `You are writing an unattended weekly note for a couple about their wedding "${ctx.projectName}" inside First Look.`;
+      ? event
+        ? `You are writing an unattended weekly note for a planner about their client's event "${ctx.projectName}" inside First Look.`
+        : `You are writing an unattended weekly note for a wedding planner about their client's wedding "${ctx.projectName}" inside First Look.`
+      : event
+        ? `You are writing an unattended weekly note about the event "${ctx.projectName}" inside First Look.`
+        : `You are writing an unattended weekly note for a couple about their wedding "${ctx.projectName}" inside First Look.`;
 
   const tone =
     ctx.accountKind === "business"
       ? "Be efficient and professional."
       : "Be warm and personal — supportive, never overwhelming.";
 
-  const dateLine = ctx.weddingDate
-    ? `Wedding date: ${ctx.weddingDate}.`
-    : "Wedding date is not set yet.";
+  const dateLine = dateStatusLine(ctx.eventType ?? "wedding", ctx.weddingDate);
 
   return `${audience} ${dateLine}
 
@@ -37,7 +43,7 @@ This is not a conversation. Nobody is waiting to answer follow-up questions. Use
 
 ${tone} No markdown headers, no hashtags, no emojis inside summary or highlight strings.
 
-If the wedding is sparsely populated or nothing is genuinely urgent, say that plainly in summary and leave highlights empty. Do not invent urgency, do not pad, do not recap empty tabs as if they were work.
+If the ${noun} is sparsely populated or nothing is genuinely urgent, say that plainly in summary and leave highlights empty. Do not invent urgency, do not pad, do not recap empty tabs as if they were work.
 
 You cannot take actions. Read tools only — do not try to add tasks, notes, guests, vendors, or send email.
 
@@ -50,3 +56,8 @@ Keep it brief. Write like a competent assistant leaving a note, not a system sta
 
 export const SYNTHESIS_USER_TEXT =
   "What actually needs attention on this wedding this week?";
+
+export function synthesisUserText(eventType: EventType = "wedding"): string {
+  const noun = eventType === "event" ? "event" : "wedding";
+  return `What actually needs attention on this ${noun} this week?`;
+}

@@ -16,8 +16,9 @@ import { NextResponse } from "next/server";
 import { runAssistantWithTools } from "@/lib/assistant/call-assistant";
 import {
   buildSynthesisSystemPrompt,
-  SYNTHESIS_USER_TEXT,
+  synthesisUserText,
 } from "@/lib/assistant/synthesis-prompt";
+import { parseEventType, parseHiddenTools } from "@/lib/event-type";
 import { getOwnAccountBrandingForAccount } from "@/lib/branding/get-branding";
 import type { ProjectBranding } from "@/lib/branding/types";
 import {
@@ -284,23 +285,28 @@ export async function GET(request: Request) {
 
       const account = asOne(project.accounts);
       const accountKind = accountKindFromEmbed(account?.kind);
+      const eventType = parseEventType(project.event_type);
+      const hiddenTools = parseHiddenTools(project.hidden_tools);
       const startedAt = new Date().toISOString();
 
       const result = await runAssistantWithTools(
         supabase,
         project.id,
         [],
-        SYNTHESIS_USER_TEXT,
+        synthesisUserText(eventType),
         {
           projectName: project.name,
           weddingDate: project.wedding_date,
           accountKind,
+          eventType,
+          hiddenTools,
         },
         {
           systemPrompt: buildSynthesisSystemPrompt({
             projectName: project.name,
             weddingDate: project.wedding_date,
             accountKind,
+            eventType,
           }),
           readOnly: true,
         },

@@ -12,6 +12,12 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import type { AccountPlan } from "@/lib/account-context";
 import type { PlannerProjectSummary } from "@/lib/dashboard-aggregates";
+import {
+  defaultHiddenTools,
+  EVENT_TYPE_OPTIONS,
+  type EventType,
+  type HideableTool,
+} from "@/lib/event-type";
 import { getCopy } from "@/lib/venue-copy";
 
 type NewWeddingFormProps = {
@@ -29,12 +35,25 @@ export function NewWeddingForm({
   const [error, setError] = useState<string | null>(null);
   const [confirmation, setConfirmation] = useState<string | null>(null);
   const [createdProjectId, setCreatedProjectId] = useState<string | null>(null);
+  const [eventType, setEventType] = useState<EventType>("wedding");
+  const [includeSeating, setIncludeSeating] = useState(true);
+  const [includeWebsite, setIncludeWebsite] = useState(true);
   const [isPending, startTransition] = useTransition();
 
   function resetFormState() {
     setError(null);
     setConfirmation(null);
     setCreatedProjectId(null);
+    setEventType("wedding");
+    setIncludeSeating(true);
+    setIncludeWebsite(true);
+  }
+
+  function changeEventType(next: EventType) {
+    setEventType(next);
+    const hidden = defaultHiddenTools(next);
+    setIncludeSeating(!hidden.includes("seating"));
+    setIncludeWebsite(!hidden.includes("website"));
   }
 
   function openProject(projectId: string) {
@@ -56,8 +75,15 @@ export function NewWeddingForm({
       (formData.get("templateSource") as string) ?? ""
     ).trim();
 
+    const hiddenTools: HideableTool[] = [];
+    if (!includeSeating) hiddenTools.push("seating");
+    if (!includeWebsite) hiddenTools.push("website");
+
     startTransition(async () => {
-      const result = await createProject(name);
+      const result = await createProject(name, {
+        eventType,
+        hiddenTools,
+      });
 
       if (!result.ok) {
         setError(result.error);
@@ -154,9 +180,32 @@ export function NewWeddingForm({
     <Card className="p-4">
       <form
         onSubmit={handleSubmit}
-        className="flex flex-col gap-3 sm:flex-row sm:items-end"
+        className="flex flex-col gap-4"
       >
         <div className="min-w-0 flex-1 space-y-3">
+          <div className="space-y-1.5">
+            <label
+              htmlFor="new-event-type"
+              className="text-sm font-medium text-ink"
+            >
+              Type
+            </label>
+            <Select
+              id="new-event-type"
+              name="eventType"
+              disabled={isPending}
+              value={eventType}
+              onChange={(e) =>
+                changeEventType(e.target.value === "event" ? "event" : "wedding")
+              }
+            >
+              {EVENT_TYPE_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </Select>
+          </div>
           <div className="space-y-1.5">
             <label
               htmlFor="new-wedding-name"
@@ -196,6 +245,28 @@ export function NewWeddingForm({
               </Select>
             </div>
           ) : null}
+          <div className="flex flex-wrap gap-4">
+            <label className="flex items-center gap-2 text-sm font-medium text-ink">
+              <input
+                type="checkbox"
+                className="size-4 accent-accent"
+                checked={includeSeating}
+                disabled={isPending}
+                onChange={(e) => setIncludeSeating(e.target.checked)}
+              />
+              Seating chart
+            </label>
+            <label className="flex items-center gap-2 text-sm font-medium text-ink">
+              <input
+                type="checkbox"
+                className="size-4 accent-accent"
+                checked={includeWebsite}
+                disabled={isPending}
+                onChange={(e) => setIncludeWebsite(e.target.checked)}
+              />
+              Website
+            </label>
+          </div>
           {error ? <p className="text-sm text-rosewood">{error}</p> : null}
         </div>
         <div className="flex gap-2">

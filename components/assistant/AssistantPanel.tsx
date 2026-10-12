@@ -14,6 +14,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { Textarea } from "@/components/ui/textarea";
 import type { AccountKind } from "@/lib/account-context";
+import type { EventType } from "@/lib/event-type";
 import { isPlannerAccount } from "@/lib/density";
 import { acquireScrollLock, releaseScrollLock } from "@/lib/scroll-lock";
 import { cn } from "@/lib/cn";
@@ -21,6 +22,7 @@ import { cn } from "@/lib/cn";
 type AssistantPanelProps = {
   projectId: string;
   accountKind: AccountKind;
+  eventType: EventType;
   initialMessages: AssistantMessage[];
   pendingDrafts: AgentDraftPreview[];
 };
@@ -71,10 +73,12 @@ function mergeAssistantHistory(
 export function AssistantPanel({
   projectId,
   accountKind,
+  eventType,
   initialMessages,
   pendingDrafts,
 }: AssistantPanelProps) {
   const isPlanner = isPlannerAccount(accountKind);
+  const isEvent = eventType === "event";
   const { open, closeAssistant, pendingPrefill, clearPendingPrefill } =
     useAssistant();
   const [messages, setMessages] = useState(initialMessages);
@@ -214,11 +218,17 @@ export function AssistantPanel({
           <div>
             <Eyebrow>Assistant</Eyebrow>
             <h2 className="mt-1 text-[20px] font-medium text-ink">
-              {isPlanner ? "Planning assistant" : "Your wedding assistant"}
+              {isPlanner
+                ? "Planning assistant"
+                : isEvent
+                  ? "Your event assistant"
+                  : "Your wedding assistant"}
             </h2>
             <p className="mt-1 text-[13px] text-muted">
               {isPlanner
-                ? "Ask about checklist, budget, guests, vendors, and notes for this wedding."
+                ? isEvent
+                  ? "Ask about checklist, budget, guests, vendors, and notes for this event."
+                  : "Ask about checklist, budget, guests, vendors, and notes for this wedding."
                 : "Ask me about your checklist, budget, guests, vendors, or notes."}
             </p>
           </div>
@@ -272,7 +282,9 @@ export function AssistantPanel({
             >
               <p className="text-[15px] text-ink">
                 {isPlanner
-                  ? "What would you like to know about this wedding?"
+                  ? isEvent
+                    ? "What would you like to know about this event?"
+                    : "What would you like to know about this wedding?"
                   : "Hi! I'm here to help with your wedding planning."}
               </p>
               <p className="mt-2 text-[13px] text-muted">
@@ -345,7 +357,9 @@ export function AssistantPanel({
               onKeyDown={handleKeyDown}
               placeholder={
                 isPlanner
-                  ? "Ask about this wedding…"
+                  ? isEvent
+                    ? "Ask about this event…"
+                    : "Ask about this wedding…"
                   : "Ask about your wedding…"
               }
               rows={isPlanner ? 2 : 3}

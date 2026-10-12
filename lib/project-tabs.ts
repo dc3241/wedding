@@ -58,8 +58,10 @@ export const PROJECT_TABS: ProjectTab[] = [
 export function tabsForAccountKind(
   kind: AccountKind | null,
   projectMemberRole?: string | null,
+  hiddenTools: readonly string[] = [],
 ): ProjectTab[] {
   return PROJECT_TABS.filter((tab) => {
+    if (tab.segment && hiddenTools.includes(tab.segment)) return false;
     if (tab.plannerOnly && kind !== "business") return false;
     if (tab.coupleOnly) {
       if (kind === "personal") return true;

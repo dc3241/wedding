@@ -6,7 +6,6 @@ import {
   type Note,
 } from "./types";
 import { AskAssistantPrompt } from "@/components/assistant/AskAssistantPrompt";
-import { ASSISTANT_PREFILLS } from "@/components/assistant/prefills";
 import { FileManager } from "@/components/files/FileManager";
 import type { ProjectFile } from "@/components/files/types";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -131,7 +130,7 @@ export default async function NotesPage({
           <EmptyState
             action={
               <AskAssistantPrompt
-                prefill={ASSISTANT_PREFILLS.notes}
+                prefillKey="notes"
                 title="Draft a planning note"
                 description="I'll suggest a clear title and body with the key details."
                 cta="Draft a note"

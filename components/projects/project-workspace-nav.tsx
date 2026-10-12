@@ -12,15 +12,17 @@ export function ProjectWorkspaceNav({
   projectId,
   accountKind,
   projectMemberRole = null,
+  hiddenTools = [],
 }: {
   projectId: string;
   /** Null = no account (invited member). Do not collapse to `"personal"`. */
   accountKind: AccountKind | null;
   /** CAL-04 / CAL-06: used only for Calendar when kind is null. */
   projectMemberRole?: string | null;
+  hiddenTools?: readonly string[];
 }) {
   const pathname = usePathname();
-  const tabs = tabsForAccountKind(accountKind, projectMemberRole);
+  const tabs = tabsForAccountKind(accountKind, projectMemberRole, hiddenTools);
   const scrollerRef = useRef<HTMLDivElement>(null);
   const activeRef = useRef<HTMLAnchorElement>(null);
   const [overflow, setOverflow] = useState({ left: false, right: false });

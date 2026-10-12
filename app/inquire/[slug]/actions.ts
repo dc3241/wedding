@@ -2,6 +2,7 @@
 
 import { headers } from "next/headers";
 import { dispatchLeadAutomation } from "@/lib/automations/run";
+import { parseEventType } from "@/lib/event-type";
 import { createAnonServerClient } from "@/utils/supabase/anon-server";
 import { createServiceRoleClient } from "@/utils/supabase/service-role";
 
@@ -16,6 +17,7 @@ export type SubmitInquiryInput = {
   message?: string;
   weddingDate?: string;
   guestCount?: string;
+  eventType?: string;
   honeypot?: string;
 };
 
@@ -96,6 +98,7 @@ export async function submitInquiry(
     p_honeypot: "",
     p_wedding_date: weddingDate,
     p_guest_count: guestCount,
+    p_event_type: parseEventType(input.eventType),
   });
 
   if (error) {

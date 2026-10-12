@@ -1,4 +1,5 @@
 import type { PillVariant } from "@/components/ui/pill";
+import type { EventType } from "@/lib/event-type";
 
 export const LEAD_STAGES = [
   "inquiry",
@@ -13,6 +14,7 @@ export type LeadStage = (typeof LEAD_STAGES)[number];
 export type Lead = {
   id: string;
   couple_name: string;
+  event_type: EventType;
   contact_email: string | null;
   contact_phone: string | null;
   wedding_date: string | null;

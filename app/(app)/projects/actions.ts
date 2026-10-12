@@ -2,6 +2,13 @@
 
 import { randomUUID } from "crypto";
 import { revalidatePath } from "next/cache";
+import { getAccountContext } from "@/lib/account-context";
+import {
+  parseEventType,
+  parseHiddenTools,
+  type EventType,
+  type HideableTool,
+} from "@/lib/event-type";
 import { redirect } from "next/navigation";
 import { getCoupleDestinationPath } from "@/lib/onboarding-gate";
 import { getPostLoginPath } from "@/lib/post-login-path";
@@ -121,10 +128,14 @@ async function resolveProjectAccountId(
 
 export async function createProject(
   name: string,
+  options?: {
+    eventType?: EventType;
+    hiddenTools?: HideableTool[];
+  },
 ): Promise<CreateProjectResult> {
   const trimmed = name.trim();
   if (!trimmed) {
-    return { ok: false, error: "Wedding name is required." };
+    return { ok: false, error: "Name is required." };
   }
 
   const supabase = await createClient();
@@ -134,6 +145,15 @@ export async function createProject(
     return { ok: false, error: resolved.error };
   }
 
+  const { data: account } = await supabase
+    .from("accounts")
+    .select("kind")
+    .eq("id", resolved.accountId)
+    .maybeSingle();
+  const business = account?.kind === "business";
+  const eventType = business ? parseEventType(options?.eventType) : "wedding";
+  const hiddenTools = business ? parseHiddenTools(options?.hiddenTools) : [];
+
   // No `.select()` after insert: projects SELECT RLS (`can_access_project`)
   // re-queries by id and can reject INSERT…RETURNING for the in-flight row.
   const projectId = randomUUID();
@@ -141,6 +161,8 @@ export async function createProject(
     id: projectId,
     account_id: resolved.accountId,
     name: trimmed,
+    event_type: eventType,
+    hidden_tools: hiddenTools,
   });
 
   if (error) {
@@ -199,6 +221,48 @@ export async function cloneProjectTemplate(
   revalidatePath(`/projects/${target}/checklist`);
   revalidatePath(`/projects/${target}/budget`);
   revalidatePath(`/projects/${target}/vendors`);
+  revalidatePath("/dashboard");
+  revalidatePath("/projects");
+  return { ok: true };
+}
+
+export async function updateProjectEventSettings(
+  projectId: string,
+  input: {
+    eventType: string;
+    includeSeating: boolean;
+    includeWebsite: boolean;
+  },
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const supabase = await createClient();
+  const account = await getAccountContext(supabase);
+  if (account?.kind !== "business") {
+    return { ok: false, error: "Only a planner or venue can change this." };
+  }
+
+  const hiddenTools: HideableTool[] = [];
+  if (!input.includeSeating) hiddenTools.push("seating");
+  if (!input.includeWebsite) hiddenTools.push("website");
+
+  const { data, error } = await supabase
+    .from("projects")
+    .update({
+      event_type: parseEventType(input.eventType),
+      hidden_tools: hiddenTools,
+    })
+    .eq("id", projectId)
+    .select("id")
+    .maybeSingle();
+
+  if (error) {
+    return { ok: false, error: error.message };
+  }
+  if (!data) {
+    return { ok: false, error: "Could not update this event." };
+  }
+
+  revalidatePath(`/projects/${projectId}`, "layout");
+  revalidatePath(`/projects/${projectId}`);
   revalidatePath("/dashboard");
   revalidatePath("/projects");
   return { ok: true };

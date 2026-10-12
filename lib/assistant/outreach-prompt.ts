@@ -1,31 +1,36 @@
 import "server-only";
 
 import type { AccountKind } from "@/lib/account-context";
+import { dateStatusLine, type EventType } from "@/lib/event-type";
 
 export function buildOutreachSystemPrompt(ctx: {
   projectName: string;
   weddingDate: string | null;
   accountKind: AccountKind;
+  eventType?: EventType;
 }): string {
+  const event = ctx.eventType === "event";
   const audience =
     ctx.accountKind === "business"
-      ? `You are drafting a follow-up email for a wedding planner to send from their own Gmail about their client's wedding "${ctx.projectName}".`
-      : `You are drafting a follow-up email for a couple to send from their own Gmail about their wedding "${ctx.projectName}".`;
+      ? event
+        ? `You are drafting a follow-up email for a planner to send from their own Gmail about their client's event "${ctx.projectName}".`
+        : `You are drafting a follow-up email for a wedding planner to send from their own Gmail about their client's wedding "${ctx.projectName}".`
+      : event
+        ? `You are drafting a follow-up email to send from the host's own Gmail about their event "${ctx.projectName}".`
+        : `You are drafting a follow-up email for a couple to send from their own Gmail about their wedding "${ctx.projectName}".`;
 
   const voice =
     ctx.accountKind === "business"
       ? "Write in the planner's first-person voice, as if they typed it themselves."
       : "Write in the couple's first-person voice, as if they typed it themselves.";
 
-  const dateLine = ctx.weddingDate
-    ? `Wedding date: ${ctx.weddingDate}.`
-    : "Wedding date is not set yet.";
+  const dateLine = dateStatusLine(ctx.eventType ?? "wedding", ctx.weddingDate);
 
   return `${audience} ${dateLine}
 
 This is not a conversation. Nobody is waiting to answer follow-up questions. The user message lists candidate vendors that already passed a structural gap check (open category, tracked non-booked vendor, not recently rejected). You may call create_agent_draft for a candidate when a specific, sendable follow-up is warranted. You may also draft none.
 
-${voice} Reference only facts present in the candidate list or read-tool results (wedding date, category, vendor name, prior contact if listed). Never invent availability, pricing, venue details, or prior emails that are not in the data.
+${voice} Reference only facts present in the candidate list or read-tool results (the date, category, vendor name, prior contact if listed). Never invent availability, pricing, venue details, or prior emails that are not in the data.
 
 create_agent_draft target_id MUST be the vendor_id from the candidate list — never a project_vendors involvement id, never a guessed UUID. One draft per vendor maximum. Subject + body required. This queues a Pending-panel draft; it does not send.
 

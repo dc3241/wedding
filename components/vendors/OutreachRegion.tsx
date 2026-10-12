@@ -19,7 +19,6 @@ import {
   type OutreachVendor,
 } from "@/components/vendors/outreach-vendor";
 import { AskAssistantPrompt } from "@/components/assistant/AskAssistantPrompt";
-import { ASSISTANT_PREFILLS } from "@/components/assistant/prefills";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Eyebrow } from "@/components/ui/eyebrow";
@@ -493,7 +492,7 @@ export function OutreachRegion({
             {declinedItems.length === 0 ? (
               <AskAssistantPrompt
                 className="mx-auto mt-4 max-w-md"
-                prefill={ASSISTANT_PREFILLS.vendors}
+                prefillKey="vendors"
                 title="Not sure which vendors to chase first?"
                 description="Ask for priority categories and what to look for when shortlisting."
                 cta="Find vendors"

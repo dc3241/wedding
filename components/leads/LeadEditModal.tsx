@@ -6,7 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
+import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { EVENT_TYPE_OPTIONS, parseEventType } from "@/lib/event-type";
 import { cn } from "@/lib/cn";
 import { friendlyLeadError } from "./friendly-lead-error";
 import type { Lead } from "./types";
@@ -57,6 +59,7 @@ export function LeadEditModal({
     startTransition(async () => {
       const result = await updateLead(lead.id, {
         couple_name: (form.get("couple_name") as string) ?? "",
+        event_type: parseEventType(form.get("event_type")),
         contact_email: (form.get("contact_email") as string) || null,
         contact_phone: (form.get("contact_phone") as string) || null,
         wedding_date: (form.get("wedding_date") as string) || null,
@@ -128,6 +131,24 @@ export function LeadEditModal({
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Field
+            id={`edit-type-${lead.id}`}
+            label="Type"
+            className="sm:col-span-2"
+          >
+            <Select
+              id={`edit-type-${lead.id}`}
+              name="event_type"
+              defaultValue={lead.event_type}
+              disabled={isPending}
+            >
+              {EVENT_TYPE_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <Field
             id={`edit-couple-${lead.id}`}
             label="Couple name"
             className="sm:col-span-2"
@@ -159,7 +180,7 @@ export function LeadEditModal({
               disabled={isPending}
             />
           </Field>
-          <Field id={`edit-date-${lead.id}`} label="Wedding date">
+          <Field id={`edit-date-${lead.id}`} label="Event date">
             <Input
               id={`edit-date-${lead.id}`}
               name="wedding_date"

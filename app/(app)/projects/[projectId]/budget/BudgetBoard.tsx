@@ -21,7 +21,6 @@ import type {
 } from "@/lib/budget-aggregates";
 import { formatCurrency } from "@/lib/format-currency";
 import { AskAssistantPrompt } from "@/components/assistant/AskAssistantPrompt";
-import { ASSISTANT_PREFILLS } from "@/components/assistant/prefills";
 import {
   overviewDuePill,
   type OverviewNextPayment,
@@ -724,7 +723,7 @@ export function BudgetBoard({
             <EmptyState
               action={
                 <AskAssistantPrompt
-                  prefill={ASSISTANT_PREFILLS.budget}
+                  prefillKey="budget"
                   title="Estimate a starting budget"
                   description="Break it down by category from your guest count and priorities."
                   cta="Estimate budget"

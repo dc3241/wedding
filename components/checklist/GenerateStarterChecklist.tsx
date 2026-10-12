@@ -3,7 +3,6 @@
 import { useTransition } from "react";
 import { generateStarterChecklist } from "@/app/(app)/projects/[projectId]/checklist/actions";
 import { AskAssistantPrompt } from "@/components/assistant/AskAssistantPrompt";
-import { ASSISTANT_PREFILLS } from "@/components/assistant/prefills";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 
@@ -42,7 +41,7 @@ export function GenerateStarterChecklist({
       <div className="mx-auto mt-5 flex max-w-md flex-col items-stretch gap-4">
         <div className="flex justify-center">{button}</div>
         <AskAssistantPrompt
-          prefill={ASSISTANT_PREFILLS.checklist}
+          prefillKey="checklist"
           title="Or ask the assistant to build one"
           description="Phases, due dates, and the tasks you shouldn't miss."
           cta="Build my checklist"

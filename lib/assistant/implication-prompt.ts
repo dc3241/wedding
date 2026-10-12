@@ -1,6 +1,7 @@
 import "server-only";
 
 import type { AccountKind } from "@/lib/account-context";
+import { dateStatusLine, type EventType } from "@/lib/event-type";
 
 /**
  * Unattended daily implication scan — distinct from chat and from AGENT-01
@@ -10,20 +11,25 @@ export function buildImplicationSystemPrompt(ctx: {
   projectName: string;
   weddingDate: string | null;
   accountKind: AccountKind;
+  eventType?: EventType;
 }): string {
+  const event = ctx.eventType === "event";
+  const noun = event ? "event" : "wedding";
   const audience =
     ctx.accountKind === "business"
-      ? `You are scanning a wedding planner's client wedding "${ctx.projectName}" inside First Look for downstream implications worth flagging.`
-      : `You are scanning the couple's wedding "${ctx.projectName}" inside First Look for downstream implications worth flagging.`;
+      ? event
+        ? `You are scanning a planner's client event "${ctx.projectName}" inside First Look for downstream implications worth flagging.`
+        : `You are scanning a wedding planner's client wedding "${ctx.projectName}" inside First Look for downstream implications worth flagging.`
+      : event
+        ? `You are scanning the event "${ctx.projectName}" inside First Look for downstream implications worth flagging.`
+        : `You are scanning the couple's wedding "${ctx.projectName}" inside First Look for downstream implications worth flagging.`;
 
   const tone =
     ctx.accountKind === "business"
       ? "Be efficient and professional."
       : "Be warm and personal — supportive, never alarming.";
 
-  const dateLine = ctx.weddingDate
-    ? `Wedding date: ${ctx.weddingDate}.`
-    : "Wedding date is not set yet.";
+  const dateLine = dateStatusLine(ctx.eventType ?? "wedding", ctx.weddingDate);
 
   return `${audience} ${dateLine}
 
@@ -38,7 +44,7 @@ The value is genuine synthesis, not a status report and not coverage of every ta
 
 ${tone} If you create a note, write it in plain conversational prose — no markdown headers, no bullet dumps, no hashtags, no emojis. Name the specific people, categories, or amounts you actually read. A generic "review your RSVPs" or "check the budget" note is a miss.
 
-Silence is the correct, expected, common output. Most days, most weddings have nothing worth flagging. If nothing is genuinely worth a note, call no write tool at all. Do not create a placeholder, a reassurance note, or a "nothing to report" note.
+Silence is the correct, expected, common output. Most days, most ${noun}s have nothing worth flagging. If nothing is genuinely worth a note, call no write tool at all. Do not create a placeholder, a reassurance note, or a "nothing to report" note.
 
 Before creating a note, call get_notes. Each item includes action_status (needs_action | done | null), title, and excerpt; summary.needs_action is the pin count. Use get_note(id) when you need the full body. If an existing needs_action note already covers the same implication, do not duplicate it. If a recently dismissed (action_status = done) note covered the same thing, do not re-raise it this pass.
 
@@ -53,3 +59,8 @@ Keep a created note brief: a short title and 2–4 sentences of body.`;
 
 export const IMPLICATION_USER_TEXT =
   "Scan this wedding for downstream implications worth flagging. If nothing is genuinely worth a note, do not write one.";
+
+export function implicationUserText(eventType: EventType = "wedding"): string {
+  const noun = eventType === "event" ? "event" : "wedding";
+  return `Scan this ${noun} for downstream implications worth flagging. If nothing is genuinely worth a note, do not write one.`;
+}

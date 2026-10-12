@@ -1,6 +1,7 @@
 import "server-only";
 
 import type { AccountKind } from "@/lib/account-context";
+import type { EventType, HideableTool } from "@/lib/event-type";
 import { createServiceRoleClient } from "@/utils/supabase/service-role";
 
 const PROJECT_PAGE_SIZE = 500;
@@ -15,6 +16,8 @@ export type CronProjectRow = {
   id: string;
   name: string;
   wedding_date: string | null;
+  event_type: EventType | string | null;
+  hidden_tools: HideableTool[] | string[] | null;
   created_at: string;
   account_id: string;
   accounts: CronAccountEmbed | CronAccountEmbed[] | null;
@@ -46,6 +49,8 @@ async function loadActiveNonDemoProjects(
         id,
         name,
         wedding_date,
+        event_type,
+        hidden_tools,
         created_at,
         account_id,
         accounts!inner(id, is_demo, kind)

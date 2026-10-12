@@ -20,7 +20,6 @@ import {
   type RsvpStatus,
 } from "./types";
 import { AskAssistantPrompt } from "@/components/assistant/AskAssistantPrompt";
-import { ASSISTANT_PREFILLS } from "@/components/assistant/prefills";
 import { Card } from "@/components/ui/card";
 import { CollapseSection } from "@/components/ui/collapse-section";
 import { TourHelpButton } from "@/components/tour/TourHelpButton";
@@ -421,7 +420,7 @@ export default async function GuestsPage({
         partnerSides={partnerSides}
         emptyAction={
           <AskAssistantPrompt
-            prefill={ASSISTANT_PREFILLS.guests}
+            prefillKey="guests"
             title="Get help organizing your list"
             description="Households, RSVP tracking, and what details to capture."
             cta="Organize guests"

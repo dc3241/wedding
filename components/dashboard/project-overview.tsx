@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { AskAssistantPrompt } from "@/components/assistant/AskAssistantPrompt";
-import { ASSISTANT_PREFILLS } from "@/components/assistant/prefills";
 import { WeddingDateEditor } from "@/components/ui/wedding-date-editor";
 import { ButtonLink } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -341,7 +340,7 @@ export function ProjectOverview({
       <Card className="px-5 py-4 sm:px-6 sm:py-[18px]">
         <div data-tour="assistant">
           <AskAssistantPrompt
-            prefill={ASSISTANT_PREFILLS.overview}
+            prefillKey="overview"
             title="What should I tackle next?"
             description="I'll look at what's already set up and suggest the highest-leverage next step."
             cta="Ask assistant"
@@ -530,7 +529,7 @@ export function ProjectOverview({
             </p>
             <AskAssistantPrompt
               className="mt-4 max-w-md"
-              prefill={ASSISTANT_PREFILLS.vendors}
+              prefillKey="vendors"
               title="Ask what to book first"
               description="Priority categories and what to look for when shortlisting."
               cta="Find vendors"

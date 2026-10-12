@@ -11,6 +11,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { getAccountContext } from "@/lib/account-context";
 import { ensureInquirySlug } from "@/lib/inquiry/ensure-slug";
 import { isLeadStale, leadInactiveDays } from "@/lib/lead-staleness";
+import { parseEventType } from "@/lib/event-type";
 import { getCopy } from "@/lib/venue-copy";
 import { createClient } from "@/utils/supabase/server";
 
@@ -33,7 +34,7 @@ export default async function LeadsPage() {
     supabase
       .from("leads")
       .select(
-        "id, couple_name, contact_email, contact_phone, wedding_date, estimated_budget, venue, source, stage, notes, position, created_at, updated_at",
+        "id, couple_name, event_type, contact_email, contact_phone, wedding_date, estimated_budget, venue, source, stage, notes, position, created_at, updated_at",
       )
       .order("position", { ascending: true })
       .order("created_at", { ascending: true }),
@@ -52,6 +53,7 @@ export default async function LeadsPage() {
     return {
       id: row.id,
       couple_name: row.couple_name,
+      event_type: parseEventType(row.event_type),
       contact_email: row.contact_email,
       contact_phone: row.contact_phone,
       wedding_date: row.wedding_date,

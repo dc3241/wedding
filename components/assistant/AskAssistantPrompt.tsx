@@ -1,12 +1,18 @@
 "use client";
 
 import { useAssistant } from "@/components/assistant/assistant-context";
+import {
+  assistantPrefill,
+  type AssistantPrefillKey,
+} from "@/components/assistant/prefills";
 import { AssistantSparkleIcon } from "@/components/assistant/AssistantSparkleIcon";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
 
 type AskAssistantPromptProps = {
-  prefill: string;
+  /** Resolved ask. Prefer prefillKey so the wording follows the event type. */
+  prefill?: string;
+  prefillKey?: AssistantPrefillKey;
   title: string;
   description?: string;
   cta?: string;
@@ -19,12 +25,14 @@ type AskAssistantPromptProps = {
  */
 export function AskAssistantPrompt({
   prefill,
+  prefillKey,
   title,
   description,
   cta = "Ask assistant",
   className,
 }: AskAssistantPromptProps) {
-  const { openAssistant } = useAssistant();
+  const { openAssistant, eventType } = useAssistant();
+  const ask = prefillKey ? assistantPrefill(prefillKey, eventType) : (prefill ?? "");
 
   return (
     <div
@@ -52,7 +60,7 @@ export function AskAssistantPrompt({
           type="button"
           variant="primary"
           className="w-full shrink-0 sm:w-auto"
-          onClick={() => openAssistant(prefill)}
+          onClick={() => openAssistant(ask)}
         >
           {cta}
         </Button>

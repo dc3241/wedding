@@ -9,6 +9,7 @@ import { Card } from "@/components/ui/card";
 import { Select } from "@/components/ui/select";
 import { cn } from "@/lib/cn";
 import { LeadEditModal, friendlyLeadError } from "./LeadEditModal";
+import { eventTypeLabel } from "@/lib/event-type";
 import {
   formatLeadBudget,
   formatLeadDate,
@@ -94,6 +95,11 @@ export function LeadRow({
             >
               {lead.couple_name}
             </Link>
+            {lead.event_type === "event" ? (
+              <p className="mt-0.5 text-[13px] text-muted">
+                {eventTypeLabel(lead.event_type)}
+              </p>
+            ) : null}
 
             {when ? (
               <p className="mt-1 truncate text-[13px] text-muted">

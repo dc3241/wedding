@@ -1,5 +1,6 @@
 "use client";
 
+import type { EventType } from "@/lib/event-type";
 import {
   createContext,
   useCallback,
@@ -11,6 +12,7 @@ import {
 } from "react";
 
 type AssistantContextValue = {
+  eventType: EventType;
   open: boolean;
   openAssistant: (prefill?: string) => void;
   closeAssistant: () => void;
@@ -22,7 +24,13 @@ type AssistantContextValue = {
 
 const AssistantContext = createContext<AssistantContextValue | null>(null);
 
-export function AssistantProvider({ children }: { children: ReactNode }) {
+export function AssistantProvider({
+  children,
+  eventType = "wedding",
+}: {
+  children: ReactNode;
+  eventType?: EventType;
+}) {
   const [open, setOpen] = useState(false);
   const [pendingPrefill, setPendingPrefill] = useState<string | null>(null);
   const shownTabSuggestionsRef = useRef<Set<string>>(new Set());
@@ -52,6 +60,7 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo(
     () => ({
+      eventType,
       open,
       openAssistant,
       closeAssistant,
@@ -61,6 +70,7 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
       hasShownTabSuggestion,
     }),
     [
+      eventType,
       open,
       openAssistant,
       closeAssistant,

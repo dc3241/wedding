@@ -14,7 +14,7 @@ import { isInquirySlug } from "@/lib/inquiry/parse";
 
 export const metadata: Metadata = {
   title: "Inquiry",
-  description: "Send an inquiry about planning your wedding.",
+  description: "Send an inquiry about planning your event.",
 };
 
 export const dynamic = "force-dynamic";
@@ -120,7 +120,7 @@ export default async function InquirePage({
             light ? "text-white/70" : "text-ink/75",
           )}
         >
-          Tell them a little about your wedding. This goes straight to their
+          Tell them a little about your event. This goes straight to their
           inquiry list — nothing is sent until they reply.
         </p>
       </div>

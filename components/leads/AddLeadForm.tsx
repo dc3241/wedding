@@ -6,7 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
+import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { EVENT_TYPE_OPTIONS, parseEventType } from "@/lib/event-type";
 import type { AccountPlan } from "@/lib/account-context";
 import { cn } from "@/lib/cn";
 import { getCopy } from "@/lib/venue-copy";
@@ -59,6 +61,7 @@ export function AddLeadForm({ plan = "planner" }: { plan?: AccountPlan }) {
       try {
         const result = await createLead({
           couple_name: coupleName,
+          event_type: parseEventType(form.get("event_type")),
           contact_email: (form.get("contact_email") as string) || undefined,
           contact_phone: (form.get("contact_phone") as string) || undefined,
           wedding_date: (form.get("wedding_date") as string) || undefined,
@@ -123,6 +126,15 @@ export function AddLeadForm({ plan = "planner" }: { plan?: AccountPlan }) {
             </div>
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <Field id="add-event-type" label="Type" className="sm:col-span-2">
+                <Select id="add-event-type" name="event_type" disabled={isPending} defaultValue="wedding">
+                  {EVENT_TYPE_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
               <Field id="add-couple-name" label="Couple name" className="sm:col-span-2">
                 <Input
                   id="add-couple-name"
@@ -151,7 +163,7 @@ export function AddLeadForm({ plan = "planner" }: { plan?: AccountPlan }) {
                   placeholder="(555) 123-4567"
                 />
               </Field>
-              <Field id="add-date" label="Wedding date">
+              <Field id="add-date" label="Event date">
                 <Input
                   id="add-date"
                   name="wedding_date"

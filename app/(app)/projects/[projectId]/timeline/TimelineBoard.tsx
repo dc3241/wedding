@@ -5,7 +5,6 @@ import { useState } from "react";
 import { AddEventForm } from "./AddEventForm";
 import { TimelineEventRow } from "./TimelineEventRow";
 import { AskAssistantPrompt } from "@/components/assistant/AskAssistantPrompt";
-import { ASSISTANT_PREFILLS } from "@/components/assistant/prefills";
 import { ButtonLink } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -345,7 +344,7 @@ export function TimelineBoard({
             <EmptyState
               action={
                 <AskAssistantPrompt
-                  prefill={ASSISTANT_PREFILLS.timeline}
+                  prefillKey="timeline"
                   title="Build a day-of run sheet"
                   description="Key moments, start times, and who owns each one."
                   cta="Build timeline"
