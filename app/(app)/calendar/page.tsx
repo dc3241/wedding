@@ -9,6 +9,7 @@ import type {
   ActiveWedding,
   CalendarEventRow,
   EventKind,
+  LeadHoldOverlay,
   PaymentDueOverlay,
   TaskDueOverlay,
 } from "./types";
@@ -99,7 +100,8 @@ export default async function CalendarPage({
   const paddedStart = shiftIsoDate(queryStart.slice(0, 10), -1);
   const paddedEnd = shiftIsoDate(queryEnd.slice(0, 10), 1);
 
-  const [{ data: eventRows }, { data: projectRows }] = await Promise.all([
+  const [{ data: eventRows }, { data: projectRows }, { data: holdRows }] =
+    await Promise.all([
     supabase
       .from("calendar_events")
       .select(
@@ -115,6 +117,14 @@ export default async function CalendarPage({
       .eq("account_id", accountId)
       .is("archived_at", null)
       .order("wedding_date", { ascending: true, nullsFirst: false }),
+    supabase
+      .from("leads")
+      .select("id, couple_name, wedding_date, venue")
+      .eq("account_id", accountId)
+      .is("project_id", null)
+      .in("stage", ["inquiry", "contacted", "proposal", "booked"])
+      .gte("wedding_date", paddedStart)
+      .lte("wedding_date", paddedEnd),
   ]);
 
   const events: CalendarEventRow[] = (eventRows ?? [])
@@ -137,6 +147,20 @@ export default async function CalendarPage({
     name: row.name,
     wedding_date: row.wedding_date,
   }));
+
+  const holds: LeadHoldOverlay[] = (holdRows ?? []).flatMap((row) => {
+    if (!row.wedding_date) return [];
+    const coupleName = row.couple_name?.trim();
+    if (!coupleName) return [];
+    return [
+      {
+        leadId: row.id,
+        coupleName,
+        weddingDate: row.wedding_date,
+        venue: row.venue,
+      },
+    ];
+  });
 
   const activeProjectIds = weddings.map((w) => w.id);
   const projectNameById = new Map(weddings.map((w) => [w.id, w.name]));
@@ -275,6 +299,7 @@ export default async function CalendarPage({
         weddings={weddings}
         payments={payments}
         tasks={tasks}
+        holds={holds}
         railWidth="fixed"
       />
     </div>

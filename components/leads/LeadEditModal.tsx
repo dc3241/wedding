@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { EVENT_TYPE_OPTIONS, parseEventType } from "@/lib/event-type";
 import { cn } from "@/lib/cn";
 import { friendlyLeadError } from "./friendly-lead-error";
+import { LeadSourceSelect } from "./LeadSourceSelect";
 import type { Lead } from "./types";
 
 export { friendlyLeadError };
@@ -70,6 +71,12 @@ export function LeadEditModal({
           estimatedBudget !== null && !Number.isNaN(estimatedBudget)
             ? estimatedBudget
             : null,
+        estimated_guest_count: (() => {
+          const raw = ((form.get("estimated_guest_count") as string) ?? "").trim();
+          if (!raw) return null;
+          const parsed = Number(raw);
+          return Number.isNaN(parsed) ? null : parsed;
+        })(),
       });
 
       if (!result.ok) {
@@ -190,6 +197,22 @@ export function LeadEditModal({
               className="min-w-0 max-w-full"
             />
           </Field>
+          <Field id={`edit-guests-${lead.id}`} label="Guest count">
+            <Input
+              id={`edit-guests-${lead.id}`}
+              name="estimated_guest_count"
+              type="number"
+              min={1}
+              max={20000}
+              step={1}
+              defaultValue={
+                lead.estimated_guest_count == null
+                  ? ""
+                  : String(lead.estimated_guest_count)
+              }
+              disabled={isPending}
+            />
+          </Field>
           <Field id={`edit-budget-${lead.id}`} label="Estimated budget">
             <Input
               id={`edit-budget-${lead.id}`}
@@ -215,11 +238,11 @@ export function LeadEditModal({
             />
           </Field>
           <Field id={`edit-source-${lead.id}`} label="Source">
-            <Input
+            <LeadSourceSelect
               id={`edit-source-${lead.id}`}
               name="source"
-              type="text"
-              defaultValue={lead.source ?? ""}
+              mode="edit"
+              current={lead.source}
               disabled={isPending}
             />
           </Field>

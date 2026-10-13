@@ -19,9 +19,12 @@ export type Lead = {
   contact_phone: string | null;
   wedding_date: string | null;
   estimated_budget: number | null;
+  estimated_guest_count?: number | null;
   venue: string | null;
   source: string | null;
   stage: LeadStage;
+  lost_reason?: string | null;
+  lost_note?: string | null;
   notes: string | null;
   position: number;
   created_at: string;
@@ -30,6 +33,8 @@ export type Lead = {
   isStale?: boolean;
   /** Whole days since updated_at when isStale; for the pipeline label only. */
   staleDays?: number | null;
+  next_followup_on?: string | null;
+  next_followup_action?: string | null;
 };
 
 export const LEAD_STAGE_LABEL: Record<LeadStage, string> = {
@@ -64,4 +69,27 @@ export function formatLeadBudget(amount: number | null) {
     currency: "USD",
     maximumFractionDigits: 0,
   }).format(amount);
+}
+
+export type LeadDateShare = {
+  id: string;
+  name: string;
+  href: string;
+};
+
+export function localISODate(now: Date = new Date()): string {
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${now.getFullYear()}-${month}-${day}`;
+}
+
+export function followupTiming(
+  date: string | null | undefined,
+  now: Date = new Date(),
+): "overdue" | "today" | "upcoming" | null {
+  if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return null;
+  const today = localISODate(now);
+  if (date < today) return "overdue";
+  if (date === today) return "today";
+  return "upcoming";
 }

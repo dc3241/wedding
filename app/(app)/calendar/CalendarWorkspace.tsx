@@ -22,6 +22,7 @@ import type {
   ActiveWedding,
   CalendarEventRow,
   CalendarItem,
+  LeadHoldOverlay,
   PaymentDueOverlay,
   TaskDueOverlay,
 } from "./types";
@@ -45,6 +46,7 @@ function itemKindKey(item: CalendarItem): string {
   if (item.source === "wedding") return "wedding";
   if (item.source === "payment") return "payment";
   if (item.source === "task") return "task";
+  if (item.source === "hold") return "hold";
   return item.kind ?? "other";
 }
 
@@ -72,7 +74,7 @@ function OverlayIcon({
   source,
   pastDue,
 }: {
-  source: "wedding" | "payment" | "task";
+  source: "wedding" | "payment" | "task" | "hold";
   pastDue?: boolean;
 }) {
   const tone = pastDue ? "text-rosewood" : "text-muted";
@@ -82,6 +84,15 @@ function OverlayIcon({
         className="size-1.5 shrink-0 rounded-full bg-sage"
         aria-hidden
         title="Wedding day"
+      />
+    );
+  }
+  if (source === "hold") {
+    return (
+      <span
+        className="size-1.5 shrink-0 rounded-full border border-clay"
+        aria-hidden
+        title="Date hold"
       />
     );
   }
@@ -167,7 +178,8 @@ function ItemRow({
   const isWedding = item.source === "wedding";
   const isPayment = item.source === "payment";
   const isTask = item.source === "task";
-  const isOverlay = isWedding || isPayment || isTask;
+  const isHold = item.source === "hold";
+  const isOverlay = isWedding || isPayment || isTask || isHold;
   const pastDue = Boolean(item.pastDue);
 
   const title =
@@ -186,7 +198,7 @@ function ItemRow({
           <div className="flex flex-wrap items-center gap-1.5">
             {isOverlay ? (
               <OverlayIcon
-                source={item.source as "wedding" | "payment" | "task"}
+                source={item.source as "wedding" | "payment" | "task" | "hold"}
                 pastDue={pastDue}
               />
             ) : null}
@@ -204,6 +216,7 @@ function ItemRow({
               <Pill variant="default">{formatKindLabel(item.kind)}</Pill>
             ) : null}
             {isWedding ? <Pill variant="sage">Wedding day</Pill> : null}
+            {isHold ? <Pill variant="clay">Date hold</Pill> : null}
             {isPayment ? (
               <Pill variant={pastDue ? "rosewood" : "default"}>Payment due</Pill>
             ) : null}
@@ -260,6 +273,7 @@ export function CalendarWorkspace({
   weddings,
   payments = [],
   tasks = [],
+  holds = [],
   basePath = "/calendar",
   lockedProjectId,
   mutations,
@@ -273,6 +287,7 @@ export function CalendarWorkspace({
   weddings: ActiveWedding[];
   payments?: PaymentDueOverlay[];
   tasks?: TaskDueOverlay[];
+  holds?: LeadHoldOverlay[];
   /** Month nav + deep-link base (planner `/calendar` or project calendar). */
   basePath?: string;
   lockedProjectId?: string;
@@ -292,6 +307,7 @@ export function CalendarWorkspace({
   const [showWeddings, setShowWeddings] = useState(true);
   const [showPayments, setShowPayments] = useState(true);
   const [showTasks, setShowTasks] = useState(true);
+  const [showHolds, setShowHolds] = useState(true);
   // Couple project calendar locks to one project; planner account calendar does not.
   const audience: "planner" | "couple" = lockedProjectId
     ? "couple"
@@ -304,8 +320,8 @@ export function CalendarWorkspace({
   }
 
   const allItems = useMemo(
-    () => buildCalendarItems(events, weddings, payments, tasks),
-    [events, weddings, payments, tasks],
+    () => buildCalendarItems(events, weddings, payments, tasks, holds),
+    [events, weddings, payments, tasks, holds],
   );
 
   const items = useMemo(
@@ -314,9 +330,10 @@ export function CalendarWorkspace({
         if (item.source === "wedding") return showWeddings;
         if (item.source === "payment") return showPayments;
         if (item.source === "task") return showTasks;
+        if (item.source === "hold") return showHolds;
         return true;
       }),
-    [allItems, showWeddings, showPayments, showTasks],
+    [allItems, showWeddings, showPayments, showTasks, showHolds],
   );
 
   const cells = useMemo(() => buildMonthGrid(year, month), [year, month]);
@@ -410,6 +427,11 @@ export function CalendarWorkspace({
             label="Tasks due"
             pressed={showTasks}
             onPressedChange={setShowTasks}
+          />
+          <OverlayToggle
+            label="Holds"
+            pressed={showHolds}
+            onPressedChange={setShowHolds}
           />
         </div>
 

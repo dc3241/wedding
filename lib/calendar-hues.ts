@@ -27,6 +27,7 @@ export const CALENDAR_KIND_KEYS = [
   "wedding",
   "task",
   "payment",
+  "hold",
 ] as const;
 
 export type CalendarKindKey = (typeof CALENDAR_KIND_KEYS)[number];
@@ -48,6 +49,7 @@ const KIND_META: Record<CalendarKindKey, KindMeta> = {
   wedding: { glyph: "♡", label: "Wedding day", hue: "--cal-w-5" },
   task: { glyph: "✓", label: "Task due", hue: "--cal-w-2" },
   payment: { glyph: "$", label: "Payment due", hue: "--cal-w-3" },
+  hold: { glyph: "○", label: "Hold", hue: "--cal-w-1" },
 };
 
 /** Legend entries in stable display order (0045 kinds, then overlay buckets). */

@@ -15,7 +15,12 @@ import { parseEventType } from "@/lib/event-type";
 import { getCopy } from "@/lib/venue-copy";
 import { createClient } from "@/utils/supabase/server";
 
-export default async function LeadsPage() {
+export default async function LeadsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ view?: string; q?: string; expand?: string }>;
+}) {
+  const params = await searchParams;
   const supabase = await createClient();
   const account = await getAccountContext(supabase);
 
@@ -34,7 +39,7 @@ export default async function LeadsPage() {
     supabase
       .from("leads")
       .select(
-        "id, couple_name, event_type, contact_email, contact_phone, wedding_date, estimated_budget, venue, source, stage, notes, position, created_at, updated_at",
+        "id, couple_name, event_type, contact_email, contact_phone, wedding_date, estimated_budget, estimated_guest_count, venue, source, stage, notes, position, created_at, updated_at, next_followup_on, next_followup_action",
       )
       .order("position", { ascending: true })
       .order("created_at", { ascending: true }),
@@ -61,6 +66,11 @@ export default async function LeadsPage() {
         row.estimated_budget === null || row.estimated_budget === undefined
           ? null
           : Number(row.estimated_budget),
+      estimated_guest_count:
+        row.estimated_guest_count === null ||
+        row.estimated_guest_count === undefined
+          ? null
+          : Number(row.estimated_guest_count),
       venue: row.venue,
       source: row.source,
       stage,
@@ -70,6 +80,8 @@ export default async function LeadsPage() {
       updated_at,
       isStale: stale,
       staleDays: stale ? leadInactiveDays(updated_at) : null,
+      next_followup_on: row.next_followup_on,
+      next_followup_action: row.next_followup_action,
     };
   });
 
@@ -119,6 +131,9 @@ export default async function LeadsPage() {
         initialLeads={leads}
         plan={account.plan}
         replyDraftsByLeadId={replyDraftsByLeadId}
+        viewKey={params.view ?? null}
+        searchQuery={params.q ?? ""}
+        expandedStages={params.expand ?? ""}
       />
     </div>
   );

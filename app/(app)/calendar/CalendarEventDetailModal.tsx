@@ -12,6 +12,7 @@ function categoryLabel(item: CalendarItem): string {
   if (item.source === "wedding") return "Wedding day";
   if (item.source === "payment") return "Payment due";
   if (item.source === "task") return "Task due";
+  if (item.source === "hold") return "Date hold";
   if (item.kind) return formatKindLabel(item.kind);
   return "Event";
 }
@@ -21,6 +22,7 @@ export function goToNoun(item: CalendarItem): string | null {
   if (!item.href) return null;
   const href = item.href;
   if (item.source === "task" || href.includes("/checklist")) return "task";
+  if (item.source === "hold" || href.includes("/leads/")) return "lead";
   if (item.source === "payment" || href.includes("/budget")) return "budget";
   if (href.includes("/vendors")) return "vendor";
   return "linked item";

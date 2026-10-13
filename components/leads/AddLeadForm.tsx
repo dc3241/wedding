@@ -13,6 +13,7 @@ import type { AccountPlan } from "@/lib/account-context";
 import { cn } from "@/lib/cn";
 import { getCopy } from "@/lib/venue-copy";
 import { friendlyLeadError } from "./friendly-lead-error";
+import { LeadSourceSelect } from "./LeadSourceSelect";
 
 function Field({
   id,
@@ -193,12 +194,11 @@ export function AddLeadForm({ plan = "planner" }: { plan?: AccountPlan }) {
                 />
               </Field>
               <Field id="add-source" label="Source">
-                <Input
+                <LeadSourceSelect
                   id="add-source"
                   name="source"
-                  type="text"
+                  mode="create"
                   disabled={isPending}
-                  placeholder="Instagram, referral, wedding fair…"
                 />
               </Field>
               <Field id="add-notes" label="Notes" className="sm:col-span-2">

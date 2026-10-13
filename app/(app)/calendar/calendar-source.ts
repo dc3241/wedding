@@ -3,6 +3,7 @@ import type {
   CalendarEventRow,
   CalendarItem,
   EventKind,
+  LeadHoldOverlay,
   PaymentDueOverlay,
   TaskDueOverlay,
 } from "./types";
@@ -212,6 +213,23 @@ export function paymentToItem(row: PaymentDueOverlay): CalendarItem {
   };
 }
 
+export function holdToItem(row: LeadHoldOverlay): CalendarItem {
+  const localDate = row.weddingDate;
+  return {
+    id: `hold:${row.leadId}`,
+    source: "hold",
+    title: row.coupleName,
+    localDate,
+    timeLabel: null,
+    allDay: true,
+    sortKey: `${localDate}T00:00:00.5`,
+    projectId: null,
+    projectName: null,
+    kind: null,
+    href: `/leads/${row.leadId}`,
+  };
+}
+
 export function taskToItem(row: TaskDueOverlay): CalendarItem {
   const localDate = row.due_date;
   return {
@@ -235,6 +253,7 @@ export function buildCalendarItems(
   weddings: ActiveWedding[],
   payments: PaymentDueOverlay[] = [],
   tasks: TaskDueOverlay[] = [],
+  holds: LeadHoldOverlay[] = [],
 ): CalendarItem[] {
   const projectNameById = new Map(weddings.map((w) => [w.id, w.name]));
   const items: CalendarItem[] = [
@@ -243,6 +262,9 @@ export function buildCalendarItems(
   for (const wedding of weddings) {
     const item = weddingToItem(wedding);
     if (item) items.push(item);
+  }
+  for (const hold of holds) {
+    if (hold.weddingDate) items.push(holdToItem(hold));
   }
   for (const payment of payments) {
     items.push(paymentToItem(payment));

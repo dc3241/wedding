@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   DndContext,
   DragOverlay,
@@ -25,11 +26,22 @@ import { reorderLeads } from "@/app/(app)/leads/actions";
 import type { AgentDraftPreview } from "@/components/assistant/types";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Eyebrow } from "@/components/ui/eyebrow";
+import { Input } from "@/components/ui/input";
 import type { AccountPlan } from "@/lib/account-context";
 import { cn } from "@/lib/cn";
 import { getCopy } from "@/lib/venue-copy";
 import { InquiryReplyDrawer } from "./InquiryReplyDrawer";
 import { LeadRow } from "./LeadRow";
+import { LostReasonModal } from "./LostReasonModal";
+import type { LostReason } from "./lead-lost";
+import {
+  LEAD_VIEWS,
+  leadMatchesQuery,
+  leadMatchesView,
+  parseExpandedStages,
+  parseLeadView,
+  type LeadView,
+} from "./lead-views";
 import {
   buildReorderBatch,
   findLeadContainer,
@@ -109,20 +121,56 @@ function LeadColumn({
   replyDraftsByLeadId,
   onStageChange,
   onOpenReplyDraft,
+  collapsed,
+  onExpand,
+  onCollapse,
 }: {
   stage: LeadStage;
   leads: Lead[];
   replyDraftsByLeadId: Record<string, AgentDraftPreview>;
   onStageChange: (id: string, stage: LeadStage) => void;
   onOpenReplyDraft: (leadId: string) => void;
+  collapsed: boolean;
+  onExpand: () => void;
+  onCollapse: (() => void) | null;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: stage });
+  const label = LEAD_STAGE_LABEL[stage];
+
+  if (collapsed && !isOver) {
+    return (
+      <section ref={setNodeRef} className="flex w-12 shrink-0">
+        <button
+          type="button"
+          onClick={onExpand}
+          aria-expanded={false}
+          className="flex w-full flex-col items-center gap-3 rounded-[var(--radius-inner)] bg-well px-1 py-4 shadow-recessed"
+        >
+          <span className="text-[13px] tabular-nums text-muted">
+            {leads.length}
+          </span>
+          <span className="text-[12px] font-semibold tracking-[0.09em] text-muted uppercase [writing-mode:vertical-rl]">
+            {label}
+          </span>
+        </button>
+      </section>
+    );
+  }
 
   return (
     <section ref={setNodeRef} className="flex min-w-0 flex-1 flex-col">
       <div className="mb-2 flex items-baseline gap-1.5 px-1">
-        <Eyebrow>{LEAD_STAGE_LABEL[stage]}</Eyebrow>
+        <Eyebrow>{label}</Eyebrow>
         <span className="text-[13px] tabular-nums text-muted">{leads.length}</span>
+        {onCollapse ? (
+          <button
+            type="button"
+            onClick={onCollapse}
+            className="ml-auto text-[12px] font-medium text-muted hover:text-ink"
+          >
+            Hide
+          </button>
+        ) : null}
       </div>
       <SortableContext
         items={leads.map((lead) => lead.id)}
@@ -150,15 +198,33 @@ function LeadColumn({
   );
 }
 
+type LostPrompt = {
+  leadId: string;
+  coupleName: string;
+  nextColumns: LeadColumns;
+  snapshot: LeadColumns;
+  affected: LeadStage[];
+  applied: boolean;
+};
+
 export function LeadsBoard({
   initialLeads,
   plan = "planner",
   replyDraftsByLeadId = {},
+  viewKey = null,
+  searchQuery = "",
+  expandedStages = "",
 }: {
   initialLeads: Lead[];
   plan?: AccountPlan;
   replyDraftsByLeadId?: Record<string, AgentDraftPreview>;
+  viewKey?: string | null;
+  searchQuery?: string;
+  expandedStages?: string;
 }) {
+  const router = useRouter();
+  const view = parseLeadView(viewKey);
+  const expanded = parseExpandedStages(expandedStages);
   const [columns, setColumns] = useState<LeadColumns>(() =>
     groupLeadsByStage(initialLeads),
   );
@@ -168,7 +234,12 @@ export function LeadsBoard({
     firstOccupiedStage(groupLeadsByStage(initialLeads)),
   );
   const [error, setError] = useState<string | null>(null);
+  const [query, setQuery] = useState(searchQuery);
+  const [lostPrompt, setLostPrompt] = useState<LostPrompt | null>(null);
+  const [lostPending, setLostPending] = useState(false);
   const columnsRef = useRef(columns);
+  const pushedQuery = useRef(searchQuery);
+  const queryTimer = useRef<number | null>(null);
   const snapshotRef = useRef<LeadColumns | null>(null);
   const dragSourceStageRef = useRef<LeadStage | null>(null);
 
@@ -186,6 +257,55 @@ export function LeadsBoard({
       setReviewLeadId(null);
     }
   }, [reviewLeadId, replyDraftsByLeadId]);
+
+  useEffect(() => {
+    if (searchQuery === pushedQuery.current) return;
+    setQuery(searchQuery);
+    pushedQuery.current = searchQuery;
+  }, [searchQuery]);
+
+  useEffect(() => {
+    return () => {
+      if (queryTimer.current) window.clearTimeout(queryTimer.current);
+    };
+  }, []);
+
+  function pushUrl(next: {
+    view: LeadView | null;
+    q: string;
+    expand: LeadStage[];
+  }) {
+    const params = new URLSearchParams();
+    if (next.view) params.set("view", next.view);
+    const q = next.q.trim();
+    if (q) params.set("q", q);
+    if (next.expand.length > 0) params.set("expand", next.expand.join(","));
+    pushedQuery.current = q;
+    const search = params.toString();
+    router.replace(search ? `/leads?${search}` : "/leads", { scroll: false });
+  }
+
+  function changeQuery(next: string) {
+    setQuery(next);
+    if (queryTimer.current) window.clearTimeout(queryTimer.current);
+    queryTimer.current = window.setTimeout(() => {
+      pushUrl({ view, q: next, expand: expanded });
+    }, 300);
+  }
+
+  const filtered = useMemo(() => {
+    const now = new Date();
+    const replyIds = new Set(Object.keys(replyDraftsByLeadId));
+    const next = {} as LeadColumns;
+    for (const stage of LEAD_STAGES) {
+      next[stage] = columns[stage].filter(
+        (lead) =>
+          leadMatchesView(lead, view, replyIds, now) &&
+          leadMatchesQuery(lead, query),
+      );
+    }
+    return next;
+  }, [columns, view, query, replyDraftsByLeadId]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -207,8 +327,13 @@ export function LeadsBoard({
     nextColumns: LeadColumns,
     affectedStages: LeadStage[],
     snapshot: LeadColumns,
+    lost?: { id: string; reason: LostReason; note: string | null },
   ) {
-    const batch = buildReorderBatch(nextColumns, affectedStages);
+    const batch = buildReorderBatch(nextColumns, affectedStages).map((item) =>
+      lost && item.id === lost.id
+        ? { ...item, lostReason: lost.reason, lostNote: lost.note }
+        : item,
+    );
     if (batch.length === 0) return;
 
     const snapshotBatch = buildReorderBatch(snapshot, affectedStages);
@@ -227,6 +352,38 @@ export function LeadsBoard({
       replaceColumns(snapshot);
       setError(result.error);
     }
+  }
+
+  function requestLost(
+    prompt: Omit<LostPrompt, "coupleName"> & { coupleName?: string },
+  ) {
+    const lead = LEAD_STAGES.flatMap((stage) => prompt.nextColumns[stage]).find(
+      (row) => row.id === prompt.leadId,
+    );
+    setLostPrompt({
+      ...prompt,
+      coupleName: lead?.couple_name ?? "this lead",
+    });
+  }
+
+  function cancelLost() {
+    if (lostPrompt?.applied) replaceColumns(lostPrompt.snapshot);
+    setLostPrompt(null);
+  }
+
+  async function confirmLost(reason: LostReason, note: string) {
+    if (!lostPrompt) return;
+    setLostPending(true);
+    setError(null);
+    if (!lostPrompt.applied) replaceColumns(lostPrompt.nextColumns);
+    const prompt = lostPrompt;
+    setLostPrompt(null);
+    await persistColumns(prompt.nextColumns, prompt.affected, prompt.snapshot, {
+      id: prompt.leadId,
+      reason,
+      note: note.trim() || null,
+    });
+    setLostPending(false);
   }
 
   function handleDragStart(event: DragStartEvent) {
@@ -343,6 +500,17 @@ export function LeadsBoard({
       ),
     ];
 
+    if (destStage === "lost" && sourceStage !== "lost") {
+      requestLost({
+        leadId: activeLeadId,
+        nextColumns,
+        snapshot,
+        affected: affectedStages,
+        applied: true,
+      });
+      return;
+    }
+
     await persistColumns(nextColumns, affectedStages, snapshot);
   }
 
@@ -369,6 +537,17 @@ export function LeadsBoard({
     const moved = moveLeadBetweenStages(current, id, newStage);
     if (!moved) return;
 
+    if (newStage === "lost") {
+      requestLost({
+        leadId: id,
+        nextColumns: moved.next,
+        snapshot,
+        affected: [sourceStage, newStage],
+        applied: false,
+      });
+      return;
+    }
+
     replaceColumns(moved.next);
     await persistColumns(moved.next, [sourceStage, newStage], snapshot);
   }
@@ -381,12 +560,78 @@ export function LeadsBoard({
     );
   }
 
-  const mobileLeads = columns[mobileStage];
+  const filtering = Boolean(view) || query.trim().length > 0;
+  const anyVisible = LEAD_STAGES.some((stage) => filtered[stage].length > 0);
+  const mobileLeads = filtered[mobileStage];
+
+  function columnCollapsed(stage: LeadStage) {
+    if (lostPrompt && stage === "lost") return false;
+    if (stage !== "booked" && stage !== "lost") return false;
+    if (expanded.includes(stage)) return false;
+    if (filtering && filtered[stage].length > 0) return false;
+    return true;
+  }
+
+  function setStageExpanded(stage: LeadStage, open: boolean) {
+    const next = open
+      ? [...expanded.filter((item) => item !== stage), stage]
+      : expanded.filter((item) => item !== stage);
+    if (queryTimer.current) window.clearTimeout(queryTimer.current);
+    pushUrl({ view, q: query, expand: next });
+  }
 
   return (
     <div className="min-w-0 max-w-full space-y-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div
+          className="flex flex-wrap gap-1.5"
+          role="group"
+          aria-label="Lead views"
+        >
+          {LEAD_VIEWS.map((entry) => {
+            const active = view === entry.key;
+            return (
+              <button
+                key={entry.key}
+                type="button"
+                aria-pressed={active}
+                onClick={() => {
+                  if (queryTimer.current) window.clearTimeout(queryTimer.current);
+                  pushUrl({
+                    view: active ? null : entry.key,
+                    q: query,
+                    expand: expanded,
+                  });
+                }}
+                className={cn(
+                  "cursor-pointer rounded-[var(--radius-pill)] px-3 py-1.5 text-[13px] font-semibold",
+                  active
+                    ? "bg-accent text-surface"
+                    : "bg-well text-muted hover:text-ink",
+                )}
+              >
+                {entry.label}
+              </button>
+            );
+          })}
+        </div>
+        <Input
+          type="search"
+          value={query}
+          onChange={(event) => changeQuery(event.target.value)}
+          placeholder="Search name, email, or venue"
+          aria-label="Search leads"
+          className="w-full sm:max-w-xs"
+        />
+      </div>
+
       {error ? <p className="text-[13px] text-rosewood">{error}</p> : null}
 
+      {filtering && !anyVisible ? (
+        <EmptyState recessed>No leads match.</EmptyState>
+      ) : null}
+
+      {filtering && !anyVisible ? null : (
       <div className="lg:hidden">
         <div className="sticky top-20 z-[5] bg-canvas py-2">
           <div
@@ -411,7 +656,7 @@ export function LeadsBoard({
                   )}
                 >
                   {LEAD_STAGE_LABEL[stage]}{" "}
-                  <span className="tabular-nums">{columns[stage].length}</span>
+                  <span className="tabular-nums">{filtered[stage].length}</span>
                 </button>
               );
             })}
@@ -429,6 +674,7 @@ export function LeadsBoard({
                   onStageChange={handleStageChange}
                   replyDraft={replyDraftsByLeadId[lead.id]}
                   onOpenReplyDraft={() => setReviewLeadId(lead.id)}
+                  showStageMenu
                   idPrefix="mobile"
                 />
               </li>
@@ -436,7 +682,9 @@ export function LeadsBoard({
           </ul>
         )}
       </div>
+      )}
 
+      {filtering && !anyVisible ? null : (
       <div className="hidden min-w-0 max-w-full lg:block">
         <DndContext
           sensors={sensors}
@@ -451,10 +699,17 @@ export function LeadsBoard({
               <LeadColumn
                 key={stage}
                 stage={stage}
-                leads={columns[stage]}
+                leads={filtered[stage]}
                 replyDraftsByLeadId={replyDraftsByLeadId}
                 onStageChange={handleStageChange}
                 onOpenReplyDraft={setReviewLeadId}
+                collapsed={columnCollapsed(stage)}
+                onExpand={() => setStageExpanded(stage, true)}
+                onCollapse={
+                  expanded.includes(stage)
+                    ? () => setStageExpanded(stage, false)
+                    : null
+                }
               />
             ))}
           </div>
@@ -472,6 +727,7 @@ export function LeadsBoard({
           </DragOverlay>
         </DndContext>
       </div>
+      )}
 
       <InquiryReplyDrawer
         draft={reviewLeadId ? replyDraftsByLeadId[reviewLeadId] ?? null : null}
@@ -484,6 +740,15 @@ export function LeadsBoard({
         }
         onClose={() => setReviewLeadId(null)}
       />
+
+      {lostPrompt ? (
+        <LostReasonModal
+          coupleName={lostPrompt.coupleName}
+          pending={lostPending}
+          onClose={cancelLost}
+          onConfirm={confirmLost}
+        />
+      ) : null}
     </div>
   );
 }

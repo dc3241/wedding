@@ -30,6 +30,7 @@ export const COPY = {
     saveLead: "Save lead",
     emptyLeads:
       "No leads yet. Add a prospective couple to start tracking your pipeline.",
+    dateConflict: "Same date as",
     backToLeads: "← Back to leads",
     selectedProject: "selected event",
     templateCopyFailed: "Event created, but template copy failed: ",
@@ -76,6 +77,7 @@ export const COPY = {
     saveLead: "Save inquiry",
     emptyLeads:
       "No inquiries yet. Add a prospective couple to start tracking your pipeline.",
+    dateConflict: "Also on this date:",
     backToLeads: "← Back to inquiries",
     selectedProject: "selected event",
     templateCopyFailed: "Event created, but template copy failed: ",

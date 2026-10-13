@@ -69,7 +69,16 @@ export type CalendarItemSource =
   | "authored"
   | "wedding"
   | "payment"
-  | "task";
+  | "task"
+  | "hold";
+
+/** Open lead wedding date with no project yet. Not a calendar_events row. */
+export type LeadHoldOverlay = {
+  leadId: string;
+  coupleName: string;
+  weddingDate: string;
+  venue: string | null;
+};
 
 export type CalendarItem = {
   id: string;
