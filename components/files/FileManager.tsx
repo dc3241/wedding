@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState, useTransition, type ReactNode } from "react";
+import { ReviewContractLink } from "@/components/assistant/ReviewContractLink";
 import { deleteFile, getDownloadUrl, recordFile } from "./actions";
 import {
   buildStoragePath,
@@ -25,10 +26,12 @@ function FileRow({
   file,
   disabled,
   trailing,
+  review,
 }: {
   file: ProjectFile;
   disabled: boolean;
   trailing?: ReactNode;
+  review?: boolean;
 }) {
   const [isPending, startTransition] = useTransition();
   const [actionError, setActionError] = useState<string | null>(null);
@@ -80,6 +83,7 @@ function FileRow({
         ) : null}
       </div>
       <div className="flex min-w-0 max-w-full flex-wrap items-center gap-2 sm:justify-end">
+        {review ? <ReviewContractLink fileName={file.name} /> : null}
         {trailing}
         <Button
           type="button"
@@ -293,6 +297,7 @@ export function FileManager({
                 file={file}
                 disabled={isUploading}
                 trailing={trailingSlots[file.id]}
+                review={isContract}
               />
             ))}
           </ul>

@@ -24,6 +24,7 @@ import {
   LinkVendorToTargetControl,
   type SlotTargetOption,
 } from "@/components/vendors/LinkVendorToTargetControl";
+import { ReviewContractLink } from "@/components/assistant/ReviewContractLink";
 import {
   deleteFile,
   getDownloadUrl,
@@ -593,6 +594,7 @@ function ContractPanel({
                 </p>
               </div>
               <div className="flex items-center gap-1">
+                <ReviewContractLink fileName={file.name} />
                 <button
                   type="button"
                   disabled={isPending}

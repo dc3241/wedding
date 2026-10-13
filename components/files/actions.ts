@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { ensureFileText } from "@/lib/files/ensure-file-text";
 import { COUPLE_CONTRACTS_SEGMENT } from "@/lib/project-tabs";
 import { getVendorCategoryById } from "@/lib/vendor-categories";
 import { createClient } from "@/utils/supabase/server";
@@ -54,22 +55,44 @@ export async function recordFile(
     throw new Error(categoryResult.error);
   }
 
-  const { error } = await supabase.from("files").insert({
-    project_id: projectId,
-    kind: meta.kind,
-    name: meta.name.trim(),
-    storage_path: meta.storagePath,
-    mime_type: meta.mimeType,
-    size_bytes: meta.sizeBytes,
-    ...(meta.kind === "contract"
-      ? { category: categoryResult.category }
-      : {}),
-    ...(meta.projectVendorId
-      ? { project_vendor_id: meta.projectVendorId }
-      : {}),
-  });
+  const { data: inserted, error } = await supabase
+    .from("files")
+    .insert({
+      project_id: projectId,
+      kind: meta.kind,
+      name: meta.name.trim(),
+      storage_path: meta.storagePath,
+      mime_type: meta.mimeType,
+      size_bytes: meta.sizeBytes,
+      ...(meta.kind === "contract"
+        ? { category: categoryResult.category }
+        : {}),
+      ...(meta.projectVendorId
+        ? { project_vendor_id: meta.projectVendorId }
+        : {}),
+    })
+    .select(
+      "id, mime_type, storage_path, extraction_status, extracted_text, extraction_truncated",
+    )
+    .single();
 
-  if (error) throw error;
+  if (error) throw new Error(error.message);
+
+  try {
+    await ensureFileText(supabase, projectId, {
+      id: inserted.id,
+      mime_type: inserted.mime_type,
+      storage_path: inserted.storage_path,
+      extraction_status: inserted.extraction_status,
+      extracted_text: inserted.extracted_text,
+      extraction_truncated: inserted.extraction_truncated,
+    });
+  } catch (extractError) {
+    console.error(
+      "[files.extract]",
+      extractError instanceof Error ? extractError.message : extractError,
+    );
+  }
 
   revalidatePathsForKind(projectId, meta.kind);
   if (meta.projectVendorId) {

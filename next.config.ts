@@ -1,6 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // pdf.js and mammoth stay on Node's loader. Bundling them breaks text extraction.
+  serverExternalPackages: ["unpdf", "mammoth"],
   // Satori reads these at runtime. A joined filename is not traced into the
   // server bundle. A missing font throws; a missing website screenshot used
   // to draw the placeholder phone; a missing product shot fails regenerate.

@@ -106,6 +106,56 @@ insert into project_vendors (id, project_id, vendor_id, status, quoted_price, ro
    'b0000000-d300-4000-8000-000000000003', 'to_contact', null, 'Florals', now())
 on conflict (id) do nothing;
 
+-- Signed venue contract. Ceremony time (5:00 PM) and guest count (150)
+-- disagree with the site (3:30 PM) and the profile (125).
+insert into files (
+  id, project_id, kind, name, storage_path, mime_type, size_bytes,
+  status, category, project_vendor_id,
+  extracted_text, extraction_status, extraction_truncated
+)
+select
+  'c0000000-d300-4000-8000-000000000003',
+  '1f1a2a78-5c8f-4e7c-902b-74eb5e1318f9',
+  'contract',
+  'Venue agreement.txt',
+  '1f1a2a78-5c8f-4e7c-902b-74eb5e1318f9/demo-venue-agreement.txt',
+  'text/plain',
+  octet_length(body),
+  'signed',
+  'venue',
+  'b0000000-d300-4000-8000-000000000200',
+  body,
+  'ready',
+  false
+from (
+  select $mila_contract$VENUE AGREEMENT
+Glasshouse Estate — Portland, OR
+Couple: Mila & Griffin
+
+Event date: May 15, 2027
+Ceremony start: 5:00 PM
+Reception end: 10:00 PM
+Guest count: 150
+Venue fee: $16,000
+Deposit received: $5,000
+Balance due: April 15, 2027
+
+A taxable service charge of 18% applies to the venue fee.
+Cancellation within 60 days keeps the deposit.
+$mila_contract$ as body
+) contract
+on conflict (id) do update
+set name = excluded.name,
+    storage_path = excluded.storage_path,
+    mime_type = excluded.mime_type,
+    size_bytes = excluded.size_bytes,
+    status = excluded.status,
+    category = excluded.category,
+    project_vendor_id = excluded.project_vendor_id,
+    extracted_text = excluded.extracted_text,
+    extraction_status = excluded.extraction_status,
+    extraction_truncated = excluded.extraction_truncated;
+
 insert into vendor_targets (project_id, category, status, project_vendor_id, created_at) values
   ('1f1a2a78-5c8f-4e7c-902b-74eb5e1318f9', 'venue', 'booked', 'b0000000-d300-4000-8000-000000000200', now()),
   ('1f1a2a78-5c8f-4e7c-902b-74eb5e1318f9', 'photographer', 'booked', 'b0000000-d300-4000-8000-000000000201', now()),

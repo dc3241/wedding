@@ -14,6 +14,7 @@ import { placesTextSearch } from "@/lib/places-text-search";
 import { resolveProjectLocationHint } from "@/lib/resolve-project-location-hint";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { isTaskPastDue } from "@/lib/task-overdue";
+import { ensureFileText } from "@/lib/files/ensure-file-text";
 import { vendorCategoryLabel } from "@/lib/vendor-categories";
 
 const NEARBY_PLACE_CATEGORIES = ["lodging", "airport", "restaurant"] as const;
@@ -36,6 +37,7 @@ const NOTES_ITEMS_CAP = 20;
 const TIMELINE_ITEMS_CAP = 60;
 const WEBSITE_SCHEDULE_TITLES_CAP = 10;
 const EXCERPT_MAX_CHARS = 200;
+const FILES_ITEMS_CAP = 30;
 
 export const READ_TOOL_DEFINITIONS = [
   {
@@ -171,9 +173,34 @@ export const READ_TOOL_DEFINITIONS = [
       required: ["category"] as string[],
     },
   },
+  {
+    name: "get_files",
+    description:
+      "List files and contracts already uploaded on this project: name, kind, vendor, and whether the text has been read. Does not return document text. Use get_file(id) when the user asks to review or look at a specific upload.",
+    input_schema: {
+      type: "object" as const,
+      properties: {},
+      required: [] as string[],
+    },
+  },
+  {
+    name: "get_file",
+    description:
+      "Read one uploaded file or contract by id (from get_files). Returns extracted text for PDF, Word, and plain text. Images, spreadsheets, and scans with no selectable text come back as not readable — say so. Use only when the user asks to review or look at that upload.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        id: { type: "string", description: "UUID of the file" },
+      },
+      required: ["id"] as string[],
+    },
+  },
 ] as const;
 
 export type ReadToolName = (typeof READ_TOOL_DEFINITIONS)[number]["name"];
+
+/** Contract bodies stay out of unattended jobs. Chat turns these on. */
+export const CHAT_ONLY_READ_TOOLS = new Set<string>(["get_files", "get_file"]);
 
 function excerpt(
   text: string | null | undefined,
@@ -843,6 +870,176 @@ async function getWebsite(supabase: SupabaseClient, projectId: string) {
   };
 }
 
+type FileListRow = {
+  id: string;
+  name: string;
+  kind: string;
+  status: string | null;
+  category: string | null;
+  mime_type: string | null;
+  extraction_status: string | null;
+  project_vendor_id: string | null;
+  created_at: string;
+};
+
+function textStatus(extractionStatus: string | null): string {
+  return extractionStatus ?? "not_read_yet";
+}
+
+async function vendorNamesByProjectVendorId(
+  supabase: SupabaseClient,
+  projectId: string,
+  projectVendorIds: string[],
+): Promise<Map<string, string>> {
+  const names = new Map<string, string>();
+  if (projectVendorIds.length === 0) return names;
+
+  const { data, error } = await supabase
+    .from("project_vendors")
+    .select("id, vendors(name)")
+    .eq("project_id", projectId)
+    .in("id", projectVendorIds);
+
+  if (error) throw error;
+
+  for (const row of data ?? []) {
+    const vendor = Array.isArray(row.vendors) ? row.vendors[0] : row.vendors;
+    const name = vendor && typeof vendor.name === "string" ? vendor.name : "";
+    if (name) names.set(row.id, name);
+  }
+  return names;
+}
+
+async function getFiles(supabase: SupabaseClient, projectId: string) {
+  const { data, error } = await supabase
+    .from("files")
+    .select(
+      "id, name, kind, status, category, mime_type, extraction_status, project_vendor_id, created_at",
+    )
+    .eq("project_id", projectId)
+    .order("created_at", { ascending: false });
+
+  if (error) throw error;
+
+  const list = (data ?? []) as FileListRow[];
+  const vendorNames = await vendorNamesByProjectVendorId(
+    supabase,
+    projectId,
+    [
+      ...new Set(
+        list
+          .map((row) => row.project_vendor_id)
+          .filter((id): id is string => Boolean(id)),
+      ),
+    ],
+  );
+
+  const sorted = [...list].sort((a, b) => {
+    const aContract = a.kind === "contract" ? 0 : 1;
+    const bContract = b.kind === "contract" ? 0 : 1;
+    if (aContract !== bContract) return aContract - bContract;
+    return String(b.created_at).localeCompare(String(a.created_at));
+  });
+
+  const trimmed = sorted.map((row) => ({
+    id: row.id,
+    name: row.name,
+    kind: row.kind,
+    contract_status: row.kind === "contract" ? (row.status ?? null) : null,
+    category: row.category ? vendorCategoryLabel(row.category) : null,
+    vendor_name: row.project_vendor_id
+      ? (vendorNames.get(row.project_vendor_id) ?? null)
+      : null,
+    text_status: textStatus(row.extraction_status),
+  }));
+
+  const { items, truncated: capped } = capItems(trimmed, FILES_ITEMS_CAP);
+  const contractCount = list.filter((row) => row.kind === "contract").length;
+
+  return {
+    summary: { total: list.length, contracts: contractCount },
+    items,
+    total: list.length,
+    returned: items.length,
+    truncated: capped || items.length < list.length,
+  };
+}
+
+function unreadableReason(status: string): string {
+  if (status === "empty") {
+    return "No selectable text. This is likely a scan or photo.";
+  }
+  if (status === "unsupported") {
+    return "This file type cannot be read. PDF, Word, and plain text can.";
+  }
+  return "The file could not be read.";
+}
+
+async function getFile(
+  supabase: SupabaseClient,
+  projectId: string,
+  fileId: string,
+) {
+  const { data, error } = await supabase
+    .from("files")
+    .select(
+      "id, name, kind, status, category, mime_type, storage_path, extraction_status, extracted_text, extraction_truncated, project_vendor_id",
+    )
+    .eq("project_id", projectId)
+    .eq("id", fileId)
+    .maybeSingle();
+
+  if (error) throw error;
+  if (!data) return { error: "File not found" };
+
+  const row = data as FileListRow & {
+    storage_path: string;
+    extracted_text: string | null;
+    extraction_truncated: boolean | null;
+  };
+
+  const vendorNames = await vendorNamesByProjectVendorId(
+    supabase,
+    projectId,
+    row.project_vendor_id ? [row.project_vendor_id] : [],
+  );
+
+  const text = await ensureFileText(supabase, projectId, {
+    id: row.id,
+    mime_type: row.mime_type,
+    storage_path: row.storage_path,
+    extraction_status: row.extraction_status,
+    extracted_text: row.extracted_text,
+    extraction_truncated: row.extraction_truncated,
+  });
+
+  const base = {
+    id: row.id,
+    name: row.name,
+    kind: row.kind,
+    contract_status: row.kind === "contract" ? (row.status ?? null) : null,
+    category: row.category ? vendorCategoryLabel(row.category) : null,
+    vendor_name: row.project_vendor_id
+      ? (vendorNames.get(row.project_vendor_id) ?? null)
+      : null,
+  };
+
+  if (text.extraction_status === "ready" && text.extracted_text) {
+    return {
+      ...base,
+      readable: true,
+      text: text.extracted_text,
+      truncated: text.extraction_truncated,
+    };
+  }
+
+  return {
+    ...base,
+    readable: false,
+    reason: unreadableReason(text.extraction_status),
+  };
+}
+
 function isNearbyPlaceCategory(value: string): value is NearbyPlaceCategory {
   return (NEARBY_PLACE_CATEGORIES as readonly string[]).includes(value);
 }
@@ -925,6 +1122,13 @@ export async function executeReadTool(
       return getWebsite(supabase, projectId);
     case "search_nearby_places":
       return searchNearbyPlaces(supabase, projectId, input);
+    case "get_files":
+      return getFiles(supabase, projectId);
+    case "get_file": {
+      const id = typeof input.id === "string" ? input.id.trim() : "";
+      if (!id) return { error: "id is required" };
+      return getFile(supabase, projectId, id);
+    }
     default:
       return { error: `Unknown tool: ${toolName}` };
   }

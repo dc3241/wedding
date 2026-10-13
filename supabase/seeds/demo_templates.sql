@@ -181,6 +181,57 @@ insert into vendor_targets (project_id, category, note, status, project_vendor_i
   ('a0000000-d300-4000-8000-000000000002', 'dj', null, 'needed', null, now()),
   ('a0000000-d300-4000-8000-000000000002', 'baker', null, 'needed', null, now());
 
+-- Signed venue contract. Guest count (130) and the 20% service charge
+-- disagree with the wedding profile (110) and the $12,000 quote.
+insert into files (
+  id, project_id, kind, name, storage_path, mime_type, size_bytes,
+  status, category, project_vendor_id,
+  extracted_text, extraction_status, extraction_truncated
+)
+select
+  'c0000000-d300-4000-8000-000000000001',
+  'a0000000-d300-4000-8000-000000000002',
+  'contract',
+  'Venue agreement.txt',
+  'a0000000-d300-4000-8000-000000000002/demo-venue-agreement.txt',
+  'text/plain',
+  octet_length(body),
+  'signed',
+  'venue',
+  'a0000000-d300-4000-8000-000000000020',
+  body,
+  'ready',
+  false
+from (
+  select $maya_contract$VENUE AGREEMENT
+The Conservatory — Oakland, CA
+Couple: Maya & Jordan
+
+Event date: February 14, 2027
+Ceremony start: 4:00 PM
+Venue access: 2:00 PM to 11:00 PM
+Guest count: 130
+Venue fee: $12,000
+Deposit received: $4,000
+Balance due: January 14, 2027
+
+Overtime is $250 per hour after 10:00 PM.
+A 20% service charge is added to the venue fee.
+If the couple cancels within 90 days of the event, the deposit is kept.
+$maya_contract$ as body
+) contract
+on conflict (id) do update
+set name = excluded.name,
+    storage_path = excluded.storage_path,
+    mime_type = excluded.mime_type,
+    size_bytes = excluded.size_bytes,
+    status = excluded.status,
+    category = excluded.category,
+    project_vendor_id = excluded.project_vendor_id,
+    extracted_text = excluded.extracted_text,
+    extraction_status = excluded.extraction_status,
+    extraction_truncated = excluded.extraction_truncated;
+
 insert into tasks (project_id, title, status, phase, due_date, vendor_id, position, created_at) values
   ('a0000000-d300-4000-8000-000000000002', 'Set budget & guest list', 'done', '12+ months', '2026-02-14', null, 0, now()),
   ('a0000000-d300-4000-8000-000000000002', 'Book venue', 'done', '12+ months', '2026-02-14', 'a0000000-d300-4000-8000-000000000020', 1, now()),
@@ -534,6 +585,56 @@ insert into vendor_targets (project_id, category, status, project_vendor_id, cre
   ('b7c32347-722a-4c6d-8ba4-c98cd2eb77e8', 'band', 'needed', null, now()),
   ('b7c32347-722a-4c6d-8ba4-c98cd2eb77e8', 'baker', 'needed', null, now());
 
+-- Signed venue contract. The date (February 21) and fee ($24,000)
+-- disagree with the wedding (February 14) and the $22,000 quote.
+insert into files (
+  id, project_id, kind, name, storage_path, mime_type, size_bytes,
+  status, category, project_vendor_id,
+  extracted_text, extraction_status, extraction_truncated
+)
+select
+  'c0000000-d300-4000-8000-000000000002',
+  'b7c32347-722a-4c6d-8ba4-c98cd2eb77e8',
+  'contract',
+  'Venue agreement.txt',
+  'b7c32347-722a-4c6d-8ba4-c98cd2eb77e8/demo-venue-agreement.txt',
+  'text/plain',
+  octet_length(body),
+  'signed',
+  'venue',
+  'b0000000-d300-4000-8000-000000000040',
+  body,
+  'ready',
+  false
+from (
+  select $elena_contract$VENUE AGREEMENT
+Glasshouse Estate — Napa Valley
+Couple: Elena & Marcus
+
+Event date: February 21, 2027
+Ceremony start: 4:00 PM
+Reception end: 11:00 PM
+Guest count: 160
+Estate buyout: $24,000
+Deposit received: $8,000
+Balance due: January 21, 2027
+
+Overtime is $400 per hour after 10:00 PM.
+Cancellation requires 120 days of written notice, or the deposit is kept.
+$elena_contract$ as body
+) contract
+on conflict (id) do update
+set name = excluded.name,
+    storage_path = excluded.storage_path,
+    mime_type = excluded.mime_type,
+    size_bytes = excluded.size_bytes,
+    status = excluded.status,
+    category = excluded.category,
+    project_vendor_id = excluded.project_vendor_id,
+    extracted_text = excluded.extracted_text,
+    extraction_status = excluded.extraction_status,
+    extraction_truncated = excluded.extraction_truncated;
+
 insert into tasks (project_id, title, status, phase, due_date, vendor_id, position, created_at) values
   ('b7c32347-722a-4c6d-8ba4-c98cd2eb77e8', 'Set budget & guest list', 'done', '12+ months', '2026-02-14', null, 0, now()),
   ('b7c32347-722a-4c6d-8ba4-c98cd2eb77e8', 'Book venue', 'done', '12+ months', '2026-02-14', 'b0000000-d300-4000-8000-000000000040', 1, now()),
@@ -659,6 +760,55 @@ insert into vendor_targets (project_id, category, status, project_vendor_id, cre
   ('7cb744b2-b207-4e76-b944-691798c8878c', 'baker', 'booked', 'b0000000-d300-4000-8000-000000000104', now()),
   ('7cb744b2-b207-4e76-b944-691798c8878c', 'hair-makeup', 'booked', 'b0000000-d300-4000-8000-000000000105', now()),
   ('7cb744b2-b207-4e76-b944-691798c8878c', 'officiant', 'booked', 'b0000000-d300-4000-8000-000000000106', now());
+
+-- Signed venue contract. Guest count (120) disagrees with the profile (95).
+insert into files (
+  id, project_id, kind, name, storage_path, mime_type, size_bytes,
+  status, category, project_vendor_id,
+  extracted_text, extraction_status, extraction_truncated
+)
+select
+  'c0000000-d300-4000-8000-000000000004',
+  '7cb744b2-b207-4e76-b944-691798c8878c',
+  'contract',
+  'Venue agreement.txt',
+  '7cb744b2-b207-4e76-b944-691798c8878c/demo-venue-agreement.txt',
+  'text/plain',
+  octet_length(body),
+  'signed',
+  'venue',
+  'b0000000-d300-4000-8000-000000000100',
+  body,
+  'ready',
+  false
+from (
+  select $sophie_contract$VENUE AGREEMENT
+Glasshouse Estate Seattle
+Couple: Sophie & James
+
+Event date: August 29, 2026
+Ceremony start: 4:00 PM
+Reception end: 11:30 PM
+Guest count: 120
+Venue fee: $14,000
+Deposit received: $4,000
+Balance due: July 29, 2026
+
+Overtime is $300 per hour after 10:00 PM.
+Cancellation within 60 days keeps the deposit.
+$sophie_contract$ as body
+) contract
+on conflict (id) do update
+set name = excluded.name,
+    storage_path = excluded.storage_path,
+    mime_type = excluded.mime_type,
+    size_bytes = excluded.size_bytes,
+    status = excluded.status,
+    category = excluded.category,
+    project_vendor_id = excluded.project_vendor_id,
+    extracted_text = excluded.extracted_text,
+    extraction_status = excluded.extraction_status,
+    extraction_truncated = excluded.extraction_truncated;
 
 insert into tasks (project_id, title, status, phase, due_date, position, created_at) values
   ('7cb744b2-b207-4e76-b944-691798c8878c', 'Set budget & guest list', 'done', '12+ months', '2025-08-29', 0, now()),

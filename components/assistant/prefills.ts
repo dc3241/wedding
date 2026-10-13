@@ -45,3 +45,12 @@ export function assistantPrefill(
   if (eventType === "event") return EVENT_PREFILLS[key];
   return ASSISTANT_PREFILLS[key];
 }
+
+export function contractReviewPrefill(
+  fileName: string,
+  eventType: EventType = "wedding",
+): string {
+  const name = fileName.replace(/["\n\r]/g, "").trim() || "this contract";
+  const noun = eventType === "event" ? "event" : "wedding";
+  return `Review the uploaded contract "${name}" and tell me what I should double-check — dates, price, hours, guest count, and anything that doesn't match the rest of this ${noun}.`;
+}
