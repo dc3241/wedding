@@ -14,6 +14,8 @@ import {
 } from "@/lib/admin/content-week";
 import {
   deckForStyle,
+  LINKEDIN_POST_STYLES,
+  linkedInDeckForStyle,
   POST_STYLE_META,
   stylePromptBlock,
   stylesForIntent,
@@ -34,7 +36,7 @@ const RECENT_TOPIC_LOOKBACK = 40;
 const SYSTEM_PROMPT = `You brainstorm short-form social ideas for First Look, a wedding-planning
 SaaS. Two audiences only:
 - Couples, for TikTok slideshows and Pinterest pins.
-- Venues and planners, for LinkedIn posts that each get one square image. LinkedIn is always a promo. The reader is the venue or planner. Never write a couples tip, and never write industry advice that leaves the product out.
+- Venues and planners, for LinkedIn posts that each get one square image. The reader is always the venue or planner. Never write a couples tip. Never write industry advice that leaves what First Look already does.
 
 Tone: warm, useful, a little funny, never salesy. Never use the word "AI".
 
@@ -48,10 +50,11 @@ You are given one brief per idea. Each brief already has a topic and a style. Wr
 Post styles:
 ${stylePromptBlock()}
 
+LinkedIn styles: use the same creative shapes (Save this, myth, hot take, numbered list, stop doing, before/after, tip, pain→feature). Always speak to a venue or planner. Tip-family styles may omit naming First Look in the hook; promo and pain→feature may name it. save_this for LinkedIn is a team/ops checklist (send this to your coordinator), not a couples vendor list.
+
 Length:
-- tip, myth, hot_take, stop_doing, before_after, promo: one or two sentences.
+- tip, myth, hot_take, stop_doing, before_after, promo: one or two sentences (LinkedIn: a headline can carry it).
 - numbered and save_this: a short paragraph — cover line, the checklist or list items, screens named where the brief says, and at most one light First Look mention for promo/list (never on the cover).
-- LinkedIn: one or two sentences a headline can carry. Name First Look. Open on the pain, then how the product handles it for a venue or planner.
 
 Return ONLY the JSON shape you are given. No markdown, no extra keys.`;
 
@@ -78,8 +81,12 @@ function shuffleInPlace<T>(items: T[]): T[] {
   return items;
 }
 
-function pickStyles(intent: ContentIntent, count: number, bias?: PostStyle | null): PostStyle[] {
-  const pool = shuffleInPlace([...stylesForIntent(intent)]);
+function pickStylesFromPool(
+  poolIn: readonly PostStyle[],
+  count: number,
+  bias?: PostStyle | null,
+): PostStyle[] {
+  const pool = shuffleInPlace([...poolIn]);
   const out: PostStyle[] = [];
   if (bias && pool.includes(bias)) {
     out.push(bias);
@@ -88,12 +95,15 @@ function pickStyles(intent: ContentIntent, count: number, bias?: PostStyle | nul
     if (out.length >= count) break;
     if (!out.includes(style)) out.push(style);
   }
-  // If the pool is smaller than count, allow repeats after unique exhaustion.
   while (out.length < count) {
-    const fallback = pool[out.length % pool.length] ?? (intent === "tip" ? "tip" : "promo");
+    const fallback = pool[out.length % pool.length] ?? "promo";
     out.push(fallback);
   }
   return out.slice(0, count);
+}
+
+function pickStyles(intent: ContentIntent, count: number, bias?: PostStyle | null): PostStyle[] {
+  return pickStylesFromPool(stylesForIntent(intent), count, bias);
 }
 
 async function recentTopicKeys(supabase: SupabaseClient): Promise<Set<string>> {
@@ -148,6 +158,20 @@ function buildBriefs(args: {
     const deck = deckForStyle(style, args.intent);
     const [topic] = pickTopics(deck, 1, args.usedKeys, args.recent);
     return { intent: args.intent, style, topic: topic! };
+  });
+}
+
+/** LinkedIn: every creative style, venue/planner topics only. */
+function buildLinkedInBriefs(args: {
+  count: number;
+  usedKeys: Set<string>;
+  recent: Set<string>;
+}): IdeaBrief[] {
+  const styles = pickStylesFromPool(LINKEDIN_POST_STYLES, args.count);
+  return styles.map((style) => {
+    const deck = linkedInDeckForStyle(style);
+    const [topic] = pickTopics(deck, 1, args.usedKeys, args.recent);
+    return { intent: "promo", style, topic: topic! };
   });
 }
 
@@ -314,13 +338,11 @@ async function generateDay(
     usedKeys,
     recent,
   });
-  // LinkedIn stays product promos for venues/planners — random venue topics, promo style.
-  const linkedinTopics = pickTopics("venue_promo", IDEAS_PER_INTENT, usedKeys, recent);
-  const linkedin: IdeaBrief[] = linkedinTopics.map((topic) => ({
-    intent: "promo",
-    style: "promo",
-    topic,
-  }));
+  const linkedin = buildLinkedInBriefs({
+    count: IDEAS_PER_INTENT,
+    usedKeys,
+    recent,
+  });
 
   const taste = await tasteLines(supabase);
   const focusLine = focus ? `\nBias every idea toward this focus: ${focus}` : "";
@@ -341,9 +363,9 @@ ${briefLines(pinTip)}
 Promo briefs:
 ${briefLines(pinPromo)}
 
-LinkedIn (venues and planners, one square image)
+LinkedIn (venues and planners, one square image — mixed styles, never couples tips)
 ${briefLines(linkedin)}
-The reader is a venue or planner.
+The reader is a venue or planner. Match each style brief to that audience.
 ${focusLine}
 ${taste ? `\n${taste}` : ""}`;
 
@@ -415,19 +437,21 @@ async function generateLane(
   let rows: ReturnType<typeof rowsForBriefs>;
 
   if (lane === "linkedin") {
-    const briefs: IdeaBrief[] = pickTopics("venue_promo", IDEAS_PER_INTENT, usedKeys, recent).map(
-      (topic) => ({ intent: "promo", style: "promo" as PostStyle, topic }),
-    );
+    const briefs = buildLinkedInBriefs({
+      count: IDEAS_PER_INTENT,
+      usedKeys,
+      recent,
+    });
     const user = `Day: ${formatDayHeading(date)}. Lane: LinkedIn.
-Write exactly one hook per brief for venues and planners. Each becomes a post with one square image.
+Write exactly one hook per brief for venues and planners. Each becomes a post with one square image. Mixed styles on purpose — do not collapse them into pain-then-feature.
 ${briefLines(briefs)}
-The reader is a venue or planner.
+The reader is a venue or planner. Match each style brief to that audience.
 ${focusLine}
 ${taste ? `\n${taste}` : ""}`;
     const parsed = await callClaudeJson({
       system: SYSTEM_PROMPT,
       user,
-      maxTokens: 2048,
+      maxTokens: 3072,
       jsonSchema: {
         type: "object",
         additionalProperties: false,

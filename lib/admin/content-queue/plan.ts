@@ -275,18 +275,16 @@ function contentTypeForIntent(
   fallback: ContentType,
 ): ContentType {
   if (style === "promo") return "D";
-  if (style === "save_this" || style === "numbered") {
-    return intent === "promo" ? "C" : "A";
-  }
   if (
+    style === "save_this" ||
+    style === "numbered" ||
     style === "tip" ||
     style === "myth" ||
     style === "hot_take" ||
-    style === "stop_doing"
+    style === "stop_doing" ||
+    style === "before_after"
   ) {
-    return "A";
-  }
-  if (style === "before_after") {
+    // Tip column stays pure value; promo/LinkedIn slots may soft-plug on the image.
     return intent === "promo" ? "C" : "A";
   }
   if (intent === "tip") return "C";

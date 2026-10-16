@@ -51,11 +51,11 @@ export const POST_STYLE_META: Record<PostStyle, PostStyleMeta> = {
   tip: {
     key: "tip",
     label: "Tip",
-    buckets: ["tip"],
+    buckets: ["tip", "promo"],
     pill: "sage",
     brief: "Classic useful advice in one or two sentences. Do not name First Look or any product.",
     produceBrief:
-      "Pure tip. Surface none on tip-family. Prefer statement or big-number cover; tip-list if the idea is already a short list.",
+      "Pure tip. Surface none on tip-family. Prefer statement or big-number cover; tip-list if the idea is already a short list. Promo-slot tip may soft-plug on the image only.",
     coverLayouts: ["big-number", "statement", "tip-list"],
     ctaLabel: null,
     tipDeck: "couples_tip",
@@ -64,10 +64,10 @@ export const POST_STYLE_META: Record<PostStyle, PostStyleMeta> = {
   save_this: {
     key: "save_this",
     label: "Save this",
-    buckets: ["tip"],
+    buckets: ["tip", "promo"],
     pill: "accent",
     brief:
-      "A saveable checklist or 'send this to your vendors' list. Lead with Save this / send this. Real checklist items. Do not name First Look in the hook.",
+      "A saveable checklist or 'send this to your vendors' / 'send this to your team' list. Lead with Save this / send this. Real checklist items. Do not name First Look in the hook.",
     produceBrief:
       "Checklist post. Cover can be statement or tip-list. Body uses tip-list. Last slide CTA label is Save this. Soft product only if intent is promo; tip stays surface none.",
     coverLayouts: ["tip-list", "big-number", "statement"],
@@ -78,10 +78,10 @@ export const POST_STYLE_META: Record<PostStyle, PostStyleMeta> = {
   myth: {
     key: "myth",
     label: "Myth vs fact",
-    buckets: ["tip"],
+    buckets: ["tip", "promo"],
     pill: "clay",
     brief:
-      "Open on a common wedding myth, then the correction. One myth, one fact. Do not name First Look.",
+      "Open on a common myth, then the correction. One myth, one fact. Do not name First Look.",
     produceBrief:
       "Myth vs fact. Prefer before-after (before=myth, after=fact) or a two-beat statement cover then fact slide.",
     coverLayouts: ["before-after", "statement"],
@@ -120,11 +120,11 @@ export const POST_STYLE_META: Record<PostStyle, PostStyleMeta> = {
   hot_take: {
     key: "hot_take",
     label: "Hot take",
-    buckets: ["tip"],
+    buckets: ["tip", "promo"],
     pill: "rosewood",
     brief:
       "Unpopular opinion in one sharp line, then a short why. Pattern: 'Unpopular opinion:' or a blunt claim. Do not name First Look.",
-    produceBrief: "Huge statement cover. Optional support line. Surface none.",
+    produceBrief: "Huge statement cover. Optional support line. Surface none on tip; soft-plug image OK on promo.",
     coverLayouts: ["statement", "big-number"],
     ctaLabel: null,
     tipDeck: "couples_tip",
@@ -133,12 +133,12 @@ export const POST_STYLE_META: Record<PostStyle, PostStyleMeta> = {
   stop_doing: {
     key: "stop_doing",
     label: "Stop doing",
-    buckets: ["tip"],
+    buckets: ["tip", "promo"],
     pill: "rosewood",
     brief:
-      "Lead with Stop doing X (a bad habit couples actually have), then what to do instead. Do not name First Look.",
+      "Lead with Stop doing X (a bad habit the audience actually has), then what to do instead. Do not name First Look.",
     produceBrief:
-      "Statement or before-after cover (stop vs do this). Surface none for tip.",
+      "Statement or before-after cover (stop vs do this). Surface none for tip; soft-plug OK on promo.",
     coverLayouts: ["statement", "before-after", "steps"],
     ctaLabel: null,
     tipDeck: "couples_tip",
@@ -178,10 +178,16 @@ export const TIP_POST_STYLES: PostStyle[] = POST_STYLES.filter((key) =>
   POST_STYLE_META[key].buckets.includes("tip"),
 );
 
-/** Styles allowed in the promo shortlist column. */
+/**
+ * Styles allowed in the promo shortlist column (pins + slideshows).
+ * Wider than tip so promo slots can still test Save this / myth / hot take.
+ */
 export const PROMO_POST_STYLES: PostStyle[] = POST_STYLES.filter((key) =>
   POST_STYLE_META[key].buckets.includes("promo"),
 );
+
+/** LinkedIn shortlist — every creative style, always venue/planner facing. */
+export const LINKEDIN_POST_STYLES: PostStyle[] = [...POST_STYLES];
 
 export function stylesForIntent(intent: ContentIntent): PostStyle[] {
   return intent === "tip" ? TIP_POST_STYLES : PROMO_POST_STYLES;
@@ -190,6 +196,14 @@ export function stylesForIntent(intent: ContentIntent): PostStyle[] {
 export function deckForStyle(style: PostStyle, intent: ContentIntent): TopicDeckId {
   const meta = POST_STYLE_META[style];
   return intent === "tip" ? meta.tipDeck : meta.promoDeck;
+}
+
+/** LinkedIn topics stay on venue decks regardless of creative style. */
+export function linkedInDeckForStyle(style: PostStyle): TopicDeckId {
+  if (style === "promo" || style === "before_after" || style === "numbered" || style === "save_this") {
+    return "venue_promo";
+  }
+  return "venue_tip";
 }
 
 export function ctaLabelForStyle(style: PostStyle | null | undefined): string | null {
