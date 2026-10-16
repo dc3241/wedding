@@ -19,6 +19,7 @@ import {
   type ContentSlot,
   type IdeaDraft,
 } from "@/lib/admin/content-week";
+import { postStyleMeta } from "@/lib/admin/content-styles";
 import { topicByKey } from "@/lib/admin/content-topics";
 import type { IdeationItem } from "@/lib/admin/types";
 import { cn } from "@/lib/cn";
@@ -114,7 +115,7 @@ export function ContentWeekIdeas({
             <Input
               value={focus}
               onChange={(e) => setFocus(e.target.value)}
-              placeholder="Leave blank to follow the topic rotation"
+              placeholder="Leave blank for random topics and styles"
             />
           </label>
           <Button
@@ -244,7 +245,6 @@ function LaneBlock({
       <div className={cn("grid gap-4", groups.length > 1 && "md:grid-cols-2")}>
         {groups.map((intent) => {
           const group = ideas.filter((idea) => idea.intent === intent);
-          const topic = topicByKey(group[0]?.topic_key);
           const taken = slots.filter((slot) => slot.idea_id && slot.intent === intent).length;
           const cap = slots.filter((slot) => slot.intent === intent).length;
           return (
@@ -257,7 +257,6 @@ function LaneBlock({
                   {taken}/{cap} chosen
                 </span>
               </div>
-              {topic ? <p className="mb-2 text-[13px] text-muted">{topic.label}</p> : null}
               {group.length === 0 ? (
                 <p className="rounded-[var(--radius-inner)] bg-well px-3 py-3 text-[14px] text-muted shadow-recessed">
                   No ideas yet.
@@ -323,8 +322,15 @@ function IdeaRow({
     }
   }
 
+  const style = postStyleMeta(idea.post_style);
+  const topic = topicByKey(idea.topic_key);
+
   return (
     <li className="rounded-[var(--radius-inner)] bg-well px-3 py-3 shadow-recessed">
+      <div className="mb-2 flex flex-wrap items-center gap-2">
+        {style ? <Pill variant={style.pill}>{style.label}</Pill> : null}
+        {topic ? <span className="text-[13px] text-muted">{topic.label}</span> : null}
+      </div>
       <p className="text-[15px] font-medium text-ink">{idea.idea_text}</p>
       <div className="mt-2 flex flex-wrap gap-2">
         <Button

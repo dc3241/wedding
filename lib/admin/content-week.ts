@@ -20,8 +20,9 @@ export const LANE_LABEL: Record<ContentLane, string> = {
 
 export const LANE_QUOTA_HINT: Record<ContentLane, string> = {
   video: "Two a day. The first is a duet, the second is straight to camera. Also post them to Facebook.",
-  slideshow: "Pick 1 tip and 1 second post. Monday, Wednesday, and Friday that post is a list: real advice, one light mention of First Look, and a screen on the slides that show that job. Other days it is a pain, then the app.",
-  pin: "Pick 2 tips and 1 promo. All three also go to Facebook.",
+  slideshow:
+    "Pick 1 tip and 1 promo. Each shortlist idea has its own topic and style (save this, myth, numbered list, hot take, pain→feature, …). Mon/Wed/Fri bias one promo toward a numbered list.",
+  pin: "Pick 2 tips and 1 promo. Mixed topics and styles. All three also go to Facebook.",
   linkedin: "Pick 1. Venues and planners only. One square image. Every post is a problem the product handles, including the couple working in that wedding.",
 };
 

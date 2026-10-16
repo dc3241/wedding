@@ -22,6 +22,7 @@ import {
 import { renderAndStoreSlides } from "@/lib/admin/content-queue/render-slides";
 import { selectSlideSpecs, type RecentStyle } from "@/lib/admin/content-queue/select-slide";
 import { parseStoredSpecs, stylesFromSpecs, type SlideSpec } from "@/lib/admin/content-queue/slide-spec";
+import { isPostStyle } from "@/lib/admin/content-styles";
 import { postingWeekMonday } from "@/lib/admin/content-week";
 import type { AudienceGroup } from "@/lib/admin/platform-audience";
 import { createServiceRoleClient } from "@/utils/supabase/service-role";
@@ -90,6 +91,7 @@ function asLikedIdeaSlot(row: {
   audience_group: string | null;
   carousel_slides: number | null;
   intent?: string | null;
+  post_style?: string | null;
   week_start?: string | null;
 }): LikedIdeaSlot | null {
   if (
@@ -121,6 +123,7 @@ function asLikedIdeaSlot(row: {
     audience_group: row.audience_group,
     carousel_slides: row.carousel_slides ?? null,
     intent: row.intent === "tip" || row.intent === "promo" ? row.intent : null,
+    post_style: isPostStyle(row.post_style) ? row.post_style : null,
   };
 }
 
@@ -131,7 +134,7 @@ async function loadReadyIdeas(
   if (limit <= 0) return [];
   const { data, error } = await supabase
     .from("ideation_items")
-    .select("id, idea_text, comment, platform, format, audience_group, carousel_slides, intent")
+    .select("id, idea_text, comment, platform, format, audience_group, carousel_slides, intent, post_style")
     .eq("rating", "up")
     .is("used_at", null)
     .not("platform", "is", null)
@@ -228,6 +231,7 @@ async function produceQueuePosts(
           contentType: post.content_type,
           fragments: post.fragments,
           recent,
+          postStyle: post.post_style,
         })
       : [];
     recent.push(
@@ -252,6 +256,7 @@ async function produceQueuePosts(
         format: post.format,
         audience_group: post.audience_group,
         carousel_slides: post.carousel_slides,
+        post_style: post.post_style,
         slide_prompts: post.prompts,
         slide_specs: specs,
         kie_task_ids: [],
@@ -364,7 +369,7 @@ export async function produceIdeaNow(ideaId: string): Promise<ProduceIdeaResult>
   const { data: row, error } = await supabase
     .from("ideation_items")
     .select(
-      "id, idea_text, comment, rating, platform, format, audience_group, carousel_slides, intent, week_start, used_at",
+      "id, idea_text, comment, rating, platform, format, audience_group, carousel_slides, intent, post_style, week_start, used_at",
     )
     .eq("id", ideaId)
     .maybeSingle();

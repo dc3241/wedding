@@ -1,4 +1,5 @@
 import type { ContentPostFormat } from "@/lib/admin/content-formats";
+import type { PostStyle } from "@/lib/admin/content-styles";
 import type { AudienceGroup } from "@/lib/admin/platform-audience";
 import type { ContentPlatform, ContentType, DayPlatforms } from "@/lib/admin/platforms";
 import type {
@@ -78,6 +79,7 @@ export type IdeationItem = {
   created_at: string;
   lane: "video" | "slideshow" | "pin" | "linkedin" | null;
   intent: "tip" | "promo" | null;
+  post_style: PostStyle | null;
   topic_key: string | null;
   slot_date: string | null;
   week_start: string | null;
@@ -98,6 +100,7 @@ export type ContentQueueItem = {
   format: ContentPostFormat | null;
   audience_group: AudienceGroup | null;
   carousel_slides: number | null;
+  post_style: PostStyle | null;
   generated_by: string | null;
   approved_at: string | null;
   denied_at: string | null;

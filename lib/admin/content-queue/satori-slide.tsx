@@ -1191,7 +1191,7 @@ export function SlideImage({
               borderRadius: 999,
             })}
           >
-            Start free
+            {spec.ctaLabel?.trim() || "Start free"}
           </div>
           <div style={flex({ color: t.url, fontFamily: "Figtree", fontWeight: 700, fontSize: 34 * u })}>
             usefirstlook.app

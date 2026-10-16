@@ -9,6 +9,11 @@ import {
 import type { ContentQueuePlatform } from "@/lib/admin/content-queue";
 import type { AudienceGroup } from "@/lib/admin/platform-audience";
 import type { ContentType } from "@/lib/admin/platforms";
+import {
+  isPostStyle,
+  produceStylePromptBlock,
+  type PostStyle,
+} from "@/lib/admin/content-styles";
 import { PRODUCT_SHOT_SLUGS } from "@/lib/admin/content-queue/product-shots";
 import {
   SLIDE_LAYOUTS,
@@ -31,6 +36,7 @@ export type LikedIdeaSlot = {
   carousel_slides: number | null;
   /** Week shortlist. Tips stay pure value; promos name the product. */
   intent?: "tip" | "promo" | null;
+  post_style?: PostStyle | null;
 };
 
 export type PlannedPost = {
@@ -50,6 +56,7 @@ export type PlannedPost = {
   format: ContentPostFormat;
   audience_group: AudienceGroup;
   carousel_slides: number | null;
+  post_style: PostStyle | null;
 };
 
 /**
@@ -117,9 +124,12 @@ ${SLIDE_LAYOUTS.join(", ")}.
 - steps: a process, at most 4. data.steps have a one-word word and a caption.
 - statement: text only. data.highlight is a short phrase that appears inside the headline, or "".
 
-For a type C slideshow, slides 1 through N-1 are headline tips with surface "none". The last slide keeps the same kind of headline and uses one surface slug so the real screen shows up. For a type C pin or a type C LinkedIn static, the single slide uses that slug and the headline still does not name the product. Type D may name the product. A pain-then-feature promo uses a surface slug on the plug slide. Type A and B use surface "none".
+Post styles (honor the style on each idea — do not collapse everything into a pain-then-feature essay):
+${produceStylePromptBlock()}
 
-When the idea is a list (a cover plus several pieces of advice): the cover uses surface "none". Any later slide may use a surface slug for the feature that slide is about. Use the screen the idea names. Mention First Look once, in one support line, as a light aside. Do not put the product name in the cover headline or on every slide. Do not collapse the list into a single pain-then-feature promo.
+For a type C slideshow, slides 1 through N-1 are headline tips with surface "none". The last slide keeps the same kind of headline and uses one surface slug so the real screen shows up. For a type C pin or a type C LinkedIn static, the single slide uses that slug and the headline still does not name the product. Type D may name the product. A pain-then-feature promo uses a surface slug on the plug slide. Type A and B use surface "none". Tip-family styles (tip, save_this, myth, hot_take, stop_doing) prefer type A/C with surface none unless the style brief allows a soft picture plug.
+
+When the idea is a list or save_this checklist (a cover plus several pieces of advice): the cover uses surface "none". Any later slide may use a surface slug for the feature that slide is about. Use the screen the idea names. Mention First Look once, in one support line, as a light aside. Do not put the product name in the cover headline or on every slide. Do not collapse the list into a single pain-then-feature promo. Carousel slide 1 should prefer big-number, before-after, tip-list, or headline-card when the style asks for it — not only a word-only statement.
 
 When surface is a slug, leave every data array empty and every data string "". The app fills the real product UI. Do not invent screen copy, names, or numbers.
 
@@ -261,8 +271,24 @@ function asNonEmptyString(value: unknown): string | null {
 
 function contentTypeForIntent(
   intent: LikedIdeaSlot["intent"],
+  style: PostStyle | null | undefined,
   fallback: ContentType,
 ): ContentType {
+  if (style === "promo") return "D";
+  if (style === "save_this" || style === "numbered") {
+    return intent === "promo" ? "C" : "A";
+  }
+  if (
+    style === "tip" ||
+    style === "myth" ||
+    style === "hot_take" ||
+    style === "stop_doing"
+  ) {
+    return "A";
+  }
+  if (style === "before_after") {
+    return intent === "promo" ? "C" : "A";
+  }
   if (intent === "tip") return "C";
   if (intent === "promo") return "D";
   return fallback;
@@ -329,6 +355,7 @@ function materialize(parsed: unknown, slots: Slot[]): (PlannedPost & { degraded:
         slot.format === "carousel"
           ? clampCarouselSlides(slot.carousel_slides ?? slot.slides)
           : null,
+      post_style: slot.post_style ?? null,
     };
   });
 }
@@ -339,7 +366,8 @@ Return exactly ${slots.length} object(s) in "posts" — one per idea, no extras,
     .map((slot, i) => {
       const note = slot.comment ? ` note=${JSON.stringify(slot.comment)}` : "";
       const slides = slot.format === "carousel" ? ` slides=${slot.slides}` : "";
-      return `${i + 1}. platform=${slot.platform} format=${slot.format}${slides} audience=${slot.audience_group} type=${slot.content_type} idea=${JSON.stringify(slot.idea_text)}${note}`;
+      const style = slot.post_style ? ` style=${slot.post_style}` : "";
+      return `${i + 1}. platform=${slot.platform} format=${slot.format}${slides} audience=${slot.audience_group} type=${slot.content_type}${style} idea=${JSON.stringify(slot.idea_text)}${note}`;
     })
     .join("\n")}`;
 
@@ -357,7 +385,8 @@ export async function buildWeekPlan(ideas: LikedIdeaSlot[]): Promise<PlannedPost
   const types = allocateTypes(ideas.length);
   const slots: Slot[] = ideas.map((idea, i) => ({
     ...idea,
-    content_type: contentTypeForIntent(idea.intent, types[i] ?? "A"),
+    post_style: isPostStyle(idea.post_style) ? idea.post_style : null,
+    content_type: contentTypeForIntent(idea.intent, idea.post_style, types[i] ?? "A"),
     slides: slideCountFor(idea.format, idea.carousel_slides),
   }));
 

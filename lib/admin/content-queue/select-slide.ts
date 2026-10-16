@@ -2,6 +2,11 @@ import type { ContentPostFormat } from "@/lib/admin/content-formats";
 import { formatNeedsImages } from "@/lib/admin/content-formats";
 import type { ContentQueuePlatform } from "@/lib/admin/content-queue";
 import { matchProductShot, PRODUCT_SHOT_SLUGS } from "@/lib/admin/content-queue/product-shots";
+import {
+  ctaLabelForStyle,
+  postStyleMeta,
+  type PostStyle,
+} from "@/lib/admin/content-styles";
 import type { ContentType } from "@/lib/admin/platforms";
 import {
   DISABLED_LAYOUTS,
@@ -223,18 +228,38 @@ function chooseLayout(
   count: number,
   used: Set<SlideLayout>,
   avoid?: SlideLayout,
+  preferredCovers?: readonly SlideLayout[],
 ): SlideLayout {
   const options = suitableLayouts(fragment).filter((layout) => layout !== avoid);
   const pool = options.length > 0 ? options : suitableLayouts(fragment);
 
   if (count > 1 && index === 0) {
     if (pool.includes("big-number") && fragment.layout === "big-number") return "big-number";
+    for (const preferred of preferredCovers ?? []) {
+      if (pool.includes(preferred) && (preferred === fragment.layout || dataFits(preferred, fragment.data, fragment.headline))) {
+        return preferred;
+      }
+    }
+    for (const preferred of preferredCovers ?? []) {
+      if (pool.includes(preferred)) return preferred;
+    }
+    if (pool.includes(fragment.layout) && fragment.layout !== "headline-phone") {
+      return fragment.layout;
+    }
     return "statement";
   }
 
   const product = fragment.surface ? surfaceLayout(fragment.surface) : null;
   if (product && pool.includes(product) && (count === 1 || index === count - 1)) {
     return product;
+  }
+
+  if (count === 1 && preferredCovers?.length) {
+    for (const preferred of preferredCovers) {
+      if (pool.includes(preferred) && (preferred === fragment.layout || dataFits(preferred, fragment.data, fragment.headline))) {
+        return preferred;
+      }
+    }
   }
 
   const varied = pool.find((layout) => !used.has(layout));
@@ -278,6 +303,9 @@ export function selectSlideSpecs(args: {
   theme?: SlideTheme;
   /** Shuffle keeps the screen already chosen for this post. */
   keepSnippet?: string | null;
+  postStyle?: PostStyle | null;
+  /** Preserve CTA copy across shuffle when set. */
+  ctaLabel?: string | null;
 }): SlideSpec[] {
   const size = stillFormatFor(
     args.platform,
@@ -291,9 +319,17 @@ export function selectSlideSpecs(args: {
     (args.avoidShots ?? []).filter(isWebsiteShot),
   );
   const fragments = normalizeFragments(args.fragments, args.contentType);
+  const preferredCovers = postStyleMeta(args.postStyle)?.coverLayouts ?? [];
   const used = new Set<SlideLayout>();
   const layouts = fragments.map((fragment, index) => {
-    const layout = chooseLayout(fragment, index, fragments.length, used, args.avoidLayout);
+    const layout = chooseLayout(
+      fragment,
+      index,
+      fragments.length,
+      used,
+      args.avoidLayout,
+      preferredCovers,
+    );
     used.add(layout);
     return layout;
   });
@@ -302,17 +338,24 @@ export function selectSlideSpecs(args: {
       ? args.theme
       : pickTheme(recent, layouts[0] ?? "statement", args.avoidThemes);
 
+  const styleCta = args.ctaLabel ?? ctaLabelForStyle(args.postStyle);
   return withProductSnippet(
     fragments.map((fragment, index) => {
       const layout = layouts[index] ?? "statement";
       const support = fragment.support.trim();
+      const showCta = ctaFor(args.contentType, layout, index, fragments.length);
+      // save_this always wants its CTA even on tip-list singles.
+      const forceSaveCta =
+        args.postStyle === "save_this" && index === fragments.length - 1;
+      const cta = forceSaveCta || (showCta && styleCta !== null);
       return {
         format: size,
         layout,
         theme,
         headline: fragment.headline,
         ...(support ? { support } : {}),
-        cta: ctaFor(args.contentType, layout, index, fragments.length),
+        cta,
+        ...(cta && styleCta ? { ctaLabel: styleCta } : {}),
         surface: fragment.surface,
         data: dataFor(layout, fragment, websiteShot),
       };
@@ -327,9 +370,11 @@ export function shuffleSlideSpecs(
   recent: RecentStyle[],
   contentType: ContentType,
   platform: ContentQueuePlatform,
+  postStyle?: PostStyle | null,
 ): SlideSpec[] {
   if (specs.length === 0) return [];
   const currentTheme = specs[0]?.theme;
+  const keepCta = specs.find((spec) => spec.ctaLabel)?.ctaLabel ?? null;
   const fragments: SlideFragment[] = specs.map((spec) => ({
     headline: spec.headline,
     support: spec.support ?? "",
@@ -354,5 +399,7 @@ export function shuffleSlideSpecs(
     avoidLayout: specs.length === 1 && !specs[0]?.surface ? specs[0]?.layout : undefined,
     avoidShots: specs.flatMap((spec) => (typeof spec.data?.shot === "string" ? [spec.data.shot] : [])),
     keepSnippet: specs.find((spec) => spec.snippet)?.snippet ?? null,
+    postStyle: postStyle ?? null,
+    ctaLabel: keepCta,
   });
 }

@@ -20,7 +20,7 @@ import type { IdeationItem } from "@/lib/admin/types";
 import { adminToday } from "@/lib/admin/today";
 
 const IDEA_COLUMNS =
-  "id, idea_text, requested_by, rating, comment, platform, format, audience_group, carousel_slides, used_at, created_at, lane, intent, topic_key, slot_date, week_start";
+  "id, idea_text, requested_by, rating, comment, platform, format, audience_group, carousel_slides, used_at, created_at, lane, intent, post_style, topic_key, slot_date, week_start";
 
 export async function ensureWeekSlots(
   supabase: SupabaseClient,

@@ -16,6 +16,7 @@ import {
   stylesFromSpecs,
   type SlideSpec,
 } from "@/lib/admin/content-queue/slide-spec";
+import { isPostStyle } from "@/lib/admin/content-styles";
 import type { ContentQueuePlatform } from "@/lib/admin/content-queue";
 import type { ContentType } from "@/lib/admin/platforms";
 import { createClient } from "@/utils/supabase/server";
@@ -142,13 +143,14 @@ export async function regenerateContentQueueItem(id: string, prompt: string) {
 
   const { data: row, error: rowError } = await supabase
     .from("content_queue")
-    .select("id, platform, format, content_type, carousel_slides, slide_specs, week_of, prompt")
+    .select("id, platform, format, content_type, carousel_slides, slide_specs, week_of, prompt, post_style")
     .eq("id", id)
     .single();
   if (rowError || !row) throw new Error("Post not found");
 
   const format = isContentPostFormat(row.format) ? row.format : null;
   const now = new Date().toISOString();
+  const postStyle = isPostStyle(row.post_style) ? row.post_style : null;
 
   if (!formatNeedsImages(format)) {
     const { error } = await supabase
@@ -174,6 +176,7 @@ export async function regenerateContentQueueItem(id: string, prompt: string) {
       platform,
       contentType,
       fragments: [statementFragment(trimmed || row.prompt || "First Look")],
+      postStyle,
     });
   }
   if (specs.length === 0) throw new Error("Nothing to render.");
@@ -204,7 +207,7 @@ export async function shuffleContentQueueItem(id: string) {
   const supabase = await requireAdmin();
   const { data: row, error: rowError } = await supabase
     .from("content_queue")
-    .select("id, platform, content_type, format, slide_specs, week_of")
+    .select("id, platform, content_type, format, slide_specs, week_of, post_style")
     .eq("id", id)
     .single();
   if (rowError || !row) throw new Error("Post not found");
@@ -224,7 +227,13 @@ export async function shuffleContentQueueItem(id: string) {
   if (recentError) throw new Error(recentError.message);
   const recent = (recentRows ?? []).flatMap((item) => stylesFromSpecs(item.slide_specs));
   const contentType = isContentType(row.content_type) ? row.content_type : "C";
-  const specs = shuffleSlideSpecs(current, recent, contentType, platform);
+  const specs = shuffleSlideSpecs(
+    current,
+    recent,
+    contentType,
+    platform,
+    isPostStyle(row.post_style) ? row.post_style : null,
+  );
   const headlines = specs.map((spec) =>
     spec.support ? `${spec.headline}\n${spec.support}` : spec.headline,
   );

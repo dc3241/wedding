@@ -13,6 +13,13 @@ import {
   type ContentLane,
 } from "@/lib/admin/content-week";
 import {
+  deckForStyle,
+  POST_STYLE_META,
+  stylePromptBlock,
+  stylesForIntent,
+  type PostStyle,
+} from "@/lib/admin/content-styles";
+import {
   isCoupleListTopic,
   TOPIC_DECKS,
   type ContentTopic,
@@ -21,6 +28,8 @@ import {
 import { ensureWeekSlots } from "@/lib/admin/content-week/load";
 
 const IDEAS_PER_INTENT = 3;
+/** Prefer topics not used in the last N shortlist rows. */
+const RECENT_TOPIC_LOOKBACK = 40;
 
 const SYSTEM_PROMPT = `You brainstorm short-form social ideas for First Look, a wedding-planning
 SaaS. Two audiences only:
@@ -34,12 +43,15 @@ Both tips and promos stay inside what First Look already does. Never recommend a
 Couple behaviors the product already covers: a due date and reminder on each budget line, budget categories, a dated checklist, the guest list and RSVPs, vendor search, the seating chart, the day-of timeline, the wedding website, the calendar (tastings, fittings, deadlines, payments), notes and files, the overview, the assistant.
 Venue and planner behaviors: inquiries on a board, follow-up automations, the book of weddings, white-label branding, proposals that become contracts, invoices in the couple's wedding, date holds on the calendar, inviting the couple into that wedding, and the couple then working there — checklist, budget, guest list and RSVPs, seating, wedding website, day-of timeline, and the venue or planner's vendor library.
 
-Tip: write it the way a person would say it. Do not mention First Look, "the app", or a product name. The advice itself is the behavior above, not a tool they should go create. Good: "Most couples mark a deposit paid or not paid and miss that a vendor can cancel if you're a few days late — give every due date a reminder buffer." Bad: "Here's how to build a deposit calendar." Bad: "Open First Look and add a reminder."
-Promo: you may name First Look. Open on the pain, then the feature. A promo slideshow ends on the feature.
-List: a cover plus five separate pieces of advice. Every item is real advice. Mention First Look once, inside the item the brief marks, as a light aside — never the cover, never every slide. A real product screen belongs on any advice slide the brief names a screen for. Name that screen in the idea. Do not save the product for a final pitch slide.
+You are given one brief per idea. Each brief already has a topic and a style. Write exactly one hook for that brief — do not invent a different topic or style. Do not write three angles on the same topic.
 
-Slideshow and pin tips and promos are one or two sentences. A list idea is a short paragraph: the cover line, the five items, the screen for each item that has one, and the single First Look mention.
-LinkedIn ideas are one or two sentences a headline can carry. Name First Look. Open on the pain, then how the product handles it for a venue or planner. When the topic is the couple working in the book, the post is still to the venue or planner: what the couple does stays in their wedding, under their brand.
+Post styles:
+${stylePromptBlock()}
+
+Length:
+- tip, myth, hot_take, stop_doing, before_after, promo: one or two sentences.
+- numbered and save_this: a short paragraph — cover line, the checklist or list items, screens named where the brief says, and at most one light First Look mention for promo/list (never on the cover).
+- LinkedIn: one or two sentences a headline can carry. Name First Look. Open on the pain, then how the product handles it for a venue or planner.
 
 Return ONLY the JSON shape you are given. No markdown, no extra keys.`;
 
@@ -50,27 +62,111 @@ export type GenerateWeekResult = {
   errors: string[];
 };
 
-type DayTopics = {
-  slideshow: { tip: ContentTopic; promo: ContentTopic };
-  pin: { tip: ContentTopic; promo: ContentTopic };
-  linkedin: { intent: ContentIntent; topic: ContentTopic };
+type IdeaBrief = {
+  intent: ContentIntent;
+  style: PostStyle;
+  topic: ContentTopic;
 };
 
-function threeStrings(value: unknown): string[] | null {
-  if (!Array.isArray(value)) return null;
-  const out = value
-    .filter((item): item is string => typeof item === "string" && item.trim().length > 0)
-    .map((item) => item.trim());
-  if (out.length < IDEAS_PER_INTENT) return null;
-  return out.slice(0, IDEAS_PER_INTENT);
+function shuffleInPlace<T>(items: T[]): T[] {
+  for (let i = items.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const tmp = items[i]!;
+    items[i] = items[j]!;
+    items[j] = tmp;
+  }
+  return items;
+}
+
+function pickStyles(intent: ContentIntent, count: number, bias?: PostStyle | null): PostStyle[] {
+  const pool = shuffleInPlace([...stylesForIntent(intent)]);
+  const out: PostStyle[] = [];
+  if (bias && pool.includes(bias)) {
+    out.push(bias);
+  }
+  for (const style of pool) {
+    if (out.length >= count) break;
+    if (!out.includes(style)) out.push(style);
+  }
+  // If the pool is smaller than count, allow repeats after unique exhaustion.
+  while (out.length < count) {
+    const fallback = pool[out.length % pool.length] ?? (intent === "tip" ? "tip" : "promo");
+    out.push(fallback);
+  }
+  return out.slice(0, count);
+}
+
+async function recentTopicKeys(supabase: SupabaseClient): Promise<Set<string>> {
+  const { data, error } = await supabase
+    .from("ideation_items")
+    .select("topic_key")
+    .not("topic_key", "is", null)
+    .order("created_at", { ascending: false })
+    .limit(RECENT_TOPIC_LOOKBACK);
+  if (error) throw new Error(error.message);
+  return new Set(
+    (data ?? [])
+      .map((row) => row.topic_key as string | null)
+      .filter((key): key is string => Boolean(key)),
+  );
+}
+
+function pickTopics(
+  deck: TopicDeckId,
+  count: number,
+  usedKeys: Set<string>,
+  recent: Set<string>,
+): ContentTopic[] {
+  const list = TOPIC_DECKS[deck];
+  const fresh = list.filter((topic) => !usedKeys.has(topic.key) && !recent.has(topic.key));
+  const unused = list.filter((topic) => !usedKeys.has(topic.key));
+  const pool = shuffleInPlace([...(fresh.length >= count ? fresh : unused.length > 0 ? unused : list)]);
+  const out: ContentTopic[] = [];
+  for (const topic of pool) {
+    if (out.length >= count) break;
+    if (out.some((row) => row.key === topic.key)) continue;
+    out.push(topic);
+    usedKeys.add(topic.key);
+  }
+  while (out.length < count) {
+    const topic = list[out.length % list.length]!;
+    out.push(topic);
+    usedKeys.add(topic.key);
+  }
+  return out;
+}
+
+function buildBriefs(args: {
+  intent: ContentIntent;
+  count: number;
+  usedKeys: Set<string>;
+  recent: Set<string>;
+  biasStyle?: PostStyle | null;
+}): IdeaBrief[] {
+  const styles = pickStyles(args.intent, args.count, args.biasStyle);
+  return styles.map((style) => {
+    const deck = deckForStyle(style, args.intent);
+    const [topic] = pickTopics(deck, 1, args.usedKeys, args.recent);
+    return { intent: args.intent, style, topic: topic! };
+  });
+}
+
+function briefLines(briefs: IdeaBrief[]): string {
+  return briefs
+    .map((brief, index) => {
+      const meta = POST_STYLE_META[brief.style];
+      return `${index + 1}. intent=${brief.intent} style=${brief.style} (${meta.label}) topic=${brief.topic.label} — ${brief.topic.brief}
+   Style rule: ${meta.brief}`;
+    })
+    .join("\n");
 }
 
 /** Anthropic structured output only allows minItems 0 or 1, and no maxItems. */
-function ideaListSchema() {
+function ideaTextListSchema(count: number) {
   return {
     type: "array",
     minItems: 1,
-    description: "Exactly 3 distinct ideas.",
+    description: `Exactly ${count} idea strings, same order as the briefs.`,
     items: { type: "string" },
   };
 }
@@ -80,8 +176,20 @@ function pairSchema() {
     type: "object",
     additionalProperties: false,
     required: ["tip", "promo"],
-    properties: { tip: ideaListSchema(), promo: ideaListSchema() },
+    properties: {
+      tip: ideaTextListSchema(IDEAS_PER_INTENT),
+      promo: ideaTextListSchema(IDEAS_PER_INTENT),
+    },
   };
+}
+
+function readIdeaTexts(value: unknown, count: number): string[] | null {
+  if (!Array.isArray(value)) return null;
+  const out = value
+    .filter((item): item is string => typeof item === "string" && item.trim().length > 0)
+    .map((item) => item.trim());
+  if (out.length < count) return null;
+  return out.slice(0, count);
 }
 
 async function tasteLines(supabase: SupabaseClient): Promise<string> {
@@ -127,35 +235,6 @@ async function tasteLines(supabase: SupabaseClient): Promise<string> {
   return lines.join("\n");
 }
 
-async function takeTopics(
-  supabase: SupabaseClient,
-  deck: TopicDeckId,
-  count: number,
-): Promise<{ start: number; topics: ContentTopic[] }> {
-  const list = TOPIC_DECKS[deck];
-  const { data, error } = await supabase
-    .from("content_topic_cursors")
-    .select("next_index")
-    .eq("deck", deck)
-    .maybeSingle();
-  if (error) throw new Error(error.message);
-  const start = data?.next_index ?? 0;
-  const { error: writeError } = await supabase
-    .from("content_topic_cursors")
-    .upsert({ deck, next_index: start + count });
-  if (writeError) throw new Error(writeError.message);
-  const topics = Array.from({ length: count }, (_, i) => list[(start + i) % list.length]!);
-  return { start, topics };
-}
-
-async function rewindTopics(
-  supabase: SupabaseClient,
-  deck: TopicDeckId,
-  start: number,
-): Promise<void> {
-  await supabase.from("content_topic_cursors").update({ next_index: start }).eq("deck", deck);
-}
-
 async function dayHasIdeas(supabase: SupabaseClient, date: string): Promise<boolean> {
   const { count, error } = await supabase
     .from("ideation_items")
@@ -167,8 +246,36 @@ async function dayHasIdeas(supabase: SupabaseClient, date: string): Promise<bool
   return (count ?? 0) > 0;
 }
 
-function topicLine(intent: ContentIntent, topic: ContentTopic): string {
-  return `${intent}: ${topic.label} — ${topic.brief}`;
+function rowsForBriefs(
+  lane: ContentLane,
+  date: string,
+  weekStart: string,
+  requestedBy: string | null,
+  briefs: IdeaBrief[],
+  texts: string[],
+) {
+  const production = laneProduction(lane);
+  return briefs.map((brief, index) => {
+    const carousel_slides =
+      lane === "slideshow" &&
+      (brief.style === "numbered" || brief.style === "save_this" || isCoupleListTopic(brief.topic.key))
+        ? 6
+        : production.carousel_slides;
+    return {
+      idea_text: texts[index]!,
+      requested_by: requestedBy,
+      lane,
+      intent: brief.intent,
+      post_style: brief.style,
+      topic_key: brief.topic.key,
+      slot_date: date,
+      week_start: weekStart,
+      platform: production.platform,
+      format: production.format,
+      audience_group: production.audience_group,
+      carousel_slides,
+    };
+  });
 }
 
 async function generateDay(
@@ -178,126 +285,114 @@ async function generateDay(
   requestedBy: string | null,
   focus: string | null,
 ): Promise<void> {
-  const listDay = slideshowSecond(date) === "list";
-  const tips = await takeTopics(supabase, "couples_tip", 2);
-  const promos = await takeTopics(supabase, "couples_promo", listDay ? 1 : 2);
-  const listTake = listDay ? await takeTopics(supabase, "couples_list", 1) : null;
-  const venue = await takeTopics(supabase, "venue_promo", 1);
-  const taken: Array<[TopicDeckId, number]> = [
-    ["couples_tip", tips.start],
-    ["couples_promo", promos.start],
-    ["venue_promo", venue.start],
-  ];
-  if (listTake) taken.push(["couples_list", listTake.start]);
+  const recent = await recentTopicKeys(supabase);
+  const usedKeys = new Set<string>();
+  const listBias = slideshowSecond(date) === "list" ? ("numbered" as const) : null;
 
-  const topics: DayTopics = {
-    slideshow: { tip: tips.topics[0]!, promo: (listTake ?? promos).topics[0]! },
-    pin: { tip: tips.topics[1]!, promo: listDay ? promos.topics[0]! : promos.topics[1]! },
-    linkedin: { intent: "promo", topic: venue.topics[0]! },
-  };
+  const slideshowTip = buildBriefs({
+    intent: "tip",
+    count: IDEAS_PER_INTENT,
+    usedKeys,
+    recent,
+  });
+  const slideshowPromo = buildBriefs({
+    intent: "promo",
+    count: IDEAS_PER_INTENT,
+    usedKeys,
+    recent,
+    biasStyle: listBias,
+  });
+  const pinTip = buildBriefs({
+    intent: "tip",
+    count: IDEAS_PER_INTENT,
+    usedKeys,
+    recent,
+  });
+  const pinPromo = buildBriefs({
+    intent: "promo",
+    count: IDEAS_PER_INTENT,
+    usedKeys,
+    recent,
+  });
+  // LinkedIn stays product promos for venues/planners — random venue topics, promo style.
+  const linkedinTopics = pickTopics("venue_promo", IDEAS_PER_INTENT, usedKeys, recent);
+  const linkedin: IdeaBrief[] = linkedinTopics.map((topic) => ({
+    intent: "promo",
+    style: "promo",
+    topic,
+  }));
 
-  try {
-    const taste = await tasteLines(supabase);
-    const focusLine = focus ? `\nBias every idea toward this focus: ${focus}` : "";
-    const user = `Day: ${formatDayHeading(date)}.
-Write 3 distinct hooks for each topic below. Same topic, different angles. Do not swap topics between lanes.
+  const taste = await tasteLines(supabase);
+  const focusLine = focus ? `\nBias every idea toward this focus: ${focus}` : "";
+  const user = `Day: ${formatDayHeading(date)}.
+Write exactly one hook per brief, same order. Different topics and styles on purpose — do not collapse them.
 
-Slideshow (couples${listDay ? ", 6 slides: a cover plus 5" : ", about 5 slides"})
-- ${topicLine("tip", topics.slideshow.tip)}
-- ${listDay ? `list (return these in promo): ${topics.slideshow.promo.label} — ${topics.slideshow.promo.brief}` : topicLine("promo", topics.slideshow.promo)}
-${listDay ? "This slideshow is a list, not a pain-then-feature promo. Each hook is a short paragraph with the five items, the screen on each item that has one, and one light First Look mention." : ""}
+Slideshow (couples, TikTok carousel)
+Tip briefs:
+${briefLines(slideshowTip)}
+
+Promo briefs:
+${briefLines(slideshowPromo)}
 
 Pin (couples, one image)
-- ${topicLine("tip", topics.pin.tip)}
-- ${topicLine("promo", topics.pin.promo)}
+Tip briefs:
+${briefLines(pinTip)}
 
-LinkedIn (venues and planners, one square image, promo only)
-- ${topicLine("promo", topics.linkedin.topic)}
-The reader is a venue or planner. Name the pain, then how First Look handles it. When the topic is the couple working in the book, the post is still to the venue or planner.
+Promo briefs:
+${briefLines(pinPromo)}
+
+LinkedIn (venues and planners, one square image)
+${briefLines(linkedin)}
+The reader is a venue or planner.
 ${focusLine}
 ${taste ? `\n${taste}` : ""}`;
 
-    const parsed = await callClaudeJson({
-      system: SYSTEM_PROMPT,
-      user,
-      maxTokens: 4096,
-      jsonSchema: {
-        type: "object",
-        additionalProperties: false,
-        required: ["slideshow", "pin", "linkedin"],
-        properties: {
-          slideshow: pairSchema(),
-          pin: pairSchema(),
-          linkedin: ideaListSchema(),
-        },
+  const parsed = await callClaudeJson({
+    system: SYSTEM_PROMPT,
+    user,
+    maxTokens: 6144,
+    jsonSchema: {
+      type: "object",
+      additionalProperties: false,
+      required: ["slideshow", "pin", "linkedin"],
+      properties: {
+        slideshow: pairSchema(),
+        pin: pairSchema(),
+        linkedin: ideaTextListSchema(IDEAS_PER_INTENT),
       },
-    });
+    },
+  });
 
-    if (!isRecord(parsed)) throw new Error("The model returned an unexpected response.");
-    const slideshow = readPair(parsed.slideshow);
-    const pin = readPair(parsed.pin);
-    const linkedin = threeStrings(parsed.linkedin);
-    if (!slideshow || !pin || !linkedin) {
-      throw new Error("The model left a lane short.");
-    }
-
-    const rows = [
-      ...rowsForLane("slideshow", date, weekStart, requestedBy, topics.slideshow.tip, slideshow.tip, "tip"),
-      ...rowsForLane("slideshow", date, weekStart, requestedBy, topics.slideshow.promo, slideshow.promo, "promo"),
-      ...rowsForLane("pin", date, weekStart, requestedBy, topics.pin.tip, pin.tip, "tip"),
-      ...rowsForLane("pin", date, weekStart, requestedBy, topics.pin.promo, pin.promo, "promo"),
-      ...rowsForLane(
-        "linkedin",
-        date,
-        weekStart,
-        requestedBy,
-        topics.linkedin.topic,
-        linkedin,
-        topics.linkedin.intent,
-      ),
-    ];
-
-    const { error } = await supabase.from("ideation_items").insert(rows);
-    if (error) throw new Error(error.message);
-  } catch (err) {
-    await Promise.all(taken.map(([deck, start]) => rewindTopics(supabase, deck, start)));
-    throw err;
+  if (!isRecord(parsed)) throw new Error("The model returned an unexpected response.");
+  if (!isRecord(parsed.slideshow) || !isRecord(parsed.pin)) {
+    throw new Error("The model left a lane short.");
   }
-}
 
-function readPair(value: unknown): { tip: string[]; promo: string[] } | null {
-  if (!isRecord(value)) return null;
-  const tip = threeStrings(value.tip);
-  const promo = threeStrings(value.promo);
-  if (!tip || !promo) return null;
-  return { tip, promo };
-}
+  const slideshowTipTexts = readIdeaTexts(parsed.slideshow.tip, IDEAS_PER_INTENT);
+  const slideshowPromoTexts = readIdeaTexts(parsed.slideshow.promo, IDEAS_PER_INTENT);
+  const pinTipTexts = readIdeaTexts(parsed.pin.tip, IDEAS_PER_INTENT);
+  const pinPromoTexts = readIdeaTexts(parsed.pin.promo, IDEAS_PER_INTENT);
+  const linkedinTexts = readIdeaTexts(parsed.linkedin, IDEAS_PER_INTENT);
+  if (
+    !slideshowTipTexts ||
+    !slideshowPromoTexts ||
+    !pinTipTexts ||
+    !pinPromoTexts ||
+    !linkedinTexts
+  ) {
+    throw new Error("The model left a lane short.");
+  }
 
-function rowsForLane(
-  lane: ContentLane,
-  date: string,
-  weekStart: string,
-  requestedBy: string | null,
-  topic: ContentTopic,
-  ideas: string[],
-  intent: ContentIntent,
-) {
-  const production = laneProduction(lane);
-  const carousel_slides =
-    lane === "slideshow" && isCoupleListTopic(topic.key) ? 6 : production.carousel_slides;
-  return ideas.map((idea_text) => ({
-    idea_text,
-    requested_by: requestedBy,
-    lane,
-    intent,
-    topic_key: topic.key,
-    slot_date: date,
-    week_start: weekStart,
-    platform: production.platform,
-    format: production.format,
-    audience_group: production.audience_group,
-    carousel_slides,
-  }));
+  const rows = [
+    ...rowsForBriefs("slideshow", date, weekStart, requestedBy, slideshowTip, slideshowTipTexts),
+    ...rowsForBriefs("slideshow", date, weekStart, requestedBy, slideshowPromo, slideshowPromoTexts),
+    ...rowsForBriefs("pin", date, weekStart, requestedBy, pinTip, pinTipTexts),
+    ...rowsForBriefs("pin", date, weekStart, requestedBy, pinPromo, pinPromoTexts),
+    ...rowsForBriefs("linkedin", date, weekStart, requestedBy, linkedin, linkedinTexts),
+  ];
+
+  const { error } = await supabase.from("ideation_items").insert(rows);
+  if (error) throw new Error(error.message);
 }
 
 async function generateLane(
@@ -311,112 +406,99 @@ async function generateLane(
   if (lane === "video") {
     throw new Error("Videos are assigned on the schedule.");
   }
-  const listDay = lane === "slideshow" && slideshowSecond(date) === "list";
-  const tipTake =
-    lane === "linkedin"
-      ? null
-      : await takeTopics(supabase, "couples_tip", 1);
-  const promoTake =
-    lane === "linkedin" || listDay
-      ? null
-      : await takeTopics(supabase, "couples_promo", 1);
-  const listTake = listDay ? await takeTopics(supabase, "couples_list", 1) : null;
-  const venueTake =
-    lane === "linkedin" ? await takeTopics(supabase, "venue_promo", 1) : null;
-  const rewinds: Array<[TopicDeckId, number]> = [];
-  if (tipTake) rewinds.push(["couples_tip", tipTake.start]);
-  if (promoTake) rewinds.push(["couples_promo", promoTake.start]);
-  if (listTake) rewinds.push(["couples_list", listTake.start]);
-  if (venueTake) rewinds.push(["venue_promo", venueTake.start]);
 
-  try {
-    const taste = await tasteLines(supabase);
-    const focusLine = focus ? `\nBias every idea toward this focus: ${focus}` : "";
-    let user: string;
-    let jsonSchema: Record<string, unknown>;
+  const recent = await recentTopicKeys(supabase);
+  const usedKeys = new Set<string>();
+  const taste = await tasteLines(supabase);
+  const focusLine = focus ? `\nBias every idea toward this focus: ${focus}` : "";
 
-    if (lane === "linkedin") {
-      const topic = venueTake!.topics[0]!;
-      user = `Day: ${formatDayHeading(date)}.
-Write 3 LinkedIn ideas for venues and planners. Each one becomes a post with one square image. Intent: promo.
-Topic: ${topicLine("promo", topic)}
-The reader is a venue or planner. Name the pain, then how First Look handles it. When the topic is the couple working in the book, the post is still to the venue or planner.
+  let rows: ReturnType<typeof rowsForBriefs>;
+
+  if (lane === "linkedin") {
+    const briefs: IdeaBrief[] = pickTopics("venue_promo", IDEAS_PER_INTENT, usedKeys, recent).map(
+      (topic) => ({ intent: "promo", style: "promo" as PostStyle, topic }),
+    );
+    const user = `Day: ${formatDayHeading(date)}. Lane: LinkedIn.
+Write exactly one hook per brief for venues and planners. Each becomes a post with one square image.
+${briefLines(briefs)}
+The reader is a venue or planner.
 ${focusLine}
 ${taste ? `\n${taste}` : ""}`;
-      jsonSchema = {
-        type: "object",
-        additionalProperties: false,
-        required: ["ideas"],
-        properties: {
-          ideas: ideaListSchema(),
-        },
-      };
-    } else {
-      const tip = tipTake!.topics[0]!;
-      const second = (listTake ?? promoTake)!.topics[0]!;
-      user = listTake
-        ? `Day: ${formatDayHeading(date)}. Lane: ${lane}.
-Write 3 tip hooks and 3 list hooks. Put the list hooks in promo. Each list hook is a short paragraph: the cover, the five pieces of advice, which real screen goes on which item, and one light mention of First Look. Not a pain-then-feature promo.
-- ${topicLine("tip", tip)}
-- list: ${second.label} — ${second.brief}
-${focusLine}
-${taste ? `\n${taste}` : ""}`
-        : `Day: ${formatDayHeading(date)}. Lane: ${lane}.
-Write 3 tip hooks and 3 promo hooks. Same topic inside each group, different angles.
-- ${topicLine("tip", tip)}
-- ${topicLine("promo", second)}
-${focusLine}
-${taste ? `\n${taste}` : ""}`;
-      jsonSchema = pairSchema();
-    }
-
     const parsed = await callClaudeJson({
       system: SYSTEM_PROMPT,
       user,
-      maxTokens: listTake ? 4096 : 2048,
-      jsonSchema,
+      maxTokens: 2048,
+      jsonSchema: {
+        type: "object",
+        additionalProperties: false,
+        required: ["ideas"],
+        properties: { ideas: ideaTextListSchema(IDEAS_PER_INTENT) },
+      },
     });
     if (!isRecord(parsed)) throw new Error("The model returned an unexpected response.");
+    const texts = readIdeaTexts(parsed.ideas, IDEAS_PER_INTENT);
+    if (!texts) throw new Error("The model left this lane short.");
+    rows = rowsForBriefs(lane, date, weekStart, requestedBy, briefs, texts);
+  } else {
+    const listBias =
+      lane === "slideshow" && slideshowSecond(date) === "list" ? ("numbered" as const) : null;
+    const tipBriefs = buildBriefs({
+      intent: "tip",
+      count: IDEAS_PER_INTENT,
+      usedKeys,
+      recent,
+    });
+    const promoBriefs = buildBriefs({
+      intent: "promo",
+      count: IDEAS_PER_INTENT,
+      usedKeys,
+      recent,
+      biasStyle: listBias,
+    });
+    const user = `Day: ${formatDayHeading(date)}. Lane: ${lane}.
+Write exactly one hook per brief, same order. Different topics and styles on purpose.
 
-    let rows;
-    if (lane === "linkedin") {
-      const ideas = threeStrings(parsed.ideas);
-      if (!ideas) throw new Error("The model left this lane short.");
-      rows = rowsForLane(lane, date, weekStart, requestedBy, venueTake!.topics[0]!, ideas, "promo");
-    } else {
-      const pair = readPair(parsed);
-      if (!pair) throw new Error("The model left this lane short.");
-      rows = [
-        ...rowsForLane(lane, date, weekStart, requestedBy, tipTake!.topics[0]!, pair.tip, "tip"),
-        ...rowsForLane(lane, date, weekStart, requestedBy, (listTake ?? promoTake)!.topics[0]!, pair.promo, "promo"),
-      ];
-    }
+Tip briefs:
+${briefLines(tipBriefs)}
 
-    const { data: inserted, error } = await supabase
-      .from("ideation_items")
-      .insert(rows)
-      .select("id");
-    if (error) throw new Error(error.message);
+Promo briefs:
+${briefLines(promoBriefs)}
+${focusLine}
+${taste ? `\n${taste}` : ""}`;
+    const parsed = await callClaudeJson({
+      system: SYSTEM_PROMPT,
+      user,
+      maxTokens: 4096,
+      jsonSchema: pairSchema(),
+    });
+    if (!isRecord(parsed)) throw new Error("The model returned an unexpected response.");
+    const tipTexts = readIdeaTexts(parsed.tip, IDEAS_PER_INTENT);
+    const promoTexts = readIdeaTexts(parsed.promo, IDEAS_PER_INTENT);
+    if (!tipTexts || !promoTexts) throw new Error("The model left this lane short.");
+    rows = [
+      ...rowsForBriefs(lane, date, weekStart, requestedBy, tipBriefs, tipTexts),
+      ...rowsForBriefs(lane, date, weekStart, requestedBy, promoBriefs, promoTexts),
+    ];
+  }
 
-    const keep = new Set((inserted ?? []).map((row) => row.id as string));
-    const { data: stale, error: staleError } = await supabase
-      .from("ideation_items")
-      .select("id")
-      .eq("slot_date", date)
-      .eq("lane", lane)
-      .is("rating", null)
-      .is("used_at", null);
-    if (staleError) throw new Error(staleError.message);
-    const drop = (stale ?? [])
-      .map((row) => row.id as string)
-      .filter((id) => !keep.has(id));
-    if (drop.length > 0) {
-      const { error: deleteError } = await supabase.from("ideation_items").delete().in("id", drop);
-      if (deleteError) throw new Error(deleteError.message);
-    }
-  } catch (err) {
-    await Promise.all(rewinds.map(([deck, start]) => rewindTopics(supabase, deck, start)));
-    throw err;
+  const { data: inserted, error } = await supabase.from("ideation_items").insert(rows).select("id");
+  if (error) throw new Error(error.message);
+
+  const keep = new Set((inserted ?? []).map((row) => row.id as string));
+  const { data: stale, error: staleError } = await supabase
+    .from("ideation_items")
+    .select("id")
+    .eq("slot_date", date)
+    .eq("lane", lane)
+    .is("rating", null)
+    .is("used_at", null);
+  if (staleError) throw new Error(staleError.message);
+  const drop = (stale ?? [])
+    .map((row) => row.id as string)
+    .filter((id) => !keep.has(id));
+  if (drop.length > 0) {
+    const { error: deleteError } = await supabase.from("ideation_items").delete().in("id", drop);
+    if (deleteError) throw new Error(deleteError.message);
   }
 }
 

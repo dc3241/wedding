@@ -92,14 +92,14 @@ export async function getIdeationItems(
 ): Promise<IdeationItem[]> {
   const { data } = await supabase
     .from("ideation_items")
-    .select("id, idea_text, requested_by, rating, comment, platform, format, audience_group, carousel_slides, used_at, created_at, lane, intent, topic_key, slot_date, week_start")
+    .select("id, idea_text, requested_by, rating, comment, platform, format, audience_group, carousel_slides, used_at, created_at, lane, intent, post_style, topic_key, slot_date, week_start")
     .is("used_at", null)
     .order("created_at", { ascending: false });
   return (data ?? []) as IdeationItem[];
 }
 
 const QUEUE_SELECT =
-  "id, platform, pillar, content_type, prompt, image_paths, caption, status, week_of, kie_task_id, kie_task_ids, format, audience_group, carousel_slides, generated_by, approved_at, denied_at, created_at, updated_at";
+  "id, platform, pillar, content_type, prompt, image_paths, caption, status, week_of, kie_task_id, kie_task_ids, format, audience_group, carousel_slides, post_style, generated_by, approved_at, denied_at, created_at, updated_at";
 
 type QueueRow = Omit<ContentQueueItem, "image_urls">;
 

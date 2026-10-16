@@ -153,6 +153,8 @@ export type SlideSpec = {
   headline: string;
   support?: string;
   cta?: boolean;
+  /** Button label when cta is true. Defaults to Start free in the renderer. */
+  ctaLabel?: string;
   surface?: string | null;
   /**
    * Product-shot slug drawn as a cropped screenshot on a text layout.
