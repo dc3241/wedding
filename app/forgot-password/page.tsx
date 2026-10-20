@@ -6,10 +6,12 @@ import { Card } from "@/components/ui/card";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { Input } from "@/components/ui/input";
 import { Wordmark } from "@/components/ui/topbar";
+import { noIndexRobots } from "@/lib/seo";
 
 export const metadata: Metadata = {
   title: "Forgot password",
   description: "Reset the password for your First Look account.",
+  ...noIndexRobots,
 };
 
 type SearchParams = {

@@ -1,7 +1,9 @@
-"use client";
-
 import { DemoCta } from "@/components/demo/demo-cta";
 import { CoupleCollaboration } from "@/components/marketing/couple-collaboration";
+import {
+  FeatureCardGrid,
+  type FeatureCard,
+} from "@/components/marketing/feature-card-grid";
 import {
   CoupleBudgetPreview,
   CoupleChecklistPreview,
@@ -15,18 +17,10 @@ import {
 import { WhiteLabelShowcase } from "@/components/marketing/white-label-showcase";
 import { ButtonLink } from "@/components/ui/button";
 import { Eyebrow } from "@/components/ui/eyebrow";
-import { cn } from "@/lib/cn";
 import Link from "next/link";
-import { useEffect, useState, type ComponentType, type ReactNode } from "react";
+import type { ReactNode } from "react";
 
-type Audience = "couples" | "planners";
-
-const COUPLES_CARDS: {
-  title: string;
-  body: string;
-  icon: ComponentType;
-  Preview: ComponentType;
-}[] = [
+const COUPLES_CARDS = [
   {
     title: "A plan ready on day one",
     body: "Answer a few questions and get a full checklist, budget, and vendor shortlist built around your date and budget — automatically, and yours to edit.",
@@ -51,14 +45,9 @@ const COUPLES_CARDS: {
     icon: BudgetIcon,
     Preview: CoupleBudgetPreview,
   },
-];
+] satisfies FeatureCard[];
 
-const PLANNERS_CARDS: {
-  title: string;
-  body: string;
-  icon: ComponentType;
-  Preview: ComponentType;
-}[] = [
+const PLANNERS_CARDS = [
   {
     title: "All your weddings in one book",
     body: "Every client gets their own project. Switch between weddings without losing your place or mixing up details.",
@@ -78,197 +67,95 @@ const PLANNERS_CARDS: {
     Preview: TeamPreview,
   },
   {
-    title: "Stale leads flagged. Signed work filed.",
-    body: "Leads untouched for two weeks get marked automatically. An accepted proposal becomes a printable contract without leaving the app.",
+    title: "Contract signed. Invoice paid.",
+    body: "Leads untouched for two weeks get flagged automatically. An accepted proposal becomes a signed contract and an invoice — without leaving the app.",
     icon: StaleIcon,
     Preview: StalePreview,
   },
-];
-
-function hashToAudience(hash: string): Audience | null {
-  // Normalize "#couples#couples" → "couples" if a prior nav ever doubled the fragment.
-  const id = hash.replace(/^#/, "").split("#")[0];
-  if (id === "planners" || id === "venues") return "planners";
-  if (id === "couples") return "couples";
-  return null;
-}
-
-/** Set a clean single-hash URL. Never append to an existing fragment. */
-function setAudienceHash(next: Audience) {
-  const id = next === "planners" ? "planners" : "couples";
-  const nextHash = `#${id}`;
-  if (window.location.hash === nextHash) return;
-  const url = `${window.location.pathname}${window.location.search}${nextHash}`;
-  window.history.replaceState(null, "", url);
-}
+] satisfies FeatureCard[];
 
 export function AudienceSection() {
-  const [audience, setAudience] = useState<Audience>("planners");
-
-  useEffect(() => {
-    function syncFromHash() {
-      const next = hashToAudience(window.location.hash);
-      if (next) setAudience(next);
-    }
-    syncFromHash();
-    window.addEventListener("hashchange", syncFromHash);
-    return () => window.removeEventListener("hashchange", syncFromHash);
-  }, []);
-
-  function selectAudience(next: Audience) {
-    setAudience(next);
-    setAudienceHash(next);
-  }
-
-  const isCouples = audience === "couples";
-  const cards = isCouples ? COUPLES_CARDS : PLANNERS_CARDS;
-
   return (
-    <section
-      id="audience"
-      className="relative mx-auto max-w-6xl scroll-mt-24 px-6 py-14 md:px-10 md:py-16"
-    >
-      {/* Scroll targets for topbar hashes — 1px so the browser will scroll */}
-      <span
-        id="couples"
-        className="pointer-events-none absolute top-0 left-0 h-px w-px scroll-mt-24"
-        aria-hidden
-      />
-      <span
+    <>
+      <section
         id="planners"
-        className="pointer-events-none absolute top-0 left-0 h-px w-px scroll-mt-24"
-        aria-hidden
-      />
-      <span
-        id="venues"
-        className="pointer-events-none absolute top-0 left-0 h-px w-px scroll-mt-24"
-        aria-hidden
-      />
-
-      <div className="mb-10 flex flex-col items-center text-center">
-        <div
-          role="tablist"
-          aria-label="Audience"
-          className="relative inline-grid grid-cols-2 rounded-[var(--radius-pill)] bg-surface p-1 shadow-raised"
-        >
-          <span
-            aria-hidden
-            className={cn(
-              "pointer-events-none absolute inset-y-1 left-1 w-[calc(50%-4px)] rounded-[var(--radius-pill)] bg-well shadow-recessed",
-              "motion-safe:transition-transform motion-safe:duration-200 motion-safe:ease-out",
-              "motion-reduce:transition-none",
-              isCouples ? "translate-x-0" : "translate-x-full",
-            )}
-          />
-          <button
-            type="button"
-            role="tab"
-            id="audience-tab-couples"
-            aria-selected={isCouples}
-            aria-controls="audience-panel"
-            tabIndex={isCouples ? 0 : -1}
-            onClick={() => selectAudience("couples")}
-            className={cn(
-              "relative z-10 cursor-pointer rounded-[var(--radius-pill)] px-5 py-2.5 text-[14px] font-semibold transition-colors duration-150",
-              "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
-              isCouples ? "text-ink" : "text-muted hover:text-ink",
-            )}
-          >
-            For couples
-          </button>
-          <button
-            type="button"
-            role="tab"
-            id="audience-tab-planners"
-            aria-selected={!isCouples}
-            aria-controls="audience-panel"
-            tabIndex={!isCouples ? 0 : -1}
-            onClick={() => selectAudience("planners")}
-            className={cn(
-              "relative z-10 cursor-pointer rounded-[var(--radius-pill)] px-3 py-2.5 text-[13px] font-semibold whitespace-nowrap transition-colors duration-150 sm:px-5 sm:text-[14px]",
-              "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
-              !isCouples ? "text-ink" : "text-muted hover:text-ink",
-            )}
-          >
-            For planners & venues
-          </button>
-        </div>
-      </div>
-
-      <div
-        role="tabpanel"
-        id="audience-panel"
-        aria-labelledby={
-          isCouples ? "audience-tab-couples" : "audience-tab-planners"
-        }
+        className="relative mx-auto max-w-6xl scroll-mt-24 px-6 py-14 md:px-10 md:py-16"
       >
+        <span
+          id="venues"
+          className="pointer-events-none absolute top-0 left-0 h-px w-px scroll-mt-24"
+          aria-hidden
+        />
         <div className="mx-auto mb-9 max-w-[52ch] text-center">
-          <Eyebrow className="mb-4 block">
-            {isCouples ? "For couples" : "For planners & venues"}
-          </Eyebrow>
+          <Eyebrow className="mb-4 block">For planners &amp; venues</Eyebrow>
           <h2 className="text-[32px] font-extrabold tracking-[-0.03em] text-ink md:text-[42px]">
-            {isCouples
-              ? "Your wedding, planned — not pieced together."
-              : "From first inquiry to signed contract."}
+            The wedding planning CRM that doesn&apos;t stop at the contract.
           </h2>
           <p className="mt-3 text-center text-[15px] leading-relaxed text-muted md:text-[16px]">
-            {isCouples
-              ? 'From the day you sign up to the day you say "I do" — no juggling five different tools.'
-              : "Capture the lead, work the pipeline, file the contract, then invite the couple into their own wedding — one book for the whole job."}
+            Capture the lead, work the pipeline, collect payment, then invite
+            the couple into their own wedding — one book for the whole job.
           </p>
-          <DemoCta kind={isCouples ? "personal" : "business"} />
+          <DemoCta kind="business" />
         </div>
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5">
-          {cards.map((card) => {
-            const Icon = card.icon;
-            const Preview = "Preview" in card ? card.Preview : null;
-            return (
-              <article
-                key={card.title}
-                className="marketing-card-hover flex h-full flex-col rounded-[var(--radius-card)] border border-ring bg-surface p-6 shadow-raised md:p-7"
-              >
-                <div className="mb-4 flex size-10 items-center justify-center rounded-[var(--radius-inner)] bg-accent-wash text-accent">
-                  <Icon />
-                </div>
-                <h3 className="text-[17px] font-extrabold tracking-[-0.02em] text-ink md:text-[19px]">
-                  {card.title}
-                </h3>
-                <p className="mt-2 flex-1 text-[14px] leading-relaxed text-muted md:text-[15px]">
-                  {card.body}
-                </p>
-                {Preview ? (
-                  <div className="mt-5">
-                    <Preview />
-                  </div>
-                ) : null}
-              </article>
-            );
-          })}
-        </div>
-
-        {!isCouples ? <VenueCallout /> : null}
+        <FeatureCardGrid cards={PLANNERS_CARDS} />
+        <VenueCallout />
 
         <div className="mt-9 flex flex-col items-center text-center">
           <ButtonLink
-            href="/login"
+            href="/for-planners"
             variant="primary"
             className="px-6 py-3.5 text-[15px]"
           >
-            {isCouples ? "Start planning — free" : "Get started"}
+            See planner CRM
           </ButtonLink>
           <p className="mt-3 text-[13px] text-muted">
-            {isCouples
-              ? "No card required. Upgrade any time."
-              : "Built for solo planners and full agencies alike."}
+            Built for solo planners and full agencies alike.{" "}
+            <Link
+              href="/for-venues"
+              className="font-semibold text-accent underline-offset-2 hover:underline"
+            >
+              Running a venue? →
+            </Link>
           </p>
         </div>
-      </div>
 
-      <WhiteLabelShowcase className="mt-14 md:mt-16" />
+        <WhiteLabelShowcase className="mt-14 md:mt-16" />
+        <CoupleCollaboration className="mt-14 md:mt-16" />
+      </section>
 
-      <CoupleCollaboration className="mt-14 md:mt-16" />
-    </section>
+      <section
+        id="couples"
+        className="mx-auto max-w-6xl scroll-mt-24 px-6 py-14 md:px-10 md:py-16"
+      >
+        <div className="mx-auto mb-9 max-w-[52ch] text-center">
+          <Eyebrow className="mb-4 block">For couples</Eyebrow>
+          <h2 className="text-[32px] font-extrabold tracking-[-0.03em] text-ink md:text-[42px]">
+            Planning your own wedding?
+          </h2>
+          <p className="mt-3 text-center text-[15px] leading-relaxed text-muted md:text-[16px]">
+            From the day you sign up to the day you say &ldquo;I do&rdquo; —
+            checklist, budget, guests, and a site, without juggling five tools.
+          </p>
+          <DemoCta kind="personal" />
+        </div>
+
+        <FeatureCardGrid cards={COUPLES_CARDS} />
+
+        <div className="mt-9 flex flex-col items-center text-center">
+          <ButtonLink
+            href="/for-couples"
+            variant="primary"
+            className="px-6 py-3.5 text-[15px]"
+          >
+            See the couple workspace
+          </ButtonLink>
+          <p className="mt-3 text-[13px] text-muted">
+            No card required. Upgrade any time.
+          </p>
+        </div>
+      </section>
+    </>
   );
 }
 
@@ -280,18 +167,17 @@ function UnifyChip({ children }: { children: ReactNode }) {
   );
 }
 
-/** VENUE-03c: subordinate callout inside the planners tab — not a 5th feature card. */
 function VenueCallout() {
   return (
     <aside className="mt-5 rounded-[var(--radius-card)] border border-ring bg-surface px-5 py-5 shadow-raised md:px-6 md:py-5">
       <Eyebrow className="mb-2 block">For venues</Eyebrow>
       <h3 className="text-[17px] font-extrabold tracking-[-0.02em] text-ink md:text-[19px]">
-        Running a venue with your own planning team?
+        Same CRM. Your brand on every screen.
       </h3>
       <p className="mt-2 max-w-[62ch] text-[14px] leading-relaxed text-muted md:text-[15px]">
-        The same inquiry board your planners use — plus a seat for everyone on
-        staff, and your venue&apos;s branding on every screen. Checklist to seating
-        chart, under your name.
+        Venues and planners share the same pipeline — inquiry to payment to
+        workbook. The difference is white-label: a seat for everyone on staff,
+        and your venue&apos;s branding on every screen.
       </p>
       <div className="mt-4 flex flex-wrap gap-2">
         <UnifyChip>Team seats</UnifyChip>
@@ -300,10 +186,10 @@ function VenueCallout() {
       </div>
       <p className="mt-4">
         <Link
-          href="/pricing"
+          href="/for-venues"
           className="text-[14px] font-semibold text-accent underline-offset-2 hover:underline"
         >
-          See Venue pricing →
+          See venue CRM →
         </Link>
       </p>
     </aside>

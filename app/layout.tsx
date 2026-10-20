@@ -6,6 +6,7 @@ import {
   Hanken_Grotesk,
 } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
+import { SITE_NAME, SITE_URL } from "@/lib/seo";
 import "./globals.css";
 
 const figtree = Figtree({
@@ -32,27 +33,35 @@ const greatVibes = Great_Vibes({
   weight: "400",
 });
 
+const defaultTitle = "Wedding Planning CRM";
+const defaultDescription =
+  "First Look is a wedding planning CRM for planners and venues: lead, payment, and the wedding workbook in one platform. Couples can plan here too.";
+
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
   title: {
-    default: "First Look — Wedding planning for couples, planners, and venues",
-    template: "%s — First Look",
+    default: `${defaultTitle} — ${SITE_NAME}`,
+    template: `%s — ${SITE_NAME}`,
   },
-  description:
-    "Couples plan the day in one workspace. Planners and venues capture inquiries, run a pipeline, and turn proposals into signed contracts — then invite the couple into the same wedding.",
+  description: defaultDescription,
   openGraph: {
-    title: "First Look — Wedding planning for couples, planners, and venues",
-    description:
-      "Couples plan the day in one workspace. Planners and venues capture inquiries, run a pipeline, and turn proposals into signed contracts — then invite the couple into the same wedding.",
-    url: "https://usefirstlook.app",
-    siteName: "First Look",
+    title: `${defaultTitle} — ${SITE_NAME}`,
+    description: defaultDescription,
+    url: "/",
+    siteName: SITE_NAME,
     type: "website",
     images: [
       {
-        url: "https://usefirstlook.app/og-image.png",
+        url: "/og-image.png",
         width: 1200,
         height: 630,
       },
     ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: `${defaultTitle} — ${SITE_NAME}`,
+    description: defaultDescription,
   },
   other: {
     "p:domain_verify": "f9a920c89421ac33d1e95bb6074c7b07",

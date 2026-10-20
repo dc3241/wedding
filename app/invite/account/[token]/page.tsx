@@ -8,12 +8,14 @@ import { Wordmark } from "@/components/ui/topbar";
 import { getPostLoginPath } from "@/lib/post-login-path";
 import { acceptAccountInvitation } from "@/lib/team/actions";
 import { TEAM_BUSINESS_ONLY_MESSAGE } from "@/lib/team/types";
+import { noIndexRobots } from "@/lib/seo";
 import { createClient } from "@/utils/supabase/server";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Team invitation",
   description: "You've been invited to join a planner team on First Look.",
+  ...noIndexRobots,
 };
 
 const ERROR_COPY: Record<string, string> = {

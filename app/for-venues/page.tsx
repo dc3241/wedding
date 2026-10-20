@@ -1,11 +1,13 @@
 import { ForVenuesPage } from "@/components/marketing/for-venues-page";
+import { pageMetadata } from "@/lib/seo";
 import type { Metadata } from "next";
 
-export const metadata: Metadata = {
-  title: "For venues — First Look",
+export const metadata: Metadata = pageMetadata({
+  title: "Wedding Venue CRM",
   description:
-    "CRM, team seats, and a fully white-labeled workspace — automated, so your team spends less time on admin and more time walking couples through your space.",
-};
+    "A wedding venue CRM with white-label branding. Go from inquiry to payment to the couple's workbook — under your venue's name, not ours.",
+  path: "/for-venues",
+});
 
 export default function ForVenuesRoute() {
   return <ForVenuesPage />;

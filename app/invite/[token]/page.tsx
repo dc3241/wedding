@@ -6,12 +6,14 @@ import { Card } from "@/components/ui/card";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { Wordmark } from "@/components/ui/topbar";
 import { acceptProjectInvitation } from "@/lib/invitations/actions";
+import { noIndexRobots } from "@/lib/seo";
 import { createClient } from "@/utils/supabase/server";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Invitation",
   description: "You've been invited to plan a wedding on First Look.",
+  ...noIndexRobots,
 };
 
 const ERROR_COPY: Record<string, string> = {

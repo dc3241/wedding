@@ -1,7 +1,13 @@
 import { notFound, redirect } from "next/navigation";
+import type { Metadata } from "next";
 import { AdminShell } from "@/components/admin/admin-shell";
 import { checkIsAdmin } from "@/lib/admin/is-admin";
+import { noIndexRobots } from "@/lib/seo";
 import { createClient } from "@/utils/supabase/server";
+
+export const metadata: Metadata = {
+  ...noIndexRobots,
+};
 
 /**
  * ADMIN-00 gate. Outside app/(app) on purpose — it must never inherit

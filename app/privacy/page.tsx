@@ -1,14 +1,16 @@
 import { MarketingFooter } from "@/components/marketing/marketing-footer";
 import { MarketingTopbar } from "@/components/marketing/marketing-topbar";
 import { Eyebrow } from "@/components/ui/eyebrow";
+import { pageMetadata } from "@/lib/seo";
 import type { Metadata } from "next";
 import Link from "next/link";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "Privacy Policy",
   description:
     "How First Look collects, uses, and protects your information — including Gmail connection for vendor outreach.",
-};
+  path: "/privacy",
+});
 
 const SUPPORT_EMAIL = "hello@usefirstlook.app";
 const EFFECTIVE_DATE = "September 21, 2026";

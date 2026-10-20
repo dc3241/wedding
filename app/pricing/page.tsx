@@ -1,15 +1,18 @@
+import { MarketingFaq } from "@/components/marketing/marketing-faq";
 import { MarketingFooter } from "@/components/marketing/marketing-footer";
 import { MarketingTopbar } from "@/components/marketing/marketing-topbar";
 import { PricingPlans } from "@/components/marketing/pricing-plans";
 import { ButtonLink } from "@/components/ui/button";
 import { Eyebrow } from "@/components/ui/eyebrow";
+import { pageMetadata } from "@/lib/seo";
 import type { Metadata } from "next";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "Pricing",
   description:
-    "Couples open the workspace on a 7-day trial, then the Couple plan. Planners run their whole book from one account.",
-};
+    "Wedding planning CRM pricing for planners and venues, plus a couple workspace. 7-day free trial, no card to start.",
+  path: "/pricing",
+});
 
 const FAQS = [
   {
@@ -53,24 +56,7 @@ export default function PricingPage() {
           </div>
         </section>
 
-        <section className="mx-auto max-w-3xl px-6 py-14 md:px-10 md:py-20">
-          <h2 className="text-center text-[22px] font-extrabold tracking-[-0.02em] text-ink md:text-[24px]">
-            Questions
-          </h2>
-          <dl className="mt-8 space-y-6">
-            {FAQS.map((faq) => (
-              <div
-                key={faq.q}
-                className="rounded-[var(--radius-inner)] bg-well px-5 py-4 shadow-recessed"
-              >
-                <dt className="text-[15px] font-semibold text-ink">{faq.q}</dt>
-                <dd className="mt-2 text-[14.5px] leading-relaxed text-muted">
-                  {faq.a}
-                </dd>
-              </div>
-            ))}
-          </dl>
-        </section>
+        <MarketingFaq items={FAQS} />
 
         <section className="mx-auto max-w-6xl px-6 pb-16 md:px-10 md:pb-24">
           <div className="rounded-[var(--radius-card)] bg-surface px-8 py-12 text-center shadow-raised md:px-14 md:py-14">

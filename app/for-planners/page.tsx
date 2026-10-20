@@ -1,11 +1,13 @@
 import { ForPlannersPage } from "@/components/marketing/for-planners-page";
+import { pageMetadata } from "@/lib/seo";
 import type { Metadata } from "next";
 
-export const metadata: Metadata = {
-  title: "For wedding planners — First Look",
+export const metadata: Metadata = pageMetadata({
+  title: "Wedding Planner CRM",
   description:
-    "Leads, contracts, seating, billing, and a branded client experience. First Look replaces the spreadsheet-and-five-tools stack most planning businesses run on today.",
-};
+    "A wedding planner CRM that goes from lead to payment to the couple's workbook. Capture inquiries, send proposals, collect payment, then plan the wedding in one platform.",
+  path: "/for-planners",
+});
 
 export default async function ForPlannersRoute({
   searchParams,

@@ -18,10 +18,12 @@ import {
   isInvoiceOverdue,
 } from "@/lib/invoices/status";
 import type { PublicInvoice } from "@/lib/invoices/types";
+import { noIndexRobots } from "@/lib/seo";
 
 export const metadata: Metadata = {
   title: "Invoice",
   description: "View an invoice.",
+  ...noIndexRobots,
 };
 
 export const dynamic = "force-dynamic";

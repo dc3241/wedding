@@ -11,7 +11,7 @@ const NAV = [
   { id: "features", label: "Features", href: "/#features", hash: true },
   { id: "planners", label: "For planners", href: "/for-planners", hash: false },
   { id: "venues", label: "For venues", href: "/for-venues", hash: false },
-  { id: "couples", label: "For couples", href: "/#couples", hash: true },
+  { id: "couples", label: "For couples", href: "/for-couples", hash: false },
   { id: "pricing", label: "Pricing", href: "/pricing", hash: false },
 ] as const;
 
@@ -21,8 +21,7 @@ const navLinkClass =
 const navLinkActiveClass = "text-ink after:scale-x-100";
 
 /**
- * Same-page section nav: set a CLEAN single hash (never append), scroll to the
- * target, and fire hashchange so audience-section can sync its tab.
+ * Same-page section nav: set a clean single hash and scroll to the target.
  * Off-home, let Next.js <Link> do a normal navigation to /#id.
  */
 function navigateToSection(
@@ -79,7 +78,6 @@ export function MarketingTopbar() {
       return;
     }
 
-    // Homepage hash targets in the topbar: Features and For couples.
     const ids = NAV.filter((item) => item.hash).map((item) => item.id);
     const elements = ids
       .map((id) => document.getElementById(id))

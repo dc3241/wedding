@@ -3,11 +3,13 @@ import type { Metadata } from "next";
 import { Card } from "@/components/ui/card";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { Wordmark } from "@/components/ui/topbar";
+import { noIndexRobots } from "@/lib/seo";
 import { createAnonServerClient } from "@/utils/supabase/anon-server";
 
 export const metadata: Metadata = {
   title: "Vendor confirmation",
   description: "Confirm your arrival for a wedding.",
+  ...noIndexRobots,
 };
 
 export const dynamic = "force-dynamic";

@@ -1,14 +1,17 @@
 import { LandingPage } from "@/components/marketing/landing-page";
 import { getPostLoginPath } from "@/lib/post-login-path";
+import { pageMetadata } from "@/lib/seo";
 import { createClient } from "@/utils/supabase/server";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
-export const metadata: Metadata = {
-  title: "First Look — Wedding planning for couples, planners, and venues",
+export const metadata: Metadata = pageMetadata({
+  title: "Wedding Planning CRM",
   description:
-    "Couples plan the day in one workspace. Planners and venues capture inquiries, run a pipeline, and turn proposals into signed contracts — then invite the couple into the same wedding.",
-};
+    "First Look is a wedding planning CRM for planners and venues: lead, payment, and the wedding workbook in one platform. Couples can plan here too.",
+  path: "/",
+  absoluteTitle: "Wedding Planning CRM — First Look",
+});
 
 export default async function HomePage() {
   const supabase = await createClient();

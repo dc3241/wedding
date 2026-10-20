@@ -10,12 +10,15 @@ import { shellLayoutClass } from "@/lib/density";
 import { getAccountContext } from "@/lib/account-context";
 import { getPostLoginPath } from "@/lib/post-login-path";
 import { hasSupabaseAuthCookie } from "@/lib/supabase-auth-cookie";
+import { pageMetadata } from "@/lib/seo";
 import { createClient } from "@/utils/supabase/server";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "Contact",
-  description: "Get in touch with First Look.",
-};
+  description:
+    "Get in touch with First Look about wedding planning CRM, venue accounts, or your workspace.",
+  path: "/contact",
+});
 
 type HomeLink = {
   href: string;

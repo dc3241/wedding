@@ -11,10 +11,12 @@ import type { ProjectBranding } from "@/lib/branding/types";
 import { cn } from "@/lib/cn";
 import { getInquiryBranding } from "@/lib/inquiry/get-branding";
 import { isInquirySlug } from "@/lib/inquiry/parse";
+import { noIndexRobots } from "@/lib/seo";
 
 export const metadata: Metadata = {
   title: "Inquiry",
   description: "Send an inquiry about planning your event.",
+  ...noIndexRobots,
 };
 
 export const dynamic = "force-dynamic";

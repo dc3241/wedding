@@ -7,47 +7,88 @@ import {
 import { CoupleCollaboration } from "@/components/marketing/couple-collaboration";
 import { FinalCta } from "@/components/marketing/final-cta";
 import { HeroProductPreview } from "@/components/marketing/hero-product-preview";
+import { JsonLd } from "@/components/marketing/json-ld";
+import { MarketingFaq } from "@/components/marketing/marketing-faq";
 import { MarketingFooter } from "@/components/marketing/marketing-footer";
 import { MarketingTopbar } from "@/components/marketing/marketing-topbar";
 import { ScrollReveal } from "@/components/marketing/scroll-reveal";
 import { WhiteLabelShowcase } from "@/components/marketing/white-label-showcase";
 import { ButtonLink } from "@/components/ui/button";
 import { Eyebrow } from "@/components/ui/eyebrow";
+import {
+  breadcrumbJsonLd,
+  organizationJsonLd,
+  softwareApplicationJsonLd,
+} from "@/lib/seo";
 import Link from "next/link";
 
 const CHANGES = [
   {
-    label: "Booking calendar",
-    before: "A shared calendar and a lot of hope",
-    after: "Every wedding, every coordinator, one book",
+    label: "Leads",
+    before: "Buried in email threads",
+    after: "Automatically staged, stale ones flagged",
+  },
+  {
+    label: "Payment",
+    before: "A proposal in one tool, an invoice in another",
+    after: "Proposal to signed contract to invoice, in one place",
   },
   {
     label: "Your brand",
-    before: "Prospective couples land in someone else's app",
+    before: "Couples land in someone else's app",
     after: "Your logo, your colors, top to bottom",
   },
+] as const;
+
+const FAQS = [
   {
-    label: "Your team",
-    before: "Separate logins, no shared visibility",
-    after: "Flat team seats, everyone sees everything",
+    q: "How is the venue CRM different from the planner CRM?",
+    a: "It isn't, except for white-label. Venues and planners share the same pipeline: inquiry, proposal, contract, invoice, then the couple's workbook. Venue accounts put your branding on every coordinator's dashboard and every client's site.",
+  },
+  {
+    q: "What does white-label include?",
+    a: "Your logo and colors on the couple's workspace and wedding site. Venue accounts can extend that branding across the whole team's dashboard, not just the client view.",
+  },
+  {
+    q: "Can my whole team share one book?",
+    a: "Yes. Add anyone on staff — no roles to configure. Everyone sees every wedding on your calendar.",
+  },
+  {
+    q: "Do couples still get a planning workspace?",
+    a: "Yes. After they book, invite them into the same wedding: checklist, guests, seating, budget, and a site under your brand.",
+  },
+  {
+    q: "How does venue pricing work?",
+    a: "One venue plan for the whole team, billed monthly or annually. 7-day free trial, no card to start.",
   },
 ] as const;
+
+const APP_DESCRIPTION =
+  "First Look is a wedding venue CRM with white-label branding: inquiry to payment to the couple's workbook, under your venue's name.";
 
 export function ForVenuesPage() {
   return (
     <div className="min-h-full bg-canvas text-ink">
+      <JsonLd data={organizationJsonLd()} />
+      <JsonLd data={softwareApplicationJsonLd(APP_DESCRIPTION)} />
+      <JsonLd
+        data={breadcrumbJsonLd([
+          { name: "Home", path: "/" },
+          { name: "For venues", path: "/for-venues" },
+        ])}
+      />
       <MarketingTopbar />
       <main>
         <section className="mx-auto max-w-6xl px-6 pt-16 pb-10 md:px-10 md:pt-[76px]">
           <ScrollReveal className="mx-auto max-w-[44ch] text-center">
-            <Eyebrow className="mb-5 block">For venues</Eyebrow>
+            <Eyebrow className="mb-5 block">Wedding venue CRM</Eyebrow>
             <h1 className="text-[42px] font-extrabold leading-[1.02] tracking-[-0.03em] text-ink md:text-[52px] lg:text-[64px]">
-              Run every wedding on your calendar — under your own brand.
+              Same CRM. Your brand on every screen.
             </h1>
             <p className="mt-6 text-[16px] leading-relaxed text-muted md:text-[19px]">
-              CRM, team seats, and a fully white-labeled workspace —
-              automated, so your team spends less time on admin and more time
-              walking couples through your space.
+              Lead, payment, workbook — the same pipeline planners use.
+              White-label is the difference: every coordinator&apos;s dashboard
+              and every client&apos;s site runs in your name.
             </p>
             <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
               <ButtonLink
@@ -100,9 +141,9 @@ export function ForVenuesPage() {
             <ScrollReveal>
               <AudienceCopyHeader
                 align="left"
-                eyebrow="Every wedding at your venue"
+                eyebrow="Lead to payment to workbook"
                 title="One book for everything on your calendar."
-                subhead="Inquiries, contracts, and each couple's planning — automated in the same place, whether they booked six months out or eighteen."
+                subhead="Inquiries, contracts, invoices, and each couple's planning — in the same place, whether they booked six months out or eighteen."
               />
             </ScrollReveal>
             <ScrollReveal delayMs={80}>
@@ -143,10 +184,12 @@ export function ForVenuesPage() {
           </ScrollReveal>
         </AudienceSection>
 
+        <MarketingFaq items={FAQS} />
+
         <FinalCta
           eyebrow="Ready when you are"
           title="Bring your team. Keep your brand."
-          subhead="Free to start. Contracts, seating, billing, and your team's workspace run automatically from day one — under your name, not ours."
+          subhead="Free to start. Contracts, invoices, seating, and your team's workspace run from day one — under your name, not ours."
         />
       </main>
       <MarketingFooter />

@@ -15,10 +15,12 @@ import {
 } from "@/components/proposals/types";
 import { getPublicProposalByToken } from "@/lib/proposals/public";
 import type { PublicProposal } from "@/lib/proposals/public";
+import { noIndexRobots } from "@/lib/seo";
 
 export const metadata: Metadata = {
   title: "Proposal",
   description: "Review a wedding proposal.",
+  ...noIndexRobots,
 };
 
 export const dynamic = "force-dynamic";

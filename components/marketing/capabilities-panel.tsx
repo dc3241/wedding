@@ -8,7 +8,7 @@ const GROUPS = [
       "Pipeline: inquiry → contacted → proposal → booked",
       "Stale leads flagged at two weeks",
       "Reply drafts to approve before send",
-      "Proposals → signed, printable contracts",
+      "Proposals → signed contracts → invoices",
       "Invite each couple into their wedding",
       "White-label workspace; venue seats & branding",
     ],
@@ -101,11 +101,11 @@ export function CapabilitiesPanel() {
       <div className="mx-auto mb-9 max-w-[52ch] text-center">
         <Eyebrow className="mb-4 block">Everything in one place</Eyebrow>
         <h2 className="text-[32px] font-extrabold tracking-[-0.03em] text-ink md:text-[42px]">
-          The business tools and the wedding tools, together.
+          The CRM and the wedding workbook, together.
         </h2>
         <p className="mt-3 text-[15px] leading-relaxed text-muted md:text-[16px]">
-          From the first checklist to the last dance — here&apos;s exactly what
-          lives in your workspace.
+          From the first inquiry to the last dance — here&apos;s exactly what
+          lives in one platform.
         </p>
       </div>
 

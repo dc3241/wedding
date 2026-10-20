@@ -7,11 +7,13 @@ import { Card } from "@/components/ui/card";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { Input } from "@/components/ui/input";
 import { Wordmark } from "@/components/ui/topbar";
+import { noIndexRobots } from "@/lib/seo";
 import { createClient } from "@/utils/supabase/server";
 
 export const metadata: Metadata = {
   title: "Set a new password",
   description: "Choose a new password for your First Look account.",
+  ...noIndexRobots,
 };
 
 export const dynamic = "force-dynamic";
