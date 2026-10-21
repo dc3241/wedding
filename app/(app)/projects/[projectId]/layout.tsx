@@ -10,6 +10,7 @@ import { getAccountContext } from "@/lib/account-context";
 import { getBrandingForProject } from "@/lib/branding/get-branding";
 import { coupleOnboardingRedirect } from "@/lib/onboarding-gate";
 import { parseEventType, parseHiddenTools } from "@/lib/event-type";
+import { canCustomizeWorkspace } from "@/lib/project-tabs";
 import { displayCoupleNames } from "@/lib/wedding-date";
 import { createClient } from "@/utils/supabase/server";
 
@@ -173,13 +174,16 @@ export default async function ProjectLayout({
           weddingDate={project.wedding_date}
           accountKind={accountKind}
           eventType={accountKind === "business" ? eventType : undefined}
-          hiddenTools={accountKind === "business" ? hiddenTools : undefined}
         >
           <ProjectWorkspaceNav
             projectId={projectId}
             accountKind={tabAudience}
             projectMemberRole={projectMemberRole}
             hiddenTools={hiddenTools}
+            canCustomize={canCustomizeWorkspace(
+              tabAudience,
+              projectMemberRole,
+            )}
           />
           {children}
         </ProjectShell>

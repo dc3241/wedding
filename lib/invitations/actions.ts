@@ -12,6 +12,7 @@ import type {
   RemoveProjectMemberResult,
   RevokeInvitationResult,
 } from "@/lib/invitations/types";
+import { parseHiddenTools } from "@/lib/event-type";
 import { tabsForAccountKind } from "@/lib/project-tabs";
 import { createClient } from "@/utils/supabase/server";
 
@@ -49,17 +50,23 @@ function formatTabList(labels: string[]): string {
   return `${labels.slice(0, -1).join(", ")}, and ${labels[labels.length - 1]}`;
 }
 
-function workspaceTabLabels(role: ProjectInviteRole): string[] {
+function workspaceTabLabels(
+  role: ProjectInviteRole,
+  hiddenTools: readonly string[] = [],
+): string[] {
   // Invited members have no account — same filter as CoupleShell (§6 / CAL-04 / CAL-06).
-  return tabsForAccountKind(null, role).map((tab) => tab.label);
+  return tabsForAccountKind(null, role, hiddenTools).map((tab) => tab.label);
 }
 
 function buildProjectInviteEmail(args: {
   inviteUrl: string;
   role: ProjectInviteRole;
   projectName: string;
+  hiddenTools?: readonly string[];
 }): { subject: string; text: string; html: string } {
-  const tabList = formatTabList(workspaceTabLabels(args.role));
+  const tabList = formatTabList(
+    workspaceTabLabels(args.role, args.hiddenTools),
+  );
   const roleNoun = args.role === "collaborator" ? "a collaborator" : "the couple";
   const subject = `You're invited to ${args.projectName} on First Look`;
   const text = [
@@ -129,10 +136,11 @@ export async function createProjectInvitation(
 
   const { data: project } = await supabase
     .from("projects")
-    .select("name")
+    .select("name, hidden_tools")
     .eq("id", projectId)
     .maybeSingle();
   const projectName = project?.name?.trim() || "a wedding";
+  const hiddenTools = parseHiddenTools(project?.hidden_tools);
 
   const rawToken = randomBytes(32).toString("base64url");
   const tokenHash = hashToken(rawToken);
@@ -161,6 +169,7 @@ export async function createProjectInvitation(
     inviteUrl,
     role,
     projectName,
+    hiddenTools,
   });
   const emailSent = await sendEmailBestEffort(
     {

@@ -1,4 +1,5 @@
 import type { AccountKind } from "@/lib/account-context";
+import { isHideableTool } from "@/lib/event-type";
 
 export type ProjectTab = {
   label: string;
@@ -84,4 +85,24 @@ export function tabsForAccountKind(
 export function projectTabHref(projectId: string, segment: string): string {
   const base = `/projects/${projectId}`;
   return segment ? `${base}/${segment}` : base;
+}
+
+/** Account owners and invited couples. Collaborators cannot reshape the workspace. */
+export function canCustomizeWorkspace(
+  kind: AccountKind | null,
+  projectMemberRole?: string | null,
+): boolean {
+  if (kind === "personal" || kind === "business") return true;
+  return projectMemberRole === "couple";
+}
+
+/** Hideable tabs this viewer is allowed to turn on or off. */
+export function customizableTabsFor(
+  kind: AccountKind | null,
+  projectMemberRole?: string | null,
+): ProjectTab[] {
+  if (!canCustomizeWorkspace(kind, projectMemberRole)) return [];
+  return tabsForAccountKind(kind, projectMemberRole).filter((tab) =>
+    isHideableTool(tab.segment),
+  );
 }

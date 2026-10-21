@@ -4,11 +4,16 @@ import { randomUUID } from "crypto";
 import { revalidatePath } from "next/cache";
 import { getAccountContext } from "@/lib/account-context";
 import {
+  isHideableTool,
   parseEventType,
   parseHiddenTools,
   type EventType,
   type HideableTool,
 } from "@/lib/event-type";
+import {
+  canCustomizeWorkspace,
+  customizableTabsFor,
+} from "@/lib/project-tabs";
 import { redirect } from "next/navigation";
 import { getCoupleDestinationPath } from "@/lib/onboarding-gate";
 import { getPostLoginPath } from "@/lib/post-login-path";
@@ -230,8 +235,6 @@ export async function updateProjectEventSettings(
   projectId: string,
   input: {
     eventType: string;
-    includeSeating: boolean;
-    includeWebsite: boolean;
   },
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const supabase = await createClient();
@@ -240,15 +243,10 @@ export async function updateProjectEventSettings(
     return { ok: false, error: "Only a planner or venue can change this." };
   }
 
-  const hiddenTools: HideableTool[] = [];
-  if (!input.includeSeating) hiddenTools.push("seating");
-  if (!input.includeWebsite) hiddenTools.push("website");
-
   const { data, error } = await supabase
     .from("projects")
     .update({
       event_type: parseEventType(input.eventType),
-      hidden_tools: hiddenTools,
     })
     .eq("id", projectId)
     .select("id")
@@ -263,6 +261,86 @@ export async function updateProjectEventSettings(
 
   revalidatePath(`/projects/${projectId}`, "layout");
   revalidatePath(`/projects/${projectId}`);
+  revalidatePath("/dashboard");
+  revalidatePath("/projects");
+  return { ok: true };
+}
+
+export async function setProjectToolHidden(
+  projectId: string,
+  tool: string,
+  hidden: boolean,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (!isHideableTool(tool)) {
+    return { ok: false, error: "That tab cannot be turned off." };
+  }
+
+  const supabase = await createClient();
+  const account = await getAccountContext(supabase);
+  const kind = account?.kind ?? null;
+  let projectMemberRole: string | null = null;
+
+  if (kind === null) {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      return { ok: false, error: "You must be logged in." };
+    }
+    const { data: member } = await supabase
+      .from("project_members")
+      .select("role")
+      .eq("project_id", projectId)
+      .eq("user_id", user.id)
+      .maybeSingle();
+    projectMemberRole = member?.role ?? null;
+  }
+
+  if (!canCustomizeWorkspace(kind, projectMemberRole)) {
+    return { ok: false, error: "You cannot change which tabs are shown." };
+  }
+
+  const allowed = new Set(
+    customizableTabsFor(kind, projectMemberRole).map((tab) => tab.segment),
+  );
+  if (!allowed.has(tool)) {
+    return { ok: false, error: "You cannot change that tab." };
+  }
+
+  const { data: project } = await supabase
+    .from("projects")
+    .select("hidden_tools")
+    .eq("id", projectId)
+    .maybeSingle();
+
+  if (!project) {
+    return { ok: false, error: "Could not update this wedding." };
+  }
+
+  const current = parseHiddenTools(project.hidden_tools);
+  const next = hidden
+    ? current.includes(tool)
+      ? current
+      : [...current, tool]
+    : current.filter((item) => item !== tool);
+
+  const { data, error } = await supabase
+    .from("projects")
+    .update({ hidden_tools: next })
+    .eq("id", projectId)
+    .select("id")
+    .maybeSingle();
+
+  if (error) {
+    return { ok: false, error: error.message };
+  }
+  if (!data) {
+    return { ok: false, error: "Could not update this wedding." };
+  }
+
+  revalidatePath(`/projects/${projectId}`, "layout");
+  revalidatePath(`/projects/${projectId}`);
+  revalidatePath(`/projects/${projectId}/${tool}`);
   revalidatePath("/dashboard");
   revalidatePath("/projects");
   return { ok: true };

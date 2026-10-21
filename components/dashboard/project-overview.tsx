@@ -168,16 +168,27 @@ function paidClass(tone: OverviewPaidTone) {
  * Shared project Overview surface — composed into CoupleDashboard and
  * PlannerDashboard (DASH-02). Tier 1 Soft stack only.
  */
+function visibleTabHref(
+  projectId: string,
+  segment: string,
+  hiddenTools: readonly string[],
+) {
+  if (hiddenTools.includes(segment)) return undefined;
+  return projectTabHref(projectId, segment);
+}
+
 export function ProjectOverview({
   data,
   showLastContact = false,
   isPersonalOwner = false,
+  hiddenTools = [],
 }: {
   data: OverviewData;
   /** Planner outreach table keeps Last contact. */
   showLastContact?: boolean;
   /** Personal account owner only — not business, not no-account collaborators. */
   isPersonalOwner?: boolean;
+  hiddenTools?: readonly string[];
 }) {
   const {
     projectId,
@@ -247,7 +258,7 @@ export function ProjectOverview({
 
         <OverviewStatCard
           label="Checklist progress"
-          href={`/projects/${projectId}/checklist`}
+          href={visibleTabHref(projectId, "checklist", hiddenTools)}
           error={
             checklistError ? <LoadError label="checklist" /> : undefined
           }
@@ -270,7 +281,7 @@ export function ProjectOverview({
 
         <OverviewStatCard
           label="Budget"
-          href={`/projects/${projectId}/budget`}
+          href={visibleTabHref(projectId, "budget", hiddenTools)}
           error={budgetError ? <LoadError label="budget" /> : undefined}
           value={formatCurrency(paidTotal)}
           footer={
@@ -298,7 +309,7 @@ export function ProjectOverview({
 
         <OverviewStatCard
           label="RSVPs"
-          href={`/projects/${projectId}/guests`}
+          href={visibleTabHref(projectId, "guests", hiddenTools)}
           error={rsvpError ? <LoadError label="RSVPs" /> : undefined}
           value={
             <>
@@ -346,7 +357,10 @@ export function ProjectOverview({
             cta="Ask assistant"
           />
         </div>
-        {isPersonalOwner ? (
+        {isPersonalOwner &&
+        SUGGESTED_PATH_STEPS.some(
+          (step) => !hiddenTools.includes(step.segment),
+        ) ? (
           <div className="mt-4 rounded-[var(--radius-inner)] bg-well px-4 py-4 shadow-recessed">
             <p className="text-[15px] font-semibold text-ink">
               New here? We suggest working through in this order.
@@ -355,7 +369,9 @@ export function ProjectOverview({
               A recommended path — jump in wherever you are.
             </p>
             <ol className="mt-3 flex list-none flex-col gap-1.5 p-0 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-1 sm:gap-y-2">
-              {SUGGESTED_PATH_STEPS.map((step, index) => (
+              {SUGGESTED_PATH_STEPS.filter(
+                (step) => !hiddenTools.includes(step.segment),
+              ).map((step, index) => (
                 <li
                   key={step.segment}
                   className="flex items-center gap-1.5 text-[14px] font-medium"
@@ -441,13 +457,18 @@ export function ProjectOverview({
             <p className="mt-4 text-[15px] font-medium text-muted">
               {allInstallmentsCovered
                 ? "All installments covered."
-                : "No payments scheduled."}{" "}
-              <Link
-                href={`/projects/${projectId}/budget`}
-                className="font-semibold text-accent no-underline hover:opacity-80"
-              >
-                Open Budget schedule
-              </Link>
+                : "No payments scheduled."}
+              {hiddenTools.includes("budget") ? null : (
+                <>
+                  {" "}
+                  <Link
+                    href={`/projects/${projectId}/budget`}
+                    className="font-semibold text-accent no-underline hover:opacity-80"
+                  >
+                    Open Budget schedule
+                  </Link>
+                </>
+              )}
             </p>
           )}
         </Card>
@@ -509,12 +530,14 @@ export function ProjectOverview({
           <h2 className="font-display text-[19px] font-extrabold tracking-[-0.02em] text-ink">
             Vendor outreach
           </h2>
-          <ButtonLink
-            href={`/projects/${projectId}/vendors`}
-            className="ml-auto px-[18px] py-2.5 text-[13.5px]"
-          >
-            Draft outreach
-          </ButtonLink>
+          {hiddenTools.includes("vendors") ? null : (
+            <ButtonLink
+              href={`/projects/${projectId}/vendors`}
+              className="ml-auto px-[18px] py-2.5 text-[13.5px]"
+            >
+              Draft outreach
+            </ButtonLink>
+          )}
         </div>
 
         {vendorsError ? (
@@ -527,13 +550,15 @@ export function ProjectOverview({
               No vendors on this wedding yet. Search or add vendors to start
               outreach.
             </p>
-            <AskAssistantPrompt
-              className="mt-4 max-w-md"
-              prefillKey="vendors"
-              title="Ask what to book first"
-              description="Priority categories and what to look for when shortlisting."
-              cta="Find vendors"
-            />
+            {hiddenTools.includes("vendors") ? null : (
+              <AskAssistantPrompt
+                className="mt-4 max-w-md"
+                prefillKey="vendors"
+                title="Ask what to book first"
+                description="Priority categories and what to look for when shortlisting."
+                cta="Find vendors"
+              />
+            )}
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -565,6 +590,11 @@ export function ProjectOverview({
               <tbody>
                 {vendorRows.map((row) => {
                   const { vendor, paid, quote, paidTone, nextStep } = row;
+                  const nextHref = nextStep
+                    ? vendor.status === "booked"
+                      ? visibleTabHref(projectId, "budget", hiddenTools)
+                      : visibleTabHref(projectId, "vendors", hiddenTools)
+                    : undefined;
                   const pill = vendorStatusPill(
                     vendor.status,
                     vendor.quoted_price,
@@ -576,12 +606,18 @@ export function ProjectOverview({
                       className="border-b border-hairline last:border-b-0 hover:bg-well"
                     >
                       <td className="px-3 py-3 align-middle text-[14px]">
-                        <Link
-                          href={`/projects/${projectId}/vendors/${vendor.vendor.id}`}
-                          className="font-medium text-ink hover:text-accent"
-                        >
-                          {vendor.vendor.name}
-                        </Link>
+                        {hiddenTools.includes("vendors") ? (
+                          <span className="font-medium text-ink">
+                            {vendor.vendor.name}
+                          </span>
+                        ) : (
+                          <Link
+                            href={`/projects/${projectId}/vendors/${vendor.vendor.id}`}
+                            className="font-medium text-ink hover:text-accent"
+                          >
+                            {vendor.vendor.name}
+                          </Link>
+                        )}
                         {vendor.vendor.category ? (
                           <div className="mt-0.5 text-[12px] text-muted">
                             {vendorCategoryLabel(vendor.vendor.category)}
@@ -625,17 +661,15 @@ export function ProjectOverview({
                         </td>
                       ) : null}
                       <td className="px-3 py-3 align-middle text-[14px]">
-                        {nextStep ? (
+                        {nextStep && nextHref ? (
                           <Link
-                            href={
-                              vendor.status === "booked"
-                                ? `/projects/${projectId}/budget`
-                                : `/projects/${projectId}/vendors`
-                            }
+                            href={nextHref}
                             className="font-semibold text-accent no-underline hover:opacity-80"
                           >
                             {nextStep}
                           </Link>
+                        ) : nextStep ? (
+                          <span className="text-muted">{nextStep}</span>
                         ) : (
                           <span className="text-muted">—</span>
                         )}

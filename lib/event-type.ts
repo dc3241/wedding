@@ -4,9 +4,29 @@ export const EVENT_TYPES = ["wedding", "event"] as const;
 
 export type EventType = (typeof EVENT_TYPES)[number];
 
-export const HIDEABLE_TOOLS = ["website", "seating"] as const;
+export const HIDEABLE_TOOLS = [
+  "calendar",
+  "checklist",
+  "budget",
+  "vendors",
+  "guests",
+  "website",
+  "seating",
+  "timeline",
+  "contracts",
+  "invoices",
+  "agreements",
+  "notes",
+] as const;
 
 export type HideableTool = (typeof HIDEABLE_TOOLS)[number];
+
+export function isHideableTool(value: unknown): value is HideableTool {
+  return (
+    typeof value === "string" &&
+    (HIDEABLE_TOOLS as readonly string[]).includes(value)
+  );
+}
 
 export const EVENT_TYPE_OPTIONS: { value: EventType; label: string }[] = [
   { value: "wedding", label: "Wedding" },
@@ -34,10 +54,7 @@ export function parseHiddenTools(value: unknown): HideableTool[] {
   if (!Array.isArray(value)) return [];
   const kept: HideableTool[] = [];
   for (const item of value) {
-    if (
-      (item === "website" || item === "seating") &&
-      !kept.includes(item)
-    ) {
+    if (isHideableTool(item) && !kept.includes(item)) {
       kept.push(item);
     }
   }

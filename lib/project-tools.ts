@@ -1,5 +1,6 @@
 import "server-only";
 
+import { notFound } from "next/navigation";
 import {
   parseHiddenTools,
   type HideableTool,
@@ -19,4 +20,13 @@ export async function isProjectToolHidden(
 
   if (!data) return false;
   return parseHiddenTools(data.hidden_tools).includes(tool);
+}
+
+export async function notFoundIfToolHidden(
+  projectId: string,
+  tool: HideableTool,
+): Promise<void> {
+  if (await isProjectToolHidden(projectId, tool)) {
+    notFound();
+  }
 }

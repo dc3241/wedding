@@ -7,7 +7,7 @@ import {
 } from "@/components/projects/event-settings-editor";
 import { WeddingDateEditor } from "@/components/ui/wedding-date-editor";
 import { cn } from "@/lib/cn";
-import type { EventType, HideableTool } from "@/lib/event-type";
+import type { EventType } from "@/lib/event-type";
 import { displayCoupleNames } from "@/lib/wedding-date";
 import { useEffect, useState } from "react";
 
@@ -19,9 +19,8 @@ type SlimHeroProps = {
   dateLabel?: string | null;
   /** When false, hide the right-side countdown (e.g. Overview stats own it). */
   showCountdown?: boolean;
-  /** Planner/venue only. Collapsed type label; seating and website live inside it. */
+  /** Planner/venue only. Collapsed type label. */
   eventType?: EventType;
-  hiddenTools?: readonly HideableTool[];
   className?: string;
 };
 
@@ -67,7 +66,6 @@ export function SlimHero({
   dateLabel,
   showCountdown = true,
   eventType,
-  hiddenTools,
   className,
 }: SlimHeroProps) {
   const displayDate =
@@ -116,11 +114,7 @@ export function SlimHero({
   }
 
   return (
-    <EventSettingsProvider
-      projectId={projectId}
-      eventType={eventType}
-      hiddenTools={hiddenTools ?? []}
-    >
+    <EventSettingsProvider projectId={projectId} eventType={eventType}>
       {hero}
     </EventSettingsProvider>
   );

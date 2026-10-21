@@ -4,8 +4,10 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { AssistantNavEntry } from "@/components/assistant/AssistantNavEntry";
+import { WorkspaceToolsMenu } from "@/components/projects/workspace-tools-menu";
 import type { AccountKind } from "@/lib/account-context";
 import { cn } from "@/lib/cn";
+import type { HideableTool } from "@/lib/event-type";
 import { projectTabHref, tabsForAccountKind } from "@/lib/project-tabs";
 
 export function ProjectWorkspaceNav({
@@ -13,13 +15,15 @@ export function ProjectWorkspaceNav({
   accountKind,
   projectMemberRole = null,
   hiddenTools = [],
+  canCustomize = false,
 }: {
   projectId: string;
   /** Null = no account (invited member). Do not collapse to `"personal"`. */
   accountKind: AccountKind | null;
   /** CAL-04 / CAL-06: used only for Calendar when kind is null. */
   projectMemberRole?: string | null;
-  hiddenTools?: readonly string[];
+  hiddenTools?: readonly HideableTool[];
+  canCustomize?: boolean;
 }) {
   const pathname = usePathname();
   const tabs = tabsForAccountKind(accountKind, projectMemberRole, hiddenTools);
@@ -112,7 +116,15 @@ export function ProjectWorkspaceNav({
           )}
         />
       </div>
-      <div className="shrink-0">
+      <div className="flex shrink-0 items-center gap-1">
+        {canCustomize ? (
+          <WorkspaceToolsMenu
+            projectId={projectId}
+            accountKind={accountKind}
+            projectMemberRole={projectMemberRole}
+            hiddenTools={hiddenTools}
+          />
+        ) : null}
         <AssistantNavEntry projectId={projectId} />
       </div>
     </nav>

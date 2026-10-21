@@ -12,11 +12,9 @@ import { updateProjectEventSettings } from "@/app/(app)/projects/actions";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import {
-  defaultHiddenTools,
   EVENT_TYPE_OPTIONS,
   eventTypeLabel,
   type EventType,
-  type HideableTool,
 } from "@/lib/event-type";
 
 type EventSettingsContextValue = {
@@ -39,44 +37,30 @@ function useEventSettings() {
 }
 
 /**
- * Collapsed type label in the project header. Seating and the website
- * stay editable in a row under the title; the overview no longer leads with them.
+ * Collapsed type label in the project header. Tab visibility lives on
+ * the workspace nav Customize control — this only changes event type.
  */
 export function EventSettingsProvider({
   projectId,
   eventType,
-  hiddenTools,
   children,
 }: {
   projectId: string;
   eventType: EventType;
-  hiddenTools: readonly HideableTool[];
   children: ReactNode;
 }) {
   const [editing, setEditing] = useState(false);
   const [type, setType] = useState<EventType>(eventType);
-  const [includeSeating, setIncludeSeating] = useState(
-    !hiddenTools.includes("seating"),
-  );
-  const [includeWebsite, setIncludeWebsite] = useState(
-    !hiddenTools.includes("website"),
-  );
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
-  const hiddenKey = hiddenTools.join(",");
-
   useEffect(() => {
     setType(eventType);
-    setIncludeSeating(!hiddenKey.includes("seating"));
-    setIncludeWebsite(!hiddenKey.includes("website"));
     setError(null);
-  }, [eventType, hiddenKey]);
+  }, [eventType]);
 
   function openEditor() {
     setType(eventType);
-    setIncludeSeating(!hiddenTools.includes("seating"));
-    setIncludeWebsite(!hiddenTools.includes("website"));
     setError(null);
     setEditing(true);
   }
@@ -86,20 +70,11 @@ export function EventSettingsProvider({
     setEditing(false);
   }
 
-  function changeType(next: EventType) {
-    setType(next);
-    const hidden = defaultHiddenTools(next);
-    setIncludeSeating(!hidden.includes("seating"));
-    setIncludeWebsite(!hidden.includes("website"));
-  }
-
   function save() {
     setError(null);
     startTransition(async () => {
       const result = await updateProjectEventSettings(projectId, {
         eventType: type,
-        includeSeating,
-        includeWebsite,
       });
       if (!result.ok) {
         setError(result.error);
@@ -121,7 +96,7 @@ export function EventSettingsProvider({
             value={type}
             disabled={isPending}
             onChange={(e) =>
-              changeType(e.target.value === "event" ? "event" : "wedding")
+              setType(e.target.value === "event" ? "event" : "wedding")
             }
           >
             {EVENT_TYPE_OPTIONS.map((option) => (
@@ -130,26 +105,6 @@ export function EventSettingsProvider({
               </option>
             ))}
           </Select>
-        </label>
-        <label className="flex items-center gap-2 text-[14px] font-medium text-ink">
-          <input
-            type="checkbox"
-            className="size-4 accent-accent"
-            checked={includeSeating}
-            disabled={isPending}
-            onChange={(e) => setIncludeSeating(e.target.checked)}
-          />
-          Seating chart
-        </label>
-        <label className="flex items-center gap-2 text-[14px] font-medium text-ink">
-          <input
-            type="checkbox"
-            className="size-4 accent-accent"
-            checked={includeWebsite}
-            disabled={isPending}
-            onChange={(e) => setIncludeWebsite(e.target.checked)}
-          />
-          Website
         </label>
         <div className="flex items-center gap-2">
           <Button

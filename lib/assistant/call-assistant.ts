@@ -5,6 +5,7 @@ import {
   type EventType,
   type HideableTool,
 } from "@/lib/event-type";
+import { PROJECT_TABS } from "@/lib/project-tabs";
 import {
   CHAT_ONLY_READ_TOOLS,
   executeReadTool,
@@ -120,12 +121,35 @@ type AssistantContext = {
   hiddenTools: readonly HideableTool[];
 };
 
-const WEBSITE_TOOL_NAMES = new Set([
-  "get_website",
-  "search_nearby_places",
-  "set_website_schedule",
-  "set_website_travel",
-]);
+const TOOL_TAB: Record<string, HideableTool> = {
+  get_checklist: "checklist",
+  add_task: "checklist",
+  update_task_status: "checklist",
+  get_guests: "guests",
+  add_guest: "guests",
+  update_guest_rsvp: "guests",
+  get_budget: "budget",
+  get_budget_payments: "budget",
+  get_payment_schedule: "budget",
+  set_budget_target: "budget",
+  add_budget_item: "budget",
+  get_vendors: "vendors",
+  get_vendor_targets: "vendors",
+  add_vendor_target: "vendors",
+  create_agent_draft: "vendors",
+  get_notes: "notes",
+  get_note: "notes",
+  add_note: "notes",
+  get_files: "notes",
+  get_file: "notes",
+  get_timeline: "timeline",
+  add_timeline_event: "timeline",
+  add_timeline_events: "timeline",
+  get_website: "website",
+  search_nearby_places: "website",
+  set_website_schedule: "website",
+  set_website_travel: "website",
+};
 
 function buildSystemPrompt(ctx: AssistantContext): string {
   const event = ctx.eventType === "event";
@@ -152,6 +176,14 @@ function buildSystemPrompt(ctx: AssistantContext): string {
     ? "First Look is the planning platform the user is already using. Never refer them to competitor products or external planning platforms. Do not suggest they leave First Look to finish a task elsewhere."
     : 'First Look is the wedding-planning platform the user is already using. Never refer them to competitor products or external wedding platforms (for example Zola, The Knot, Aisle Planner, or any "wherever you\'re building your site"). Do not suggest they leave First Look to finish a task elsewhere.';
 
+  const hiddenLabels = PROJECT_TABS.filter(
+    (tab) => tab.segment && ctx.hiddenTools.includes(tab.segment as HideableTool),
+  ).map((tab) => tab.label);
+  const hiddenBlock =
+    hiddenLabels.length > 0
+      ? `These workspace tabs are turned off: ${hiddenLabels.join(", ")}. Do not offer to work in them or point the user there. Existing data is still saved.`
+      : "";
+
   const websiteBlock = !websiteOn
     ? `The website tool is turned off for this ${noun}. Do not offer to build or fill a website, and do not point them to the Website tab.`
     : event
@@ -172,9 +204,17 @@ You can search for nearby hotels, airports, and restaurants near the couple's ve
   const refuseWebsite = websiteOn
     ? `overwrite or broadly edit the ${noun} website`
     : "overwrite or broadly edit a website";
-  const tabList = websiteOn
-    ? "Checklist, Day-of timeline, Guests, Budget, Vendors, Website, or Notes"
-    : "Checklist, Day-of timeline, Guests, Budget, Vendors, or Notes";
+  const tabList = PROJECT_TABS.filter(
+    (tab) =>
+      tab.segment &&
+      ["checklist", "timeline", "guests", "budget", "vendors", "website", "notes"].includes(
+        tab.segment,
+      ) &&
+      !ctx.hiddenTools.includes(tab.segment as HideableTool),
+  )
+    .map((tab) => tab.label)
+    .join(", ")
+    .replace(/, ([^,]+)$/, ", or $1");
   const curateClause = websiteOn
     ? ", or curating items for set_website_schedule"
     : "";
@@ -184,6 +224,8 @@ You can search for nearby hotels, airports, and restaurants near the couple's ve
 ${tone} Write in plain conversational prose — no markdown headers, no hashtags, and no emojis.
 
 ${platformLine}
+
+${hiddenBlock}
 
 ${websiteBlock}
 
@@ -386,8 +428,10 @@ function toolsForRun(
   if (!includeFileReads) {
     base = base.filter((tool) => !CHAT_ONLY_READ_TOOLS.has(tool.name));
   }
-  if (!hiddenTools.includes("website")) return base;
-  return base.filter((tool) => !WEBSITE_TOOL_NAMES.has(tool.name));
+  return base.filter((tool) => {
+    const tab = TOOL_TAB[tool.name];
+    return !tab || !hiddenTools.includes(tab);
+  });
 }
 
 export async function runAssistantWithTools(

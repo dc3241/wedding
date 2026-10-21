@@ -4,15 +4,23 @@ import type { OverviewData } from "@/components/dashboard/overview-data";
 
 type PlannerDashboardProps = {
   overview: OverviewData;
+  hiddenTools?: readonly string[];
 };
 
-export function PlannerDashboard({ overview }: PlannerDashboardProps) {
+export function PlannerDashboard({
+  overview,
+  hiddenTools = [],
+}: PlannerDashboardProps) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-end">
         <TourHelpButton />
       </div>
-      <ProjectOverview data={overview} showLastContact />
+      <ProjectOverview
+        data={overview}
+        showLastContact
+        hiddenTools={hiddenTools}
+      />
     </div>
   );
 }

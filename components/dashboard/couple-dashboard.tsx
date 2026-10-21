@@ -7,11 +7,13 @@ type CoupleDashboardProps = {
   overview: OverviewData;
   /** Personal account owner — excludes invited collaborators (no account). */
   isPersonalOwner?: boolean;
+  hiddenTools?: readonly string[];
 };
 
 export function CoupleDashboard({
   overview,
   isPersonalOwner = false,
+  hiddenTools = [],
 }: CoupleDashboardProps) {
   return (
     <div className="space-y-4">
@@ -29,6 +31,7 @@ export function CoupleDashboard({
         data={overview}
         showLastContact={false}
         isPersonalOwner={isPersonalOwner}
+        hiddenTools={hiddenTools}
       />
     </div>
   );
