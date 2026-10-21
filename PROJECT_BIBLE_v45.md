@@ -1,38 +1,48 @@
-# Wedding Planning SaaS — Project Bible (v44)
+# Wedding Planning SaaS — Project Bible (v45)
 
 Canonical **current-state** document for this repo. Self-contained — every fact a new chat
 needs is in **this** document. Drop this into Project instructions/knowledge so any new chat
-picks up cold. Lives in-repo at `PROJECT_BIBLE_v44.md`. Prior version: `PROJECT_BIBLE_v43.md`
-(historical; do not use as current truth). The repo's `.cursor/design.mdc`, `app/globals.css`,
-and `supabase/migrations/` remain the live source of truth; this summarizes them and the
-decisions behind them.
+picks up cold. Lives in-repo at `PROJECT_BIBLE_v45.md`. The repo's `.cursor/design.mdc`,
+`app/globals.css`, and `supabase/migrations/` remain the live source of truth; this
+summarizes them and the decisions behind them.
 
-**Current through migration 0122** (on disk; **0121–0122 applied live via MCP** during the
-CRM automation / public-proposal work). **Next-free migration is 0123.** **v44 ships schema
-0108–0122** plus the NO-SCHEMA product work listed in the v44 slice table below. **v43
-schema 0103–0107 and v43 NO-SCHEMA work remain in force** (internal `/admin`, content queue,
-KIE Friday cron, Vercel Web Analytics). **v42–v41 schema and NO-SCHEMA work remain in force**
-as previously documented. Fresh-install SQL bundles live under `supabase/deploy-batches/`
-(batch1–4) — convenience only; hand-paste of numbered migrations remains canonical.
-Deploy-batches do **not** yet include 0080–0122 — incremental paste of those files is
-required after a batch install.
+**Current through numbered migration 0137** plus two later timestamped files
+(`20261012025314_event_type_and_hidden_tools.sql` and
+`20261021012159_widen_hidden_tools.sql`, which comments itself as 0138). **Next-free
+numbered file is 0139** — do **not** mint `0138_*.sql` (it would sort *before* the two
+`2026*` files). **v45 ships schema 0123–0137 + those two timestamped files** plus the
+NO-SCHEMA product work in the v45 slice table below. **v44 schema 0108–0122 and v44
+NO-SCHEMA work remain in force** (invoice ledger, public proposals, CRM event triggers,
+admin ideation/drop). **v43 schema 0103–0107 and v43 NO-SCHEMA work remain in force**
+(internal `/admin`, content queue, Vercel Web Analytics). **v42–v41 schema and
+NO-SCHEMA work remain in force** as documented in this file. Fresh-install SQL bundles
+live under `supabase/deploy-batches/` (batch1–4) — convenience only; hand-paste of
+numbered migrations remains canonical. Deploy-batches still stop at **0078**. Incremental
+paste of **0080–0137** and then the two `2026*` files is required after a batch install.
 
-**Git (high-water):** Content-queue + bible v43 landed in `91835cf`. Subsequent product work
-includes account-scoped invoice books (`749fc19`), admin ideation/queue/LinkedIn/Reddit/
-audience splits (`7e16d3f`…`0cf9bf1`), drop of unused admin automations (`0926ec0`),
-planner mobile + marketing polish, and **`dee2ec6` — public proposal links + automation
-event triggers (0121/0122 + Phase A/B app code)**. Confirm remaining live pastes for
-**0108–0120** independently; **0121–0122 were applied on the app database via MCP**.
+**Git (high-water):** HEAD `a14b121` (hide unused workspace tabs). v45 product work
+includes venue sidebar color (`ba751f8`), content-week + still renderer
+(`7c8b818`…`92950e0`…`b99a5f8`), vendor site-price cache + compare (`528d11b` /
+`fe8e448`), daily admin outreach (`d8d91c1`), product-shot uploads (`b87df54`),
+**proposal signatures (`64c4c8e`)** + **Stripe Connect proposal payments (`ad9f0ef`)**,
+inquiry hero brand (`54830dd`), file-text review + demo contract (`4250e22`), lead
+follow-up / lost reason / CRM views (`737504d`), event type (`d0b877e`) + hidden tools
+(`a14b121`). v44 high-water remains **`dee2ec6` — public proposal links + automation
+event triggers (0121/0122)**. Confirm remaining live pastes for **0108–0137 + the two
+`2026*` files** independently; **0121–0122 were applied on the app database via MCP**.
 
-**Next product milestone (NOT started — fold into planning when ready):** **STRIPE-CONNECT-01
-— Stripe Checkout for client invoice payments via Stripe Connect.** Venues/planners connect
-**their own** Stripe account (prefer Express Connect). Public invoice gains **Pay with card**
-when Connected; webhook marks the invoice paid and fires `invoice_marked_paid` automations.
-Money lands in the venue/planner’s Stripe — First Look does **not** collect and payout (avoid
-money-transmitter / escrow risk). Keep today’s external `payment_link_url` (Venmo/Zelle/etc.)
-+ manual Record / Mark paid as the fallback. Do **not** attempt webhooks for personal Venmo /
-Zelle / Cash App $handles — those P2P rails have no merchant event API for this product.
-See §15 **F′**.
+**Connect is shipped on proposals, not invoices.** **STRIPE-CONNECT-01** (0131) lets
+venues/planners connect **their own** Stripe account (Express, embedded onboarding at
+`/account/payments`). Public `/proposal/[token]` gains **Pay** when
+`card_payments` is `active`. Checkout is a **direct charge on the connected account**;
+webhook `app/api/stripe/connect/webhook` marks `proposal_payments` paid. First Look
+takes **no application fee** and does **not** collect-and-payout. Platform subscription
+webhook (`app/api/stripe/webhook`) **returns early on `event.account`** so a proposal
+charge cannot write `subscriptions`. **Invoices stay on the external `payment_link_url`
++ manual Record / Mark paid path.** Invoice card Checkout remains a later slice if
+wanted — do not treat 0131 as that work. Do **not** attempt webhooks for personal
+Venmo / Zelle / Cash App $handles. Pay on a proposal is **optional**; signing does not
+require cards. See §4 / §7 v45 / §15 **F′**.
 
 **Dev-ops note:** `STRIPE_SECRET_KEY` was briefly live-mode in local `.env.local` during
 testing, producing one real live venue subscription — confirmed cancelled directly in the
@@ -72,6 +82,11 @@ testing.
 - **White-label:** CoupleShell for invited project viewers (WHITE-01). PlannerShell own-shell
   only when `plan = 'venue' AND white_label_enabled` (VENUE-01). Ordinary planner chrome stays
   First Look. Accent picker + contrast guard is WHITE-02 (still one free-text hex).
+  **WHITE-04 / 0123:** venues also store optional `accounts.brand_sidebar_color` (`#RRGGBB`)
+  for the PlannerShell dark rail; null = Soft stack `--ink`. Runtime CSS variable
+  `--brand-sidebar` — **not** a new `globals.css` token. **WHITE-05 / 0132:**
+  `get_inquiry_branding` returns that sidebar color so the public inquiry hero can use
+  it (sidebar wins over accent when white-label is on).
 - **Lock screen** lives in `app/(locked)/account/locked` (ENT-01a). Path `/account/locked`.
   **`(app)/layout` must not branch on pathname.**
 - **`isTaskPastDue`** (`lib/task-overdue.ts`) is the **single source** for task overdue
@@ -96,21 +111,43 @@ testing.
   project members see `invited`. Same panel, no switcher. RLS is
   `resolve_assistant_audience(project_id)` — **not** `can_access_project` alone.
 - **Planner invoicing is live on disk (INVOICE-01…05 / 0102 + 0115–0118).** Project tab
-  `/projects/[id]/invoices` (`plannerOnly`) plus account-level invoice books. Payment is an
-  **external** `payment_link_url` — First Look never charges the client. Public page
+  `/projects/[id]/invoices` (`plannerOnly`) plus account-level books at `/invoices` and a
+  Money board at `/money` (sidebar). Payment on **invoices** is still an **external**
+  `payment_link_url` — First Look never charges the client on that surface. Public page
   `/invoice/[token]` via `get_invoice_by_token`. Invited couples and collaborators have
   **zero** authenticated access; their view is the token page. **INVOICE-02** adds
   `invoice_payments` ledger + `partial` status; **INVOICE-03** adds `invoice_schedule`
-  installments; **INVOICE-04** adds qty×rate lines, `INV-YYYY-NNN` numbers, terms, templates,
+  installments + daily cron `/api/cron/invoice-schedule-watch` (`2 15 * * *`);
+  **INVOICE-04** adds qty×rate lines, `INV-YYYY-NNN` numbers, terms, templates,
   white-label on the public page; **INVOICE-05** optional `invoices.proposal_id`. Manual
-  **Record payment** / **Mark remaining paid** is how Venmo/Zelle/etc. land in the CRM until
-  STRIPE-CONNECT-01.
-- **Public proposals are live on disk (WORKFLOW-07 / 0122).** Every proposal has
-  `access_token`. Planner **Send proposal** emails `/proposal/[token]` (Resend) and sets
-  status `sent` (also advances lead stage to `proposal` when eligible). Couple **Accept**
-  marks accepted, converts to project + invoice (`leads.project_id` — CRM-01 / 0119), stages
-  lead `booked`, fires booked automations. **Decline** sets declined. Draft proposals are
-  hidden from the public RPC. Printable contract URL remains planner-auth after accept.
+  **Record payment** / **Mark remaining paid** is how Venmo/Zelle/etc. land in the CRM.
+  Invoice card Checkout via Connect is **not** what 0131 shipped.
+- **Public proposals are live on disk (WORKFLOW-07 / 0122 + PROP-SIGN-01 / 0130 +
+  STRIPE-CONNECT-01 / 0131).** Every proposal has `access_token`. Planner **Send proposal**
+  emails `/proposal/[token]` (Resend) and sets status `sent` (also advances lead stage to
+  `proposal` when eligible). Couple **Accept** requires a typed name (`proposals.signed_name`,
+  1–200 chars); Decline does not. Accept marks accepted, converts to project + invoice
+  (`leads.project_id` — CRM-01 / 0119), stages lead `booked`, fires booked automations.
+  A signed row is **locked** — planner cannot change status, edit, or delete. Planner-only
+  status change can still accept **without** a signature (`signed_name` null). **Pay** on
+  the public page is optional Connect Checkout when `payments_ready`. Draft proposals are
+  hidden from the public RPC. Signed proposals also appear on `/projects/[id]/contracts`.
+  Printable contract URL remains planner-auth after accept.
+- **Stripe Connect is live on disk (STRIPE-CONNECT-01 / 0131) for proposal payments.**
+  Tables `stripe_connected_accounts` + `proposal_payments`. Embedded Connect at
+  `/account/payments` (`account_onboarding`, `notification_banner`, `account_management`,
+  `payments`, `payouts`). Demo workspaces cannot onboard. Second webhook
+  `STRIPE_CONNECT_WEBHOOK_SECRET`. Success URL does **not** mark paid.
+- **Planner/venue projects and leads have an event type (EVENT-TYPE-01).**
+  `projects.event_type` / `leads.event_type` = `wedding | event` (default `wedding`).
+  Couples stay wedding. Public inquiry form can submit `p_event_type`. Other events
+  default-hide **website + seating**. Not a new `accounts.kind`.
+- **Workspace tabs can be hidden (HIDE-TOOLS-01).** `projects.hidden_tools` is a
+  text array. Hideable: calendar, checklist, budget, vendors, guests, website, seating,
+  timeline, contracts, invoices, agreements, notes. Overview and Access are always on
+  and never stored. Customize menu: owners + invited couples can hide tabs;
+  collaborators cannot; invited couples cannot hide planner `contracts` / `invoices`
+  (trigger strips those keys). Hiding a tab does not delete its rows.
 - **`seating_assignments.seat_index` is 1-based** (SEAT-INDEX-01 / 0100). Canvas chairs are
   `1..seat_count`. A leftover `0` is unplaced (`null`), not a ghost chair.
 - **When the wedding date changes, `projects.name` is rewritten in place** (DATE-SYNC-01) so a
@@ -129,16 +166,41 @@ testing.
   `checkIsAdmin`). Never query `admin_roles` from the browser client. Server actions under
   `app/(admin)/` re-check `is_admin()` themselves because the layout gate does not protect
   the action POST.
-- **Weekly content queue is admin-only** (CONTENT-QUEUE-00 / 0106–0107 + CONTENT-QUEUE-02).
-  Friday cron (`35 15 * * 5`) plans copy via Anthropic, kicks KIE Seedream 5 Pro
-  image-to-image, and a webhook re-uploads bytes into `content-queue-assets`. Humans
-  approve/deny/regenerate at `/admin/content-queue`. Distinct from AUTO/AGENT/WORKFLOW
-  crons — different cost, different vendor, no couple/planner data.
-- **Deferred destructive drops are 0123+:** MEAL-03a (`guests.meal_choice` +
+- **Weekly content queue is admin-only** (CONTENT-QUEUE-00 / 0106–0107 + CONTENT-WEEK-01…
+  CONTENT-QUEUE-04). The same cron path `/api/cron/content-queue-generate` is now
+  **Sunday** `35 15 * * 0` and fills a **content-week shortlist** (Mon–Sat slots,
+  `content_slots` / `content_topic_cursors` — 0124). It does **not** render images.
+  Humans pick ideas, Produce, and check off filmed/posted. Produce writes
+  `content_queue.slide_specs` (0125) and renders PNG **in-process via Satori** (or
+  optional `STILL_RENDER_URL`). KIE Seedream create/webhook code remains on disk as
+  leftover — Produce sets `kie_task_ids: []`. Humans approve/deny/regenerate at
+  `/admin/content-queue`. Distinct from AUTO/AGENT/WORKFLOW crons — different cost,
+  no couple/planner data. **Do not auto-post.**
+- **Admin also has Product screens (`/admin/product-shots`, 0129) and daily Venue
+  outreach (`/admin/planner/outreach`, 0128).** Outreach is a typed 5+5 list
+  (venue/planner) to copy and mark sent — **no send, no lookup.** Distinct from
+  Gmail `outreach_messages`.
+- **Leads carry a next follow-up (LEAD-FU-01 / 0135) and a lost reason
+  (LEAD-LOST-01 / 0136).** Board views: Open / Needs reply / Due / Stale / This
+  season. Due = follow-up today or overdue. Lost requires a reason in the UI
+  (`budget | date_unavailable | chose_other | no_response | not_a_fit | other` +
+  optional 240-char note). DB does **not** require a reason on `stage = 'lost'`
+  (automations may still set lost without one).
+- **Assistant can review uploaded PDF/Word/plain text (ASSIST-FILE-01 / 0133).**
+  `files.extracted_text` / `extraction_status` / `extraction_truncated`. Tools
+  `get_files` + `get_file`. Cap 48k chars. Demo clones copy ready text from a
+  sibling row (DEMO-FILE-01 / 0134) so the seeded venue agreement is readable.
+- **Vendor Search can show a starting price from the vendor’s own site
+  (VND-SITE-PRICE-01 / 0126)** via service-role `vendor_site_price_cache` (30-day
+  TTL, `place_id` PK) plus `vendor_category_quote_median` (≥8 non-demo quotes).
+  Not an anon surface. Compare 2–4 shortlist vendors in one category before
+  outreach (VND-COMPARE-01, NO SCHEMA).
+- **Deferred destructive drops are 0139+:** MEAL-03a (`guests.meal_choice` +
   `guests.party_size`), `budget_items.due_date`, `rsvp_access_mode`, optional
   `wedding_profile.traditions`, DASH-03a `projects.description`, optional PRICE-03/04/05
-  residual drop. **0092–0122 are taken.** Do **not** reuse 0100–0122 for those drops.
-  (v43 said “0108+”; 0108–0122 shipped other work — drops move to **0123+**.)
+  residual drop. **0092–0137 plus the two `2026*` files are taken.** Do **not** reuse
+  0100–0138 for those drops. (v43 said “0108+”; v44 said “0123+”; 0123 went to venue
+  sidebar color and 0124–0138 shipped other work — drops move to **0139+**.)
 - **Rule-based automation is live on disk:** AUTO-01 payment-schedule watch (0084) and AUTO-02
   booked-vendor countdown confirmations (0085). Date math in, Resend template email out, **no LLM**.
   Distinct from agentic runs — different cron routes, different cost/failure profile.
@@ -169,12 +231,18 @@ testing.
 - **There are exactly ELEVEN anon surfaces** (three reads + one INSERT + seven RPC executes) —
   see §4. AUTO-02 added `confirm_project_vendor`; AUTO-03a added `submit_inquiry`; WHITE-03
   added `get_inquiry_branding`; INVOICE-01 added `get_invoice_by_token`; **WORKFLOW-07 /
-  0122 added `get_proposal_by_token`.** The Resend inbound webhook (inquiry + admin relay) is
-  **not** an anon surface. Google OAuth, `/contact` (CONTACT-FORM-01, server `sendEmail` only),
-  and password reset are not anon surfaces. **`/admin`, admin tables, `admin-media`,
-  `content-queue-assets`, the content-queue cron, and the KIE webhook are not anon surfaces.**
-  **`admin_automation_prompts` / `admin_automation_runs` were dropped in 0114** — do not
-  reference them as live tables.
+  0122 added `get_proposal_by_token`.** v45 **did not add an anon surface.** Payloads
+  grew: `get_proposal_by_token` now also returns `signed_name`, `payments_ready`,
+  `payment_status`; `get_inquiry_branding` also returns `brand_sidebar_color`;
+  `submit_inquiry` gained optional `p_event_type` (8th arg; 7-arg overload dropped).
+  The Resend inbound webhook (inquiry + admin relay) is **not** an anon surface.
+  Connect webhook, Google OAuth, `/contact` (CONTACT-FORM-01, server `sendEmail` only),
+  `/privacy`, `/account/payments`, and password reset are not anon surfaces.
+  **`/admin`, admin tables, `admin-media`, `content-queue-assets`, `outreach_targets`,
+  `product_shot_uploads`, `vendor_site_price_cache`, `stripe_connected_accounts`,
+  `proposal_payments`, the Sunday content-week cron, and the leftover KIE webhook are
+  not anon surfaces.** **`admin_automation_prompts` / `admin_automation_runs` were
+  dropped in 0114** — do not reference them as live tables.
 
 | Slice (v38 — all NO SCHEMA) | What | Schema |
 |---|---|---|
@@ -276,44 +344,78 @@ testing.
 | **WORKFLOW-07** | Public proposals: `proposals.access_token`, anon `get_proposal_by_token`, `/proposal/[token]`, Send (Resend) + Accept (= convert project/invoice + booked) / Decline. | **0122** |
 | **MKT-MOBILE-01** | Planner/couple mobile chrome and marketing copy polish (NO SCHEMA; multiple commits). | **NONE** |
 | **DEMO-LINK-01** | `/demo` GET lands cold-email recipients in a live planner workspace without login. | **NONE** |
-| **STRIPE-CONNECT-01** | **NEXT when ready — not started.** Stripe Connect (venue/planner’s own account) + Checkout on invoices + webhook → mark paid. Keep external payment links. | **TBD** |
+| **STRIPE-CONNECT-01** | Planned in v44 as invoice Checkout. **Shipped in v45 on proposals (0131).** Invoice card pay remains a later slice. Keep external invoice payment links. | **0131** (v45) |
 
-Full per-slice narratives for the entire product (foundation through v44) are in **§7 of this
-file**. Migration index **0001–0122** is in **§5 of this file**.
+| Slice (v45) | What | Schema |
+|---|---|---|
+| **WHITE-04** | Venue PlannerShell sidebar color. Optional `accounts.brand_sidebar_color`. Null = `--ink`. Runtime `--brand-sidebar`. | **0123** |
+| **CONTENT-WEEK-01** | Sunday shortlist + Mon–Sat `content_slots` / `content_topic_cursors`. Cron `/api/cron/content-queue-generate` is now Sunday ideas, not Friday KIE. | **0124** |
+| **CONTENT-QUEUE-03** | `content_queue.slide_specs` jsonb. Produce renders Satori (or `STILL_RENDER_URL`). | **0125** |
+| **VND-SITE-PRICE-01** | `vendor_site_price_cache` (service-role) + `vendor_category_quote_median`. 30-day site scrape. | **0126** |
+| **CONTENT-WEEK-02** | TikTok slots carry rotating `feature_key` (couple tab to promote). | **0127** |
+| **ADMIN-OUTREACH-01** | Daily 5 venue + 5 planner `outreach_targets`. Copy + mark sent. No send. | **0128** |
+| **CONTENT-QUEUE-04** | `product_shot_uploads` — one admin screenshot per generator angle. Bytes in existing `content-queue-assets`. | **0129** |
+| **PROP-SIGN-01** | `proposals.signed_name`. Public Accept requires a typed name; signed row is locked. | **0130** |
+| **STRIPE-CONNECT-01** | Express Connect + embedded `/account/payments` + Checkout on **proposals**. Direct charges; no platform fee; separate Connect webhook. Invoices unchanged. | **0131** |
+| **WHITE-05** | `get_inquiry_branding` returns `brand_sidebar_color` for the public inquiry hero. | **0132** |
+| **ASSIST-FILE-01** | `files.extracted_text` / status / truncated. Assistant `get_files` / `get_file`. | **0133** |
+| **DEMO-FILE-01** | Clone copies ready extracted text; demo-template storage SELECT via linked `files` row. | **0134** |
+| **LEAD-FU-01** | `leads.next_followup_on` / `next_followup_action`. Board Due view. | **0135** |
+| **LEAD-LOST-01** | `leads.lost_reason` / `lost_note`. Board requires a reason; DB does not. | **0136** |
+| **CONTENT-WEEK-03** | `post_style` on ideation + queue (`tip`, `save_this`, `myth`, …). | **0137** |
+| **EVENT-TYPE-01** | `projects.event_type` / `leads.event_type` (`wedding` \| `event`). `submit_inquiry` 8th arg. Default hide website+seating for other events. | **`20261012025314`** |
+| **HIDE-TOOLS-01** | Widen `hidden_tools`; Customize menu; invited couples cannot hide contracts/invoices. | **`20261021012159`** (// 0138) |
+| **VND-COMPARE-01** | Compare 2–4 shortlist vendors in one category. | **NONE** |
+| **BUD-OVER-01** | Budget bar vs plan; blown ceiling reads **Over budget**. | **NONE** |
+| **GST-EXPORT-01** | Print / CSV mailing lists + table assignments. | **NONE** |
+| **MKT-CRM-01** | Marketing repositioned around the wedding-planning CRM (lead-to-workbook). | **NONE** |
+| **RAIL-01** | Planner/venue dark icon-rail (admin-style shape, Soft stack tokens). | **NONE** |
+| **PRIVACY-01** | Public `/privacy` for Google OAuth verification. | **NONE** |
+| **BUILD-WEBPACK-01** | `next build --webpack` to dodge Turbopack Google Font failures on Vercel. | **NONE** |
+| **MONEY-01** | Account `/invoices` book + `/money` summary board in the planner sidebar. | **NONE** |
 
-> **Numbering note:** **0070–0122 are taken.** Next-free is **0123.** Do not `db push`. **`viewer`
-> invite remains deferred by product choice** (WRITE-01 write gates are done). **CON-03** (real PDF
+Full per-slice narratives for the entire product (foundation through v45) are in **§7 of this
+file**. Migration index **0001–0137 + the two `2026*` files** is in **§5 of this file**.
+
+> **Numbering note:** **0070–0137 and the two `2026*` files are taken.** Next-free numbered
+> file is **0139** (skip 0138 so a new `0138_*.sql` does not sort before
+> `20261012025314` / `20261021012159`). Do not `db push`. **`viewer` invite remains
+> deferred by product choice** (WRITE-01 write gates are done). **CON-03** (real PDF
 > bytes) remains **DEFERRED by choice**. **Marketing copy policy:** do not promote or lead with
 > "AI"; frame as the app / "automatically" / "the assistant." CON-04's UI label "Generate with the
 > assistant" is the sanctioned framing for that surface. **Do not promote the $7+$92 couple trial**
 > — that product path is gone. **Do not auto-send anything that reaches a third party** (AGENT-03
 > / AUTO-03 / WORKFLOW-03 stay propose-then-approve). **Invoice client payment is still not
-> in-app Stripe Checkout today** — `payment_link_url` is an external link the planner pastes;
-> ledger is manual Record / Mark paid. **STRIPE-CONNECT-01** (Connect + Checkout) is the
-> sanctioned next payment milestone — venues/planners connect **their** Stripe; First Look does
-> **not** collect-and-payout. **Do not treat `/admin` as a couple/planner product surface** — it
+> in-app Stripe Checkout** — `payment_link_url` is an external link the planner pastes;
+> ledger is manual Record / Mark paid. **Proposal card payment IS in-app Checkout** via
+> Connect on the venue/planner’s Stripe (0131). First Look does **not** collect-and-payout
+> on either surface. **Do not treat `/admin` as a couple/planner product surface** — it
 > replaces an internal Google Sheet + Cowork task, not a customer feature. **Do not auto-post
 > generated content-queue images** — humans approve. **Do not revive `admin_automation_*` tables**
-> after 0114.
+> after 0114. **Do not fold a proposal charge into the platform subscription webhook.**
 
 **Verification status (READ THIS):**
 - **0031–0059** on disk; **0059 applied live + visually verified.**
 - **0060–0069** — ON DISK. **0068–0069 claimed LIVE VERIFIED** (Dom) — re-confirm if unsure.
 - **0070–0083** — ON DISK **and committed in git**. Confirm remaining hand-pastes + Edge Function
   deploys + schedules. **0071 LIVE VERIFIED** (`pg_policies`).
-- **0084–0122** — ON DISK. Confirm hand-pastes + Vercel Cron env (`CRON_SECRET`, Resend,
-  `SUPABASE_JWT_SECRET`, `INQUIRY_INBOUND_DOMAIN`, `RESEND_INBOUND_WEBHOOK_SECRET`,
-  `ADMIN_INBOUND_ADDRESS`, `CONTACT_NOTIFY_EMAIL`, **`KIE_API_KEY`**, optional
-  `KIE_WEBHOOK_HMAC_KEY` / `CONTENT_QUEUE_BATCH_SIZE` / `CONTENT_QUEUE_REF_LRVN_URL` /
-  `CONTENT_QUEUE_REF_SQUARE_URL`) + Google OAuth provider in Supabase Auth +
-  schedules in `vercel.json`. **0091 GRANT is the live gate for member writes to `accounts`.**
+- **0084–0137 + the two `2026*` files** — ON DISK. Confirm hand-pastes + Vercel Cron env
+  (`CRON_SECRET`, Resend, `SUPABASE_JWT_SECRET`, `INQUIRY_INBOUND_DOMAIN`,
+  `RESEND_INBOUND_WEBHOOK_SECRET`, `ADMIN_INBOUND_ADDRESS`, `CONTACT_NOTIFY_EMAIL`,
+  **`STRIPE_CONNECT_WEBHOOK_SECRET`**, optional `STILL_RENDER_URL` / `STILL_RENDER_SECRET`,
+  leftover **`KIE_API_KEY`** / `KIE_WEBHOOK_HMAC_KEY` / `CONTENT_QUEUE_REF_*`) + Google
+  OAuth provider in Supabase Auth + schedules in `vercel.json`. **0091 GRANT is the live
+  gate for member writes to `accounts`.**
   **WORKFLOW-01** was claimed live-verified in production (a real `lead_stage_changed` run
   executed two zero-delay steps) — re-confirm 0094–0120 pastes independently.
   **0100–0105 were applied via MCP during implementation** on the app database — still confirm
   with `to_regclass` / `pg_policies` before treating them as Dom-closed. **0106–0120 same
   posture — confirm independently.** **0121–0122 applied via MCP** during WORKFLOW-06/07;
   confirm with `to_regprocedure('get_proposal_by_token(text)')` and the
-  `automation_workflows_trigger_kind_check` constraint.
+  `automation_workflows_trigger_kind_check` constraint. **0123–0137 + event-type +
+  hidden-tools files — confirm independently** (`brand_sidebar_color`, `content_slots`,
+  `stripe_connected_accounts`, `get_proposal_by_token` columns `signed_name` /
+  `payments_ready` / `payment_status`, `projects.event_type`, `projects.hidden_tools`).
 - Shipped in code (residual pastes + Edge Function ops + Cron env are the human gate): WHITE-01/02/03,
   WRITE-01, CAL-04/05, ONB-06, ENT-01/01a, PRICE-01/02/06/07/08, TMPL-01/02, AGR-01, HYG-01/01a,
   WEB-REVAL, DEMO-04/04b, DEMO-ANON-01, RSVP-THROTTLE, TEAM-01, VENUE-01…08, GMAIL-THREAD, VND-12/13,
@@ -325,11 +427,16 @@ file**. Migration index **0001–0122** is in **§5 of this file**.
   CONTACT-FORM-01, AUTH-RESET-01, ONB-07, DATE-SYNC-01, VND-LIB-02, VND-MONEY-01, VND-16a,
   MKT-04, ASSIST-MD-01, DEMO-SEED-GUARD, ADMIN-00, ADMIN-MEDIA-01, ADMIN-SEED-01,
   ADMIN-TYPE-01, CONTENT-QUEUE-00, CONTENT-QUEUE-02, ANALYTICS-01, ADMIN-AUD-00, IDEATION-01…03,
-  ADMIN-DROP-01, CRM-01, ADMIN-SCHED-01, MKT-MOBILE-01, DEMO-LINK-01.
+  ADMIN-DROP-01, CRM-01, ADMIN-SCHED-01, MKT-MOBILE-01, DEMO-LINK-01,
+  WHITE-04/05, CONTENT-WEEK-01…03, CONTENT-QUEUE-03/04, VND-SITE-PRICE-01, VND-COMPARE-01,
+  ADMIN-OUTREACH-01, PROP-SIGN-01, STRIPE-CONNECT-01, ASSIST-FILE-01, DEMO-FILE-01,
+  LEAD-FU-01, LEAD-LOST-01, EVENT-TYPE-01, HIDE-TOOLS-01, BUD-OVER-01, GST-EXPORT-01,
+  MKT-CRM-01, RAIL-01, PRIVACY-01, BUILD-WEBPACK-01, MONEY-01.
   **PRICE-03/04/05 product path is superseded** (schema residual).
-  **STRIPE-CONNECT-01 is planned, not shipped.**
+  **STRIPE-CONNECT-01 is shipped on proposals (0131).** Invoice card Checkout is not.
 - **Still open (human gate):** confirm remaining **0060–0070 / 0072–0120** pastes (+ demo seeds
   with `demo.seed_confirm`); confirm **0121–0122** with `to_regprocedure` / CHECK constraint;
+  confirm **0123–0137 + `2026*` files**;
   deploy/schedule `purge-demo` (do **not** treat `charge-trial-balance` as the live couple path);
   confirm Vercel Cron actually fires in the deployed environment; broad Soft stack visual checkpoint
   including Team, venue upgrade + own-shell branding + venue copy, vendor **directory** + three-tab Vendors,
@@ -339,8 +446,10 @@ file**. Migration index **0001–0122** is in **§5 of this file**.
   intake card + reply drawer, vendor-confirm page, Pending drafts, lead Edit modal,
   `/automations` templates + builder (**incl. new triggers/templates**), Google login, invite email delivery, calendar detail modal,
   seating 1-based chairs + sticky roster, assistant audience split, Invoices tab + public invoice
-  (**Pay now** + ledger), **public `/proposal/[token]` Accept/Decline**, `/contact`, password reset,
-  **`/admin` (Dom or Jordyn session) + content-queue generate + KIE callback**.
+  (**Pay now** + ledger), **public `/proposal/[token]` Accept + typed name + optional Pay**,
+  `/contact`, `/privacy`, password reset, **`/account/payments` Connect onboard**,
+  **`/admin` (Dom or Jordyn session) + Sunday content-week shortlist + Produce stills +
+  product shots + outreach list**.
   **Production E2E (2026-09-22):** form → lead_created note → Send proposal → Accept → booked +
   project + invoice → payment link + Send invoice → Pay now — **passed** on venue account
   `the-venue` (Gmail Approve still blocked until Google OAuth verification). Known bug fixed in
@@ -351,8 +460,8 @@ file**. Migration index **0001–0122** is in **§5 of this file**.
 A separate **Agentic Automation Architecture (v1)** lives at `AGENTIC_AUTOMATION_v1.md` (AGENT-01/02/03
 + AUTO-03 — trigger-based invocations of the existing assistant loop). Distinct from AUTO-01/02
 (rule-based cron, no LLM) **and** from WORKFLOW-00…07 (account-scoped CRM event + delay engine;
-no LLM) **and** from ADMIN-00 / CONTENT-QUEUE-02 (internal social-ops dashboard + KIE image
-batch — not the assistant loop, not CRM workflows). This bible covers product/architecture
+no LLM) **and** from ADMIN-00 / CONTENT-WEEK / CONTENT-QUEUE (internal social-ops dashboard
++ Sunday shortlist + Satori stills — not the assistant loop, not CRM workflows). This bible covers product/architecture
 **current state** including what has shipped; the runbook covers deployment; the automation
 architecture covers *how* scheduled/event-triggered assistant invocation should work (autonomy
 tiers, reuse discipline, deferred v2). Keep all three. Do not restate the architecture companion
@@ -445,19 +554,27 @@ v43.
 - Tailwind CSS (v4 `@theme inline` — Soft stack tokens mapped in `app/globals.css`)
 - Anthropic Claude — model centralized in `lib/anthropic-model.ts` as `ANTHROPIC_MODEL`
   (`claude-sonnet-4-6`, env-overridable). Plan generation, outreach drafts, vendor enrichment,
-  the assistant, **admin automations Run, ideation generate, and content-queue weekly copy
+  the assistant, **ideation generate, content-week Sunday shortlist, and Produce copy
   (`callClaudeJson` / raw Messages API — `MODEL_API_KEY` never reaches the browser)**.
+  Admin automation prompt-runner was dropped in 0114 — do not revive.
 - Google Places API (New) — vendor discovery
 - Supabase Auth Google provider — **Continue with Google** on login/signup
   (AUTH-GOOGLE-01). Distinct from Gmail send OAuth below.
 - Gmail OAuth (scope `gmail.send`) — sending outreach from the couple's own mailbox.
   **NOT used for invitations** (invites go via Resend — INV-06 / TEAM-EMAIL-01).
-- Stripe — billing for couples, planners, and venues (test mode). **Couple:** local 7-day free
+- Stripe — billing for couples, planners, and venues (test mode) **plus Connect proposal
+  payments**. **Couple:** local 7-day free
   trial (no Stripe objects) then Monthly $10 Subscription **or** Lifetime $99 one-time Checkout
   (`charge_stage=couple_lifetime`). **Planner:** local 7-day free trial then Monthly $59 /
   Annual $590 Subscription Checkout + Customer Portal. **Venue:** Monthly $149 / Annual $1,499
   Subscription Checkout (`/account/venue-upgrade`); webhook flips `accounts.plan`. PRICE-03/04/05
-  $7+$92 path is **superseded** (schema + `charge-trial-balance` residual). **Checkout-return
+  $7+$92 path is **superseded** (schema + `charge-trial-balance` residual).
+  **Connect (STRIPE-CONNECT-01 / 0131):** Stripe Accounts API v2 (`stripe` ^22), Express,
+  embedded components (`@stripe/connect-js` / `@stripe/react-connect-js`) on
+  `/account/payments`. Proposal Checkout is created **on the connected account**
+  (`stripeAccount`); fulfill only from `app/api/stripe/connect/webhook` with
+  `STRIPE_CONNECT_WEBHOOK_SECRET`. Platform webhook ignores `event.account`.
+  **Checkout-return
   reconciliation (CHECKOUT-RECONCILE-01):** venue/planner/couple Checkout success URLs carry
   `session_id={CHECKOUT_SESSION_ID}`; both return pages (`/account/billing` for couple + planner,
   `/account/venue-upgrade` for venue) synchronously retrieve the session and call
@@ -480,29 +597,39 @@ v43.
   (`RESEND_INBOUND_WEBHOOK_SECRET`), not an anon surface. Env: `RESEND_API_KEY`,
   `INQUIRY_INBOUND_DOMAIN`, `ADMIN_INBOUND_ADDRESS`, `CONTACT_NOTIFY_EMAIL`.
   **AUTH-RESET-01** uses Supabase Auth `resetPasswordForEmail` (not Resend).
-- **KIE.ai** — Seedream 5 Pro image-to-image (`seedream/5-pro-image-to-image`) for the weekly
-  admin content-queue batch (CONTENT-QUEUE-02). Env: `KIE_API_KEY`; optional
-  `KIE_WEBHOOK_HMAC_KEY` (HMAC on `taskId.timestamp`); optional public URL overrides
-  `CONTENT_QUEUE_REF_LRVN_URL` / `CONTENT_QUEUE_REF_SQUARE_URL` for the locked templates.
-  Callback `POST /api/webhooks/kie-content-queue`. Hard gate is always "this `taskId` already
-  lives on a `content_queue` row"; unknown ids are discarded. **Not** an anon surface.
-  Bytes are re-uploaded to `content-queue-assets`; KIE-hosted URLs expire (~24h) and are
-  **never stored**.
+- **Still renderer (CONTENT-QUEUE-03)** — Produce draws PNG from `slide_specs` via Satori
+  in-process (`lib/admin/content-queue/satori-slide.tsx`). Optional remote
+  `STILL_RENDER_URL` / `STILL_RENDER_SECRET`. Admin product-shot uploads (0129) beat
+  bundled `design/product-shots`. `stills/HANDOFF.md` is a Remotion design note; the
+  **app shipped Satori, not Remotion in-process**.
+- **KIE.ai leftover** — Seedream 5 Pro create/webhook files remain on disk from
+  CONTENT-QUEUE-02. Produce no longer starts KIE tasks (`kie_task_ids: []`). Do not
+  treat the Friday KIE job as the live generate path. Env `KIE_API_KEY` /
+  `KIE_WEBHOOK_HMAC_KEY` / `CONTENT_QUEUE_REF_*` are residual. Callback
+  `POST /api/webhooks/kie-content-queue` still exists for in-flight leftovers.
+  **Not** an anon surface. Bytes, if any, still land in `content-queue-assets`;
+  KIE-hosted URLs are **never stored**.
+- **File text (ASSIST-FILE-01)** — `unpdf` (PDF) + `mammoth` (Word) + plain text. Cap
+  48k chars. Not a PDF *generation* library — CON-03 remains deferred. Print stays
+  HTML + `@media print`.
 - **Vercel Web Analytics** (ANALYTICS-01) — `@vercel/analytics/next` `<Analytics />` in root
   `app/layout.tsx`. Page-view collection on production. No extra env. Not a product feature.
-- **Vercel Cron** (`vercel.json`) — **eight** scheduled routes, all gated by `Authorization: Bearer
+- **Vercel Cron** (`vercel.json`) — **nine** scheduled routes, all gated by `Authorization: Bearer
   ${CRON_SECRET}` (`lib/cron/authorize.ts`). Cadences (UTC): payment-schedule-watch `0 15 * * *`;
+  **invoice-schedule-watch (INVOICE-03) `2 15 * * *`**;
   countdown-confirmations `5 15 * * *`; agent-review (AGENT-01) `10 15 * * 1`;
   agent-implication-scan (AGENT-02) `15 15 * * *`; agent-outreach-scan (AGENT-03) `20 15 * * 1`;
   agent-inquiry-scan (AUTO-03b) `*/10 * * * *`; automation-dispatch (WORKFLOW-02) `25 15 * * *`;
-  **content-queue-generate (CONTENT-QUEUE-02) `35 15 * * 5` (Friday).**
+  **content-queue-generate (CONTENT-WEEK-01) `35 15 * * 0` (Sunday shortlist).**
   Agent routes `maxDuration = 300`; automation-dispatch `maxDuration = 60`;
   content-queue-generate `maxDuration = 300`. The AGENT-01a
   smoke route (`/api/cron/agent-write-smoke`) is **not scheduled**. Do **not** fold agentic runs
   into the AUTO-01/02 dispatcher — different cost and failure profile (LLM vs. plain SQL). Do
   **not** fold CRM workflows into either — they are event + delay, not a scan. Do **not** fold
-  the content-queue batch into any of the above — KIE image generation, admin-only, no
-  couple/planner data.
+  the content-week shortlist into any of the above — admin-only, no couple/planner data.
+- **Build:** `next build --webpack` (BUILD-WEBPACK-01) — Turbopack Google Font failures on
+  Vercel. Next **16.2.11**. Do not switch the production build back to Turbopack without
+  re-checking font load.
 - **Unattended writes** mint a short-lived HS256 user JWT with `SUPABASE_JWT_SECRET` (Project
   Settings → API) and talk to PostgREST as that member (`lib/assistant/unattended-write-session.ts`).
   Never use the service-role key as the request JWT for agent writes. Actor is the earliest
@@ -779,9 +906,9 @@ In `.cursor/main.mdc` (architecture) + `.cursor/design.mdc` (Soft stack design).
   rewrite them.** (v29 — unchanged.)
 - **Additive-then-destructive for column reinterpretation / supersession.** Exemplars: `actual_amount`
   reinterpreted; `budget_items.due_date` write-dead then dropped later; **`rsvp_access_mode` kept and
-  read-dead after gated-only (0054, drop candidate 0123+); `guests.meal_choice` inert after the
-  flatten (drop in MEAL-03a / 0123+); `guests.party_size` still written by `addGuest` for create-form
-  slots but unused for person-grain headcount (also drop in MEAL-03a / 0123+);
+  read-dead after gated-only (0054, drop candidate 0139+); `guests.meal_choice` inert after the
+  flatten (drop in MEAL-03a / 0139+); `guests.party_size` still written by `addGuest` for create-form
+  slots but unused for person-grain headcount (also drop in MEAL-03a / 0139+);
   `wedding_profile.traditions` write-dead as of POLISH-01 (drop unscheduled — same posture).**
 - **A gated (token-bound) RSVP write to a KNOWN guest is NOT the forbidden auto-match.** The standing
   rule "no auto-matching of open RSVPs to guests" exists because an **open** submission arrives with no
@@ -976,10 +1103,10 @@ display line and the home for per-person fields.
   add/edit field on Guests), `phone` (nullable — surfaced in place of email), **`address` (nullable,
   0056 — household mailing address)**, `household` (nullable label), `party_size` int default 1
   (**still written by `addGuest` and drives additional create-form slots; person-grain display/
-  summary does not use it for headcount — drop in MEAL-03a / 0123+**), `rsvp_status` text NOT NULL
+  summary does not use it for headcount — drop in MEAL-03a / 0139+**), `rsvp_status` text NOT NULL
   default `pending` CHECK `pending|attending|declined` (**the badge — the authoritative shown status;
   written by `updateRsvp` AND `submit_rsvp`**), `meal_choice` (nullable, **inert — drop in MEAL-03a /
-  0123+**), `notes`, `created_at`, `rsvp_token` NOT NULL default `encode(gen_random_bytes(16),'hex')`
+  0139+**), `notes`, `created_at`, `rsvp_token` NOT NULL default `encode(gen_random_bytes(16),'hex')`
   (the per-household gated-lookup token).
 - **`guest_members` (0040 + 0056 + 0063)** — the **person / display line**. `id`, `project_id`,
   `guest_id` (composite FK `(project_id, guest_id) → guests` ON DELETE CASCADE), `name` (nullable),
@@ -1056,16 +1183,20 @@ Unchanged. Sole writer `set_project_archived(uuid, boolean)` — SECURITY DEFINE
    Token-gated one-click confirm on a `project_vendors` row. Returns vendor name + wedding
    identifier only (`already_confirmed` for idempotent re-clicks). **No anon SELECT on
    `project_vendors`.** Standing per-link token (`rsvp_token` generation, not invitation hashing).
-8. **Write (RPC):** `submit_inquiry(slug, name, email, message, honeypot, wedding_date, guest_count)`
-   — definer, anon execute (0089 / AUTO-03a). Resolves `account_id` from `accounts.inquiry_slug`
+8. **Write (RPC):** `submit_inquiry(slug, name, email, message, honeypot, wedding_date, guest_count, p_event_type)`
+   — definer, anon execute (0089 / AUTO-03a; **EVENT-TYPE-01** added optional
+   `p_event_type text DEFAULT 'wedding'` as the 8th arg and dropped the 7-arg
+   overload). Resolves `account_id` from `accounts.inquiry_slug`
    server-side (business-kind only). Honeypot + hashed-IP velocity throttle (3 / IP / account /
-   1 minute; constants only in the RPC). Inserts `leads` with `source = 'form'`. Returns the new
+   1 minute; constants only in the RPC). Inserts `leads` with `source = 'form'` and
+   `event_type` (`event` or coerced `wedding`). Returns the new
    `leads.id` so the Next.js action can dispatch `lead_created`. **No anon SELECT
    or INSERT on `leads`.** The Resend inbound webhook is **not** this ledger — signature-verified
    server-to-server, same as Stripe.
 9. **Read (RPC):** `get_inquiry_branding(p_slug)` — definer, anon + authenticated execute (0093 /
-   WHITE-03). Returns `account_found` plus the three brand fields (`brand_name`, `brand_logo_url`,
-   `brand_accent_color`) **only when** `white_label_enabled` is on. Never returns `account_id`,
+   WHITE-03; **WHITE-05 / 0132** added `brand_sidebar_color`). Returns `account_found` plus
+   the four brand fields (`brand_name`, `brand_logo_url`, `brand_accent_color`,
+   `brand_sidebar_color`) **only when** `white_label_enabled` is on. Never returns `account_id`,
    email, or any other `accounts` column. Unknown slug → `account_found = false` (invalid-link
    UI). White-label off → `account_found = true` and brand fields null (First Look Wordmark).
    Same posture as `get_project_branding` / `submit_inquiry`. **No anon SELECT on `accounts`.**
@@ -1077,11 +1208,16 @@ Unchanged. Sole writer `set_project_archived(uuid, boolean)` — SECURITY DEFINE
     `invoice_schedule`.** Standing per-link token (`rsvp_token` generation, same as
     `confirm_token`).
 11. **Read (RPC):** `get_proposal_by_token(p_token)` — definer, anon + authenticated execute
-    (0122 / WORKFLOW-07). Unknown or **draft** token → `proposal_found = false`. Never returns
+    (0122 / WORKFLOW-07; **0130** added `signed_name`; **0131** added `payments_ready` +
+    `payment_status`). Unknown or **draft** token → `proposal_found = false`. Never returns
     `account_id`, `lead_id`, or `access_token`. Payload: title, status, notes, terms, total,
     line_items, accepted_at, couple_name, wedding_date, account_name, branding when
-    white-label is on. Accept/Decline mutations run in app server actions via service role
-    after token verify — **not** anon UPDATE on `proposals`. **No anon SELECT on `proposals`.**
+    white-label is on, **`signed_name`**, **`payments_ready`** (connected account
+    `card_payments_status = 'active'`), **`payment_status`** (`paid` > `pending` > other).
+    Accept/Decline mutations run in app server actions via service role
+    after token verify — **not** anon UPDATE on `proposals`. Checkout create is a
+    server action; Connect webhook is service-role. **No anon SELECT on `proposals` /
+    `proposal_payments` / `stripe_connected_accounts`.**
     Middleware skips session refresh for `/proposal/*` (same posture as `/invoice/*` /
     `/inquire/*`).
 
@@ -1090,7 +1226,9 @@ Unchanged. Sole writer `set_project_archived(uuid, boolean)` — SECURITY DEFINE
 `payment_schedule` / `notes` / `user_tours` / `demo_start_attempts` / `inquiry_form_attempts` /
 `project_vendors` / `automation_workflows` / `automation_steps` / `automation_runs` /
 `automation_run_log` / `invoices` / `invoice_line_items` / `invoice_payments` /
-`invoice_schedule` / `proposals` / the seating tables have NO anon policy. Storage carve-outs:
+`invoice_schedule` / `proposals` / `proposal_payments` / `stripe_connected_accounts` /
+`vendor_site_price_cache` / `outreach_targets` / `product_shot_uploads` /
+`content_slots` / `content_topic_cursors` / the seating tables have NO anon policy. Storage carve-outs:
 **0042 `website-media` public SELECT** (recorded, not counted); **0070 `brand-media` public SELECT**
 (same posture; recorded, not counted); **0061 `vendor-media` private bucket** — authenticated
 account-member policies only, **NO anon SELECT**, reads via signed URLs (same posture as
@@ -1416,7 +1554,8 @@ collaborators see invoices only on `/invoice/[token]`.
 
 **`invoice_payments` (0115):** ledger of what arrived (Venmo, Zelle, check, cash, Stripe link,
 other). Collected / remaining / `partial|paid` derive from the ledger. First Look still never
-charges the client — Record payment / Mark remaining paid are manual until STRIPE-CONNECT-01.
+charges the client on this surface — Record payment / Mark remaining paid are manual.
+STRIPE-CONNECT-01 shipped card pay on **proposals**, not invoices.
 
 **`invoice_schedule` (0116):** dated installments; waterfall coverage derived at read from
 payments (BUD-SCHED posture). Public token returns schedule jsonb (no ids).
@@ -1435,17 +1574,31 @@ fires `invoice_marked_paid`. Public URL is always returned for copy. Pay now is 
 `target=_blank rel=noopener`. Draft-only line-item edit and delete. Paid cannot be voided;
 void cannot be edited.
 
-### Public proposals (WORKFLOW-07 / 0122) — ON DISK
+### Public proposals (WORKFLOW-07 / 0122 + PROP-SIGN-01 / 0130 + STRIPE-CONNECT-01 / 0131) — ON DISK
 
 **`proposals.access_token`:** NOT NULL unique (same generation as invoice / RSVP tokens).
-Backfilled for existing rows. **`get_proposal_by_token`:** eleventh anon surface. Drafts are
-hidden (`proposal_found = false`). Never returns `account_id` / `lead_id` / token. Accept /
+Backfilled for existing rows. **`proposals.signed_name` (0130):** nullable; CHECK null or
+trimmed length 1–200. Null = accepted without couple signature (planner status change).
+**`get_proposal_by_token`:** eleventh anon surface (replaced twice — 0130 then 0131 — DROP
+first; return type changed). Drafts are hidden (`proposal_found = false`). Never returns
+`account_id` / `lead_id` / token. Accept /
 Decline run in app server actions (service role after token verify) — not anon UPDATE.
-**Send proposal** emails `/proposal/[token]` via Resend, sets status `sent`, and may advance
+Public Accept requires a typed name; a signed row is app-locked (no status change / edit /
+delete). **Send proposal** emails `/proposal/[token]` via Resend, sets status `sent`, and may advance
 the lead to `proposal` (`advanceLeadStageIfEligible`). **Accept** = convert to project +
 invoice (`leads.project_id` — CRM-01 / 0119) + stage `booked` + `lead_stage_changed`
-automations. Printable contract URL remains planner-auth after accept. Middleware skips
-session refresh for `/proposal/*`.
+automations. Signed proposals appear on `/projects/[id]/contracts`. Printable contract URL
+remains planner-auth after accept. Middleware skips session refresh for `/proposal/*`.
+
+**`stripe_connected_accounts` (0131):** PK `account_id` → `accounts` CASCADE;
+`stripe_account_id` unique; `card_payments_status` / `payouts_status` ∈
+`active | pending | restricted | unsupported`. RLS SELECT only for
+`is_account_member`; writes are service-role.
+
+**`proposal_payments` (0131):** `proposal_id` + `account_id` CASCADE;
+`stripe_checkout_session_id` unique; `amount_cents > 0`; `currency = 'usd'`;
+status `pending | paid | failed`. RLS SELECT only for members; fulfill from
+Connect webhook (`lib/connect/fulfill.ts`). Success page never writes paid.
 
 ### Admin roles + social-ops tables (ADMIN-00 / 0103 + ADMIN-MEDIA-01 / 0104 + CONTENT-QUEUE-00 / 0106–0107 + v44 admin) — ON DISK
 
@@ -1480,29 +1633,97 @@ object then the row. 2GB cap. TUS resumable upload minted by
 `createMediaUploadToken` (admin session).
 
 **`ideation_items`:** AI-brainstormed candidates. Rating `up|down` or null + comment.
-**0111–0113** wire queue source, format/audience/bank, and LinkedIn as text-only Friday
-platform. `POST /api/admin/ideation/generate` pulls best- and worst-rated commented rows as
-few-shot context — preference-tuned prompting, **not** fine-tuning.
+**0111–0113** wire queue source, format/audience/bank, and LinkedIn as text-only.
+**0124** adds `lane` / `intent` / `topic_key` / `slot_date` / `week_start`.
+**0137** adds `post_style`. `POST /api/admin/ideation/generate` pulls best- and worst-rated
+commented rows as few-shot context — preference-tuned prompting, **not** fine-tuning.
 
 **`content_queue` (0106):** weekly generated-post review. `platform` instagram/tiktok/pinterest
 (**does not** gain reddit — bank and queue stay separate); `pillar` free-text; `content_type`
 A/B/C/D; `image_paths text[]` (our storage paths, never a KIE URL); `caption`; `status`
-pending/approved/denied; `week_of date`; `kie_task_id`; `generated_by`. Index `(week_of, status)`.
+pending/approved/denied; `week_of date`; `kie_task_id`; `generated_by`.
+**0125** `slide_specs jsonb NOT NULL DEFAULT '[]'`. **0137** `post_style`.
+Index `(week_of, status)`.
 
 **Storage:** `admin-media` (0104, 2GB, video+image MIMEs) and `content-queue-assets` (0107,
 20MB, png/jpeg/webp). Both private; `to authenticated` + `public.is_admin()`; UPDATE with
 both using and with check. Locked reference templates for KIE i2i live under
 `references/lrvn-post/` and `references/square/` in `content-queue-assets`.
 
+### Brand sidebar + inquiry hero (WHITE-04 / 0123 + WHITE-05 / 0132) — ON DISK
+
+`accounts.brand_sidebar_color` text nullable. App-side hex validation
+(`BRAND_ACCENT_HEX`). `get_inquiry_branding` DROP+recreate adds the column to the
+anon payload (still never `account_id`). Inquiry hero uses sidebar color as a dark
+field when white-label is on (`lib/branding/inquiry-header.ts`).
+
+### Content week (CONTENT-WEEK-01…03 / 0124 + 0127 + 0137) — ON DISK
+
+**`content_slots`:** `week_start`, `slot_date`, `lane` (`video|slideshow|pin|linkedin`),
+`intent` (`tip|promo|open`), `position` 1–3, optional `idea_id`, `filmed_at` /
+`posted_at` / `fb_posted_at`, optional `feature_key` (0127 — video only; couple-tab
+enum). Unique `(slot_date, lane, position)`. RLS `is_admin()`.
+
+**`content_topic_cursors`:** `deck` PK + `next_index`. Seed decks: `couples_tip`,
+`couples_promo`, `venue_tip`, `venue_promo`.
+
+Sunday cron `generateContentWeek` fills the shortlist. Humans Produce.
+
+### Vendor site price cache (VND-SITE-PRICE-01 / 0126) — ON DISK
+
+`vendor_site_price_cache` PK `place_id`; service-role only (revoke anon/authenticated).
+RPC `vendor_category_quote_median` SECURITY INVOKER, execute service_role only —
+median of `project_vendors.quoted_price` for a category, $50–$500k, non-demo,
+**HAVING ≥ 8**. Not a client API.
+
+### Admin outreach targets (ADMIN-OUTREACH-01 / 0128) — ON DISK
+
+`outreach_targets`: `outreach_date`, `audience` `venue|planner`, `position` 1–5,
+`channel` `email|tiktok`, name/subject/body, `sent_at`. Unique
+`(outreach_date, audience, position)`. RLS `is_admin()`. No send.
+
+### Product shot uploads (CONTENT-QUEUE-04 / 0129) — ON DISK
+
+`product_shot_uploads` PK `surface` (`^[a-z0-9-]{1,40}$`); `storage_path` unique;
+bytes in `content-queue-assets`. RLS `is_admin()`.
+
+### File extracted text (ASSIST-FILE-01 / 0133 + DEMO-FILE-01 / 0134) — ON DISK
+
+`files.extracted_text`, `extraction_status` (`ready|empty|unsupported|failed` or
+null), `extraction_truncated`. Trigger `files_copy_shared_text` copies ready text
+onto a new row that reuses a `storage_path`. RPC
+`can_read_demo_template_object(p_name)` + storage SELECT so a demo member can
+download a demo-template object when their `files` row points at that path.
+
+### Lead follow-up + lost reason (LEAD-FU-01 / 0135 + LEAD-LOST-01 / 0136) — ON DISK
+
+`leads.next_followup_on` date + `next_followup_action` text; partial index
+`(account_id, next_followup_on)` WHERE date not null.
+`leads.lost_reason` CHECK
+`budget|date_unavailable|chose_other|no_response|not_a_fit|other` (or null);
+`leads.lost_note` text. Existing leads RLS. Board/UI own the meaning.
+
+### Event type + hidden tools (EVENT-TYPE-01 + HIDE-TOOLS-01) — ON DISK
+
+Timestamped files (lexicographic after 0137):
+`20261012025314_event_type_and_hidden_tools.sql` and
+`20261021012159_widen_hidden_tools.sql`.
+`projects.event_type` / `leads.event_type` `wedding|event` default `wedding`.
+`projects.hidden_tools text[]` default `{}`. Widen CHECK to the HIDEABLE_TOOLS
+list. Trigger `guard_project_hidden_tools`: invited couples cannot hide
+`contracts` / `invoices`. Overview + Access never stored.
+
 ---
 
 ## 5. Migrations (source of truth: `supabase/migrations/`)
 
-**v44 ships schema 0108–0122** (after v43's 0103–0107). v38–v43 product slices remain as
-documented above. v44 NO SCHEMA includes MKT-MOBILE-01, DEMO-LINK-01, and the WORKFLOW-06/07
-app wiring that rides 0121–0122. Next-free migration is **0123**.
+**v45 ships schema 0123–0137 + the two `2026*` files** (after v44's 0108–0122). v38–v44
+product slices remain as documented above. v45 NO SCHEMA includes VND-COMPARE-01,
+BUD-OVER-01, GST-EXPORT-01, MKT-CRM-01, RAIL-01, PRIVACY-01, BUILD-WEBPACK-01, MONEY-01.
+Next-free numbered migration is **0139**.
 
-Applied in order. **You are the source of truth on the next number — next free is 0123.**
+Applied in order. **You are the source of truth on the next number — next free is 0139.**
+Do not mint `0138_*.sql` (sorts before the timestamped files).
 
 > **How migrations are applied here (READ THIS BEFORE SUGGESTING ANY CLI COMMAND):** by hand-pasting
 > each file into the Supabase SQL editor and running it once, in order. There is NO CLI
@@ -1514,7 +1735,8 @@ Applied in order. **You are the source of truth on the next number — next free
 > confirm with `to_regclass` / `to_regprocedure` / `pg_policies` / `pg_indexes` before running any
 > checkpoint. A file on disk is NOT an applied migration. **0060–0120 live paste is UNCONFIRMED
 > unless Dom closed them; 0068–0069 claimed LIVE VERIFIED — re-confirm before relying; 0071 LIVE
-> VERIFIED; 0121–0122 applied via MCP during WORKFLOW-06/07 — confirm independently.** Demo
+> VERIFIED; 0121–0122 applied via MCP during WORKFLOW-06/07 — confirm independently;
+> 0123–0137 + the two `2026*` files confirm independently.** Demo
 > template seeds are a separate guarded hand-apply
 > (`supabase/seeds/demo_templates*.sql`; requires `set demo.seed_confirm = 'reseed-demo-templates'`
 > and an explicit `--db-url`), not part of the migration sequence. Edge Functions are
@@ -1524,7 +1746,7 @@ Applied in order. **You are the source of truth on the next number — next free
 > before every `create policy` / `create trigger`; `create … if not exists` for indexes;
 > `drop constraint if exists` before `add constraint`; guard backfills so a re-paste is a no-op.
 
-**Complete index (0001–0122):**
+**Complete index (0001–0137 + timestamped):**
 
 - **0001** core tenancy (`accounts`, `account_members`, `projects`, `project_members`,
   `can_access_project`; also project-scoped `vendors` as the worked-example feature table)
@@ -1626,8 +1848,26 @@ Applied in order. **You are the source of truth on the next number — next free
 - **0120 schedule_republish_cols (ADMIN-SCHED-01)** — ON DISK (drop Instagram origin; FB/YT republish by audience)
 - **0121 automation_event_triggers (WORKFLOW-06)** — ON DISK (expanded `trigger_kind` CHECK)
 - **0122 proposal_public_token (WORKFLOW-07)** — ON DISK (`proposals.access_token` + `get_proposal_by_token`)
+- **0123 brand_sidebar_color (WHITE-04)** — ON DISK (`accounts.brand_sidebar_color`)
+- **0124 content_week (CONTENT-WEEK-01)** — ON DISK (`content_slots` / `content_topic_cursors` + ideation week cols)
+- **0125 content_queue_slide_specs (CONTENT-QUEUE-03)** — ON DISK (`content_queue.slide_specs`)
+- **0126 vendor_site_price_cache (VND-SITE-PRICE-01)** — ON DISK (service-role cache + median RPC)
+- **0127 video_feature_rotation (CONTENT-WEEK-02)** — ON DISK (`content_slots.feature_key`)
+- **0128 outreach_targets (ADMIN-OUTREACH-01)** — ON DISK (daily 5+5 admin list)
+- **0129 product_shot_uploads (CONTENT-QUEUE-04)** — ON DISK
+- **0130 proposal_signature (PROP-SIGN-01)** — ON DISK (`proposals.signed_name`; RPC return)
+- **0131 connect_proposal_payments (STRIPE-CONNECT-01)** — ON DISK (`stripe_connected_accounts` + `proposal_payments`; RPC return)
+- **0132 inquiry_header_sidebar (WHITE-05)** — ON DISK (`get_inquiry_branding` + sidebar)
+- **0133 files_extracted_text (ASSIST-FILE-01)** — ON DISK
+- **0134 demo_contract_text (DEMO-FILE-01)** — ON DISK (copy-text trigger + demo-template storage read)
+- **0135 lead_followup (LEAD-FU-01)** — ON DISK
+- **0136 lead_lost_reason (LEAD-LOST-01)** — ON DISK
+- **0137 ideation_post_style (CONTENT-WEEK-03)** — ON DISK
+- **`20261012025314` event_type_and_hidden_tools (EVENT-TYPE-01)** — ON DISK (`event_type` + initial `hidden_tools`; `submit_inquiry` 8th arg)
+- **`20261021012159` widen_hidden_tools (HIDE-TOOLS-01)** — ON DISK (file comments itself 0138; wider hide list + couple guard)
 
-DDL for 0059–0083 is expanded in the subsections below; 0084–0122 follow those. 0001–0058 live in
+DDL for 0059–0083 is expanded in the subsections below; 0084–0137 + the timestamped files
+follow those. 0001–0058 live in
 `supabase/migrations/` — read those files before writing queries; do not invent columns.
 
 ### 0059 seating_member_grain (SEAT-12) — APPLIED LIVE + visually verified, DDL RECONSTRUCTED (v33)
@@ -2053,8 +2293,86 @@ repeatable reseed — do not re-paste blindly (duplicate weeks would fail the un
 
 Private `content-queue-assets` bucket, 20MB, png/jpeg/webp. Four admin-gated
 storage.objects policies matching 0104's shape.
-- **Checkpoint:** bucket exists; locked reference paths uploadable; KIE webhook (service
-  role) can write `generated/{week_of}/{id}/0.png`.
+- **Checkpoint:** bucket exists; locked reference paths uploadable; leftover KIE webhook (service
+  role) can write `generated/{week_of}/{id}/0.png`. Live Produce writes via Satori / still host.
+
+### 0108–0122 (v44 — ON DISK; see complete index)
+
+0108 bank reddit; 0109 then dropped; 0110 sample performance drop; 0111–0113 ideation
+wiring; 0114 drop `admin_automation_*`; 0115–0118 invoice ledger/schedule/document/
+proposal_id; 0119 `leads.project_id`; 0120 schedule republish cols; 0121 trigger_kind
+expand; 0122 `proposals.access_token` + `get_proposal_by_token`.
+
+### 0123 brand_sidebar_color (WHITE-04) — ON DISK
+
+`accounts.brand_sidebar_color` text nullable.
+
+### 0124 content_week (CONTENT-WEEK-01) — ON DISK
+
+`ideation_items` lane/intent/topic_key/slot_date/week_start; `content_slots`;
+`content_topic_cursors`. Admin RLS.
+
+### 0125 content_queue_slide_specs (CONTENT-QUEUE-03) — ON DISK
+
+`content_queue.slide_specs jsonb NOT NULL DEFAULT '[]'`.
+
+### 0126 vendor_site_price_cache (VND-SITE-PRICE-01) — ON DISK
+
+Service-role table + `vendor_category_quote_median` (service_role execute only).
+
+### 0127 video_feature_rotation (CONTENT-WEEK-02) — ON DISK
+
+`content_slots.feature_key` — video lane only.
+
+### 0128 outreach_targets (ADMIN-OUTREACH-01) — ON DISK
+
+Daily 5+5; admin RLS; no send.
+
+### 0129 product_shot_uploads (CONTENT-QUEUE-04) — ON DISK
+
+One row per generator `surface`; bytes in `content-queue-assets`.
+
+### 0130 proposal_signature (PROP-SIGN-01) — ON DISK
+
+`proposals.signed_name`; replace `get_proposal_by_token`.
+
+### 0131 connect_proposal_payments (STRIPE-CONNECT-01) — ON DISK
+
+`stripe_connected_accounts` + `proposal_payments`; replace `get_proposal_by_token`
+again (`payments_ready`, `payment_status`).
+
+### 0132 inquiry_header_sidebar (WHITE-05) — ON DISK
+
+Replace `get_inquiry_branding` — adds `brand_sidebar_color`.
+
+### 0133 files_extracted_text (ASSIST-FILE-01) — ON DISK
+
+`files.extracted_text` / `extraction_status` / `extraction_truncated`.
+
+### 0134 demo_contract_text (DEMO-FILE-01) — ON DISK
+
+`copy_shared_file_text` trigger + `can_read_demo_template_object` + storage SELECT.
+
+### 0135 lead_followup (LEAD-FU-01) — ON DISK
+
+`leads.next_followup_on` / `next_followup_action`.
+
+### 0136 lead_lost_reason (LEAD-LOST-01) — ON DISK
+
+`leads.lost_reason` / `lost_note`.
+
+### 0137 ideation_post_style (CONTENT-WEEK-03) — ON DISK
+
+`post_style` on `ideation_items` + `content_queue`.
+
+### `20261012025314` event_type_and_hidden_tools (EVENT-TYPE-01) — ON DISK
+
+`projects.event_type` / `leads.event_type`; initial `hidden_tools`; `submit_inquiry`
+8th arg.
+
+### `20261021012159` widen_hidden_tools (HIDE-TOOLS-01) — ON DISK
+
+Widen hide list + `guard_project_hidden_tools`. File comments itself 0138.
 
 **Verified against disk:** TEAM-01 / VENUE-01…07 / PRICE-07/08 / GMAIL-THREAD / VND-12 /
 LEAD-STALE / ENT-01a / OVERDUE-01 / CHECKOUT-RECONCILE-01 / TRIAL-GUARD-01 / WHITE-02 / WHITE-03 /
@@ -2063,14 +2381,18 @@ ACCT-GRANT-01 / LEAD-EDIT-01 / INQUIRY-EMBED-01 / DEMO-ANON-01 / WORKFLOW-00…0
 SEAT-INDEX-01 / SEAT-ROSTER-01 / ASSIST-THREAD-01 / INVOICE-01 / CONTACT-FORM-01 / AUTH-RESET-01 / ONB-07 /
 DATE-SYNC-01 / VND-LIB-02 / VND-MONEY-01 / VND-16a / MKT-04 / ASSIST-MD-01 / DEMO-SEED-GUARD /
 ADMIN-00 / ADMIN-MEDIA-01 / ADMIN-SEED-01 / ADMIN-TYPE-01 / CONTENT-QUEUE-00 / CONTENT-QUEUE-02 /
-ANALYTICS-01.
+ANALYTICS-01 / INVOICE-02…05 / CRM-01 / WORKFLOW-06/07 / WHITE-04/05 / CONTENT-WEEK-01…03 /
+CONTENT-QUEUE-03/04 / VND-SITE-PRICE-01 / ADMIN-OUTREACH-01 / PROP-SIGN-01 /
+STRIPE-CONNECT-01 / ASSIST-FILE-01 / DEMO-FILE-01 / LEAD-FU-01 / LEAD-LOST-01 /
+EVENT-TYPE-01 / HIDE-TOOLS-01.
 0070–0083 DDL on disk **and committed**; **0071 live** on
 calendar / guest_members / rsvp_attendees; **`isTaskPastDue` single-sourced** for task overdue.
-**0084–0107 on disk.** **Confirm live:** remaining pastes of
-0060–0070 / 0072–0107; Edge Function `purge-demo` deploy; demo seeds; Stripe test Checkout
-for couple monthly/lifetime + planner + venue (plan flip); Vercel Cron env + schedules
-(incl. Friday content-queue); Resend inbound domain + webhook secret; `SUPABASE_JWT_SECRET`;
-`KIE_API_KEY` + locked reference images in `content-queue-assets`.
+**0084–0137 + `2026*` on disk.** **Confirm live:** remaining pastes of
+0060–0070 / 0072–0137 + timestamped files; Edge Function `purge-demo` deploy; demo seeds; Stripe test Checkout
+for couple monthly/lifetime + planner + venue (plan flip) + **Connect proposal Checkout**;
+Vercel Cron env + schedules
+(incl. Sunday content-week + invoice-schedule-watch); Resend inbound domain + webhook secret; `SUPABASE_JWT_SECRET`;
+`STRIPE_CONNECT_WEBHOOK_SECRET`; optional still-render env.
 
 ### Column reference (current)
 
@@ -2092,11 +2414,26 @@ ONBOARD-NUDGE-01 storage keys. **`wedding_profile.include_*`** (0067); **`formal
 **`leads.estimated_guest_count`** (0090). **`automation_workflows` / `automation_steps` /
 `automation_runs` / `automation_run_log`** (0094) + **`template_key`** (0096).
 **`tasks.assigned_to`** (0097). **`ignored_vendor_categories`** (0099).
-**`assistant_messages.audience`** (0101). **`invoices` / `invoice_line_items`** (0102).
+**`assistant_messages.audience`** (0101). **`invoices` / `invoice_line_items`** (0102) +
+**`invoice_payments` / status `partial`** (0115) + **`invoice_schedule`** (0116) +
+**`invoice_counters` / qty×rate / terms** (0117) + **`invoices.proposal_id`** (0118).
+**`leads.project_id`** (0119). **`automation_workflows.trigger_kind`** expanded (0121).
+**`proposals.access_token`** (0122) + **`signed_name`** (0130).
 **`seating_assignments.seat_index` 1-based CHECK** (0100).
-**`admin_roles` / `is_admin()` / content bank / schedule_* / admin_automation_* /
-`media_assets` / `ideation_items`** (0103). **`admin-media` bucket** (0104). **Sheet seed**
-(0105). **`content_queue`** (0106). **`content-queue-assets` bucket** (0107).
+**`admin_roles` / `is_admin()` / content bank (incl. reddit 0108) / schedule_* /
+`media_assets` / `ideation_items`** (0103). **`admin_automation_*` DROPPED (0114).**
+**`admin-media` bucket** (0104). **Sheet seed**
+(0105). **`content_queue`** (0106) + **`slide_specs`** (0125) + **`post_style`** (0137).
+**`content-queue-assets` bucket** (0107).
+**`accounts.brand_sidebar_color`** (0123). **`content_slots` / `content_topic_cursors`**
+(0124) + **`feature_key`** (0127). **`vendor_site_price_cache`** (0126).
+**`outreach_targets`** (0128). **`product_shot_uploads`** (0129).
+**`stripe_connected_accounts` / `proposal_payments`** (0131).
+**`files.extracted_text` / `extraction_status` / `extraction_truncated`** (0133).
+**`leads.next_followup_on` / `next_followup_action`** (0135).
+**`leads.lost_reason` / `lost_note`** (0136).
+**`projects.event_type` / `leads.event_type` / `projects.hidden_tools`**
+(`20261012025314` + `20261021012159`).
 
 **No-migration slices (complete list):** DASH-01; DASH-02; DASH-03; CON-01; CON-04; budget row
 polish; BUD paid/actual ramp polish; BUD-FILTER-01; BUD-QUICKADD-01/02; BUD-NOTES-01; GST-03;
@@ -2105,7 +2442,7 @@ hardening; ONB-03; POLISH-01; DEMO-02 / DEMO-03; tour UI; AGR-01; ENT-01; ENT-01
 PRICE-02; PRICE-06; PRICE-07; PRICE-08; VENUE-02/02b/03; VENUE-04; VENUE-05; VENUE-06; VENUE-07;
 CHECKOUT-RECONCILE-01; TRIAL-GUARD-01; VND-12; LEAD-STALE-01; OVERDUE-01; HYG-01; HYG-01a;
 WEB-REVAL-01; ASSIST-BUD-01; WHITE-02; ONBOARD-NUDGE-01; MKT-01; MKT-02; MKT-03; AGENT-01;
-AGENT-02; LEAD-EDIT-01; INQUIRY-EMBED-01; WORKFLOW-01; WORKFLOW-02; WORKFLOW-04; AUTH-GOOGLE-01; CONTACT-ROUTE-01; VND-13 (UI); VND-LIB-01; CON-ARCHIVE-01; VND-16; VENUE-08; CAL-05; CAL-06; INV-06; TEAM-EMAIL-01; EMAIL-BRAND-01; VND-OUTREACH-MOBILE-01; SEAT-ROSTER-01; CONTACT-FORM-01; AUTH-RESET-01; ONB-07; DATE-SYNC-01; VND-LIB-02; VND-MONEY-01; VND-16a; MKT-04; ASSIST-MD-01; DEMO-SEED-GUARD; ADMIN-TYPE-01; CONTENT-QUEUE-02; ANALYTICS-01.
+AGENT-02; LEAD-EDIT-01; INQUIRY-EMBED-01; WORKFLOW-01; WORKFLOW-02; WORKFLOW-04; AUTH-GOOGLE-01; CONTACT-ROUTE-01; VND-13 (UI); VND-LIB-01; CON-ARCHIVE-01; VND-16; VENUE-08; CAL-05; CAL-06; INV-06; TEAM-EMAIL-01; EMAIL-BRAND-01; VND-OUTREACH-MOBILE-01; SEAT-ROSTER-01; CONTACT-FORM-01; AUTH-RESET-01; ONB-07; DATE-SYNC-01; VND-LIB-02; VND-MONEY-01; VND-16a; MKT-04; ASSIST-MD-01; DEMO-SEED-GUARD; ADMIN-TYPE-01; CONTENT-QUEUE-02; ANALYTICS-01; MKT-MOBILE-01; DEMO-LINK-01; VND-COMPARE-01; BUD-OVER-01; GST-EXPORT-01; MKT-CRM-01; RAIL-01; PRIVACY-01; BUILD-WEBPACK-01; MONEY-01.
 
 ---
 
@@ -2141,10 +2478,14 @@ First Look.
 
 ### Planner sidebar nav
 
-**Dashboard / Calendar / Leads (venue: Inquiries) / Automations / Vendors / Contracts / Team / Branding / Billing**
+**Dashboard / Calendar / Leads (venue: Inquiries) / Automations / Vendors / Contracts /
+Invoices / Money / Team / Branding / Payments / Billing / Contact**
 — all business-account-kind gated, never `project_members.role`. **Automations** is `/automations`
 (WORKFLOW-04/05) — hardcoded label `"Automations"` (not yet in `getCopy`; venue-copy can wrap
-later). **Team** is `/account/team`
+later). **Invoices** is account-level `/invoices` (MONEY-01) in addition to the project tab.
+**Money** is `/money` (account invoice summary + export). **Payments** is
+`/account/payments` (STRIPE-CONNECT-01 embedded Connect — not Billing). **Contact** in
+the rail is the signed-in app-shell path to `/contact`. **Team** is `/account/team`
 (TEAM-01). Venue display labels come from `getCopy(key, account.plan)` (VENUE-07) — routes stay
 `/leads`, `/projects`, etc. **`/account/venue-upgrade`** is reachable from: the welcome-screen
 venue option (VENUE-06), the lock screen (business-kind), and Billing's equal-weight Upgrade card.
@@ -2234,7 +2575,12 @@ another active project on the same business account.
 
 `app/(app)/projects/[projectId]/layout.tsx`: tabs from `lib/project-tabs.ts`, audience-gated by
 `account.kind` (pass `null` for invited members — do **not** collapse null→personal). Passes
-`projectMemberRole` for the CAL-04 / CAL-06 Calendar exception.
+`projectMemberRole` for the CAL-04 / CAL-06 Calendar exception. **HIDE-TOOLS-01:**
+`tabsForAccountKind` also filters `projects.hidden_tools`. Overview and Access cannot
+be hidden. Customize menu (`workspace-tools-menu.tsx`) — owners + invited couples;
+collaborators cannot; invited couples cannot hide planner contracts/invoices.
+**EVENT-TYPE-01:** other events default-hide website + seating. Header type editor:
+`components/projects/event-settings-editor.tsx`.
 
 **Exact membership + order** (`lib/project-tabs.ts`):
 - **personal:** Overview · **Calendar** · Checklist · Budget · Vendors · Guests · Website · Seating ·
@@ -2321,11 +2667,14 @@ never status colour. Occupancy action-enforced (§5). **SEAT-INDEX-01:** numbere
 `1..seat_count` (CHECK forbids `0`). **SEAT-ROSTER-01:** sticky searchable guest rail; table
 breakdown stays under the canvas so a long list does not stretch the page.
 
-#### Invoices tab (INVOICE-01)
+#### Invoices tab (INVOICE-01…05)
 
-`/projects/[id]/invoices` — **plannerOnly**. List + new + detail. Status `draft|sent|paid|void`.
+`/projects/[id]/invoices` — **plannerOnly**. List + new + detail. Status
+`draft|sent|partial|paid|void`.
 Line items editable only on draft. Send best-effort Resend + standing public URL. Pay is an
-external `payment_link_url`. Invited members do not see the tab (RLS would return empty anyway).
+external `payment_link_url` (Connect card pay is on **proposals**, not this tab). Invited
+members do not see the tab (RLS would return empty anyway). Account-level `/invoices` +
+`/money` sit in the planner sidebar (MONEY-01).
 
 #### Website editor tab (WEB-EDITOR-02 / WEB-STYLE-01 + WEB-REVAL-01)
 
@@ -2355,13 +2704,16 @@ sets the household badge, and **rejects rapid-fire spam** (≤3 / household / 1 
 badge on the card — click opens `InquiryReplyDrawer` reusing `PendingDraftList`; **WORKFLOW-03**
 extends that drawer to `workflow_email` drafts (kind-aware title); **LEAD-EDIT-01**
 Edit button → shared `Modal`; **AUTO-03a / INQUIRY-EMBED-01** `InquiryIntakeCard` with copyable
-form link + iframe embed snippet — inbound-DNS copy is **not** shown),
+form link + iframe embed snippet — inbound-DNS copy is **not** shown;
+**LEAD-FU-01 / LEAD-LOST-01** next-follow-up fields + required lost-reason modal; board
+views Open / Needs reply / Due / Stale / This season),
 `/automations` (**WORKFLOW-04/05** — template gallery + hand-built list; `/automations/new` and
 `/automations/[workflowId]` editor; personal accounts redirect away),
 `/account/billing` (planner plan gets an equal-weight Upgrade-to-Venue card — VENUE-06;
 **VENUE-08:** paid venue plan sees a cadence pricing card instead),
 **`/account/team` (TEAM-01)**, **`/account/branding` (WHITE-01 + WHITE-02 picker/contrast + WHITE-03
-inquiry-embed copy)**,
+inquiry-embed copy + WHITE-04 sidebar color)**,
+**`/account/payments` (STRIPE-CONNECT-01 — embedded Connect; demo blocked)**,
 **`/account/venue-upgrade` (VENUE-02 / VENUE-05 / VENUE-06 / ONBOARD-NUDGE-01)**, `/vendors`
 (VND-08/08a + **VND-11 detail/portfolio** + **VND-LIB-02 directory** (replaces VND-12 card grid)
 + **VND-LIB-01** delete/unlink),
@@ -2382,35 +2734,45 @@ on the project; inquiry-reply **and workflow-email** drafts review on `/leads`, 
 field + raised form card; white-label logo/accent when enabled; invalid slug is pre-submit)**,
 **`/invoice/[token]` (INVOICE-01…05 — token RPC; invalid → "Link not valid"; Pay now is external;
 ledger/schedule on the public page)**,
-**`/proposal/[token]` (WORKFLOW-07 — token RPC; draft/unknown → not found; Accept/Decline)**,
+**`/proposal/[token]` (WORKFLOW-07 + PROP-SIGN-01 + STRIPE-CONNECT-01 — token RPC;
+draft/unknown → not found; Accept requires typed name; optional Pay when Connect ready;
+Decline)**,
 **`/contact` (CONTACT-FORM-01 — honeypot `website`; Resend to `CONTACT_NOTIFY_EMAIL`; not an anon
-table)**, **`/forgot-password` / `/auth/reset-password` (AUTH-RESET-01 — generic sent page;
-never reveals whether the email exists)**. Marketing `/` **(MKT-01 planner/venue-first)** + **`/for-planners` (MKT-02)** +
+table)**, **`/privacy` (PRIVACY-01 — Google OAuth verification)**,
+**`/forgot-password` / `/auth/reset-password` (AUTH-RESET-01 — generic sent page;
+never reveals whether the email exists)**, **`/demo` (DEMO-LINK-01 — GET lands a cold-email
+recipient in a live planner workspace; stays in the address bar)**. Marketing `/` **(MKT-01 / MKT-CRM-01 planner/venue CRM-first)** + **`/for-planners` (MKT-02)** +
 **`/for-venues` (MKT-03)** + **`/wedding-budget-tracking` (MKT-04)** + `/pricing`. Login/signup offer **Continue with Google**
 (AUTH-GOOGLE-01) **and a Forgot password link** (AUTH-RESET-01 → `/forgot-password`). Marketing copy must not lead with "AI." Entitlement lock:
 `/account/locked` (authenticated, **`(locked)` group**). Middleware skips session refresh on
-`/w/`, `/vendor-confirm/`, `/invoice/`, `/inquire/`, `/contact`.
+`/w/`, `/vendor-confirm/`, `/invoice/`, `/inquire/`, `/proposal/`. `/contact` stays in the
+matcher so signed-in users keep a session; guests skip `getUser`. `/demo` is in the matcher
+and rewrites into the workspace.
 
 ### Internal admin surfaces (`app/(admin)/`, outside `(app)`)
 
 `/admin` (overview: today's checklist + last logged performance + bank count),
-`/admin/schedule` (month + week dropdowns; tri-state platform cells; couples/planner notes;
-performance wells — ADMIN-TYPE-01 collapsed the all-weeks grid),
+`/admin/schedule` (CONTENT-WEEK schedule: Mon–Sat slots + video `feature_key` +
+performance; month + week dropdowns — ADMIN-TYPE-01),
 `/admin/bank` (per-platform ideas; A/B/C/D pills remapped to sage/clay/accent/rosewood —
 not the Sheet's green/blue/purple/orange),
 `/admin/content-queue` (week of pending/approved/denied generated posts; signed preview
-URLs; approve / deny / revert / edit prompt / regenerate),
-`/admin/automations` (prompt CRUD + Run button → `/api/admin/automations/run` + optional
-save-to-bank),
+URLs; approve / deny / revert / edit prompt / regenerate / Produce stills),
 `/admin/performance` (read-only trend of logged weeks; numbers are entered on Schedule),
 `/admin/media` (UGC handoff Jordyn uploads / Dom downloads; TUS; status + notes),
-`/admin/ideation` (generate + like/dislike + comment).
+`/admin/ideation` (week shortlist + leftover unslotted board; generate + like/dislike + comment),
+`/admin/product-shots` (CONTENT-QUEUE-04 — one screenshot per generator angle),
+`/admin/planner/outreach` (ADMIN-OUTREACH-01 — daily 5+5 copy/mark-sent).
+**`/admin/automations` was dropped with 0114** — do not revive the prompt-runner page or
+`POST /api/admin/automations/run`.
 **`AdminShell`:** dark collapsible icon-rail (`bg-ink` / `text-canvas` / accent) — RevLifter-
-inspired **shape**, Soft stack **tokens**. Planner max-width 1180px on main. Mobile drawer
+inspired **shape**, Soft stack **tokens**. **RAIL-01** brought the same dark-rail shape to
+planner/venue PlannerShell (Soft stack tokens; venue may override `--brand-sidebar`).
+Planner max-width 1180px on main. Mobile drawer
 reuses `acquireScrollLock`. Type is Figtree (ADMIN-TYPE-01 matched couple-app chrome).
-**API:** `POST /api/admin/automations/run`, `POST /api/admin/ideation/generate` (both 404
-for non-admins), `GET /api/cron/content-queue-generate` (CRON_SECRET),
-`POST /api/webhooks/kie-content-queue` (taskId-must-exist + optional HMAC).
+**API:** `POST /api/admin/ideation/generate` + produce (404
+for non-admins), `GET /api/cron/content-queue-generate` (CRON_SECRET — **Sunday shortlist**),
+leftover `POST /api/webhooks/kie-content-queue` (taskId-must-exist + optional HMAC).
 
 ---
 
@@ -3160,6 +3522,8 @@ Templates are the front door; the builder is "for anyone who wants full control.
 Toggle on: insert workflow + steps (or re-enable). Toggle off: `enabled = false` (row
 kept). Customize uses the same `/automations/[id]` editor. Partial unique index: at most
 one row per `(account, template)`. Time-based "nudge me when a lead goes quiet" is **not**
+a WORKFLOW event hook — it is a cron-scan family (see §14). WORKFLOW-06 later expands
+builder triggers beyond `lead_stage_changed`; keep that expansion in the v44 narrative.
 
 ### v41 — Task assignment + Vendors tabs + invites email + calendar detail + library manage
 
@@ -3556,18 +3920,106 @@ Planner/couple mobile chrome and marketing copy polish across multiple commits.
 
 `/demo` GET lands cold-email recipients in a live planner workspace without login.
 
-#### STRIPE-CONNECT-01 — Invoice card payments via Connect. **NOT STARTED** (next when ready).
+#### STRIPE-CONNECT-01 — Invoice card payments via Connect. **Planned in v44; shipped in v45 on proposals.**
 
-**Product decision (folded here; do not implement until Dom picks it up):** venues/planners
-connect **their own** Stripe account (prefer **Express** Connect). Public invoice gains
-**Pay with card** when Connected; Checkout Session on the connected account; webhook marks
-the invoice paid (ledger + status) and fires `invoice_marked_paid` automations. Money lands
-in the venue/planner’s Stripe — First Look does **not** collect-and-payout (avoid
-money-transmitter / escrow risk). Keep today’s external `payment_link_url` (Venmo/Zelle/
-Cash App / personal Stripe Payment Link) + manual Record / Mark paid as the fallback for
-rails without a merchant webhook. **Do not** attempt webhooks for personal Venmo / Zelle /
-Cash App $handles. Schema TBD (likely Connect account id on `accounts` + Checkout session
-ids on payments). See §15 **F′**.
+v44 recorded the product decision and parked invoice Checkout as the next milestone.
+**What shipped (v45 / 0131) is the same Connect shape on proposals, not invoices.**
+Invoice `payment_link_url` + manual ledger remain. The original invoice-Checkout idea
+stays a later slice if wanted — do not treat 0131 as that work. Full narrative is
+under **§7 v45 STRIPE-CONNECT-01**.
+
+### v45 — Connect proposal pay + signatures + content week + CRM depth + event type
+
+> **Provenance:** code-/migration-scan verified against disk (0123–0137 +
+> `20261012025314` + `20261021012159` + app wiring). Confirm pastes independently.
+> HEAD at bible write-up: `a14b121`.
+
+#### WHITE-04 — Venue sidebar color. Migration **0123**.
+
+`accounts.brand_sidebar_color`. Branding page swatches
+(`lib/brand-sidebar-preset-colors.ts`). `brandAccentStyle` sets `--accent` and
+`--brand-sidebar`. PlannerShell fills `bg-[color:var(--brand-sidebar,var(--ink))]`.
+Couples / public docs stay accent-only. Not a new `:root` token.
+
+#### CONTENT-WEEK-01 / CONTENT-WEEK-02 / CONTENT-WEEK-03 — Sunday shortlist. Migrations **0124 + 0127 + 0137**.
+
+Sunday cron `35 15 * * 0` → `generateContentWeek`. Fills Mon–Sat slots (video /
+slideshow / pin / linkedin; tip / promo / open). Videos get a rotating `feature_key`
+(couple tab). `post_style` on ideas + queue (`lib/admin/content-styles.ts`:
+`tip`, `save_this`, `myth`, `before_after`, `numbered`, `hot_take`, `stop_doing`,
+`promo`). Humans pick, Produce, check filmed/posted. Does **not** render images
+from cron. Replaces the Friday KIE generate as the live scheduled path.
+
+#### CONTENT-QUEUE-03 / CONTENT-QUEUE-04 — Slide specs + product shots. Migrations **0125 + 0129**.
+
+Produce writes `slide_specs` and renders PNG via Satori (or `STILL_RENDER_URL`).
+Admin `/admin/product-shots` uploads beat bundled `design/product-shots`. KIE
+create/webhook leftover; Produce sets `kie_task_ids: []`. Humans still approve;
+queue never auto-posts.
+
+#### VND-SITE-PRICE-01 + VND-COMPARE-01 — Site price cache + compare. Migration **0126** + NO SCHEMA.
+
+Service-role cache keyed by Google `place_id` (30-day TTL). Fetch vendor HTTPS
+pages (8s, 3 hops; block The Knot / WeddingWire). Median RPC ≥8 non-demo quotes.
+Search + compare consume it. Compare 2–4 shortlist vendors in one category before
+outreach.
+
+#### ADMIN-OUTREACH-01 — Daily copy list. Migration **0128**.
+
+`/admin/planner/outreach`. Five venue + five planner rows per day. Type name /
+TikTok, generate, copy, mark sent. **No send, no lookup.** Distinct from Gmail
+`outreach_messages`.
+
+#### PROP-SIGN-01 — Typed accept. Migration **0130**.
+
+Public Accept requires `signed_name` (1–200). Decline does not. Signed proposal
+is locked. Planner-only accept may still leave `signed_name` null. Signed rows
+list on the wedding Contracts tab.
+
+#### STRIPE-CONNECT-01 — Proposal card payments. Migration **0131**.
+
+Express Connect, Stripe Accounts v2, US, Stripe-managed fees + negative-balance
+liability. Embedded onboarding / banner / account management / payments / payouts
+at `/account/payments`. Checkout Session on the connected account; success
+`/proposal/[token]?checkout=returned` does **not** mark paid. Fulfill only from
+`app/api/stripe/connect/webhook` (`checkout.session.completed` /
+`async_payment_succeeded` / `async_payment_failed`; ignore `payment_status === unpaid`).
+Platform webhook returns early on `event.account`. No `application_fee_amount`.
+Demo cannot onboard. Pay is optional; signing does not require cards.
+**Invoices unchanged.**
+
+#### WHITE-05 — Inquiry hero sidebar. Migration **0132**.
+
+`get_inquiry_branding` returns `brand_sidebar_color`. Hero uses it as a dark field
+when white-label is on; else accent. Contrast helpers in `lib/branding/contrast.ts`.
+
+#### ASSIST-FILE-01 / DEMO-FILE-01 — Contract review. Migrations **0133 + 0134**.
+
+Extract PDF (`unpdf`) / Word (`mammoth`) / plain text on upload. Assistant
+`get_files` + `get_file`. Prompt: review dates/price/deposit; not a lawyer; scans
+unreadable. `ReviewContractLink` prefills the panel. Demo clones copy ready text;
+storage policy lets a member download a demo-template object via a linked `files`
+row.
+
+#### LEAD-FU-01 / LEAD-LOST-01 — CRM record. Migrations **0135 + 0136**.
+
+Next follow-up date + short action. Board chips overdue / today / upcoming. Views:
+Open / Needs reply / Due / Stale / This season. Lost modal requires a reason
+(enum + optional 240-char note). Leaving lost clears reason/note. Automations may
+still set `lost` without a reason.
+
+#### EVENT-TYPE-01 / HIDE-TOOLS-01 — Other events + Customize. Timestamped files.
+
+Planner/venue projects and leads are `wedding` or `event`. Inquiry Type select.
+Other events default-hide website + seating. Customize hides any workspace tab
+except Overview / Access. Invited couples cannot hide planner contracts/invoices.
+Not a new user class and not a new tab.
+
+#### MONEY-01 / BUD-OVER-01 / GST-EXPORT-01 / RAIL-01 / MKT-CRM-01 / PRIVACY-01 / BUILD-WEBPACK-01 — NO SCHEMA.
+
+Account `/invoices` + `/money` in the rail. Budget bar vs plan; blown ceiling
+**Over budget**. Print/CSV mailing lists + table assignments. Planner dark rail.
+Marketing lead-to-workbook CRM framing. `/privacy`. Production `next build --webpack`.
 
 ---
 
@@ -3654,9 +4106,11 @@ proactive messages (Phase 5).
 > entities.** Surfaces WITHOUT assistant coverage include leads, proposals, invitations, seating (incl.
 > the per-member grain + sweetheart), the calendar, contract templates, the account vendor library,
 > **invoices, branding, billing/entitlement, Team seats, venue plan, marketing landings, and the guest-rework
-> RSVP / website-editor / GST-12 association surfaces (no new chat tools beyond ASSIST-BUD-01 and
-> `create_agent_draft`; CON-04 and AUTO-03b are account-scoped JSON generators, not chat tools).**
-> **The budget ledger / payment schedule gap closed in ASSIST-BUD-01** — see below. Website has a
+> RSVP / website-editor / GST-12 association surfaces (no new chat tools beyond ASSIST-BUD-01,
+> `create_agent_draft`, and ASSIST-FILE-01; CON-04 and AUTO-03b are account-scoped JSON generators, not chat tools).**
+> **The budget ledger / payment schedule gap closed in ASSIST-BUD-01** — see below.
+> **ASSIST-FILE-01 closed the uploaded-file text gap** (`get_files` / `get_file` — extracted
+> text, not bytes). Website has a
 > narrow write (`set_website_travel`). The assistant has no vendor-removal tool and should not get one.
 > - **`get_notes` / `get_note` return `action_status`** (pin-sort needs-action; summary count) —
 >   confirmed in `lib/assistant/read-tools.ts` (v33). **`add_note` accepts optional `action_status`**
@@ -3666,6 +4120,9 @@ proactive messages (Phase 5).
 >   `allocated` removed; now reuses `computeBudgetAggregates()` / `deriveScheduleWaterfall()` from
 >   `lib/budget-aggregates.ts`, same helpers the live Budget UI uses). New `get_budget_payments` +
 >   `get_payment_schedule` read tools. Live-verified against the Budget tab (Dom).
+> - **ASSIST-FILE-01 (v45, 0133).** `get_files` lists name/kind/status; `get_file` returns
+>   extracted text (ready) or a status. Upload path extracts in `ensureFileText`. Not a
+>   write tool. Demo clones share ready text (0134).
 > - **`create_agent_draft` (AGENT-03).** Chat + outreach-scan write tool. Queues `agent_drafts`
 >   `vendor_outreach`; `target_id` = `vendors.id`; validates account ownership + project link; does
 >   not send. Inquiry-reply drafts are AUTO-03b (`createAgentDraft` with `kind: "inquiry_reply"`
@@ -3909,9 +4366,11 @@ a code scan. Prefer section-level diffs.
 - A second Checkout-return writer that does not call `applyCheckoutSession`.
 - Skipping the return-page check that `session.metadata.account_id` matches the authenticated
   account.
-- **Trusting an outdated "next-free"** — **0084–0122 are taken**; next-free is **0123**.
-  v42 said next-free 0103; ADMIN-00 / CONTENT-QUEUE-00 took 0103–0107; v44 took 0108–0122.
-  Destructive drops (MEAL-03a, `due_date`, `rsvp_access_mode`, …) are **0123+**.
+- **Trusting an outdated "next-free"** — **0084–0137 and the two `2026*` files are taken**;
+  next-free numbered file is **0139** (skip 0138 — sort hazard vs `2026*`).
+  v42 said next-free 0103; ADMIN-00 / CONTENT-QUEUE-00 took 0103–0107; v44 took 0108–0122;
+  v45 took 0123–0137 + event-type + hidden-tools.
+  Destructive drops (MEAL-03a, `due_date`, `rsvp_access_mode`, …) are **0139+**.
 - Treating couple billing as **$7 week + day-7 $92** — live path is PRICE-07 local trial +
   PRICE-08 Monthly $10 / Lifetime $99. Do not reschedule `charge-trial-balance` as the couple path.
 - Reusing `project_invitations` for Team seats. Do not parse `/invite/account/` as a project token.
@@ -3944,7 +4403,7 @@ a code scan. Prefer section-level diffs.
 - A future `submit_rsvp` replace that drops gated-only / song-gate / badge auto-populate / **0072
   throttle** while "just" touching the form.
 - Dropping `guests.meal_choice` / `guests.party_size` / `rsvp_access_mode` / `budget_items.due_date` /
-  `wedding_profile.traditions` before their planned supersession migration (**0123+**). Claiming
+  `wedding_profile.traditions` before their planned supersession migration (**0139+**). Claiming
   `party_size` is fully inert — it still drives create-form slots. Do not resurrect a `traditions`
   write path.
 - Adding a second sweetheart without demoting (0064 + action enforce uniqueness).
@@ -4074,7 +4533,8 @@ a code scan. Prefer section-level diffs.
   service-role key. Never log it. Never use service-role as the request JWT for agent writes.
 - **Cron:** `CRON_SECRET` bearer is the sole gate on `/api/cron/*`. Vercel Cron injects it;
   manual curl must too. Do not expose these routes without the secret. CONTENT-QUEUE-02 is
-  the eighth scheduled route (`35 15 * * 5`).
+  the ninth scheduled route (`35 15 * * 0` — Sunday shortlist, not Friday KIE).
+  Invoice-schedule-watch is the second of nine (`2 15 * * *`).
 - **KIE webhook:** `POST /api/webhooks/kie-content-queue` is **not** an anon table surface.
   Optional HMAC (`KIE_WEBHOOK_HMAC_KEY`). Compensating control when HMAC is unset: the
   `taskId` must already live on a `content_queue` row. Unknown ids are discarded. Bytes are
@@ -4109,8 +4569,8 @@ a code scan. Prefer section-level diffs.
   messaging; advance `to_contact` → `contacted` on successful send.
 - **Signup:** `auth.signUp` only; no tenant created at signup.
 - **Production infra:** prod belongs in a **separate Supabase org on Pro**. Fresh prod project,
-  migrations **0001–0107** applied by hand once each in order (NEVER `db push`; deploy-batches OK for
-  greenfield **then paste 0080–0107** — batches do not yet include them), storage buckets
+  migrations **0001–0137 + the two `2026*` files** applied by hand once each in order (NEVER `db push`; deploy-batches OK for
+  greenfield **then paste 0080–0137 + timestamped files** — batches still stop at 0078), storage buckets
   (`project-files` + `website-media` + **`vendor-media`** + **`brand-media`** + **`admin-media`** +
   **`content-queue-assets`**) + policies recreated,
   Edge Function `purge-demo` deployed + scheduled, **Vercel Cron env** (`CRON_SECRET`, Resend,
@@ -4138,7 +4598,12 @@ is in §7 of this file. Schema numbers in §5.
   VND-OUTREACH-MOBILE-01, SEAT-INDEX-01, SEAT-ROSTER-01, ASSIST-THREAD-01, INVOICE-01,
   CONTACT-FORM-01, AUTH-RESET-01, CAL-06, ONB-07, DATE-SYNC-01, VND-LIB-02, VND-MONEY-01,
   VND-16a, MKT-04, ASSIST-MD-01, DEMO-SEED-GUARD, ADMIN-00, ADMIN-MEDIA-01, ADMIN-SEED-01,
-  ADMIN-TYPE-01, CONTENT-QUEUE-00, CONTENT-QUEUE-02, ANALYTICS-01.**
+  ADMIN-TYPE-01, CONTENT-QUEUE-00, CONTENT-QUEUE-02, ANALYTICS-01,
+  INVOICE-02…05, CRM-01, WORKFLOW-06/07, MKT-MOBILE-01, DEMO-LINK-01,
+  WHITE-04/05, CONTENT-WEEK-01…03, CONTENT-QUEUE-03/04, VND-SITE-PRICE-01, VND-COMPARE-01,
+  ADMIN-OUTREACH-01, PROP-SIGN-01, STRIPE-CONNECT-01, ASSIST-FILE-01, DEMO-FILE-01,
+  LEAD-FU-01, LEAD-LOST-01, EVENT-TYPE-01, HIDE-TOOLS-01, BUD-OVER-01, GST-EXPORT-01,
+  MKT-CRM-01, RAIL-01, PRIVACY-01, BUILD-WEBPACK-01, MONEY-01.**
 - **PRICE-03/04/05 product path is superseded** (0076–0078 schema residual — do not schedule
   `charge-trial-balance` as the couple path).
 - **WRITE-01 / 0071** closed the former "viewer can write" schema gap for listed tables; Access
@@ -4199,14 +4664,25 @@ renders; assistant `**bold**` shows as strong; demo seed without the SET is refu
 **Open — v43 verification gap:** ADMIN-00, ADMIN-MEDIA-01, ADMIN-SEED-01, ADMIN-TYPE-01,
 CONTENT-QUEUE-00, CONTENT-QUEUE-02, and ANALYTICS-01 are code-shipped. Confirm: 0103–0107
 pastes; `is_admin()` true for the two seeded emails and false for a couple/planner session;
-`/admin` as a non-admin is a genuine 404; Overview/Schedule/Bank/Automations/Performance/
-Media/Ideation/Content-queue all render for Dom or Jordyn; month/week dropdowns default to
+`/admin` as a non-admin is a genuine 404; Overview/Schedule/Bank/Performance/
+Media/Ideation/Content-queue/Product-shots/Outreach all render for Dom or Jordyn;
+`/admin/automations` is gone (0114); month/week dropdowns default to
 the current Phoenix week; a TUS media upload + signed download; Ideation generate stores
-rows; Automations Run returns text without exposing `MODEL_API_KEY`; Friday cron (or a
-manual CRON_SECRET GET) inserts a `week_of` batch and stores `kie_task_id`; KIE callback
-writes `image_paths` under `content-queue-assets` (not a kie.ai URL); approve/deny/regenerate
+rows; Sunday cron (or a
+manual CRON_SECRET GET) fills the content-week shortlist; Produce writes `slide_specs` +
+PNG under `content-queue-assets` (not a kie.ai URL); approve/deny/regenerate
 round trip; a couple session cannot SELECT `content_queue`; Vercel Analytics snippet present
 in production HTML.
+
+**Open — v44 / v45 verification gap:** INVOICE-02…05, WORKFLOW-06/07, STRIPE-CONNECT-01,
+PROP-SIGN-01, EVENT-TYPE-01, HIDE-TOOLS-01, LEAD-FU-01, LEAD-LOST-01, WHITE-04/05,
+ASSIST-FILE-01, CONTENT-WEEK, and related no-schema slices are code-shipped. Confirm:
+0121–0137 + `2026*` pastes; public Accept requires a typed name and locks the row;
+Connect onboard → Pay on `/proposal/[token]` marks `proposal_payments` paid from the
+Connect webhook only (platform webhook ignores `event.account`); invoice Pay now is
+still the external link; follow-up Due view; lost reason modal; other-event hides
+website/seating; Customize cannot hide Overview/Access; inquiry hero uses sidebar
+color when white-label is on; assistant `get_file` returns extracted text.
 
 **Open — deferrals + gaps (current):**
 - **CHECKOUT-RECONCILE-01 remaining gap:** no periodic reconciliation job exists for an account that
@@ -4216,17 +4692,17 @@ in production HTML.
   success-URL fix.
 - **Rotate `STRIPE_SECRET_KEY`** if it was ever live-mode outside this dev machine (resolved but
   key hygiene is separate). Confirm `.env.local` holds `sk_test_...` before further Checkout testing.
-- **0060–0070 / 0072–0107 hand-paste** still need confirmation where not already live-checked;
+- **0060–0070 / 0072–0137 + `2026*` hand-paste** still need confirmation where not already live-checked;
   **0071 LIVE VERIFIED**. Demo seeds + `purge-demo` deploy/schedule are separate applies.
-  **0079–0083 are committed**. **0084–0107 on disk**. Vercel Cron +
-  Resend inbound + `SUPABASE_JWT_SECRET` + **`KIE_API_KEY`** are ops gates, not schema.
-- **DASH-03a (deferred) — wedding-card blurb.** Needs `projects.description` (**0123+**) AND an edit
+  **0079–0083 are committed**. **0084–0137 + timestamped files on disk**. Vercel Cron +
+  Resend inbound + `SUPABASE_JWT_SECRET` + **`STRIPE_CONNECT_WEBHOOK_SECRET`** are ops gates, not schema.
+- **DASH-03a (deferred) — wedding-card blurb.** Needs `projects.description` (**0139+**) AND an edit
   affordance. Deferred deliberately to avoid a dead write path.
 - **PRICE-03/04/05 residual** — `stripe_payment_method_id`, claim/cancel RPCs, `charge-trial-balance`
   Edge Function. Product path gone; drop unscheduled. Do not wire a new $7 Checkout.
-- **`rsvp_access_mode` read-dead (0054), not dropped** — drop candidate **0123+**.
+- **`rsvp_access_mode` read-dead (0054), not dropped** — drop candidate **0139+**.
 - **`guests.meal_choice` inert; `guests.party_size` still written for create slots** — both drop in
-  **MEAL-03a / 0123+**. (`rsvp_submissions.party_size` is a DIFFERENT column — still live/RPC-derived.)
+  **MEAL-03a / 0139+**. (`rsvp_submissions.party_size` is a DIFFERENT column — still live/RPC-derived.)
 - **`wedding_profile.traditions` write-dead** — drop unscheduled. Do not resurrect a write path.
 - **`guests.email` UI-deprecated, kept** — email may still matter for invites.
 - **Per-member RSVP status (model B) deferred.** GST-09 is household-badge only; DASH-03 confirmed-
@@ -4245,12 +4721,14 @@ in production HTML.
   before RLS. `ensureInquirySlug` currently uses service-role as a workaround.
 - **AUTO-01/02 / AGENT-* / AUTO-03 / WORKFLOW-02 / CONTENT-QUEUE-02 crons need `CRON_SECRET` + Resend (+
   `SUPABASE_JWT_SECRET` for unattended writes + inbound webhook secret/domain for AUTO-03a +
-  `KIE_API_KEY` for the Friday content-queue batch).** A
+  leftover `KIE_API_KEY` if anyone still hits the unused KIE path).** A
   file on disk is not a scheduled job.
-- **Public form / inbound email do not fire `lead_created` workflows.** Only `createLead` does.
-  `project_created` is schema-legal and unwired. Do not assume a template runs on inquiry capture.
-- **Builder UI does not offer `lead_created`, `project_created`, or `create_task`.** Schema +
-  executor may still accept them (except `project_created`, which has no dispatcher).
+- **Public form / inbound email DO fire `lead_created` workflows (WORKFLOW-06).**
+  `createLead` also does. `project_created` is schema-legal and **still unwired**.
+- **Builder UI offers `lead_created`, `lead_stage_changed`, `proposal_status_changed`,
+  `invoice_sent`, `payment_link_set`, `invoice_marked_paid`.** It does **not** offer
+  `project_created` or `create_task` (executor-wired; omitted because tasks are
+  project-scoped).
 - **`clone_demo_account` does not clone automation tables.** Demo planners start with zero
   workflows.
 - **Inquiry embed iframe `src` is production-origin hardcoded.** Local/staging form *links* use
@@ -4269,7 +4747,7 @@ in production HTML.
 - **`getAccountContext` still takes the first membership by `created_at`** — a user on both a
   personal and a business account (possible after TEAM-01 accept while already a couple) is a
   sharp edge; not solved.
-- **`budget_items.due_date` write-dead** (drop **0123+** after parity); reconciled payment schedule
+- **`budget_items.due_date` write-dead** (drop **0139+** after parity); reconciled payment schedule
   (model b) deferred; budget dashboard overhaul deferred (mockup-first); `budget_items.category`
   free-text + quick-add list deliberate. (Ledger writers now `can_edit_project`.)
 - **CON-03 deferred**; CAL-01a deferred; contract category axis vendor-only; `{{amount}}` no project
@@ -4475,9 +4953,9 @@ Guests-page rework (GST-03…09 / 0054–0058).** Migrations **0001–0058**.
 - **CONTENT-QUEUE-02** — No schema. Friday KIE generate + webhook ingest + review board.
 - **ANALYTICS-01** — No schema. Vercel Web Analytics in root layout.
 
-Current through **0122** (on disk); next-free **0123** (MEAL-03a incl. `party_size`,
+Current through **0137 + two `2026*` files** (on disk); next-free numbered **0139** (MEAL-03a incl. `party_size`,
 `budget_items.due_date` drop, `rsvp_access_mode` drop, optional `traditions` drop, DASH-03a
-`projects.description`, optional PRICE-03/04/05 residual drop — all **0123+**).
+`projects.description`, optional PRICE-03/04/05 residual drop — all **0139+**).
 
 **Done (v44 — Invoice ledger + public proposals + CRM event triggers + admin ideation/drop):**
 - **ADMIN-AUD-00** — **0108**. Content bank platform CHECK gains `reddit`.
@@ -4493,9 +4971,23 @@ Current through **0122** (on disk); next-free **0123** (MEAL-03a incl. `party_si
   form/inbound `lead_created`; `add_note` tokens.
 - **WORKFLOW-07** — **0122**. Public `/proposal/[token]` + Accept = win.
 - **MKT-MOBILE-01** / **DEMO-LINK-01** — No schema. Mobile/marketing polish; `/demo` cold-email land.
-- **STRIPE-CONNECT-01** — **NOT STARTED.** Next payment milestone when ready (see §15 **F′**).
+- **STRIPE-CONNECT-01** — planned here as invoice Checkout; **shipped in v45 on proposals (0131).**
 
-**In progress:** confirm **0060–0122 hand-pastes** (+ demo seeds + `purge-demo` + Vercel Cron env +
+**Done (v45 — Connect proposal pay + signatures + content week + CRM depth + event type):**
+- **WHITE-04 / WHITE-05** — **0123 + 0132**. Venue sidebar color + inquiry hero.
+- **CONTENT-WEEK-01…03 / CONTENT-QUEUE-03/04** — **0124–0125, 0127, 0129, 0137**. Sunday
+  shortlist, Satori stills, product shots, post styles. Friday KIE is leftover.
+- **VND-SITE-PRICE-01 / VND-COMPARE-01** — **0126** + no schema.
+- **ADMIN-OUTREACH-01** — **0128**. Daily copy list; no send.
+- **PROP-SIGN-01** — **0130**. Typed accept; signed row locked.
+- **STRIPE-CONNECT-01** — **0131**. Express Connect + proposal Checkout. Invoices unchanged.
+- **ASSIST-FILE-01 / DEMO-FILE-01** — **0133 + 0134**. Extracted text + demo contract.
+- **LEAD-FU-01 / LEAD-LOST-01** — **0135 + 0136**. Follow-up + lost reason + board views.
+- **EVENT-TYPE-01 / HIDE-TOOLS-01** — timestamped. Other events + Customize tabs.
+- **MONEY-01 / BUD-OVER-01 / GST-EXPORT-01 / RAIL-01 / MKT-CRM-01 / PRIVACY-01 /
+  BUILD-WEBPACK-01** — No schema.
+
+**In progress:** confirm **0060–0137 + `2026*` hand-pastes** (+ demo seeds + `purge-demo` + Vercel Cron env +
 Google Auth provider + admin inbound env + **KIE_API_KEY** + locked reference images); deploy the
 `add_note` token-substitution fix; the **broad** Dom Soft stack + LAND-01 live visual
 checkpoint (prior unwalked surfaces + **Team / venue / vendor directory / Vendors tabs / Still to book /
@@ -4507,16 +4999,16 @@ digests / Invoices tab + public invoice ledger / public `/proposal/[token]` / se
 sticky roster / assistant split / `/contact` / password reset / `/admin` + content-queue generate**).
 CHECKOUT-RECONCILE-01 remaining gap: abandoned Checkout with no return-page hit (no periodic job).
 
-**Remaining couple side:** moodboard; **MEAL-03a (0123+, drops `guests.meal_choice` + `guests.party_size`)**;
-**`budget_items.due_date` drop (0123+, after parity)**; **`rsvp_access_mode` drop (0123+)**; optional
-**`wedding_profile.traditions` drop**; **DASH-03a (wedding-card blurb — `projects.description` 0123+ +
+**Remaining couple side:** moodboard; **MEAL-03a (0139+, drops `guests.meal_choice` + `guests.party_size`)**;
+**`budget_items.due_date` drop (0139+, after parity)**; **`rsvp_access_mode` drop (0139+)**; optional
+**`wedding_profile.traditions` drop**; **DASH-03a (wedding-card blurb — `projects.description` 0139+ +
 editor)**; optional website-media orphan GC; budget dashboard overhaul (mockup-first); optional
 reconciled payment schedule (model b); **optional per-member RSVP status (guest model B)**; optional
 assistant write for note `action_status`; optional post-create edit for GST-12 association; demo →
 real account conversion.
 
-**Remaining planner side:** **STRIPE-CONNECT-01** (Connect + Checkout on invoices — venues/planners’
-own Stripe; keep external `payment_link_url` fallback); deeper CRM;
+**Remaining planner side:** optional **invoice card Checkout** (same Connect account; invoices
+still use external `payment_link_url` — 0131 did **not** ship this); deeper CRM;
 `viewer` invite (**WRITE-01 done — product decision remains**); CAL-01a (task-due calendar overlay);
 CON-03 (real PDF); account-role hierarchy (explicitly not TEAM-01); AUTO-01 reminder-sent UI /
 digest-frequency controls (deferred); surface `estimated_guest_count` on the lead Edit modal;
@@ -4528,11 +5020,10 @@ INVOICE-01…05 / TASK-ASSIGN-01 / TMPL-02 / VND-13 / ASSIST-THREAD-01 / ADMIN-0
 CONTENT-QUEUE-00/02 / CRM-01 are **shipped on disk** (paste + Cron env + deploy remain).
 
 **Remaining admin / social-ops:** auto-post from the content queue (deliberately out of
-CONTENT-QUEUE-02 — humans post); granular admin permissions if/when hires
+CONTENT-WEEK / CONTENT-QUEUE — humans post); granular admin permissions if/when hires
 are added (current role is flat `admin` only); YouTube bank rows (channel not live; platform
-is already a valid enum). Locked KIE reference images must be uploaded to
-`content-queue-assets` (or public URL env set) before the Friday job can createTask.
-**Do not revive `admin_automation_*` after 0114.**
+is already a valid enum). Sunday shortlist + Satori Produce are the live path; leftover
+KIE env is unused. **Do not revive `admin_automation_*` after 0114.**
 
 **Remaining seating:** SEAT-07 assistant mock-up; optional per-seat UI depth. Sticky searchable
 roster (SEAT-ROSTER-01) and 1-based chairs (SEAT-INDEX-01) are **shipped**.
@@ -4546,7 +5037,7 @@ countdown confirmations) — date math in, template email out, no LLM. **Agentic
 AUTO-03) — same assistant tool loop (AUTO-03b is CON-04 JSON, not the project loop); cron/webhook
 entry points. **CRM workflows** (WORKFLOW-00…07) — account-scoped event + delay engine; no LLM;
 `send_email` is propose-then-approve; public proposal Accept = win. **Internal admin** (ADMIN-00 /
-CONTENT-QUEUE-02) — social-ops dashboard + Friday KIE batch; not the assistant loop and not CRM
+CONTENT-WEEK / CONTENT-QUEUE) — social-ops dashboard + Sunday shortlist + Satori stills; not the assistant loop and not CRM
 workflows. ASSIST-UI-01 is discovery only — not Phase 5. Architecture companion remains
 `AGENTIC_AUTOMATION_v1.md` for autonomy tiers and deferred v2 (cross-project prioritization,
 real-time DB triggers, third-party auto-send). Do not fold LLM cron into the AUTO-01/02 route.
@@ -4558,7 +5049,8 @@ Do not fold CRM workflows into either. Do not fold the content-queue batch into 
 - **Venue display copy is call-site-resolved** from `accounts.plan` (`getCopy`) — do not fork
   routes or stage vocabularies.
 - **Brand accent is one free-text hex.** Presets/picker are UI sugar; contrast warning does not
-  block save; do not persist a preset id.
+  block save; do not persist a preset id. Venue sidebar color is a **second** optional hex
+  (`brand_sidebar_color`) — still free-text, still no preset id.
 - **ONBOARD-NUDGE-01 keys are storage-only** — reuse `dismissTour` / `user_tours`; do not auto-fire
   as page tours.
 - **Marketing is planner/venue-first** (MKT-01…03). In-app couple product is unchanged. Public
@@ -4609,7 +5101,7 @@ Do not fold CRM workflows into either. Do not fold the content-queue batch into 
   same Approve path.
 - **Shared `Modal` is the overlay primitive** for new chrome dialogs (LEAD-EDIT-01).
 - **CRM workflow failure never fails the lead mutation.** `change_lead_stage` in the executor
-  does not re-dispatch. Public inquiry capture does not fire `lead_created`.
+  does not re-dispatch. Public inquiry capture **does** fire `lead_created` (WORKFLOW-06).
 - **Templates are `automation_workflows` rows** with `template_key` set. Off = disable, not
   delete. At most one row per `(account, template)`.
 - **Business demo clones are named Lumen Planning.** Do not slugify a live studio into a public
@@ -4623,11 +5115,14 @@ Do not fold CRM workflows into either. Do not fold the content-queue batch into 
 - **Assistant chat is audience-split** (`account` | `invited`) — same panel, no switcher
   (ASSIST-THREAD-01). Do not treat that as a general tab-gating mechanism.
 - **Planner invoices are account-member only**; invited clients see the public token page.
-  Payment today is an external `payment_link_url` + manual ledger (INVOICE-01…05).
-  **STRIPE-CONNECT-01** (Connect + Checkout on the venue/planner’s Stripe) is the next
-  sanctioned card-pay milestone — not collect-and-payout. Keep external links as fallback.
-- **Public proposals are token-gated** (`/proposal/[token]`); Accept converts to project +
-  invoice and stages the lead `booked` (WORKFLOW-07 / CRM-01).
+  Payment on invoices is an external `payment_link_url` + manual ledger (INVOICE-01…05).
+  **STRIPE-CONNECT-01** shipped card pay on **proposals** (0131) — Connect to the
+  venue/planner’s Stripe, not collect-and-payout. Keep external invoice links as fallback.
+  Invoice card Checkout is a later slice if wanted.
+- **Public proposals are token-gated** (`/proposal/[token]`); Accept requires a typed name
+  (PROP-SIGN-01), converts to project +
+  invoice and stages the lead `booked` (WORKFLOW-07 / CRM-01). Optional Pay when Connect
+  ready. Signed rows are locked.
 - **Seat numbers are 1-based.** `seat_index = 0` is illegal after 0100.
 - **Vendor library UI is a directory** (VND-LIB-02), not the v36 card grid.
 - **Changing `wedding_date` rewrites date-bearing `projects.name`** (DATE-SYNC-01).
@@ -4637,8 +5132,20 @@ Do not fold CRM workflows into either. Do not fold the content-queue batch into 
   audience. Concealment is 404. `is_admin()` is the only app-reachable admin check.
 - **`admin_automation_*` tables are gone (0114).** Ideation → Queue → Bank is the path.
 - **Content-queue images are stored in `content-queue-assets`**, never as KIE URLs.
-  Humans approve; the queue never auto-posts. Friday cron is a separate eighth schedule.
+  Humans approve; the queue never auto-posts. Sunday content-week cron is a separate
+  ninth schedule. Invoice-schedule-watch is also scheduled.
 - **Vercel Web Analytics is on** (root layout). Not an admin table.
+- **Proposal Pay is optional Connect Checkout** on the venue/planner’s account (0131).
+  Signing does not require cards. Demo workspaces cannot onboard. Platform webhook
+  ignores `event.account`. No application fee.
+- **Public Accept requires a typed name.** Signed proposals are locked (PROP-SIGN-01).
+- **Planner/venue work can be a wedding or another event.** Couples stay wedding.
+  Other events default-hide website + seating. Customize can hide any tab except
+  Overview / Access; invited couples cannot hide planner contracts/invoices.
+- **Content-week cron is Sunday shortlist, not Friday KIE.** Produce is Satori (or
+  still host). Humans still approve and still post.
+- **Admin outreach targets are copy-only.** No send, no lookup.
+- **File text is extracted on upload** for assistant review. Not a PDF generator.
 
 ---
 
@@ -4650,23 +5157,27 @@ The couple product is feature-complete, shareable, and payable. The planner/venu
 accent picker** + authorable Calendar **(+ event detail)** + **wedding cards** + **template clone
 (amounts start at $0)** + cross-project Contracts archive with templates **(+ assistant-drafted
 templates + archive manage)** + **planner invoicing (ledger + schedule + document quality + public
-token page + external pay link)** + **public proposals (Send / Accept = convert + booked)** +
-**venue first-class signup / copy / setup nudge / Billing cadence**
-+ **inquiry intake (public form + embed snippet + white-label) + reply drafts** + **lead Edit modal**
+token page + external pay link)** + **public proposals (Send / typed Accept = convert + booked +
+optional Connect Pay)** + **Connect `/account/payments`** + **event type + hideable workspace tabs**
++ **lead follow-up / lost reason / board views** + **assistant file review** +
+**venue first-class signup / copy / setup nudge / Billing cadence / sidebar color**
++ **inquiry intake (public form + embed snippet + white-label + branded hero)** + **reply drafts** + **lead Edit modal**
 + **payment-schedule watch** + **vendor countdown confirm** + **weekly branded synthesis /
 implication notes / outreach drafts** + **CRM workflow templates + builder + event triggers
 (proposal / invoice lifecycle)** + **checklist task assignment** + **Vendors Search/Outreach/Booked
-+ budget Still to book** + **Google sign-in** + **audience-split assistant** + **email password
-reset** + **public `/contact`**.
++ budget Still to book + site-price cache + compare** + **Google sign-in** + **audience-split assistant** + **email password
+reset** + **public `/contact` + `/privacy`**.
 **Internal `/admin`** is live for social-media ops (schedule, bank, media, ideation,
-weekly content queue — admin automation prompt tables dropped in 0114). Marketing is
+weekly content-week shortlist + Produce stills, product shots, daily outreach —
+admin automation prompt tables dropped in 0114). Marketing is
 **planner/venue-first** (`/` + `/for-planners` + `/for-venues` + `/wedding-budget-tracking` + `/pricing`).
-Schema pastes for **0060–0122** still need confirmation unless Dom closed them
+Schema pastes for **0060–0137 + the two `2026*` files** still need confirmation unless Dom closed them
 (**0121–0122 applied via MCP** — confirm with `to_regprocedure` / CHECK). Plan is **couples-first
-launch** with B2B marketing. Bible at **v44**. Schema through **0122**; next-free **0123**. This
-document is self-contained.
+launch** with B2B marketing. Bible at **v45**. Schema through **0137 + timestamped files**;
+next-free numbered **0139**. This document is self-contained.
 
-**Next product milestone when ready (NOT started):** **STRIPE-CONNECT-01** — see **F′** below.
+**Connect proposal pay is shipped (0131).** Remaining payment work, if wanted, is invoice
+card Checkout on the same connected account — see **F′**.
 
 **Do not** resume a Modern romantic / VND-01 layout pass; **do not** reorder website sections with
 @dnd-kit or pull @dnd-kit into the website editor; **do not** fork a second collapse affordance for the
@@ -4675,11 +5186,11 @@ via the sticky preview); **do not** treat Calendar as strictly personal-only (CA
 couples and collaborators see it); **do not** casually extend that role exception to other tabs; **do
 not** treat Registry as a workspace tab; **do not** re-inline task overdue (OVERDUE-01 —
 `isTaskPastDue` is the helper); **do not** drop the DASH-03a blurb deferral; **do not** trust
-"next-free 0084" (0084–0122 taken — next-free is **0123**); **do not** treat WRITE-01 as unfinished
+"next-free 0084" or "next-free 0123" (0084–0137 + `2026*` taken — next-free numbered is **0139**); **do not** treat WRITE-01 as unfinished
 schema work (shipped; `viewer` invite is product-deferred); **do not** assume planner bootstrap
 creates a placeholder project (ONB-06); **do not** drop `guests.meal_choice` / `guests.party_size`
 until MEAL-03a, or `budget_items.due_date` / `rsvp_access_mode` / `traditions` until parity
-(**0123+**); **do not** claim `party_size` is fully inert; **do not** resurrect a `traditions` write
+(**0139+**); **do not** claim `party_size` is fully inert; **do not** resurrect a `traditions` write
 path; **do not** restore an open/anonymous RSVP path or a guest-facing self-report headcount as the
 count source; **do not** auto-match RSVP attendee names to `guest_members`; **do not** treat
 `guest_members.attending` as the shown RSVP status (the badge is); **do not** persist a client song
@@ -4689,7 +5200,9 @@ add anon SELECT on `registry_claims` / `rsvp_attendees` / `guest_members` / `gue
 `demo_start_attempts` / `inquiry_form_attempts` / `payment_reminder_log` / `agent_run_log` /
 `automation_run_log` / `agent_drafts` / `account_invitations` / `automation_workflows` /
 `automation_steps` / `automation_runs` / `invoices` / `invoice_line_items` / `invoice_payments` /
-`invoice_schedule` / `proposals` / the seating tables / **`vendor-media`** / **`admin_roles`** /
+`invoice_schedule` / `proposals` / `proposal_payments` / `stripe_connected_accounts` /
+`vendor_site_price_cache` / `outreach_targets` / `product_shot_uploads` /
+`content_slots` / the seating tables / **`vendor-media`** / **`admin_roles`** /
 **`content_bank_items`** / **`schedule_weeks`** / **`schedule_days`** / **`schedule_performance`** /
 **`media_assets`** / **`ideation_items`** / **`content_queue`** / **`admin-media`** /
 **`content-queue-assets`**; **do not** revive `admin_automation_*` tables after 0114; **do not**
@@ -4734,16 +5247,18 @@ failed workflow fail a lead mutation; **do not** pull @dnd-kit into `/automation
 CHECK-constrain `template_key` (keys live in `lib/automations/templates.ts`); **do not** share
 assistant history across account vs invited audiences; **do not** give invited project members
 authenticated access to `invoices` or `proposals`; **do not** implement collect-and-payout Stripe
-for client invoices (Connect to the venue/planner's account only); **do not** attempt merchant
+for client invoices or proposals (Connect to the venue/planner's account only); **do not** write
+proposal payments from the platform subscription webhook; **do not** attempt merchant
 webhooks for personal Venmo / Zelle / Cash App $handles; **do not** write `seat_index = 0`;
 **do not** reseed demo templates without `demo.seed_confirm`; **do not** revive the VND-12
 per-category card grid (VND-LIB-02 directory is current); **do not** link `/admin` from couple
 or planner chrome; **do not** 403 a non-admin hitting `/admin` (404); **do not** query
 `admin_roles` from the client; **do not** auto-post content-queue images; **do not** store
-KIE-hosted URLs in `image_paths`; **do not** fold the Friday content-queue cron into
-AUTO/AGENT/WORKFLOW routes.
+KIE-hosted URLs in `image_paths`; **do not** fold the Sunday content-week cron into
+AUTO/AGENT/WORKFLOW routes; **do not** treat leftover KIE create/webhook as the live
+Produce path; **do not** mint `0138_*.sql`.
 
-**A. Confirm hand-paste of 0060 → … → 0122** (in order) + apply demo seeds + deploy/schedule
+**A. Confirm hand-paste of 0060 → … → 0137 + the two `2026*` files** (in order) + apply demo seeds + deploy/schedule
 `purge-demo` (do **not** treat `charge-trial-balance` as required couple ops). Checkpoint: prior
 0060–0079 items plus `outreach_messages.gmail_thread_id`; `account_invitations` + fellow-member
 SELECT + business-only INSERT/accept; `accounts.plan` + CHECKs; Team invite round trip;
@@ -4755,10 +5270,15 @@ venue Checkout flips `plan`; couple local trial → Monthly/Lifetime; `payment_r
 `workflow_email` / `template_key` + expanded `trigger_kind` CHECK (0121); `tasks.assigned_to` +
 `list_project_assignees`; template clone $0 planned; `ignored_vendor_categories`; 1-based
 `seat_index`; `assistant_messages.audience`; `invoices` + ledger/schedule/document +
-`get_invoice_by_token`; `proposals.access_token` + `get_proposal_by_token`; `leads.project_id`;
+`get_invoice_by_token`; `proposals.access_token` + `get_proposal_by_token` (incl.
+`signed_name` / `payments_ready` / `payment_status`); `leads.project_id`;
 `admin_roles` + `is_admin()`; `content_bank_items` (incl. reddit) / `schedule_*` /
 `media_assets` / `ideation_items`; **no** `admin_automation_*`; `admin-media` bucket;
-Sheet seed weeks; `content_queue`; `content-queue-assets` bucket.
+Sheet seed weeks; `content_queue` + `slide_specs`; `content-queue-assets` bucket;
+`accounts.brand_sidebar_color`; `content_slots` / `content_topic_cursors`;
+`vendor_site_price_cache`; `outreach_targets`; `product_shot_uploads`;
+`stripe_connected_accounts` / `proposal_payments`; `files.extracted_text`;
+`leads.next_followup_*` / `lost_reason`; `projects.event_type` / `hidden_tools`.
 
 **A′. `isTaskPastDue` single-source is done on disk (OVERDUE-01).** Spot-check that Overview,
 assistant `getChecklist`, wedding cards, planner urgent, and calendar **task** overlays import
@@ -4776,10 +5296,13 @@ embed branding + invalid-slug)**,
 modal**, **Pending drafts**, **booked-card arrival/scope**, **`/automations` templates + builder
 (incl. new triggers)**, **Vendors Search/Outreach/Booked + Still to book**,
 **task assignees**, **calendar detail**, **Google login**, **invite email**, **branded digests**,
-**Invoices tab + `/invoice/[token]` (Pay now + ledger)**, **`/proposal/[token]` Accept/Decline**,
-**`/contact`**, **forgot-password**, **seating 1-based + sticky roster**,
-**assistant audience split**, **vendor directory**, **`/wedding-budget-tracking`**,
-**`/admin` (Dom or Jordyn) + content-queue board**,
+**Invoices tab + `/invoice/[token]` (Pay now + ledger)**, **`/invoices` + `/money`**,
+**`/proposal/[token]` typed Accept + optional Pay**, **`/account/payments` Connect**,
+**`/contact`**, **`/privacy`**, **forgot-password**, **seating 1-based + sticky roster**,
+**assistant audience split + file review**, **vendor directory + compare**, **`/wedding-budget-tracking`**,
+**`/admin` (Dom or Jordyn) + content-week + Produce + product shots + outreach**,
+**lead Due view + lost-reason modal**, **event-type header + Customize tabs**,
+**venue sidebar color + inquiry hero**,
 planner dashboard/leads/billing/Access, `/vendors`,
 `/calendar`, `/contracts`, landing, `/pricing`, login, `/invite/[token]`, `/invite/account/[token]`,
 `/w/[slug]` date hydration. Confirm no hydration mismatch. Fix only real regressions.
@@ -4792,32 +5315,31 @@ a **TEAM-01** invite to a second planner email (same business book, not a projec
 Confirm Jordyn's `eventsbyjordyn@gmail.com` (and Dom's icloud fixture) can open `/admin`
 after 0103; a couple/planner session without `admin_roles` must 404.
 
-**D. Apply + checkpoint any un-pasted migrations through 0122 + demo seeds + `purge-demo` +
+**D. Apply + checkpoint any un-pasted migrations through 0137 + the two `2026*` files + demo seeds + `purge-demo` +
 Vercel Cron env (`CRON_SECRET`, Resend, `SUPABASE_JWT_SECRET`, inbound domain/webhook secret,
-`ADMIN_INBOUND_ADDRESS`, `CONTACT_NOTIFY_EMAIL`, **`KIE_API_KEY`**, optional
-`KIE_WEBHOOK_HMAC_KEY`) + Google OAuth provider in Supabase Auth + locked content-queue
-reference images in `content-queue-assets` + deploy the `add_note` token-substitution fix.**
+`ADMIN_INBOUND_ADDRESS`, `CONTACT_NOTIFY_EMAIL`, **`STRIPE_CONNECT_WEBHOOK_SECRET`**, optional
+`STILL_RENDER_URL` / `STILL_RENDER_SECRET`) + Google OAuth provider in Supabase Auth +
+deploy the `add_note` token-substitution fix.**
 A file on disk is not applied, and a `vercel.json` cron is not a live schedule until deployed.
 
-**E. MEAL-03a — drop `guests.meal_choice` AND `guests.party_size`. Migration 0123+** (after confirming
+**E. MEAL-03a — drop `guests.meal_choice` AND `guests.party_size`. Migration 0139+** (after confirming
 create-form no longer needs `party_size`; the `rsvp_submissions.party_size` column stays).
 
 **F. Drop `budget_items.due_date`, `rsvp_access_mode`, and optionally `wedding_profile.traditions`.
-Migration 0123+** — only after confirming parity. Optional: drop PRICE-03/04/05 residual
+Migration 0139+** — only after confirming parity. Optional: drop PRICE-03/04/05 residual
 (`stripe_payment_method_id` if unused, claim/cancel RPCs, undeploy `charge-trial-balance`).
 
-**F′. STRIPE-CONNECT-01 — invoice card payments via Stripe Connect (NEXT when ready — not started).**
-Venues/planners connect **their own** Stripe account (prefer **Express** Connect). When Connected,
-the public invoice page offers **Pay with card** (Checkout Session on the connected account).
-Webhook marks the invoice paid (ledger row + status) and fires `invoice_marked_paid` automations.
-Money lands in the venue/planner's Stripe — First Look does **not** collect and payout (avoid
-money-transmitter / escrow risk). Keep today's external `payment_link_url` (Venmo / Zelle /
-Cash App / personal Stripe Payment Link) + manual Record / Mark paid as the fallback. **Do not**
+**F′. STRIPE-CONNECT-01 — shipped on proposals (0131). Remaining: optional invoice card Checkout.**
+Venues/planners already connect **their own** Stripe account (Express, embedded at
+`/account/payments`). Public **proposal** offers Pay when `card_payments` is `active`.
+Connect webhook marks `proposal_payments` paid. First Look does **not** collect and payout.
+If/when invoice card pay is wanted: reuse the same connected account, create Checkout on
+it, fulfill from the **Connect** webhook (not the platform subscription webhook), write
+`invoice_payments` + fire `invoice_marked_paid`. Keep today's external `payment_link_url`
++ manual Record / Mark paid as the fallback. **Do not**
 attempt webhooks for personal Venmo / Zelle / Cash App $handles — those P2P rails have no
-merchant event API for this product. Schema TBD (likely Connect account id on `accounts` +
-Checkout/session refs on payments). Reuse `applyCheckoutSession` discipline from couple/planner/
-venue billing — do not invent a second status writer. Confirm `.env.local` holds `sk_test_...`
-before any Connect Checkout testing (see header live-key note).
+merchant event API for this product. Confirm `.env.local` holds `sk_test_...`
+before any further Connect Checkout testing (see header live-key note).
 
 **G. `viewer` invite (optional, post-WRITE-01).** Product decision only — write gates are done. If
 offering, update Access allowlist + constants comment and smoke a read-only invite round trip.
@@ -4825,12 +5347,12 @@ offering, update Access allowlist + constants comment and smoke a read-only invi
 **H. Budget dashboard overhaul (mockup-first).** Aesthetic; data model complete.
 
 **I. Launch (after paste confirmation + visual QA).** Separate prod Supabase org on Pro + migrations
-**0001–0122** (+ 0123 if MEAL-03a / drops shipped) by hand — never `db push` — + storage buckets
+**0001–0137 + the two `2026*` files** (+ 0139 if MEAL-03a / drops shipped) by hand — never `db push` — + storage buckets
 (`project-files` + `website-media` + **`vendor-media`** + **`brand-media`** + **`admin-media`** +
 **`content-queue-assets`**) + `purge-demo` + SMTP +
 **demo template seeds**; Vercel + domain + env (**incl. `CRON_SECRET`, Resend, `SUPABASE_JWT_SECRET`,
-`INQUIRY_INBOUND_DOMAIN`, `RESEND_INBOUND_WEBHOOK_SECRET`, **`KIE_API_KEY`**); Stripe live + webhook + Portal + Tax +
-**couple monthly + lifetime + planner + venue Prices** (+ Connect when F′ ships); prod Places key; Gmail testing mode; privacy
+`INQUIRY_INBOUND_DOMAIN`, `RESEND_INBOUND_WEBHOOK_SECRET`, **`STRIPE_CONNECT_WEBHOOK_SECRET`**); Stripe live + **two** webhooks (platform + Connect) + Portal + Tax +
+**couple monthly + lifetime + planner + venue Prices** + Connect live; prod Places key; Gmail testing mode; privacy
 + ToS; monitoring; **full prod smoke** — real signup (couple + planner-with-zero-projects), deliberate
 double-click, a couple + collaborator + **invited-couple Calendar** round trip, **Team invite
 round trip**, planner New-wedding create **with/without template clone**, archive/unarchive, vendor
@@ -4841,10 +5363,11 @@ CoupleShell**, **venue own-shell if piloting**, **lock screen → local trial �
 **demo CTA + purge path**, page tour, 6-step onboarding Approve, **View in Gmail** after outreach
 send, **stale-lead pill** on an untouched lead, **inquiry form round trip + branded embed + reply
 approve**, **workflow template on + Approve send**, **vendor-confirm link**, **Pending outreach
-draft approve**, **invoice send + public token + Record payment**, **proposal Send + Accept convert**,
-**`/admin` as Dom + Jordyn (404 as a couple session)**, **content-queue Friday batch or manual cron + approve one post**.
+draft approve**, **invoice send + public token + Record payment**, **proposal Send + typed Accept + optional Pay**,
+**Connect onboard at `/account/payments`**,
+**`/admin` as Dom + Jordyn (404 as a couple session)**, **Sunday content-week shortlist or manual cron + Produce + approve one post**.
 
-**J. Planner depth / revenue (post-launch).** Finish **STRIPE-CONNECT-01** if not already;
+**J. Planner depth / revenue (post-launch).** Optional invoice card Checkout (F′) if not already;
 optional `viewer` invite; CAL-01a; CON-03; reconciled payment schedule (model b); **guest model B**;
 demo → real account conversion; optional account-role hierarchy (not implied by TEAM-01).
 Lead→project via public Accept is already shipped (WORKFLOW-07) — re-audit write policies when
@@ -4859,30 +5382,30 @@ decision; website caching; website-media orphan GC; currency-helper consolidatio
 **reconstruct 0050 `registry_teardown` + 0053 `files_vendor_link` rationale**; optional
 Soft stack `reference.html`; retire CSS aliases; font-load scoping; countdown + calendar +
 budget/guest-date hydration harden; optional Calendar/Access/Timeline/
-Contracts/Team tours; append 0080–0122 into `supabase/deploy-batches/` when convenient;
+Contracts/Team tours; append 0080–0137 + the two `2026*` files into `supabase/deploy-batches/` when convenient;
 surface `estimated_guest_count` on lead Edit; retire `ensureInquirySlug` service-role write after
 0091 is live; wire builder UI for `project_created` (still unwired); time-based quiet-lead
-template (cron-scan family); upload locked KIE reference images if missing.
+template (cron-scan family). Leftover KIE reference images are unused now that Produce is Satori.
 
 **M. Automation ops.** **Four** tracks on disk, three of them customer-facing. AUTO-01/02 (rule-based
 cron). AGENT-00/01/01a/02/03 + AUTO-03 (assistant loop / CON-04 JSON). WORKFLOW-00…07 (CRM event
-+ delay, incl. public proposal Accept). **ADMIN-00 / CONTENT-QUEUE-02** (internal social-ops
-dashboard + Friday KIE batch — not the assistant loop, not CRM workflows, no couple/planner data;
++ delay, incl. public proposal Accept). **ADMIN-00 / CONTENT-WEEK / CONTENT-QUEUE** (internal social-ops
+dashboard + Sunday shortlist + Satori stills — not the assistant loop, not CRM workflows, no couple/planner data;
 admin prompt-runner tables dropped). Remaining work is paste + Cron env + live checkpoints +
 deploy of the `add_note` token fix, not a greenfield build. Agentic spec companion is
 `AGENTIC_AUTOMATION_v1.md`. Do not fold LLM cron into AUTO-01/02. Do not fold CRM workflows into
-either. Do not fold the content-queue batch into any of those. Do not auto-send to third parties.
+either. Do not fold the content-week shortlist into any of those. Do not auto-send to third parties.
 Do not auto-post generated social images. Do not route workflow stage changes through
 `updateLeadStage`.
 
-**Recommended path:** **paste + checkpoint 0060–0122 + demo seeds + `purge-demo` + Cron/Resend/JWT/KIE
+**Recommended path:** **paste + checkpoint 0060–0137 + `2026*` + demo seeds + `purge-demo` + Cron/Resend/JWT/Connect
 env (A/D)** → **close the broad visual checkpoint + invite Jordyn (+ optional Team invite) (B/C)**
-→ **STRIPE-CONNECT-01 when ready (F′)** → **MEAL-03a + due_date/rsvp_access_mode/traditions drops (E/F)** →
+→ **optional invoice card Checkout (F′)** → **MEAL-03a + due_date/rsvp_access_mode/traditions drops (E/F)** →
 **budget dashboard mockup (H)** → **Launch (I)** → optional `viewer` (G) → CAL-01a / CON-03 /
 reconciled schedule / guest model B → conversion depth (J) → remaining L. Re-read
 `reconcileCheckoutReturn` / `applyCheckoutSession` before extending Checkout return handling
-(including Connect invoice Checkout). When extending **agentic** automation, read **M** /
+(including any future Connect invoice Checkout). When extending **agentic** automation, read **M** /
 `AGENTIC_AUTOMATION_v1.md`. When extending **CRM workflows**, read §4 / §7 WORKFLOW-00…07 in
 **this** file — do not treat AGENT-01/02 autonomy as precedent for auto-send, and do not invent a
-second tool-definition set. When extending **admin / content queue**, read §4 / §6 / §7 v43–v44 in
+second tool-definition set. When extending **admin / content week**, read §4 / §6 / §7 v43–v45 in
 **this** file — do not treat it as a product audience or fold it into the assistant loop.
