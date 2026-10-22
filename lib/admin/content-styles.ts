@@ -17,8 +17,8 @@ export type PostStyle =
   | "stop_doing"
   | "promo";
 
+/** Styles the shortlist may still generate. `tip` is retired — it produced flat advice. */
 export const POST_STYLES: PostStyle[] = [
-  "tip",
   "save_this",
   "myth",
   "before_after",
@@ -27,6 +27,11 @@ export const POST_STYLES: PostStyle[] = [
   "stop_doing",
   "promo",
 ];
+
+/** Still parse and display already-generated rows. Do not pick these again. */
+export const RETIRED_POST_STYLES: PostStyle[] = ["tip"];
+
+const KNOWN_POST_STYLES: PostStyle[] = [...POST_STYLES, ...RETIRED_POST_STYLES];
 
 export type PostStyleMeta = {
   key: PostStyle;
@@ -161,7 +166,7 @@ export const POST_STYLE_META: Record<PostStyle, PostStyleMeta> = {
 };
 
 export function isPostStyle(value: unknown): value is PostStyle {
-  return typeof value === "string" && (POST_STYLES as string[]).includes(value);
+  return typeof value === "string" && (KNOWN_POST_STYLES as string[]).includes(value);
 }
 
 export function postStyleMeta(style: PostStyle | null | undefined): PostStyleMeta | null {
@@ -221,7 +226,7 @@ export function stylePromptBlock(): string {
 }
 
 export function produceStylePromptBlock(): string {
-  return POST_STYLES.map((key) => {
+  return KNOWN_POST_STYLES.map((key) => {
     const meta = POST_STYLE_META[key];
     return `- ${key}: ${meta.produceBrief}`;
   }).join("\n");

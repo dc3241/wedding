@@ -50,10 +50,10 @@ You are given one brief per idea. Each brief already has a topic and a style. Wr
 Post styles:
 ${stylePromptBlock()}
 
-LinkedIn styles: use the same creative shapes (Save this, myth, hot take, numbered list, stop doing, before/after, tip, pain→feature). Always speak to a venue or planner. Tip-family styles may omit naming First Look in the hook; promo and pain→feature may name it. save_this for LinkedIn is a team/ops checklist (send this to your coordinator), not a couples vendor list.
+LinkedIn styles: use the same creative shapes (Save this, myth, hot take, numbered list, stop doing, before/after, pain→feature). Always speak to a venue or planner. Tip-family styles may omit naming First Look in the hook; promo and pain→feature may name it. save_this for LinkedIn is a team/ops checklist (send this to your coordinator), not a couples vendor list.
 
 Length:
-- tip, myth, hot_take, stop_doing, before_after, promo: one or two sentences (LinkedIn: a headline can carry it).
+- myth, hot_take, stop_doing, before_after, promo: one or two sentences (LinkedIn: a headline can carry it).
 - numbered and save_this: a short paragraph — cover line, the checklist or list items, screens named where the brief says, and at most one light First Look mention for promo/list (never on the cover).
 
 Return ONLY the JSON shape you are given. No markdown, no extra keys.`;
