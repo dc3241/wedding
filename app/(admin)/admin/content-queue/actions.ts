@@ -17,7 +17,10 @@ import {
   type SlideSpec,
 } from "@/lib/admin/content-queue/slide-spec";
 import { isPostStyle } from "@/lib/admin/content-styles";
-import type { ContentQueuePlatform } from "@/lib/admin/content-queue";
+import {
+  CONTENT_QUEUE_BUCKET,
+  type ContentQueuePlatform,
+} from "@/lib/admin/content-queue";
 import type { ContentType } from "@/lib/admin/platforms";
 import { createClient } from "@/utils/supabase/server";
 
@@ -103,20 +106,44 @@ export async function approveContentQueueItem(id: string) {
   revalidateQueueAndBank();
 }
 
-export async function denyContentQueueItem(id: string) {
+/** Remove a generated post from Ideation. Images go with it. */
+export async function trashContentQueueItem(id: string) {
   const supabase = await requireAdmin();
-  const now = new Date().toISOString();
-  const { error } = await supabase
+  const { data: row, error: rowError } = await supabase
     .from("content_queue")
-    .update({
-      status: "denied",
-      denied_at: now,
-      approved_at: null,
-      updated_at: now,
-    })
-    .eq("id", id);
+    .select("id, week_of, image_paths")
+    .eq("id", id)
+    .single();
+  if (rowError || !row) throw new Error("Post not found");
+
+  const folder =
+    typeof row.week_of === "string" && row.week_of
+      ? `generated/${row.week_of}/${row.id}`
+      : null;
+  const paths = new Set(filledImagePaths(row.image_paths));
+  if (folder) {
+    const { data: files } = await supabase.storage.from(CONTENT_QUEUE_BUCKET).list(folder);
+    for (const file of files ?? []) {
+      if (file.name.endsWith(".png")) paths.add(`${folder}/${file.name}`);
+    }
+  }
+  if (paths.size > 0) {
+    try {
+      await supabase.storage.from(CONTENT_QUEUE_BUCKET).remove([...paths]);
+    } catch {
+      // The review row still goes away if a leftover PNG cannot be removed.
+    }
+  }
+
+  const { error: deleteBankError } = await supabase
+    .from("content_bank_items")
+    .delete()
+    .eq("source_queue_id", id);
+  if (deleteBankError) throw new Error(deleteBankError.message);
+
+  const { error } = await supabase.from("content_queue").delete().eq("id", id);
   if (error) throw new Error(error.message);
-  revalidatePath("/admin/ideation");
+  revalidateQueueAndBank();
 }
 
 export async function updateContentQueuePrompt(id: string, prompt: string) {

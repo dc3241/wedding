@@ -2,10 +2,10 @@
 
 import {
   approveContentQueueItem,
-  denyContentQueueItem,
   regenerateContentQueueItem,
   revertContentQueueItem,
   shuffleContentQueueItem,
+  trashContentQueueItem,
 } from "@/app/(admin)/admin/content-queue/actions";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -313,10 +313,10 @@ function QueueCard({ item }: { item: ContentQueueItem }) {
             <Button
               variant="default"
               disabled={isPending}
-              onClick={() => run(() => denyContentQueueItem(item.id))}
+              onClick={() => run(() => trashContentQueueItem(item.id))}
               className="px-4 py-2"
             >
-              Deny
+              Trash
             </Button>
             {formatNeedsImages(item.format) && imagesReady ? (
               <Button
@@ -409,6 +409,14 @@ function QueueCard({ item }: { item: ContentQueueItem }) {
               className="px-4 py-2"
             >
               Cancel
+            </Button>
+            <Button
+              variant="default"
+              disabled={isPending}
+              onClick={() => run(() => trashContentQueueItem(item.id))}
+              className="px-4 py-2"
+            >
+              Trash
             </Button>
           </div>
         </div>
