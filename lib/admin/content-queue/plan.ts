@@ -10,6 +10,10 @@ import type { ContentQueuePlatform } from "@/lib/admin/content-queue";
 import type { AudienceGroup } from "@/lib/admin/platform-audience";
 import type { ContentType } from "@/lib/admin/platforms";
 import {
+  retiredClaimPromptBlock,
+  shownCopyPromptBlock,
+} from "@/lib/admin/content-angles";
+import {
   isPostStyle,
   produceStylePromptBlock,
   type PostStyle,
@@ -113,6 +117,8 @@ Content types (caption flavor only — not the production format):
 - D: direct promo. You may name First Look. Still specific, never generic SaaS-speak.
 
 Never tell the viewer to build or switch to a spreadsheet, external calendar, Notion, paper chart, group text, or another app.
+
+Do not replace the approved idea with a retired hook. Timeline copy is fine. Never substitute the 15-minute ceremony-to-reception photo-gap myth unless the approved idea is already that claim.
 
 Layouts (pick one per slide; code may override):
 ${SLIDE_LAYOUTS.join(", ")}.
@@ -358,7 +364,13 @@ function materialize(parsed: unknown, slots: Slot[]): (PlannedPost & { degraded:
   });
 }
 
-async function requestPlan(slots: Slot[]): Promise<unknown> {
+async function requestPlan(slots: Slot[], shownCopy: string[]): Promise<unknown> {
+  const avoid = shownCopy
+    .filter((text) => !slots.some((slot) => slot.idea_text.trim() === text.trim()))
+    .slice(0, 40);
+  const avoidBlock = [retiredClaimPromptBlock(), shownCopyPromptBlock(avoid)]
+    .filter(Boolean)
+    .join("\n");
   const user = `Fill copy for these ${slots.length} approved ideas, in this exact order.
 Return exactly ${slots.length} object(s) in "posts" — one per idea, no extras, no variants.\n${slots
     .map((slot, i) => {
@@ -367,7 +379,7 @@ Return exactly ${slots.length} object(s) in "posts" — one per idea, no extras,
       const style = slot.post_style ? ` style=${slot.post_style}` : "";
       return `${i + 1}. platform=${slot.platform} format=${slot.format}${slides} audience=${slot.audience_group} type=${slot.content_type}${style} idea=${JSON.stringify(slot.idea_text)}${note}`;
     })
-    .join("\n")}`;
+    .join("\n")}${avoidBlock ? `\n\n${avoidBlock}` : ""}`;
 
   return callClaudeJson({
     system: SYSTEM_PROMPT,
@@ -377,7 +389,10 @@ Return exactly ${slots.length} object(s) in "posts" — one per idea, no extras,
   });
 }
 
-export async function buildWeekPlan(ideas: LikedIdeaSlot[]): Promise<PlannedPost[]> {
+export async function buildWeekPlan(
+  ideas: LikedIdeaSlot[],
+  shownCopy: string[] = [],
+): Promise<PlannedPost[]> {
   if (ideas.length === 0) return [];
 
   const types = allocateTypes(ideas.length);
@@ -390,14 +405,14 @@ export async function buildWeekPlan(ideas: LikedIdeaSlot[]): Promise<PlannedPost
 
   let posts: (PlannedPost & { degraded: boolean })[] | null = null;
   try {
-    posts = materialize(await requestPlan(slots), slots);
+    posts = materialize(await requestPlan(slots, shownCopy), slots);
   } catch (err) {
     console.warn("content-queue plan retry:", err);
   }
 
   if (!posts || posts.some((post) => post.degraded)) {
     try {
-      posts = materialize(await requestPlan(slots), slots);
+      posts = materialize(await requestPlan(slots, shownCopy), slots);
     } catch (err) {
       if (!posts) throw err;
       console.warn("content-queue plan retry failed; using the first pass.", err);

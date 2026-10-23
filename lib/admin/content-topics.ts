@@ -9,6 +9,8 @@ export type TopicDeckId = "couples_tip" | "couples_promo" | "couples_list" | "ve
 /**
  * Shared cursors walk these in order. Couple tips change per lane so one day does not
  * repeat the same angle on slideshow and pin. Promos are pain-then-feature angles.
+ * Overlapping claims (photo-gap, RSVP chase, …) are grouped in content-angles.ts
+ * so one shown hook burns the family.
  * LinkedIn draws from venue_promo only: the business system, then the couple
  * working inside that wedding. venue_tip stays so older ideas still resolve a label.
  * couples_list is the slideshow list shape: a cover plus five pieces of advice,
@@ -27,7 +29,7 @@ export const TOPIC_DECKS: Record<TopicDeckId, ContentTopic[]> = {
     { key: "vendors-red-flags", label: "Vendors · contract red flags", brief: "Red flags in a vendor contract." },
     { key: "seating-family", label: "Seating · family politics", brief: "Family politics, the kids' table, and who cannot sit together." },
     { key: "seating-vendors", label: "Seating · vendor seats", brief: "Where vendors, the band, and kids actually sit." },
-    { key: "dayof-buffer", label: "Day-of · buffer time", brief: "Buffer time and the photo gap that always runs long." },
+    { key: "dayof-buffer", label: "Day-of · buffer time", brief: "Where the day needs slack besides portraits: getting-ready running late, vendor load-in, travel between venues, or a first look that starts late. Everyday words. Do not use the 15-minute ceremony-to-reception photo-gap myth." },
     { key: "dayof-cues", label: "Day-of · who tells guests", brief: "Who tells guests where to be, and when." },
     { key: "website-guests", label: "Website · what guests open", brief: "The few things guests actually open the site for." },
     { key: "party-roles", label: "Wedding party · who does what", brief: "Who does what, and who pays." },
@@ -36,7 +38,7 @@ export const TOPIC_DECKS: Record<TopicDeckId, ContentTopic[]> = {
     { key: "morning-of", label: "Morning of", brief: "Morning-of logistics: who is where, and what is already done." },
     { key: "weather-backup", label: "Weather backup", brief: "The backup plan, told before anyone needs it." },
     { key: "headcount", label: "Headcount", brief: "How headcount drifts and what it changes (meals, rentals, seating)." },
-    { key: "timeline-photos", label: "Photo timeline", brief: "The photo block on the day-of timeline, with enough time left to eat. Not a separate shot-list tool." },
+    { key: "timeline-photos", label: "Photo timeline", brief: "Build the photo block so you still sit down to eat. Who is in which grouping, and when the couple actually gets a plate. Not a shot-list tool. Do not use the 15-vs-45-minute photo-gap myth as the hook." },
     { key: "vendor-meals", label: "Vendor meals", brief: "Vendor meals, breaks, and the people couples forget to feed." },
     { key: "ceremony-order", label: "Ceremony order", brief: "A simple ceremony order couples can hand to family." },
     { key: "payment-labels", label: "What each payment is", brief: "Naming what a payment is for so deposits do not blur together." },
@@ -55,7 +57,7 @@ export const TOPIC_DECKS: Record<TopicDeckId, ContentTopic[]> = {
     { key: "seating-paper", label: "Seating · paper chart", brief: "Pain: moving people on a paper chart. Feature: the seating builder." },
     { key: "seating-politics", label: "Seating · reshuffling family", brief: "Pain: reshuffling family by hand. Feature: the seating builder." },
     { key: "timeline-cues", label: "Day-of timeline · cues", brief: "Pain: nobody holding the run of show. Feature: the day-of timeline." },
-    { key: "timeline-photo-gap", label: "Day-of timeline · photo gap", brief: "Pain: photos eating the cocktail hour. Feature: the day-of timeline." },
+    { key: "timeline-photo-gap", label: "Day-of timeline · cocktail hour", brief: "Pain: guests standing around with nothing to do while the couple is still with family. Feature: the day-of timeline, used to plan the cocktail hour for the guests — a host, drinks, something to do — not to argue how long portraits take. Do not use the 15-vs-45-minute photo-gap myth." },
     { key: "website-texts", label: "Website · guests texting", brief: "Pain: guests texting the same questions. Feature: the wedding website." },
     { key: "notes-email", label: "Notes · contract in email", brief: "Pain: the contract buried in email. Feature: notes and files." },
     { key: "overview-apps", label: "Overview · five apps", brief: "Pain: five apps for one wedding. Feature: the overview." },
@@ -65,7 +67,7 @@ export const TOPIC_DECKS: Record<TopicDeckId, ContentTopic[]> = {
     { key: "list-caterer-deposit", label: "Before the caterer deposit", brief: "List. Cover plus 5. Real advice. A real screen on any advice slide. Mention First Look once, on the deposit item, as a light aside. Items: book the tasting before you sign (screen: calendar), know the headcount range (screen: guests), know what happens if the count drops, put a due date on the deposit (screen: budget-item; mention: that due date can sit on the payment in First Look), decide kids' meals (screen: guests)." },
     { key: "list-rsvp-week", label: "The week RSVPs are due", brief: "List. Cover plus 5. Real advice. A real screen on the advice slides. Mention First Look once, on the pending-RSVP item. Items: the deadline is a date you already told people (screen: website), who is still pending (screen: guests; mention: First Look already has the pending count), the meal tally is not the headcount (screen: guests), kids and plus-ones still outstanding (screen: guests), the number you will send the venue (screen: guests)." },
     { key: "list-dates-slip", label: "Dates that slip", brief: "List. Cover plus 5. Real advice. Mention First Look once, on the payment item. Items: the tasting (screen: calendar), the fitting (screen: calendar), the room-block cutoff (screen: website), the day the headcount locks (screen: guests), the final payment due date (screen: budget-item; mention: First Look keeps that due date on the payment)." },
-    { key: "list-family-handoff", label: "What you hand your family", brief: "List. Cover plus 5, for the week before. Real advice. Mention First Look once, on the timeline item. Items: a ceremony order a relative can follow (screen: timeline), who tells guests where to be (screen: timeline; mention: that run of show can live in First Look), where vendors sit and eat (screen: seating), the photo block with time left to eat (screen: timeline), the weather call." },
+    { key: "list-family-handoff", label: "What you hand your family", brief: "List. Cover plus 5, for the week before. Real advice. Mention First Look once, on the timeline item. Items: a ceremony order a relative can follow (screen: timeline), who tells guests where to be (screen: timeline; mention: that run of show can live in First Look), where vendors sit and eat (screen: seating), the photo block with time left to eat (screen: timeline; do not use the 15-vs-45-minute photo-gap myth as the item), the weather call." },
     { key: "list-after-venue", label: "Once the venue is booked", brief: "List. Cover plus 5 things you need next. Real advice. Mention First Look once, inside the shared-list item, not as its own pitch slide. Items: a guest count that is still a range (screen: guests), the vendors that book out next (screen: vendors), a budget with the venue payment dated (screen: budget-item), what is still open on a checklist (screen: checklist), one list both of you can open (screen: overview; mention: that shared list is what First Look is for)." },
     { key: "list-first-month", label: "The first month", brief: "List. Cover plus 5 for the first month engaged. Real advice. Mention First Look once, on the shared-list item. Items: pick a season, say a budget number out loud (screen: budget), treat the guest count as a range (screen: guests), name the three vendors that book first (screen: vendors), put it on one list you both see (screen: checklist; mention: First Look is that list)." },
     { key: "list-venue-tour", label: "Before the venue tour", brief: "List. Cover plus 5 before the first tour. Real advice. Mention First Look once, on the budget item. Items: a ceiling you will not cross (screen: budget; mention: First Look holds that number), two or three dates you can hold (screen: calendar), a rough guest count (screen: guests), ask about the rain plan, know what you would cut if the room is over (screen: budget-categories)." },

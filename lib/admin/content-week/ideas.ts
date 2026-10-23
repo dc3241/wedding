@@ -13,6 +13,17 @@ import {
   type ContentLane,
 } from "@/lib/admin/content-week";
 import {
+  pickLeastRecentTopics,
+  repeatsShownCopy,
+  retiredClaimPromptBlock,
+  shownCopyPromptBlock,
+} from "@/lib/admin/content-angles";
+import {
+  loadContentHistory,
+  SHOWN_COPY_PROMPT_LIMIT,
+  type ContentHistory,
+} from "@/lib/admin/content-history";
+import {
   deckForStyle,
   LINKEDIN_POST_STYLES,
   linkedInDeckForStyle,
@@ -25,13 +36,10 @@ import {
   isCoupleListTopic,
   TOPIC_DECKS,
   type ContentTopic,
-  type TopicDeckId,
 } from "@/lib/admin/content-topics";
 import { ensureWeekSlots } from "@/lib/admin/content-week/load";
 
 const IDEAS_PER_INTENT = 3;
-/** Prefer topics not used in the last N shortlist rows. */
-const RECENT_TOPIC_LOOKBACK = 40;
 
 const SYSTEM_PROMPT = `You brainstorm short-form social ideas for First Look, a wedding-planning
 SaaS. Two audiences only:
@@ -46,6 +54,8 @@ Couple behaviors the product already covers: a due date and reminder on each bud
 Venue and planner behaviors: inquiries on a board, follow-up automations, the book of weddings, white-label branding, proposals that become contracts, invoices in the couple's wedding, date holds on the calendar, inviting the couple into that wedding, and the couple then working there — checklist, budget, guest list and RSVPs, seating, wedding website, day-of timeline, and the venue or planner's vendor library.
 
 You are given one brief per idea. Each brief already has a topic and a style. Write exactly one hook for that brief — do not invent a different topic or style. Do not write three angles on the same topic.
+
+A hook that was already shown must not come back, even rephrased. Distinctive number pairings (for example 15 minutes vs 45 minutes) are the same hook. Timeline and day-of tips are welcome; the retired 15-minute ceremony-to-reception photo-gap myth is not.
 
 Post styles:
 ${stylePromptBlock()}
@@ -106,57 +116,23 @@ function pickStyles(intent: ContentIntent, count: number, bias?: PostStyle | nul
   return pickStylesFromPool(stylesForIntent(intent), count, bias);
 }
 
-async function recentTopicKeys(supabase: SupabaseClient): Promise<Set<string>> {
-  const { data, error } = await supabase
-    .from("ideation_items")
-    .select("topic_key")
-    .not("topic_key", "is", null)
-    .order("created_at", { ascending: false })
-    .limit(RECENT_TOPIC_LOOKBACK);
-  if (error) throw new Error(error.message);
-  return new Set(
-    (data ?? [])
-      .map((row) => row.topic_key as string | null)
-      .filter((key): key is string => Boolean(key)),
-  );
-}
-
-function pickTopics(
-  deck: TopicDeckId,
-  count: number,
-  usedKeys: Set<string>,
-  recent: Set<string>,
-): ContentTopic[] {
-  const list = TOPIC_DECKS[deck];
-  const fresh = list.filter((topic) => !usedKeys.has(topic.key) && !recent.has(topic.key));
-  const unused = list.filter((topic) => !usedKeys.has(topic.key));
-  const pool = shuffleInPlace([...(fresh.length >= count ? fresh : unused.length > 0 ? unused : list)]);
-  const out: ContentTopic[] = [];
-  for (const topic of pool) {
-    if (out.length >= count) break;
-    if (out.some((row) => row.key === topic.key)) continue;
-    out.push(topic);
-    usedKeys.add(topic.key);
-  }
-  while (out.length < count) {
-    const topic = list[out.length % list.length]!;
-    out.push(topic);
-    usedKeys.add(topic.key);
-  }
-  return out;
-}
-
 function buildBriefs(args: {
   intent: ContentIntent;
   count: number;
   usedKeys: Set<string>;
-  recent: Set<string>;
+  history: ContentHistory;
   biasStyle?: PostStyle | null;
 }): IdeaBrief[] {
   const styles = pickStyles(args.intent, args.count, args.biasStyle);
   return styles.map((style) => {
     const deck = deckForStyle(style, args.intent);
-    const [topic] = pickTopics(deck, 1, args.usedKeys, args.recent);
+    const styleRecent = args.history.topicKeysByStyle[style] ?? [];
+    const [topic] = pickLeastRecentTopics(
+      TOPIC_DECKS[deck],
+      1,
+      args.usedKeys,
+      [...styleRecent, ...args.history.recentTopicKeys],
+    );
     return { intent: args.intent, style, topic: topic! };
   });
 }
@@ -165,12 +141,18 @@ function buildBriefs(args: {
 function buildLinkedInBriefs(args: {
   count: number;
   usedKeys: Set<string>;
-  recent: Set<string>;
+  history: ContentHistory;
 }): IdeaBrief[] {
   const styles = pickStylesFromPool(LINKEDIN_POST_STYLES, args.count);
   return styles.map((style) => {
     const deck = linkedInDeckForStyle(style);
-    const [topic] = pickTopics(deck, 1, args.usedKeys, args.recent);
+    const styleRecent = args.history.topicKeysByStyle[style] ?? [];
+    const [topic] = pickLeastRecentTopics(
+      TOPIC_DECKS[deck],
+      1,
+      args.usedKeys,
+      [...styleRecent, ...args.history.recentTopicKeys],
+    );
     return { intent: "promo", style, topic: topic! };
   });
 }
@@ -216,47 +198,96 @@ function readIdeaTexts(value: unknown, count: number): string[] | null {
   return out.slice(0, count);
 }
 
-async function tasteLines(supabase: SupabaseClient): Promise<string> {
-  const [{ data: liked }, { data: disliked }, { data: used }] = await Promise.all([
-    supabase
-      .from("ideation_items")
-      .select("idea_text, comment")
-      .eq("rating", "up")
-      .is("used_at", null)
-      .order("created_at", { ascending: false })
-      .limit(6),
-    supabase
-      .from("ideation_items")
-      .select("idea_text, comment")
-      .eq("rating", "down")
-      .order("created_at", { ascending: false })
-      .limit(6),
-    supabase
-      .from("ideation_items")
-      .select("idea_text")
-      .not("used_at", "is", null)
-      .order("used_at", { ascending: false })
-      .limit(20),
-  ]);
+async function tasteLines(
+  supabase: SupabaseClient,
+  shownTexts: string[],
+): Promise<string> {
+  const { data: disliked } = await supabase
+    .from("ideation_items")
+    .select("idea_text, comment")
+    .eq("rating", "down")
+    .order("created_at", { ascending: false })
+    .limit(6);
 
-  const lines: string[] = [];
-  if (liked?.length) {
-    lines.push("Ideas the team has liked (lean this way):");
-    for (const row of liked) {
-      lines.push(`- "${row.idea_text}"${row.comment ? ` — note: ${row.comment}` : ""}`);
-    }
-  }
+  const lines: string[] = [retiredClaimPromptBlock()];
+  const shown = shownCopyPromptBlock(shownTexts.slice(0, SHOWN_COPY_PROMPT_LIMIT));
+  if (shown) lines.push(shown);
   if (disliked?.length) {
     lines.push("Ideas the team has passed (avoid this pattern):");
     for (const row of disliked) {
       lines.push(`- "${row.idea_text}"${row.comment ? ` — note: ${row.comment}` : ""}`);
     }
   }
-  if (used?.length) {
-    lines.push("Already produced — do not repeat or lightly rephrase:");
-    for (const row of used) lines.push(`- "${row.idea_text}"`);
-  }
   return lines.join("\n");
+}
+
+async function rewriteRepeatedHooks(
+  briefs: IdeaBrief[],
+  texts: string[],
+  shown: string[],
+): Promise<string[]> {
+  const out = texts.map((text) => text.trim());
+  const prior: string[] = [...shown];
+  const redo: { brief: IdeaBrief; index: number; text: string }[] = [];
+  briefs.forEach((brief, index) => {
+    const text = out[index]!;
+    if (repeatsShownCopy(text, prior)) redo.push({ brief, index, text });
+    else prior.push(text);
+  });
+  if (redo.length === 0) return out;
+
+  let parsed: unknown;
+  try {
+    parsed = await callClaudeJson({
+    system: SYSTEM_PROMPT,
+    user: `These hooks repeat a retired or already-shown angle. Rewrite each one.
+Keep the assigned topic and style. Do not reuse the banned claim or a close paraphrase.
+${retiredClaimPromptBlock()}
+${shownCopyPromptBlock([...shown, ...out.filter((_, index) => !redo.some((row) => row.index === index))])}
+
+${redo
+  .map(
+    (row, index) =>
+      `${index + 1}. intent=${row.brief.intent} style=${row.brief.style} topic=${row.brief.topic.label} — ${row.brief.topic.brief}
+   Style rule: ${POST_STYLE_META[row.brief.style].brief}
+   Rejected draft: ${JSON.stringify(row.text)}`,
+  )
+  .join("\n")}`,
+    maxTokens: 2048,
+    jsonSchema: {
+      type: "object",
+      additionalProperties: false,
+      required: ["ideas"],
+      properties: { ideas: ideaTextListSchema(redo.length) },
+    },
+  });
+  } catch (err) {
+    console.warn("ideation-rewrite:", err);
+    return out;
+  }
+
+  const next = isRecord(parsed) ? readIdeaTexts(parsed.ideas, redo.length) : null;
+  if (!next) {
+    console.warn("ideation-rewrite: model left the rewrite short; keeping first drafts.");
+    return out;
+  }
+
+  const accepted = [...shown];
+  out.forEach((text, index) => {
+    if (!redo.some((row) => row.index === index)) accepted.push(text);
+  });
+  redo.forEach((row, i) => {
+    const candidate = next[i]!;
+    if (!repeatsShownCopy(candidate, accepted)) {
+      out[row.index] = candidate;
+      accepted.push(candidate);
+      return;
+    }
+    console.warn(`ideation-rewrite: still overlapped after retry (${row.brief.topic.key}).`);
+    out[row.index] = candidate;
+    accepted.push(candidate);
+  });
+  return out;
 }
 
 async function dayHasIdeas(supabase: SupabaseClient, date: string): Promise<boolean> {
@@ -309,7 +340,7 @@ async function generateDay(
   requestedBy: string | null,
   focus: string | null,
 ): Promise<void> {
-  const recent = await recentTopicKeys(supabase);
+  const history = await loadContentHistory(supabase);
   const usedKeys = new Set<string>();
   const listBias = slideshowSecond(date) === "list" ? ("numbered" as const) : null;
 
@@ -317,34 +348,34 @@ async function generateDay(
     intent: "tip",
     count: IDEAS_PER_INTENT,
     usedKeys,
-    recent,
+    history,
   });
   const slideshowPromo = buildBriefs({
     intent: "promo",
     count: IDEAS_PER_INTENT,
     usedKeys,
-    recent,
+    history,
     biasStyle: listBias,
   });
   const pinTip = buildBriefs({
     intent: "tip",
     count: IDEAS_PER_INTENT,
     usedKeys,
-    recent,
+    history,
   });
   const pinPromo = buildBriefs({
     intent: "promo",
     count: IDEAS_PER_INTENT,
     usedKeys,
-    recent,
+    history,
   });
   const linkedin = buildLinkedInBriefs({
     count: IDEAS_PER_INTENT,
     usedKeys,
-    recent,
+    history,
   });
 
-  const taste = await tasteLines(supabase);
+  const taste = await tasteLines(supabase, history.shownTexts);
   const focusLine = focus ? `\nBias every idea toward this focus: ${focus}` : "";
   const user = `Day: ${formatDayHeading(date)}.
 Write exactly one hook per brief, same order. Different topics and styles on purpose — do not collapse them.
@@ -405,12 +436,31 @@ ${taste ? `\n${taste}` : ""}`;
     throw new Error("The model left a lane short.");
   }
 
+  const groups = [
+    { briefs: slideshowTip, texts: slideshowTipTexts },
+    { briefs: slideshowPromo, texts: slideshowPromoTexts },
+    { briefs: pinTip, texts: pinTipTexts },
+    { briefs: pinPromo, texts: pinPromoTexts },
+    { briefs: linkedin, texts: linkedinTexts },
+  ];
+  const rewritten = await rewriteRepeatedHooks(
+    groups.flatMap((group) => group.briefs),
+    groups.flatMap((group) => group.texts),
+    history.shownTexts,
+  );
+  let offset = 0;
+  const nextTexts = groups.map((group) => {
+    const slice = rewritten.slice(offset, offset + group.texts.length);
+    offset += group.texts.length;
+    return slice;
+  });
+
   const rows = [
-    ...rowsForBriefs("slideshow", date, weekStart, requestedBy, slideshowTip, slideshowTipTexts),
-    ...rowsForBriefs("slideshow", date, weekStart, requestedBy, slideshowPromo, slideshowPromoTexts),
-    ...rowsForBriefs("pin", date, weekStart, requestedBy, pinTip, pinTipTexts),
-    ...rowsForBriefs("pin", date, weekStart, requestedBy, pinPromo, pinPromoTexts),
-    ...rowsForBriefs("linkedin", date, weekStart, requestedBy, linkedin, linkedinTexts),
+    ...rowsForBriefs("slideshow", date, weekStart, requestedBy, slideshowTip, nextTexts[0]!),
+    ...rowsForBriefs("slideshow", date, weekStart, requestedBy, slideshowPromo, nextTexts[1]!),
+    ...rowsForBriefs("pin", date, weekStart, requestedBy, pinTip, nextTexts[2]!),
+    ...rowsForBriefs("pin", date, weekStart, requestedBy, pinPromo, nextTexts[3]!),
+    ...rowsForBriefs("linkedin", date, weekStart, requestedBy, linkedin, nextTexts[4]!),
   ];
 
   const { error } = await supabase.from("ideation_items").insert(rows);
@@ -429,9 +479,9 @@ async function generateLane(
     throw new Error("Videos are assigned on the schedule.");
   }
 
-  const recent = await recentTopicKeys(supabase);
+  const history = await loadContentHistory(supabase);
   const usedKeys = new Set<string>();
-  const taste = await tasteLines(supabase);
+  const taste = await tasteLines(supabase, history.shownTexts);
   const focusLine = focus ? `\nBias every idea toward this focus: ${focus}` : "";
 
   let rows: ReturnType<typeof rowsForBriefs>;
@@ -440,7 +490,7 @@ async function generateLane(
     const briefs = buildLinkedInBriefs({
       count: IDEAS_PER_INTENT,
       usedKeys,
-      recent,
+      history,
     });
     const user = `Day: ${formatDayHeading(date)}. Lane: LinkedIn.
 Write exactly one hook per brief for venues and planners. Each becomes a post with one square image. Mixed styles on purpose — do not collapse them into pain-then-feature.
@@ -462,7 +512,14 @@ ${taste ? `\n${taste}` : ""}`;
     if (!isRecord(parsed)) throw new Error("The model returned an unexpected response.");
     const texts = readIdeaTexts(parsed.ideas, IDEAS_PER_INTENT);
     if (!texts) throw new Error("The model left this lane short.");
-    rows = rowsForBriefs(lane, date, weekStart, requestedBy, briefs, texts);
+    rows = rowsForBriefs(
+      lane,
+      date,
+      weekStart,
+      requestedBy,
+      briefs,
+      await rewriteRepeatedHooks(briefs, texts, history.shownTexts),
+    );
   } else {
     const listBias =
       lane === "slideshow" && slideshowSecond(date) === "list" ? ("numbered" as const) : null;
@@ -470,13 +527,13 @@ ${taste ? `\n${taste}` : ""}`;
       intent: "tip",
       count: IDEAS_PER_INTENT,
       usedKeys,
-      recent,
+      history,
     });
     const promoBriefs = buildBriefs({
       intent: "promo",
       count: IDEAS_PER_INTENT,
       usedKeys,
-      recent,
+      history,
       biasStyle: listBias,
     });
     const user = `Day: ${formatDayHeading(date)}. Lane: ${lane}.
@@ -499,9 +556,28 @@ ${taste ? `\n${taste}` : ""}`;
     const tipTexts = readIdeaTexts(parsed.tip, IDEAS_PER_INTENT);
     const promoTexts = readIdeaTexts(parsed.promo, IDEAS_PER_INTENT);
     if (!tipTexts || !promoTexts) throw new Error("The model left this lane short.");
+    const rewritten = await rewriteRepeatedHooks(
+      [...tipBriefs, ...promoBriefs],
+      [...tipTexts, ...promoTexts],
+      history.shownTexts,
+    );
     rows = [
-      ...rowsForBriefs(lane, date, weekStart, requestedBy, tipBriefs, tipTexts),
-      ...rowsForBriefs(lane, date, weekStart, requestedBy, promoBriefs, promoTexts),
+      ...rowsForBriefs(
+        lane,
+        date,
+        weekStart,
+        requestedBy,
+        tipBriefs,
+        rewritten.slice(0, tipTexts.length),
+      ),
+      ...rowsForBriefs(
+        lane,
+        date,
+        weekStart,
+        requestedBy,
+        promoBriefs,
+        rewritten.slice(tipTexts.length),
+      ),
     ];
   }
 

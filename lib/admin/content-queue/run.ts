@@ -23,6 +23,7 @@ import { renderAndStoreSlides } from "@/lib/admin/content-queue/render-slides";
 import { selectSlideSpecs, type RecentStyle } from "@/lib/admin/content-queue/select-slide";
 import { parseStoredSpecs, stylesFromSpecs, type SlideSpec } from "@/lib/admin/content-queue/slide-spec";
 import { isPostStyle } from "@/lib/admin/content-styles";
+import { loadContentHistory } from "@/lib/admin/content-history";
 import { postingWeekMonday } from "@/lib/admin/content-week";
 import type { AudienceGroup } from "@/lib/admin/platform-audience";
 import { createServiceRoleClient } from "@/utils/supabase/service-role";
@@ -211,7 +212,8 @@ async function produceQueuePosts(
   }
 
   const supabase = createServiceRoleClient();
-  const plan = await buildWeekPlan(ideas);
+  const history = await loadContentHistory(supabase);
+  const plan = await buildWeekPlan(ideas, history.shownTexts);
   const recentByPlatform = new Map<ContentQueuePlatform, RecentStyle[]>();
 
   let inserted = 0;
