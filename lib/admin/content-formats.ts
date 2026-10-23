@@ -33,8 +33,8 @@ export const FORMATS_BY_PLATFORM: Record<
     { key: "ugc", label: "Video" },
   ],
   tiktok: [
-    { key: "ugc", label: "Video" },
     { key: "carousel", label: "Slideshow" },
+    { key: "ugc", label: "Video" },
   ],
   pinterest: [{ key: "pin", label: "Static" }],
   linkedin: [

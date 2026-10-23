@@ -11,9 +11,8 @@ import { useEffect, useState, type ReactNode } from "react";
  * Dark collapsible icon-rail sidebar. Same Soft stack tokens and shape
  * as PlannerShell (bg-ink / text-canvas / accent) — different nav only.
  *
- * ADMIN-AUD-01: shared top block, then Couples / Venues & planners groups.
- * Content queue and generate+rate Ideation stay top-level. Collapse +
- * mobile drawer stay in this file.
+ * Shared top block, then Couples / Venues & planners groups.
+ * Collapse + mobile drawer stay in this file.
  */
 
 type NavItem = {
@@ -28,26 +27,6 @@ type NavBlock =
   | { kind: "group"; label: string; items: NavItem[] };
 
 const overviewIcon = <path d="M3 9.5 10 3l7 6.5M5 8.5V17h10V8.5M8 17v-5h4v5" />;
-const scheduleIcon = (
-  <>
-    <rect x="3" y="4.5" width="14" height="12.5" rx="2" />
-    <path d="M3 8.5h14M7 2.5v4M13 2.5v4" />
-  </>
-);
-const performanceIcon = <path d="M4 17V11M10 17V4M16 17v-7M2.5 17h15" />;
-const mediaIcon = (
-  <>
-    <rect x="3" y="4" width="14" height="12" rx="2" />
-    <circle cx="7.5" cy="8.5" r="1.3" />
-    <path d="M4 15l4-4 3 3 2-2 3 3" />
-  </>
-);
-const queueIcon = (
-  <>
-    <rect x="5" y="4" width="12" height="13" rx="2" />
-    <path d="M3 7v9.5A1.5 1.5 0 0 0 4.5 18H15" />
-  </>
-);
 const productShotIcon = (
   <>
     <rect x="6" y="2.5" width="8" height="15" rx="2" />
@@ -70,12 +49,8 @@ const NAV: NavBlock[] = [
     kind: "items",
     items: [
       { href: "/admin", label: "Overview", tooltip: "Overview", icon: overviewIcon },
-      { href: "/admin/schedule", label: "Schedule", tooltip: "Schedule", icon: scheduleIcon },
-      { href: "/admin/performance", label: "Performance", tooltip: "Performance", icon: performanceIcon },
-      { href: "/admin/media", label: "Media library", tooltip: "Media library", icon: mediaIcon },
-      { href: "/admin/content-queue", label: "Content queue", tooltip: "Content queue", icon: queueIcon },
-      { href: "/admin/product-shots", label: "Product screens", tooltip: "Product screens", icon: productShotIcon },
       { href: "/admin/ideation", label: "Ideation", tooltip: "Ideation", icon: ideationIcon },
+      { href: "/admin/product-shots", label: "Product screens", tooltip: "Product screens", icon: productShotIcon },
     ],
   },
   {

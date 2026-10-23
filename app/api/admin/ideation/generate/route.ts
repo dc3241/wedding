@@ -1,12 +1,14 @@
 /**
- * Admin ideation — week shortlists. Sunday cron and the Generate button
- * both call generateContentWeek. MODEL_API_KEY stays on the server.
+ * On-demand post: caption + image from platform, angle, format, and notes.
+ * MODEL_API_KEY stays on the server. 404 for non-admins.
  */
 import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 import { checkIsAdmin } from "@/lib/admin/is-admin";
-import { isContentLane } from "@/lib/admin/content-week";
-import { generateContentWeek } from "@/lib/admin/content-week/ideas";
+import { isContentPostFormat } from "@/lib/admin/content-formats";
+import { isActiveContentQueuePlatform } from "@/lib/admin/content-queue";
+import { ProduceIdeaError, produceOnDemand } from "@/lib/admin/content-queue/run";
+import { isPostStyle } from "@/lib/admin/content-styles";
 import { createClient } from "@/utils/supabase/server";
 
 export const runtime = "nodejs";
@@ -27,38 +29,55 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  let body: { date?: string; lane?: string; focus?: string };
+  let body: {
+    platform?: string;
+    format?: string;
+    postStyle?: string;
+    surface?: string;
+    instructions?: string;
+    carousel_slides?: number;
+  };
   try {
     body = await request.json();
   } catch {
-    body = {};
+    return NextResponse.json({ error: "Platform, angle, and post type are required." }, { status: 400 });
   }
 
-  const date = typeof body.date === "string" ? body.date : null;
-  const lane = isContentLane(body.lane) ? body.lane : null;
-  if (lane === "video") {
-    return NextResponse.json({ error: "Videos are assigned on the schedule." }, { status: 400 });
+  if (!isActiveContentQueuePlatform(body.platform)) {
+    return NextResponse.json({ error: "Pick TikTok, Pinterest, or LinkedIn." }, { status: 400 });
   }
-  if (body.lane && !lane) {
-    return NextResponse.json({ error: "Unknown post type." }, { status: 400 });
+  if (!isContentPostFormat(body.format)) {
+    return NextResponse.json({ error: "Pick a post type." }, { status: 400 });
   }
-  if (lane && !date) {
-    return NextResponse.json({ error: "Pick a day to regenerate." }, { status: 400 });
+  if (!isPostStyle(body.postStyle) || body.postStyle === "tip") {
+    return NextResponse.json({ error: "Pick an angle." }, { status: 400 });
   }
 
   try {
-    const result = await generateContentWeek(supabase, {
-      requestedBy: user.id,
-      date,
-      lane,
-      focus: typeof body.focus === "string" ? body.focus : null,
+    const result = await produceOnDemand({
+      platform: body.platform,
+      format: body.format,
+      postStyle: body.postStyle,
+      surface: typeof body.surface === "string" ? body.surface : null,
+      instructions: typeof body.instructions === "string" ? body.instructions : null,
+      carousel_slides: typeof body.carousel_slides === "number" ? body.carousel_slides : null,
     });
+    if (!result.queueId || result.inserted === 0) {
+      const detail = result.errors[0] ?? "Could not generate this post.";
+      return NextResponse.json({ error: detail, ...result }, { status: 502 });
+    }
     revalidatePath("/admin/ideation");
-    revalidatePath("/admin/schedule");
     revalidatePath("/admin");
-    return NextResponse.json(result);
+    return NextResponse.json({
+      ok: result.errors.length === 0,
+      error: result.errors[0],
+      ...result,
+    });
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Could not generate ideas.";
+    if (err instanceof ProduceIdeaError) {
+      return NextResponse.json({ error: err.message }, { status: 400 });
+    }
+    const message = err instanceof Error ? err.message : "Could not generate this post.";
     console.error("ideation-generate:", err);
     return NextResponse.json({ error: message }, { status: 502 });
   }

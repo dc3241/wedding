@@ -48,7 +48,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: detail, ...result }, { status: 502 });
     }
     revalidatePath("/admin/ideation");
-    revalidatePath("/admin/content-queue");
     revalidatePath("/admin");
     return NextResponse.json({
       ok: result.errors.length === 0,

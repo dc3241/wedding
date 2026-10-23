@@ -419,7 +419,13 @@ function QueueCard({ item }: { item: ContentQueueItem }) {
   );
 }
 
-export function ContentQueueBoard({ items }: { items: ContentQueueItem[] }) {
+export function ContentQueueBoard({
+  items,
+  emptyLabel = "No posts waiting.",
+}: {
+  items: ContentQueueItem[];
+  emptyLabel?: string;
+}) {
   const [platformFilter, setPlatformFilter] = useState<PlatformFilter>("all");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const router = useRouter();
@@ -487,9 +493,7 @@ export function ContentQueueBoard({ items }: { items: ContentQueueItem[] }) {
 
       {filtered.length === 0 ? (
         <EmptyState>
-          {items.length === 0
-            ? "No posts in this week's queue yet."
-            : "No posts match these filters."}
+          {items.length === 0 ? emptyLabel : "No posts match these filters."}
         </EmptyState>
       ) : (
         <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">

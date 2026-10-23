@@ -153,6 +153,53 @@ function flex(style: CSSProperties = {}): CSSProperties {
   return next;
 }
 
+/**
+ * Satori lays a flex text node out as one item per word and drops the
+ * spaces. Split the run and restore the gap from the font size.
+ */
+function SlideText({
+  text,
+  style,
+  parts,
+}: {
+  text?: string;
+  style?: CSSProperties;
+  parts?: { text: string; color?: string }[];
+}) {
+  const words: { text: string; color?: string }[] =
+    parts ??
+    (text ?? "")
+      .split(/\s+/)
+      .filter((word) => word.length > 0)
+      .map((word) => ({ text: word }));
+  if (words.length === 0) return null;
+  const fontSize = typeof style?.fontSize === "number" ? style.fontSize : 16;
+  const align = style?.textAlign;
+  return (
+    <div
+      style={flex({
+        ...style,
+        flexWrap: "wrap",
+        justifyContent:
+          style?.justifyContent ??
+          (align === "center" ? "center" : align === "right" ? "flex-end" : "flex-start"),
+      })}
+    >
+      {words.map((word, index) => (
+        <span
+          key={`${word.text}-${index}`}
+          style={flex({
+            color: word.color ?? style?.color,
+            marginRight: index === words.length - 1 ? 0 : fontSize * 0.25,
+          })}
+        >
+          {word.text}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 function fitSize(text: string, avail: number, max: number): number {
   const chars = Math.max(1, text.length);
   for (let n = 1; n <= 3; n += 1) {
@@ -207,12 +254,13 @@ function loadFonts() {
     style: "normal" as const,
   });
   const dir = path.join(process.cwd(), "lib/admin/content-queue/fonts");
+  // Static Figtree TTF. Satori prefers TTF/OTF over WOFF.
   fontCache = [
-    font(path.join(dir, "figtree-latin-400-normal.woff"), 400),
-    font(path.join(dir, "figtree-latin-500-normal.woff"), 500),
-    font(path.join(dir, "figtree-latin-600-normal.woff"), 600),
-    font(path.join(dir, "figtree-latin-700-normal.woff"), 700),
-    font(path.join(dir, "figtree-latin-800-normal.woff"), 800),
+    font(path.join(dir, "figtree-400.ttf"), 400),
+    font(path.join(dir, "figtree-500.ttf"), 500),
+    font(path.join(dir, "figtree-600.ttf"), 600),
+    font(path.join(dir, "figtree-700.ttf"), 700),
+    font(path.join(dir, "figtree-800.ttf"), 800),
   ];
   return fontCache;
 }
@@ -261,34 +309,17 @@ function Headline({
     color,
   } as const;
   if (!highlight || !text.includes(highlight)) {
-    return (
-      <div style={flex({ ...type, textAlign: align, width: "100%" })}>
-        {text}
-      </div>
-    );
+    return <SlideText text={text} style={{ ...type, textAlign: align, width: "100%" }} />;
   }
   const parts = headlineParts(text, highlight);
   return (
-    <div
-      style={flex({
-        ...type,
-        width: "100%",
-        flexWrap: "wrap",
-        justifyContent: align === "center" ? "center" : "flex-start",
-      })}
-    >
-      {parts.map((part, index) => (
-        <span
-          key={`${part.text}-${index}`}
-          style={{
-            color: part.hi ? highlightColor : color,
-            marginRight: index === parts.length - 1 ? 0 : size * 0.28,
-          }}
-        >
-          {part.text}
-        </span>
-      ))}
-    </div>
+    <SlideText
+      parts={parts.map((part) => ({
+        text: part.text,
+        color: part.hi ? highlightColor : color,
+      }))}
+      style={{ ...type, textAlign: align, width: "100%" }}
+    />
   );
 }
 
@@ -309,8 +340,9 @@ function Support({
 }) {
   if (!text) return null;
   return (
-    <div
-      style={flex({
+    <SlideText
+      text={text}
+      style={{
         marginTop: 26 * u,
         fontFamily: "Figtree",
         fontSize: size * u,
@@ -319,10 +351,8 @@ function Support({
         color,
         textAlign: align,
         maxWidth,
-      })}
-    >
-      {text}
-    </div>
+      }}
+    />
   );
 }
 
@@ -340,7 +370,15 @@ function Pill({ children, tone, u }: { children: string; tone: SlideTone; u: num
         borderRadius: 999,
       })}
     >
-      {children}
+      <SlideText
+        text={children}
+        style={{
+          fontFamily: "Figtree",
+          fontWeight: 600,
+          fontSize: 26 * u,
+          color: fg,
+        }}
+      />
     </div>
   );
 }
@@ -411,7 +449,7 @@ function HeadlineCard({ spec, t, u, W }: { spec: SlideSpec; t: Theme; u: number;
                   boxShadow: i === 0 ? "0 1px 3px rgba(36,28,32,0.12)" : undefined,
                 })}
               >
-                {tab}
+                <SlideText text={tab} style={{ fontFamily: "Figtree", fontSize: 27 * u, fontWeight: 600, color: i === 0 ? tokens.ink : tokens.muted }} />
               </div>
             ))}
           </div>
@@ -426,7 +464,7 @@ function HeadlineCard({ spec, t, u, W }: { spec: SlideSpec; t: Theme; u: number;
               borderTop: i === 0 ? undefined : `${2 * u}px solid ${tokens.line}`,
             })}
           >
-            <div style={flex({ fontFamily: "Figtree", fontSize: 34 * u, fontWeight: 600 })}>{row.label}</div>
+            <SlideText text={row.label} style={{ fontFamily: "Figtree", fontSize: 34 * u, fontWeight: 600 }} />
             <Pill tone={row.tone ?? "neutral"} u={u}>
               {row.status}
             </Pill>
@@ -466,9 +504,10 @@ function PhoneBody({
           boxShadow: softStack,
         })}
       >
-        <div style={flex({ fontFamily: "Figtree", fontSize: 22 * p, color: tokens.muted, fontWeight: 600 })}>
-          {hero.label}
-        </div>
+        <SlideText
+          text={hero.label}
+          style={{ fontFamily: "Figtree", fontSize: 22 * p, color: tokens.muted, fontWeight: 600 }}
+        />
         <div style={flex({ alignItems: "center", gap: 14 * p, marginTop: 6 * p })}>
           <div
             style={flex({
@@ -479,7 +518,16 @@ function PhoneBody({
               color: tokens.ink,
             })}
           >
-            {hero.value}
+            <SlideText
+              text={hero.value}
+              style={{
+                fontFamily: "Figtree",
+                fontSize: 60 * p,
+                fontWeight: 800,
+                letterSpacing: -1.5 * p,
+                color: tokens.ink,
+              }}
+            />
           </div>
           {hero.chip ? (
             <div
@@ -493,20 +541,32 @@ function PhoneBody({
                 borderRadius: 999,
               })}
             >
-              {hero.chip}
+              <SlideText
+                text={hero.chip}
+                style={{ fontFamily: "Figtree", fontWeight: 700, fontSize: 20 * p, color: tokens.accent }}
+              />
             </div>
           ) : null}
         </div>
         {hero.sub ? (
-          <div style={flex({ fontFamily: "Figtree", fontSize: 24 * p, marginTop: 8 * p, fontWeight: 500, color: tokens.ink })}>
-            {hero.sub}
-          </div>
+          <SlideText
+            text={hero.sub}
+            style={{ fontFamily: "Figtree", fontSize: 24 * p, marginTop: 8 * p, fontWeight: 500, color: tokens.ink }}
+          />
         ) : null}
       </div>
       {data.listTitle ? (
-        <div style={flex({ fontFamily: "Figtree", fontSize: 24 * p, fontWeight: 700, marginTop: 26 * p, marginBottom: 12 * p, color: tokens.ink })}>
-          {data.listTitle}
-        </div>
+        <SlideText
+          text={data.listTitle}
+          style={{
+            fontFamily: "Figtree",
+            fontSize: 24 * p,
+            fontWeight: 700,
+            marginTop: 26 * p,
+            marginBottom: 12 * p,
+            color: tokens.ink,
+          }}
+        />
       ) : null}
       {items.map((item, i) => (
         <div
@@ -525,8 +585,16 @@ function PhoneBody({
             color: tokens.ink,
           })}
         >
-          <div style={flex()}>{item.label}</div>
-          <div style={flex({ color: toneInk[item.tone ?? "neutral"][1], fontWeight: 700 })}>{item.note}</div>
+          <SlideText text={item.label} style={{ fontFamily: "Figtree", fontSize: 22 * p, fontWeight: 600, color: tokens.ink }} />
+          <SlideText
+            text={item.note}
+            style={{
+              fontFamily: "Figtree",
+              fontSize: 22 * p,
+              color: toneInk[item.tone ?? "neutral"][1],
+              fontWeight: 700,
+            }}
+          />
         </div>
       ))}
       {prog ? (
@@ -541,8 +609,8 @@ function PhoneBody({
           })}
         >
           <div style={flex({ justifyContent: "space-between", fontFamily: "Figtree", fontSize: 21 * p, fontWeight: 600 })}>
-            <div style={flex({ color: tokens.muted })}>{prog.label}</div>
-            <div style={flex({ color: tokens.ink })}>{prog.value}</div>
+            <SlideText text={prog.label} style={{ fontFamily: "Figtree", fontSize: 21 * p, fontWeight: 600, color: tokens.muted }} />
+            <SlideText text={prog.value} style={{ fontFamily: "Figtree", fontSize: 21 * p, fontWeight: 600, color: tokens.ink }} />
           </div>
           <div style={flex({ height: 14 * p, borderRadius: 999, background: tokens.canvas, marginTop: 14 * p, width: "100%" })}>
             <div style={flex({ width: `${Math.max(0, Math.min(100, prog.pct))}%`, height: "100%", borderRadius: 999, background: tokens.sage })} />
@@ -648,9 +716,10 @@ function HeadlinePhone({
           })}
         >
           {data.bulletsTitle ? (
-            <div style={flex({ fontFamily: "Figtree", fontSize: 34 * u, fontWeight: 800, marginBottom: 20 * u })}>
-              {data.bulletsTitle}
-            </div>
+            <SlideText
+              text={data.bulletsTitle}
+              style={{ fontFamily: "Figtree", fontSize: 34 * u, fontWeight: 800, marginBottom: 20 * u }}
+            />
           ) : null}
           {bullets.map((bullet) => (
             <div
@@ -666,7 +735,10 @@ function HeadlinePhone({
               })}
             >
               <Check color={t.hi} size={27 * u} />
-              <div style={flex({ flex: 1 })}>{bullet}</div>
+              <SlideText
+                text={bullet}
+                style={{ flex: 1, fontFamily: "Figtree", fontSize: 27 * u, lineHeight: 1.25, fontWeight: 500 }}
+              />
             </div>
           ))}
         </div>
@@ -692,10 +764,23 @@ function BigNumber({ spec, t, u, W }: { spec: SlideSpec; t: Theme; u: number; W:
           width: "100%",
         })}
       >
-        {value}
+        <SlideText
+          text={value}
+          style={{
+            fontFamily: "Figtree",
+            fontWeight: 800,
+            fontSize: size,
+            lineHeight: 1,
+            letterSpacing: -size * 0.04,
+            color: t.hi,
+            justifyContent: "center",
+            width: "100%",
+          }}
+        />
       </div>
-      <div
-        style={flex({
+      <SlideText
+        text={spec.headline}
+        style={{
           marginTop: 30 * u,
           fontFamily: "Figtree",
           fontWeight: 800,
@@ -706,10 +791,8 @@ function BigNumber({ spec, t, u, W }: { spec: SlideSpec; t: Theme; u: number; W:
           textAlign: "center",
           justifyContent: "center",
           width: "100%",
-        })}
-      >
-        {spec.headline}
-      </div>
+        }}
+      />
       <Support text={spec.support} color={t.fg2} u={u} align="center" />
     </div>
   );
@@ -741,18 +824,17 @@ function BeforeAfter({
     items.map((item, index) => (
       <div key={`${item}-${index}`} style={flex({ gap: 16 * u, alignItems: "flex-start", marginBottom: 20 * u })}>
         {good ? <Check color={tokens.sage} size={31 * u} /> : <Cross color={tokens.red} size={31 * u} />}
-        <div
-          style={flex({
+        <SlideText
+          text={item}
+          style={{
             flex: 1,
             fontFamily: "Figtree",
             fontSize: 31 * u,
             lineHeight: 1.25,
             fontWeight: 500,
             color: tokens.ink,
-          })}
-        >
-          {item}
-        </div>
+          }}
+        />
       </div>
     ));
   return (
@@ -790,7 +872,16 @@ function BeforeAfter({
               letterSpacing: 1.5 * u,
             })}
           >
-            {(data.beforeTitle || "Before").toUpperCase()}
+            <SlideText
+              text={(data.beforeTitle || "Before").toUpperCase()}
+              style={{
+                fontFamily: "Figtree",
+                fontSize: 26 * u,
+                fontWeight: 700,
+                color: tokens.muted,
+                letterSpacing: 1.5 * u,
+              }}
+            />
           </div>
           {lines(before, false)}
         </div>
@@ -816,7 +907,16 @@ function BeforeAfter({
               letterSpacing: 1.5 * u,
             })}
           >
-            {(data.afterTitle || "After").toUpperCase()}
+            <SlideText
+              text={(data.afterTitle || "After").toUpperCase()}
+              style={{
+                fontFamily: "Figtree",
+                fontSize: 26 * u,
+                fontWeight: 700,
+                color: tokens.accent,
+                letterSpacing: 1.5 * u,
+              }}
+            />
           </div>
           {lines(after, true)}
         </div>
@@ -856,22 +956,22 @@ function TipList({ spec, t, u, W }: { spec: SlideSpec; t: Theme; u: number; W: n
               {index + 1}
             </div>
             <div style={flex({ flexDirection: "column", flex: 1 })}>
-              <div style={flex({ fontFamily: "Figtree", fontWeight: 700, fontSize: 44 * u, lineHeight: 1.15, color: t.fg })}>
-                {tip.title}
-              </div>
+              <SlideText
+                text={tip.title}
+                style={{ fontFamily: "Figtree", fontWeight: 700, fontSize: 44 * u, lineHeight: 1.15, color: t.fg }}
+              />
               {tip.body ? (
-                <div
-                  style={flex({
+                <SlideText
+                  text={tip.body}
+                  style={{
                     fontFamily: "Figtree",
                     fontWeight: 500,
                     fontSize: 34 * u,
                     lineHeight: 1.3,
                     marginTop: 8 * u,
                     color: t.fg2,
-                  })}
-                >
-                  {tip.body}
-                </div>
+                  }}
+                />
               ) : null}
             </div>
           </div>
@@ -911,22 +1011,31 @@ function Steps({ spec, t, u, W }: { spec: SlideSpec; t: Theme; u: number; W: num
                   color: t.fg,
                 })}
               >
-                {step.word}
+                <SlideText
+                  text={step.word}
+                  style={{
+                    fontFamily: "Figtree",
+                    fontWeight: 800,
+                    fontSize: 118 * u,
+                    lineHeight: 1,
+                    letterSpacing: -3 * u,
+                    color: t.fg,
+                  }}
+                />
               </div>
             </div>
             {step.caption ? (
-              <div
-                style={flex({
+              <SlideText
+                text={step.caption}
+                style={{
                   fontFamily: "Figtree",
                   fontWeight: 500,
                   fontSize: 36 * u,
                   marginTop: 10 * u,
                   marginLeft: 76 * u,
                   color: t.fg2,
-                })}
-              >
-                {step.caption}
-              </div>
+                }}
+              />
             ) : null}
           </div>
         ))}
@@ -1191,11 +1300,15 @@ export function SlideImage({
               borderRadius: 999,
             })}
           >
-            {spec.ctaLabel?.trim() || "Start free"}
+            <SlideText
+              text={spec.ctaLabel?.trim() || "Start free"}
+              style={{ fontFamily: "Figtree", fontWeight: 700, fontSize: 32 * u, color: t.ctaFg }}
+            />
           </div>
-          <div style={flex({ color: t.url, fontFamily: "Figtree", fontWeight: 700, fontSize: 34 * u })}>
-            usefirstlook.app
-          </div>
+          <SlideText
+            text="usefirstlook.app"
+            style={{ color: t.url, fontFamily: "Figtree", fontWeight: 700, fontSize: 34 * u }}
+          />
         </div>
       ) : spec.layout === "headline-phone" || showSnippet ? null : (
         <div style={flex()} />

@@ -98,8 +98,7 @@ export async function getIdeationItems(
   return (data ?? []) as IdeationItem[];
 }
 
-const QUEUE_SELECT =
-  "id, platform, pillar, content_type, prompt, image_paths, caption, status, week_of, kie_task_id, kie_task_ids, format, audience_group, carousel_slides, post_style, generated_by, approved_at, denied_at, created_at, updated_at";
+const QUEUE_SELECT = "*";
 
 type QueueRow = Omit<ContentQueueItem, "image_urls">;
 
@@ -115,6 +114,39 @@ async function signQueueImagePaths(
   return data
     .filter((row) => row.signedUrl && !row.error)
     .map((row) => row.signedUrl as string);
+}
+
+async function hydrateQueueRows(
+  supabase: SupabaseClient,
+  rows: QueueRow[],
+): Promise<ContentQueueItem[]> {
+  return Promise.all(
+    rows.map(async (row) => ({
+      ...row,
+      image_paths: row.image_paths ?? [],
+      kie_task_ids: row.kie_task_ids ?? [],
+      format: row.format ?? null,
+      audience_group: row.audience_group ?? null,
+      carousel_slides: row.carousel_slides ?? null,
+      post_style: row.post_style ?? null,
+      image_urls: await signQueueImagePaths(
+        supabase,
+        (row.image_paths ?? []).filter((p) => p.trim().length > 0),
+      ),
+    })),
+  );
+}
+
+/** Pending and denied posts waiting on Ideation, newest first. */
+export async function getReviewPosts(supabase: SupabaseClient): Promise<ContentQueueItem[]> {
+  const { data, error } = await supabase
+    .from("content_queue")
+    .select(QUEUE_SELECT)
+    .neq("status", "approved")
+    .order("created_at", { ascending: false })
+    .limit(50);
+  if (error) throw new Error(error.message);
+  return hydrateQueueRows(supabase, (data ?? []) as QueueRow[]);
 }
 
 /** Most recent week_of by default. Preview URLs are signed server-side. */
@@ -145,16 +177,6 @@ export async function getContentQueue(
     .order("created_at", { ascending: true });
   if (error) throw new Error(error.message);
 
-  const rows = (data ?? []) as QueueRow[];
-  const items = await Promise.all(
-    rows.map(async (row) => ({
-      ...row,
-      kie_task_ids: row.kie_task_ids ?? [],
-      image_urls: await signQueueImagePaths(
-        supabase,
-        (row.image_paths ?? []).filter((p) => p.trim().length > 0),
-      ),
-    })),
-  );
+  const items = await hydrateQueueRows(supabase, (data ?? []) as QueueRow[]);
   return { weekOf: resolvedWeek, items };
 }

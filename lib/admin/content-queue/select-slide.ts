@@ -82,17 +82,27 @@ function pickSnippetSlug(headlines: readonly string[], recent: readonly RecentSt
   return pool[textHash(headlines.join("\n")) % pool.length] ?? "checklist";
 }
 
+function applyForcedSurface(fragments: SlideFragment[], slug: string): SlideFragment[] {
+  if (fragments.length === 0) return fragments;
+  return fragments.map((fragment, index) => ({
+    ...fragment,
+    surface: index === fragments.length - 1 ? slug : null,
+  }));
+}
+
 /** One cropped screen on the first text slide, for about half of posts. */
 function withProductSnippet(
   specs: SlideSpec[],
   recent: readonly RecentStyle[],
   keep?: string | null,
+  force?: boolean,
 ): SlideSpec[] {
   const headlines = specs.map((spec) => spec.headline);
   const index = specs.findIndex(snippetFits);
+  const forced = knownSnippet(keep);
   const slug =
-    index >= 0 && postGetsSnippet(headlines)
-      ? (knownSnippet(keep) ?? pickSnippetSlug(headlines, recent))
+    index >= 0 && (force ? Boolean(forced) : postGetsSnippet(headlines))
+      ? (forced ?? pickSnippetSlug(headlines, recent))
       : null;
   return specs.map((spec, specIndex) => {
     if (specIndex === index && slug) return { ...spec, snippet: slug };
@@ -303,6 +313,8 @@ export function selectSlideSpecs(args: {
   theme?: SlideTheme;
   /** Shuffle keeps the screen already chosen for this post. */
   keepSnippet?: string | null;
+  /** Put this product screen on the last (or only) slide, even for tip-family posts. */
+  forceSurface?: string | null;
   postStyle?: PostStyle | null;
   /** Preserve CTA copy across shuffle when set. */
   ctaLabel?: string | null;
@@ -318,7 +330,9 @@ export function selectSlideSpecs(args: {
     recent.map((style) => style.shot).filter(isWebsiteShot),
     (args.avoidShots ?? []).filter(isWebsiteShot),
   );
-  const fragments = normalizeFragments(args.fragments, args.contentType);
+  const forced = knownSnippet(args.forceSurface);
+  let fragments = normalizeFragments(args.fragments, args.contentType);
+  if (forced) fragments = applyForcedSurface(fragments, forced);
   const preferredCovers = postStyleMeta(args.postStyle)?.coverLayouts ?? [];
   const used = new Set<SlideLayout>();
   const layouts = fragments.map((fragment, index) => {
@@ -361,7 +375,8 @@ export function selectSlideSpecs(args: {
       };
     }),
     recent,
-    args.keepSnippet,
+    forced ?? args.keepSnippet,
+    Boolean(forced),
   );
 }
 
@@ -399,6 +414,7 @@ export function shuffleSlideSpecs(
     avoidLayout: specs.length === 1 && !specs[0]?.surface ? specs[0]?.layout : undefined,
     avoidShots: specs.flatMap((spec) => (typeof spec.data?.shot === "string" ? [spec.data.shot] : [])),
     keepSnippet: specs.find((spec) => spec.snippet)?.snippet ?? null,
+    forceSurface: specs.find((spec) => spec.surface)?.surface ?? null,
     postStyle: postStyle ?? null,
     ctaLabel: keepCta,
   });

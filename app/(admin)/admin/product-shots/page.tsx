@@ -45,7 +45,7 @@ export default async function AdminProductShotsPage() {
       <PageHeader
         className="mb-5"
         title="Product screens"
-        description="Upload a screenshot for an angle the generator already uses. The next slide for that angle shows it inside the phone. Crop to the part of the screen you want visible — a wide full-app shot is letterboxed. Posts already in the queue keep their current picture until you shuffle them or produce the idea again."
+        description="Upload a screenshot for an angle the generator already uses. On Ideation, pick that screen when you want it in the graphic. Crop to the part of the screen you want visible — a wide full-app shot is letterboxed."
       />
       <ProductShotLibrary shots={shots} />
     </div>

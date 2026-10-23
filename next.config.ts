@@ -12,6 +12,16 @@ const nextConfig: NextConfig = {
       "./stills/public/website/**/*",
       "./design/product-shots/**/*",
     ],
+    "/admin/ideation": [
+      "./lib/admin/content-queue/fonts/**/*",
+      "./stills/public/website/**/*",
+      "./design/product-shots/**/*",
+    ],
+    "/api/admin/ideation/generate": [
+      "./lib/admin/content-queue/fonts/**/*",
+      "./stills/public/website/**/*",
+      "./design/product-shots/**/*",
+    ],
     "/api/admin/ideation/produce": [
       "./lib/admin/content-queue/fonts/**/*",
       "./stills/public/website/**/*",

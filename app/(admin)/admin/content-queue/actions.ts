@@ -35,7 +35,7 @@ async function requireAdmin() {
 }
 
 function revalidateQueueAndBank() {
-  revalidatePath("/admin/content-queue");
+  revalidatePath("/admin/ideation");
   revalidatePath("/admin/couples/bank");
   revalidatePath("/admin/planner/bank");
   revalidatePath("/admin");
@@ -116,7 +116,7 @@ export async function denyContentQueueItem(id: string) {
     })
     .eq("id", id);
   if (error) throw new Error(error.message);
-  revalidatePath("/admin/content-queue");
+  revalidatePath("/admin/ideation");
 }
 
 export async function updateContentQueuePrompt(id: string, prompt: string) {
@@ -129,7 +129,7 @@ export async function updateContentQueuePrompt(id: string, prompt: string) {
     })
     .eq("id", id);
   if (error) throw new Error(error.message);
-  revalidatePath("/admin/content-queue");
+  revalidatePath("/admin/ideation");
 }
 
 /**
@@ -164,7 +164,7 @@ export async function regenerateContentQueueItem(id: string, prompt: string) {
       })
       .eq("id", id);
     if (error) throw new Error(error.message);
-    revalidatePath("/admin/content-queue");
+    revalidatePath("/admin/ideation");
     return;
   }
 
@@ -199,7 +199,7 @@ export async function regenerateContentQueueItem(id: string, prompt: string) {
   if (promptError) throw new Error(promptError.message);
 
   await renderAndStoreSlides(supabase, { id: row.id, week_of: row.week_of }, specs);
-  revalidatePath("/admin/content-queue");
+  revalidatePath("/admin/ideation");
 }
 
 /** Keep the copy. Pick a different theme, and a different layout when one fits. */
@@ -253,7 +253,7 @@ export async function shuffleContentQueueItem(id: string) {
   if (error) throw new Error(error.message);
 
   await renderAndStoreSlides(supabase, { id: row.id, week_of: row.week_of }, specs);
-  revalidatePath("/admin/content-queue");
+  revalidatePath("/admin/ideation");
 }
 
 function isContentType(value: unknown): value is ContentType {

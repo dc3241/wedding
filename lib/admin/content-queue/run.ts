@@ -2,6 +2,7 @@ import "server-only";
 
 import {
   filledImagePaths,
+  formatLabel,
   formatNeedsImages,
   isContentPostFormat,
   isFormatForPlatform,
@@ -9,9 +10,11 @@ import {
   slideCountFor,
 } from "@/lib/admin/content-formats";
 import {
+  contentQueuePlatformMeta,
   isActiveContentQueuePlatform,
   type ContentQueuePlatform,
 } from "@/lib/admin/content-queue";
+import { PRODUCT_SHOT_SLUGS } from "@/lib/admin/content-queue/product-shots";
 import {
   DEFAULT_BATCH_SIZE,
   buildWeekPlan,
@@ -22,10 +25,13 @@ import {
 import { renderAndStoreSlides } from "@/lib/admin/content-queue/render-slides";
 import { selectSlideSpecs, type RecentStyle } from "@/lib/admin/content-queue/select-slide";
 import { parseStoredSpecs, stylesFromSpecs, type SlideSpec } from "@/lib/admin/content-queue/slide-spec";
-import { isPostStyle } from "@/lib/admin/content-styles";
+import { isPostStyle, postStyleLabel, POST_STYLE_META, type PostStyle } from "@/lib/admin/content-styles";
 import { loadContentHistory } from "@/lib/admin/content-history";
 import { postingWeekMonday } from "@/lib/admin/content-week";
-import type { AudienceGroup } from "@/lib/admin/platform-audience";
+import {
+  lockedAudienceForPlatform,
+  type AudienceGroup,
+} from "@/lib/admin/platform-audience";
 import { createServiceRoleClient } from "@/utils/supabase/service-role";
 
 export type QueueBatchResult = {
@@ -234,6 +240,7 @@ async function produceQueuePosts(
           fragments: post.fragments,
           recent,
           postStyle: post.post_style,
+          forceSurface: post.forcedSurface,
         })
       : [];
     recent.push(
@@ -254,14 +261,13 @@ async function produceQueuePosts(
         image_paths: Array.from({ length: slideCount }, () => ""),
         status: "pending",
         week_of: weekOf,
-        source_idea_id: post.sourceIdeaId,
+        source_idea_id: post.sourceIdeaId || null,
         format: post.format,
         audience_group: post.audience_group,
         carousel_slides: post.carousel_slides,
         post_style: post.post_style,
         slide_prompts: post.prompts,
         slide_specs: specs,
-        kie_task_ids: [],
       })
       .select("id")
       .single();
@@ -275,13 +281,15 @@ async function produceQueuePosts(
     inserted += 1;
     queueIds.push(row.id);
 
-    const { error: usedError } = await supabase
-      .from("ideation_items")
-      .update({ used_at: now })
-      .eq("id", post.sourceIdeaId)
-      .is("used_at", null);
-    if (usedError) {
-      errors.push(`${post.platform}/${post.pillar}: marked used failed: ${usedError.message}`);
+    if (post.sourceIdeaId) {
+      const { error: usedError } = await supabase
+        .from("ideation_items")
+        .update({ used_at: now })
+        .eq("id", post.sourceIdeaId)
+        .is("used_at", null);
+      if (usedError) {
+        errors.push(`${post.platform}/${post.pillar}: marked used failed: ${usedError.message}`);
+      }
     }
 
     if (!formatNeedsImages(post.format) || specs.length === 0) continue;
@@ -359,6 +367,75 @@ export async function runWeeklyContentQueue(
     retried,
     skippedExisting: false,
     errors,
+  };
+}
+
+export type OnDemandPostInput = {
+  platform: ContentQueuePlatform;
+  format: LikedIdeaSlot["format"];
+  postStyle: PostStyle;
+  surface?: string | null;
+  instructions?: string | null;
+  carousel_slides?: number | null;
+};
+
+function knownSurface(value: string | null | undefined): string | null {
+  const slug = value?.trim() ?? "";
+  if (!slug) return null;
+  return (PRODUCT_SHOT_SLUGS as readonly string[]).includes(slug) ? slug : null;
+}
+
+function onDemandIdeaText(input: OnDemandPostInput): string {
+  const style = postStyleLabel(input.postStyle);
+  const format = formatLabel(input.format);
+  const platform = contentQueuePlatformMeta(input.platform).label;
+  const extra = input.instructions?.replace(/\s+/g, " ").trim();
+  if (extra) {
+    return `${extra}\n\nMake this a ${style} ${format} for ${platform}.`;
+  }
+  return `Invent a ${style} ${format} for ${platform}. Pick a specific, unused wedding-planning topic that fits this style.`;
+}
+
+export async function produceOnDemand(input: OnDemandPostInput): Promise<ProduceIdeaResult> {
+  if (!process.env.MODEL_API_KEY?.trim()) {
+    throw new Error("MODEL_API_KEY is not configured.");
+  }
+  if (!isActiveContentQueuePlatform(input.platform)) {
+    throw new ProduceIdeaError("Pick TikTok, Pinterest, or LinkedIn.", "not_ready");
+  }
+  if (!isFormatForPlatform(input.platform, input.format)) {
+    throw new ProduceIdeaError("That format is not available on this platform.", "not_ready");
+  }
+  if (!POST_STYLE_META[input.postStyle] || input.postStyle === "tip") {
+    throw new ProduceIdeaError("Pick an angle.", "not_ready");
+  }
+  const audience = lockedAudienceForPlatform(input.platform);
+  if (!audience) {
+    throw new ProduceIdeaError("Pick TikTok, Pinterest, or LinkedIn.", "not_ready");
+  }
+
+  const slot: LikedIdeaSlot = {
+    id: "",
+    idea_text: onDemandIdeaText(input),
+    comment: input.instructions?.trim() || null,
+    platform: input.platform,
+    format: input.format,
+    audience_group: audience,
+    carousel_slides: input.carousel_slides ?? null,
+    intent: input.postStyle === "promo" ? "promo" : "tip",
+    post_style: input.postStyle,
+    forcedSurface: knownSurface(input.surface),
+  };
+
+  const weekOf = postingWeekMonday();
+  const produced = await produceQueuePosts([slot], weekOf);
+  return {
+    queueId: produced.queueIds[0] ?? null,
+    weekOf,
+    planned: produced.planned,
+    inserted: produced.inserted,
+    tasked: produced.tasked,
+    errors: produced.errors,
   };
 }
 

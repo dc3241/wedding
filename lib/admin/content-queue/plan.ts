@@ -41,6 +41,8 @@ export type LikedIdeaSlot = {
   /** Week shortlist. Tips stay pure value; promos name the product. */
   intent?: "tip" | "promo" | null;
   post_style?: PostStyle | null;
+  /** When set, this product screen must appear on the last (or only) image slide. */
+  forcedSurface?: string | null;
 };
 
 export type PlannedPost = {
@@ -61,6 +63,7 @@ export type PlannedPost = {
   audience_group: AudienceGroup;
   carousel_slides: number | null;
   post_style: PostStyle | null;
+  forcedSurface?: string | null;
 };
 
 /**
@@ -360,6 +363,7 @@ function materialize(parsed: unknown, slots: Slot[]): (PlannedPost & { degraded:
           ? clampCarouselSlides(slot.carousel_slides ?? slot.slides)
           : null,
       post_style: slot.post_style ?? null,
+      forcedSurface: slot.forcedSurface ?? null,
     };
   });
 }
@@ -377,7 +381,8 @@ Return exactly ${slots.length} object(s) in "posts" — one per idea, no extras,
       const note = slot.comment ? ` note=${JSON.stringify(slot.comment)}` : "";
       const slides = slot.format === "carousel" ? ` slides=${slot.slides}` : "";
       const style = slot.post_style ? ` style=${slot.post_style}` : "";
-      return `${i + 1}. platform=${slot.platform} format=${slot.format}${slides} audience=${slot.audience_group} type=${slot.content_type}${style} idea=${JSON.stringify(slot.idea_text)}${note}`;
+      const surface = slot.forcedSurface ? ` surface=${slot.forcedSurface}` : "";
+      return `${i + 1}. platform=${slot.platform} format=${slot.format}${slides} audience=${slot.audience_group} type=${slot.content_type}${style}${surface} idea=${JSON.stringify(slot.idea_text)}${note}`;
     })
     .join("\n")}${avoidBlock ? `\n\n${avoidBlock}` : ""}`;
 
