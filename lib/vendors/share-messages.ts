@@ -26,7 +26,7 @@ export function parseVendorShareMessage(value: unknown): VendorShareMessage | nu
 
 export function parseVendorShareMessages(value: unknown): VendorShareMessage[] {
   if (!Array.isArray(value)) return [];
-  return value.flatMap((row) => {
+  return value.flatMap((row: unknown) => {
     const parsed = parseVendorShareMessage(row);
     return parsed ? [parsed] : [];
   });

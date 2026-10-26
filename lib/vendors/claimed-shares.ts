@@ -62,30 +62,33 @@ export async function listClaimedVendorShares(): Promise<ClaimedVendorShare[]> {
     return [];
   }
 
-  return (data ?? []).flatMap((row) => {
+  if (!Array.isArray(data)) return [];
+  return data.flatMap((row: unknown) => {
+    if (!row || typeof row !== "object") return [];
+    const item = row as Record<string, unknown>;
     if (
-      typeof row.project_vendor_id !== "string" ||
-      typeof row.confirm_token !== "string" ||
-      typeof row.vendor_name !== "string" ||
-      typeof row.wedding_name !== "string"
+      typeof item.project_vendor_id !== "string" ||
+      typeof item.confirm_token !== "string" ||
+      typeof item.vendor_name !== "string" ||
+      typeof item.wedding_name !== "string"
     ) {
       return [];
     }
     const unread =
-      typeof row.unread_count === "number" && Number.isFinite(row.unread_count)
-        ? row.unread_count
+      typeof item.unread_count === "number" && Number.isFinite(item.unread_count)
+        ? item.unread_count
         : 0;
     return [
       {
-        projectVendorId: row.project_vendor_id,
-        vendorName: row.vendor_name,
+        projectVendorId: item.project_vendor_id,
+        vendorName: item.vendor_name,
         vendorCategory:
-          typeof row.vendor_category === "string" ? row.vendor_category : null,
-        weddingName: row.wedding_name,
+          typeof item.vendor_category === "string" ? item.vendor_category : null,
+        weddingName: item.wedding_name,
         weddingDate:
-          typeof row.wedding_date === "string" ? row.wedding_date : null,
+          typeof item.wedding_date === "string" ? item.wedding_date : null,
         unreadCount: unread,
-        href: `/vendor/${encodeURIComponent(row.confirm_token)}`,
+        href: `/vendor/${encodeURIComponent(item.confirm_token)}`,
       },
     ];
   });

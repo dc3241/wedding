@@ -29,7 +29,7 @@ export type VendorShareChangeRun = {
 
 function parseJobs(value: unknown): VendorShareChangeJob[] {
   if (!Array.isArray(value)) return [];
-  return value.flatMap((row) => {
+  return value.flatMap((row: unknown) => {
     if (!row || typeof row !== "object") return [];
     const item = row as Record<string, unknown>;
     if (

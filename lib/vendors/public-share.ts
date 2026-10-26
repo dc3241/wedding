@@ -51,7 +51,7 @@ function asString(value: unknown): string | null {
 function asContacts(value: unknown): VendorShareContact[] {
   if (!Array.isArray(value)) return [];
   const roles = new Set(["couple", "planner", "venue"]);
-  return value.flatMap((row) => {
+  return value.flatMap((row: unknown) => {
     if (!row || typeof row !== "object") return [];
     const item = row as Record<string, unknown>;
     const role = asString(item.role);
@@ -69,7 +69,7 @@ function asContacts(value: unknown): VendorShareContact[] {
 
 function asVenues(value: unknown): VendorShareVenue[] {
   if (!Array.isArray(value)) return [];
-  return value.flatMap((row) => {
+  return value.flatMap((row: unknown) => {
     if (!row || typeof row !== "object") return [];
     const item = row as Record<string, unknown>;
     const name = asString(item.name);
@@ -80,7 +80,7 @@ function asVenues(value: unknown): VendorShareVenue[] {
 
 function asTimeline(value: unknown): VendorShareTimelineItem[] {
   if (!Array.isArray(value)) return [];
-  return value.flatMap((row) => {
+  return value.flatMap((row: unknown) => {
     if (!row || typeof row !== "object") return [];
     const item = row as Record<string, unknown>;
     const title = asString(item.title);
@@ -100,7 +100,7 @@ function asTimeline(value: unknown): VendorShareTimelineItem[] {
 
 function asPayments(value: unknown): VendorSharePayment[] {
   if (!Array.isArray(value)) return [];
-  return value.flatMap((row) => {
+  return value.flatMap((row: unknown) => {
     if (!row || typeof row !== "object") return [];
     const item = row as Record<string, unknown>;
     if (typeof item.due_on !== "string") return [];
