@@ -5,6 +5,7 @@ import {
   checkEntitlement,
 } from "@/lib/billing/entitlement-gate";
 import { getCoupleDestinationPath } from "@/lib/onboarding-gate";
+import { hasClaimedVendorShares } from "@/lib/vendors/claimed-shares";
 
 /** Resolve where to send a user immediately after authentication. */
 export async function getPostLoginPath(
@@ -13,6 +14,9 @@ export async function getPostLoginPath(
   const account = await getAccountContext(supabase);
 
   if (!account) {
+    if (await hasClaimedVendorShares()) {
+      return "/vendor-home";
+    }
     return "/projects";
   }
 

@@ -8,9 +8,15 @@ import { VendorDetailStatus } from "@/components/vendors/VendorDetailStatus";
 import { VendorPipelineStepper } from "@/components/vendors/VendorPipelineStepper";
 import { Card } from "@/components/ui/card";
 import { Eyebrow } from "@/components/ui/eyebrow";
+import { getAccountContext } from "@/lib/account-context";
 import { fetchLivePlaceDetails } from "@/lib/places-live-details";
+import { canShareProjectVendors } from "@/lib/vendors/can-share";
 import { vendorCategoryLabel } from "@/lib/vendor-categories";
 import { createClient } from "@/utils/supabase/server";
+import { ShareVendorDetailsControl } from "@/components/vendors/ShareVendorDetailsControl";
+import { OwnerVendorShareInbox } from "@/components/vendors/VendorShareInboxBound";
+import { parseVendorShareMessages } from "@/lib/vendors/share-messages";
+import { displayCoupleNames } from "@/lib/wedding-date";
 
 export default async function VendorDetailPage({
   params,
@@ -19,13 +25,20 @@ export default async function VendorDetailPage({
 }) {
   const { projectId, vendorId } = await params;
   const supabase = await createClient();
+  const account = await getAccountContext(supabase);
+  const canShare = canShareProjectVendors(account, projectId);
 
-  const [{ data: row }, { data: targetRows }, { data: bookedPvRows }] =
-    await Promise.all([
+  const [
+    { data: row },
+    { data: targetRows },
+    { data: bookedPvRows },
+    stampResult,
+    { data: project },
+  ] = await Promise.all([
       supabase
         .from("project_vendors")
         .select(
-          "id, status, quoted_price, vendors(id, name, category, website, contact_email, contact_phone, address, ai_overview, external_place_id)",
+          "id, status, quoted_price, confirm_token, vendors(id, name, category, website, contact_email, contact_phone, address, ai_overview, external_place_id)",
         )
         .eq("project_id", projectId)
         .eq("vendor_id", vendorId)
@@ -40,9 +53,30 @@ export default async function VendorDetailPage({
         .select("id, vendors(name)")
         .eq("project_id", projectId)
         .eq("status", "booked"),
+      supabase
+        .from("project_vendors")
+        .select("share_sent_at")
+        .eq("project_id", projectId)
+        .eq("vendor_id", vendorId)
+        .maybeSingle(),
+      supabase.from("projects").select("name").eq("id", projectId).maybeSingle(),
     ]);
 
   if (!row) notFound();
+  const shareSentAt = stampResult.error
+    ? null
+    : stampResult.data?.share_sent_at ?? null;
+  const coupleNames = displayCoupleNames(project?.name ?? "Your wedding");
+
+  const threadResult = await supabase
+    .from("vendor_share_messages")
+    .select("id, author, body, created_at")
+    .eq("project_id", projectId)
+    .eq("project_vendor_id", row.id)
+    .order("created_at", { ascending: true });
+  const messages = threadResult.error
+    ? []
+    : parseVendorShareMessages(threadResult.data);
 
   const vendor = Array.isArray(row.vendors) ? row.vendors[0] : row.vendors;
   if (!vendor) notFound();
@@ -163,6 +197,25 @@ export default async function VendorDetailPage({
             contactPhone={vendor.contact_phone ?? null}
             address={vendor.address ?? null}
           />
+
+          {row.status !== "declined" ? (
+            <>
+              <ShareVendorDetailsControl
+                projectVendorId={row.id}
+                confirmToken={row.confirm_token}
+                vendorName={vendor.name}
+                contactEmail={vendor.contact_email ?? null}
+                shareSentAt={shareSentAt}
+                canEmail={canShare}
+              />
+              <OwnerVendorShareInbox
+                projectVendorId={row.id}
+                messages={messages}
+                ownerLabel={coupleNames}
+                vendorLabel={vendor.name}
+              />
+            </>
+          ) : null}
 
           <div>
             <Eyebrow>Overview</Eyebrow>

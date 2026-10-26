@@ -13,6 +13,7 @@ import {
   checkEntitlement,
 } from "@/lib/billing/entitlement-gate";
 import { getCoupleDestinationPath } from "@/lib/onboarding-gate";
+import { hasClaimedVendorShares } from "@/lib/vendors/claimed-shares";
 import { createClient } from "@/utils/supabase/server";
 
 function formatWeddingDate(date: string | null) {
@@ -35,6 +36,10 @@ export default async function ProjectsPage({
 
   if (!accountContext) {
     const directIds = await getDirectProjectIds(supabase);
+
+    if (directIds.length === 0 && (await hasClaimedVendorShares())) {
+      redirect("/vendor-home");
+    }
 
     if (directIds.length === 1) {
       redirect(`/projects/${directIds[0]}`);

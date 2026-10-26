@@ -84,11 +84,12 @@ export const config = {
   matcher: [
     /*
      * Skip static assets and fully-public surfaces
-     * (/w/*, /vendor-confirm/*, /invoice/*, /inquire/*, /proposal/*)
+     * (/w/*, /vendor-confirm/*, /vendor/*, /invoice/*, /inquire/*, /proposal/*)
      * so guest traffic never pays for getUser() session refresh.
      * /contact is in the matcher so signed-in app users keep a session;
      * guests still skip getUser() above.
+     * `/vendor/` is the share page; `/vendors` (plural) stays in the matcher.
      */
-    "/((?!_next/static|_next/image|favicon.ico|w/|vendor-confirm/|invoice/|inquire/|proposal/).*)",
+    "/((?!_next/static|_next/image|favicon.ico|w/|vendor-confirm/|vendor/|invoice/|inquire/|proposal/).*)",
   ],
 };

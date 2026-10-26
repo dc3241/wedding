@@ -46,7 +46,9 @@ import { Select } from "@/components/ui/select";
 import { budgetItemDisplayName } from "@/lib/booked-vendor-money";
 import { cn } from "@/lib/cn";
 import { formatCurrency } from "@/lib/format-currency";
-import { vendorConfirmUrl } from "@/lib/vendors/confirm-url";
+import { ShareVendorDetailsControl } from "@/components/vendors/ShareVendorDetailsControl";
+import { OwnerVendorShareInbox } from "@/components/vendors/VendorShareInboxBound";
+import type { VendorShareMessage } from "@/lib/vendors/share-messages";
 import {
   vendorCategoryLabel,
 } from "@/lib/vendor-categories";
@@ -104,7 +106,10 @@ export type BookedVendorObject = {
   scope_note: string | null;
   confirm_token: string;
   confirmed_at: string | null;
+  share_sent_at: string | null;
   contracts: BookedContractFile[];
+  messages: VendorShareMessage[];
+  unreadCount: number;
 };
 
 /** Booked category with no vendor recorded yet. */
@@ -627,30 +632,21 @@ function ArrivalScopeEditor({
   projectVendorId,
   arrivalTime,
   scopeNote,
-  confirmToken,
 }: {
   projectVendorId: string;
   arrivalTime: string | null;
   scopeNote: string | null;
-  confirmToken: string;
 }) {
   const [arrival, setArrival] = useState(arrivalTime?.slice(0, 5) ?? "");
   const [scope, setScope] = useState(scopeNote ?? "");
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
-  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     setArrival(arrivalTime?.slice(0, 5) ?? "");
     setScope(scopeNote ?? "");
   }, [arrivalTime, scopeNote]);
-
-  useEffect(() => {
-    if (!copied) return;
-    const timeout = window.setTimeout(() => setCopied(false), 2000);
-    return () => window.clearTimeout(timeout);
-  }, [copied]);
 
   function handleSave(next?: { arrival?: string; scope?: string }) {
     const arrivalValue = next?.arrival ?? arrival;
@@ -668,15 +664,6 @@ function ArrivalScopeEditor({
       }
       setSaved(true);
     });
-  }
-
-  async function handleCopyConfirmLink() {
-    try {
-      await navigator.clipboard.writeText(vendorConfirmUrl(confirmToken));
-      setCopied(true);
-    } catch {
-      setCopied(false);
-    }
   }
 
   return (
@@ -715,17 +702,7 @@ function ArrivalScopeEditor({
           />
         </label>
       </div>
-      <div className="flex flex-wrap items-center gap-3">
-        <Button
-          type="button"
-          variant="default"
-          onClick={handleCopyConfirmLink}
-          className="px-3 py-1.5 text-[13px]"
-        >
-          {copied ? "Copied" : "Copy confirm link"}
-        </Button>
-        {saved ? <p className="text-[13px] text-sage">Saved</p> : null}
-      </div>
+      {saved ? <p className="text-[13px] text-sage">Saved</p> : null}
       {error ? (
         <p className="text-[13px] font-medium text-rosewood">{error}</p>
       ) : null}
@@ -738,11 +715,15 @@ function BookedVendorCard({
   vendor,
   linkableItems,
   slotTargets,
+  canShare,
+  coupleNames,
 }: {
   projectId: string;
   vendor: BookedVendorObject;
   linkableItems: BookedLinkableItem[];
   slotTargets: SlotTargetOption[];
+  canShare: boolean;
+  coupleNames: string;
 }) {
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -795,6 +776,13 @@ function BookedVendorCard({
             <CategoryChips categories={categoryIds} />
           </div>
           <div className="flex shrink-0 flex-col items-end gap-1.5">
+            {vendor.unreadCount > 0 ? (
+              <Pill variant="clay">
+                {vendor.unreadCount === 1
+                  ? "1 new message"
+                  : `${vendor.unreadCount} new messages`}
+              </Pill>
+            ) : null}
             {vendor.confirmed_at ? (
               <Pill variant="sage">Confirmed</Pill>
             ) : (
@@ -818,7 +806,20 @@ function BookedVendorCard({
             projectVendorId={vendor.projectVendorId}
             arrivalTime={vendor.arrival_time}
             scopeNote={vendor.scope_note}
+          />
+          <ShareVendorDetailsControl
+            projectVendorId={vendor.projectVendorId}
             confirmToken={vendor.confirm_token}
+            vendorName={vendor.name}
+            contactEmail={vendor.contact_email}
+            shareSentAt={vendor.share_sent_at}
+            canEmail={canShare}
+          />
+          <OwnerVendorShareInbox
+            projectVendorId={vendor.projectVendorId}
+            messages={vendor.messages}
+            ownerLabel={coupleNames}
+            vendorLabel={vendor.name}
           />
           {!linked ? (
             <div className="space-y-3 rounded-[var(--radius-inner)] bg-well px-4 py-3.5 shadow-recessed">
@@ -983,6 +984,8 @@ export function BookedVendorsSection({
   slotTargets = [],
   connectableVendors = [],
   linkableItems = [],
+  canShare = false,
+  coupleNames,
 }: {
   projectId: string;
   vendors?: BookedVendorObject[];
@@ -990,6 +993,8 @@ export function BookedVendorsSection({
   slotTargets?: SlotTargetOption[];
   connectableVendors?: ConnectableBookedVendor[];
   linkableItems?: BookedLinkableItem[];
+  canShare?: boolean;
+  coupleNames: string;
 }) {
   if (vendors.length === 0 && emptySlots.length === 0) {
     return null;
@@ -1015,6 +1020,8 @@ export function BookedVendorsSection({
               vendor={vendor}
               linkableItems={linkableItems}
               slotTargets={slotTargets}
+              canShare={canShare}
+              coupleNames={coupleNames}
             />
           ))}
         </div>

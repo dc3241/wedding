@@ -44,7 +44,7 @@ export async function updatePassword(formData: FormData) {
 
   revalidatePath("/", "layout");
 
-  const { project, account } = await consumePendingInvites(supabase);
+  const { project, account, vendorClaim } = await consumePendingInvites(supabase);
 
   if (project && "projectId" in project) {
     redirect(`/projects/${project.projectId}`);
@@ -60,6 +60,10 @@ export async function updatePassword(formData: FormData) {
     redirect(
       `/invite/account/${encodeURIComponent(account.token)}?error=${encodeURIComponent(account.error)}`,
     );
+  }
+
+  if (vendorClaim && "ok" in vendorClaim && vendorClaim.ok) {
+    redirect("/vendor-home");
   }
 
   redirect(await getPostLoginPath(supabase));

@@ -19,6 +19,12 @@ import { IN_FLIGHT_STATUSES, type OutreachVendor } from "@/components/vendors/ou
 import { TourHelpButton } from "@/components/tour/TourHelpButton";
 import { PageHeader } from "@/components/ui/page-header";
 import { getAccountContext } from "@/lib/account-context";
+import { canShareProjectVendors } from "@/lib/vendors/can-share";
+import {
+  ownerUnreadCount,
+  parseVendorShareMessages,
+  type VendorShareMessage,
+} from "@/lib/vendors/share-messages";
 import { deriveBookedVendorMoney } from "@/lib/booked-vendor-money";
 import {
   mapBudgetCategoryToVendorCategory,
@@ -32,7 +38,7 @@ import {
   VENDOR_CATEGORIES,
   vendorCategoryLabel,
 } from "@/lib/vendor-categories";
-import { projectWorkspaceEyebrow } from "@/lib/wedding-date";
+import { displayCoupleNames, projectWorkspaceEyebrow } from "@/lib/wedding-date";
 import { createClient } from "@/utils/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -198,6 +204,7 @@ export default async function VendorsPage({
   const supabase = await createClient();
   const account = await getAccountContext(supabase);
   const stackClass = sectionStackClass(account?.kind ?? "personal");
+  const canShare = canShareProjectVendors(account, projectId);
   const connectedEmail = await getGmailConnectionEmail();
   const returnTo = `/projects/${projectId}/vendors?tab=outreach`;
 
@@ -215,6 +222,9 @@ export default async function VendorsPage({
     { data: scheduleRows },
     { data: contractRows },
     { data: ignoredCategoryRows },
+    stampsResult,
+    lastReadResult,
+    threadResult,
   ] = await Promise.all([
     supabase
       .from("projects")
@@ -284,10 +294,55 @@ export default async function VendorsPage({
       .select("category")
       .eq("project_id", projectId)
       .order("created_at", { ascending: true }),
+    supabase
+      .from("project_vendors")
+      .select("id, share_sent_at")
+      .eq("project_id", projectId),
+    supabase
+      .from("project_vendors")
+      .select("id, share_owner_last_read_at")
+      .eq("project_id", projectId),
+    supabase
+      .from("vendor_share_messages")
+      .select("id, project_vendor_id, author, body, created_at")
+      .eq("project_id", projectId)
+      .order("created_at", { ascending: true }),
   ]);
+
+  const shareSentAtById = new Map<string, string | null>(
+    (stampsResult.error ? [] : stampsResult.data ?? []).map((row) => [
+      row.id,
+      row.share_sent_at ?? null,
+    ]),
+  );
+  const lastReadById = new Map<string, string | null>(
+    (lastReadResult.error ? [] : lastReadResult.data ?? []).map((row) => [
+      row.id,
+      row.share_owner_last_read_at ?? null,
+    ]),
+  );
+  const messagesByPvId = new Map<string, VendorShareMessage[]>();
+  if (!threadResult.error) {
+    for (const row of threadResult.data ?? []) {
+      const parsed = parseVendorShareMessages([
+        {
+          id: row.id,
+          author: row.author,
+          body: row.body,
+          created_at: row.created_at,
+        },
+      ]);
+      const message = parsed[0];
+      if (!message || !row.project_vendor_id) continue;
+      const list = messagesByPvId.get(row.project_vendor_id) ?? [];
+      list.push(message);
+      messagesByPvId.set(row.project_vendor_id, list);
+    }
+  }
 
   const defaultDate = formatDefaultDate(project?.wedding_date ?? null);
   const projectName = project?.name ?? "Your wedding";
+  const coupleNames = displayCoupleNames(projectName);
   const weddingDate = project?.wedding_date ?? null;
   const eyebrow = projectWorkspaceEyebrow(projectName, weddingDate);
 
@@ -444,7 +499,13 @@ export default async function VendorsPage({
       scope_note: row.scope_note,
       confirm_token: row.confirm_token,
       confirmed_at: row.confirmed_at,
+      share_sent_at: shareSentAtById.get(row.id) ?? null,
       contracts: contractsByPvId.get(row.id) ?? [],
+      messages: messagesByPvId.get(row.id) ?? [],
+      unreadCount: ownerUnreadCount(
+        messagesByPvId.get(row.id) ?? [],
+        lastReadById.get(row.id) ?? null,
+      ),
     };
   });
 
@@ -582,6 +643,8 @@ export default async function VendorsPage({
           slotTargets={slotOptions}
           connectableVendors={connectableVendors}
           linkableItems={linkableItems}
+          canShare={canShare}
+          coupleNames={coupleNames}
         />
       ) : null}
     </div>

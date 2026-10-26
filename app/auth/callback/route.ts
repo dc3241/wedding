@@ -32,7 +32,7 @@ export async function GET(request: Request) {
         return NextResponse.redirect(`${origin}${RESET_PASSWORD_PATH}`);
       }
 
-      const { project, account } = await consumePendingInvites(supabase);
+      const { project, account, vendorClaim } = await consumePendingInvites(supabase);
 
       if (project && "projectId" in project) {
         return NextResponse.redirect(
@@ -50,6 +50,10 @@ export async function GET(request: Request) {
         return NextResponse.redirect(
           `${origin}/invite/account/${encodeURIComponent(account.token)}?error=${encodeURIComponent(account.error)}`,
         );
+      }
+
+      if (vendorClaim && "ok" in vendorClaim && vendorClaim.ok) {
+        return NextResponse.redirect(`${origin}/vendor-home`);
       }
 
       // Account success (or no pending invites): membership now exists for routing.

@@ -6,6 +6,7 @@ import {
   INVITE_COOKIE,
 } from "@/lib/invitations/pending-invite-config";
 import { acceptAccountInvitation } from "@/lib/team/actions";
+import { consumePendingVendorClaim } from "@/lib/vendors/pending-claim";
 
 export type ConsumePendingInviteResult =
   | { projectId: string }
@@ -20,6 +21,7 @@ export type ConsumePendingAccountInviteResult =
 export type ConsumePendingInvitesResult = {
   project: ConsumePendingInviteResult;
   account: ConsumePendingAccountInviteResult;
+  vendorClaim: Awaited<ReturnType<typeof consumePendingVendorClaim>>;
 };
 
 /**
@@ -101,9 +103,10 @@ export async function consumePendingAccountInvite(
 export async function consumePendingInvites(
   supabase: SupabaseClient,
 ): Promise<ConsumePendingInvitesResult> {
-  const [project, account] = await Promise.all([
+  const [project, account, vendorClaim] = await Promise.all([
     consumePendingInvite(supabase),
     consumePendingAccountInvite(supabase),
+    consumePendingVendorClaim(supabase),
   ]);
-  return { project, account };
+  return { project, account, vendorClaim };
 }
