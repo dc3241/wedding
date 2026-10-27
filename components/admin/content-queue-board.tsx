@@ -15,7 +15,6 @@ import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import {
   AUDIENCE_OPTIONS,
-  filledImagePaths,
   formatLabel,
   formatNeedsImages,
   imagesReadyForQueue,
@@ -45,29 +44,13 @@ const STATUS_PILL: Record<ContentQueueStatus, { label: string; pill: PillVariant
 type PlatformFilter = "all" | ContentQueuePlatform;
 type StatusFilter = "all" | (typeof CONTENT_QUEUE_STATUSES)[number]["key"];
 
-const IMAGE_POLL_MS = 5000;
-const STILL_GENERATING_AFTER_MS = 3 * 60 * 1000;
-
-function imageJobStarted(item: ContentQueueItem): boolean {
-  return item.kie_task_ids.length > 0 || Boolean(item.kie_task_id);
-}
-
 function generatingCopy(item: ContentQueueItem): string {
-  const expected = slideCountFor(item.format, item.carousel_slides);
-  const filled = filledImagePaths(item.image_paths).length;
-  const startedAt = Date.parse(item.updated_at);
-  const takingLong =
-    Number.isFinite(startedAt) && Date.now() - startedAt >= STILL_GENERATING_AFTER_MS;
-  if (expected > 1) {
-    const progress = `${filled} of ${expected}`;
-    return takingLong
-      ? `Still generating… ${progress}`
-      : `Generating images… ${progress}`;
-  }
-  return takingLong ? "Still generating…" : "Generating image…";
+  return slideCountFor(item.format, item.carousel_slides) > 1
+    ? "Generating images…"
+    : "Generating image…";
 }
 
-function KieSpinner({ className }: { className?: string }) {
+function ImageSpinner({ className }: { className?: string }) {
   return (
     <span
       className={cn(
@@ -111,7 +94,7 @@ function QueueImage({
       >
         {formatNeedsImages(format) && generating ? (
           <div className="flex flex-col items-center gap-2 px-3">
-            <KieSpinner className="size-5" />
+            <ImageSpinner className="size-5" />
             <p className="text-center text-[13px] text-muted">{waitingLabel}</p>
           </div>
         ) : (
@@ -135,7 +118,7 @@ function QueueImage({
       <img key={url} src={url} alt="" className="size-full object-cover" />
       {generating ? (
         <div className="absolute top-2 left-1/2 flex -translate-x-1/2 items-center gap-1.5 rounded-[var(--radius-pill)] bg-surface/90 px-2.5 py-1">
-          <KieSpinner className="size-3" />
+          <ImageSpinner className="size-3" />
           <p className="text-[13px] text-muted whitespace-nowrap">{waitingLabel}</p>
         </div>
       ) : null}
@@ -194,19 +177,14 @@ function QueueCard({ item }: { item: ContentQueueItem }) {
     AUDIENCE_OPTIONS.find((a) => a.key === item.audience_group)?.label ?? null;
   const republish = queueRepublishHint(item.platform);
   const imagesReady = imagesReadyForQueue(item);
-  const jobStarted = imageJobStarted(item);
   const generating =
-    formatNeedsImages(item.format) && !imagesReady && (jobStarted || retryingImage);
+    formatNeedsImages(item.format) && !imagesReady && retryingImage;
   const canRetryImage =
     item.status === "pending" && formatNeedsImages(item.format) && !imagesReady;
 
   useEffect(() => {
     setPromptDraft(item.prompt);
   }, [item.prompt]);
-
-  useEffect(() => {
-    if (jobStarted) setRetryingImage(false);
-  }, [jobStarted]);
 
   const imageKey = item.image_paths.join("\0");
   useEffect(() => {
@@ -271,9 +249,7 @@ function QueueCard({ item }: { item: ContentQueueItem }) {
           shuffling
             ? "Shuffling style…"
             : generating
-              ? jobStarted
-                ? generatingCopy(item)
-                : "Starting generation…"
+              ? generatingCopy(item)
               : formatNeedsImages(item.format)
                 ? "Image generation didn't start"
                 : queueNoImageCopy(item.format)
@@ -354,7 +330,7 @@ function QueueCard({ item }: { item: ContentQueueItem }) {
             {!imagesReady && formatNeedsImages(item.format) ? (
               <p className="basis-full text-[13px] text-muted">
                 {generating
-                  ? "Approve unlocks when the image arrives."
+                  ? "Approve unlocks when the image is ready."
                   : "Image generation didn't start."}
               </p>
             ) : null}
@@ -436,23 +412,6 @@ export function ContentQueueBoard({
 }) {
   const [platformFilter, setPlatformFilter] = useState<PlatformFilter>("all");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
-  const router = useRouter();
-
-  const waitingOnKie = items.some(
-    (item) =>
-      formatNeedsImages(item.format) &&
-      !imagesReadyForQueue(item) &&
-      imageJobStarted(item),
-  );
-
-  useEffect(() => {
-    if (!waitingOnKie) return;
-    const id = window.setInterval(() => {
-      if (document.visibilityState !== "visible") return;
-      router.refresh();
-    }, IMAGE_POLL_MS);
-    return () => window.clearInterval(id);
-  }, [waitingOnKie, router]);
 
   const filtered = items.filter((item) => {
     if (platformFilter !== "all" && item.platform !== platformFilter) return false;

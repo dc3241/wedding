@@ -1,6 +1,6 @@
 /**
- * Admin ideation — "Produce now" action. Same Friday pipeline
- * (Anthropic copy + optional KIE) for a single liked, tagged idea.
+ * Admin ideation — "Produce now" action. Same pipeline
+ * (Anthropic copy + Satori stills) for a single liked, tagged idea.
  * MODEL_API_KEY never reaches the browser. 404 for non-admins.
  */
 import { revalidatePath } from "next/cache";

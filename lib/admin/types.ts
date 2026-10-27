@@ -95,8 +95,6 @@ export type ContentQueueItem = {
   caption: string;
   status: ContentQueueStatus;
   week_of: string;
-  kie_task_id: string | null;
-  kie_task_ids: string[];
   format: ContentPostFormat | null;
   audience_group: AudienceGroup | null;
   carousel_slides: number | null;

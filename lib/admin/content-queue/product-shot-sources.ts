@@ -44,16 +44,3 @@ export async function loadProductShotDataUrls(
   }
   return out;
 }
-
-export async function uploadedProductShotPath(
-  supabase: SupabaseClient,
-  surface: string,
-): Promise<string | null> {
-  const { data, error } = await supabase
-    .from("product_shot_uploads")
-    .select("storage_path")
-    .eq("surface", surface)
-    .maybeSingle();
-  if (error) throw new Error(error.message);
-  return (data?.storage_path as string | undefined) ?? null;
-}

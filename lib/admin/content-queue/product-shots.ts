@@ -2,11 +2,7 @@
  * Named product screens. Built-in PNGs live in design/product-shots and
  * content-queue-assets/product/. An admin upload on Product screens
  * (product_shot_uploads) replaces the primary image for that angle.
- *
- * KIE must isolate 1–2 UI fragments from the shot and compose them as
- * designed graphic elements. Never paste the screenshot (or a crop of it)
- * as a floating window / device frame. That phone-frame ban is a Seedream
- * guard. The still renderer draws a bezel and fills it with the uploaded
+ * The still renderer draws a bezel and fills it with the uploaded
  * screenshot when one exists for the angle.
  */
 export type ProductShotScreen = {
@@ -32,9 +28,6 @@ export type ProductShot = {
   /** Extra real screens (image 2…). Layout template is always last. */
   extraScreens?: ProductShotScreen[];
 };
-
-const DEFAULT_COMPOSITION =
-  "Place that white raised card on the mauve canvas with generous padding and a raised shadow so it feels built into the layout, like a marketing illustration of the product, not a photograph of a computer screen.";
 
 const FILL_COMPOSITION =
   "This motif IS the graphic: scale it to fill most of the canvas under the headline (roughly two-thirds of the frame). Large type and internal card padding, but little empty mauve around the motif. A wide progress band, a grid of category cards, or a tall item card — not a tiny floating widget.";
@@ -235,80 +228,6 @@ export const PRODUCT_SHOTS: ProductShot[] = [
 ];
 
 export const PRODUCT_SHOT_SLUGS = PRODUCT_SHOTS.map((s) => s.slug);
-
-export function screensForShot(shot: ProductShot): ProductShotScreen[] {
-  return [
-    { path: shot.path, description: shot.description },
-    ...(shot.extraScreens ?? []),
-  ];
-}
-
-function quotedAfter(text: string, label: RegExp): string | null {
-  const match = text.match(label);
-  if (!match || match.index == null) return null;
-  const rest = text.slice(match.index + match[0].length);
-  const open = rest[0];
-  if (open !== "'" && open !== '"' && open !== "“") return null;
-  const close = open === "“" ? "”" : open;
-  for (let i = 1; i < rest.length; i++) {
-    if (rest[i] !== close) continue;
-    const next = rest[i + 1] ?? "";
-    if (open === "'" && /[a-z]/i.test(next)) continue;
-    return rest.slice(1, i).trim() || null;
-  }
-  return null;
-}
-
-export function extractSlideCopy(prompt: string): {
-  headline: string;
-  supporting: string | null;
-} {
-  const idea = prompt.match(/\[idea:\s*([^\]]+)\]/i)?.[1]?.trim();
-  const headline =
-    quotedAfter(prompt, /Headline(?: at top)?:\s*/i) ?? idea ?? "First Look";
-  const supporting = quotedAfter(
-    prompt,
-    /supporting line(?: at bottom)?:\s*/i,
-  );
-  return { headline, supporting };
-}
-
-/**
- * Replace (do not prefix) planner copy that describes invented UI.
- * Screenshot images are 1…N (fragment sources); the locked layout is last.
- * The model must rebuild one UI motif as a designed card — never dump the shot.
- */
-export function kiePromptForProductShot(
-  shot: ProductShot,
-  originalPrompt: string,
-): string {
-  const { headline, supporting } = extractSlideCopy(originalPrompt);
-  const screens = screensForShot(shot);
-  const layoutN = screens.length + 1;
-  const screenLines = screens.map((screen, i) => {
-    const n = i + 1;
-    if (i === 0) {
-      return `Image ${n} is a real First Look screenshot (${screen.description}). It is a SOURCE of product UI — labels, numbers, status colors, Soft stack cards and pills — not the graphic itself. Isolate and rebuild this one motif as a designed element: ${shot.heroElement}. ${shot.composition ?? DEFAULT_COMPOSITION} Keep the fragment's real copy, numbers, and status pills from image ${n}. Omit sidebar, top nav, browser chrome, URL bars, overlapping windows, laptop/phone frames, and leftover full-page layout. Do not invent new screens, logos, portals, buttons, or chrome that are not in image ${n}. If a label is unreadable, omit it.`;
-    }
-    const fragment =
-      screen.heroElement ??
-      "at most one tiny matching fragment of the same product";
-    return `Image ${n} is another real First Look screenshot (${screen.description}). Optionally pull ${fragment}. Never place a second full screenshot, a crop of a whole window, or a fake comparison portal.`;
-  });
-
-  return [
-    ...screenLines,
-    `Image ${layoutN} is the locked post layout. Use it ONLY for outer margins and headline placement. Ignore its typeface, any fake UI drawn on it, and any serif or script lettering.`,
-    `Any NEW type you add (headline, supporting line) must be Figtree: geometric sans-serif, weight 800 for the headline, 500 for supporting. Never serif, never script, never italic display, never Cormorant, never Great Vibes.`,
-    `Slide canvas: mauve #F3EEF0, white raised cards, berry accent #C0396B, sage #2F6B54 for done states. No gold, florals, textured paper, or photographic ornament.`,
-    `Headline: "${headline}".`,
-    supporting ? `Supporting line: "${supporting}".` : "",
-    `Forbidden: pasting the screenshot or a crop of it as a floating rectangle; device/laptop/phone mockups of the whole app; two overlapping UI windows; circular progress, pies, or donuts.`,
-    `Do not depict Generic Portal, YOUR Portal, [AppName], Wedding Planner script logos, or any screen that is not in images 1–${screens.length}.`,
-  ]
-    .filter(Boolean)
-    .join(" ");
-}
 
 const BUDGET_CATEGORY_HINTS = [
   "budget split",

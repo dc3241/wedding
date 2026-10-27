@@ -124,7 +124,6 @@ async function hydrateQueueRows(
     rows.map(async (row) => ({
       ...row,
       image_paths: row.image_paths ?? [],
-      kie_task_ids: row.kie_task_ids ?? [],
       format: row.format ?? null,
       audience_group: row.audience_group ?? null,
       carousel_slides: row.carousel_slides ?? null,
