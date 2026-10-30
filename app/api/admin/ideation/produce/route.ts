@@ -42,7 +42,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const result = await produceIdeaNow(id);
+    const result = await produceIdeaNow(id, { allowUnrated: true });
     if (!result.queueId || result.inserted === 0) {
       const detail = result.errors[0] ?? "Could not produce this idea.";
       return NextResponse.json({ error: detail, ...result }, { status: 502 });

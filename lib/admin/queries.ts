@@ -98,6 +98,29 @@ export async function getIdeationItems(
   return (data ?? []) as IdeationItem[];
 }
 
+/** Unused ideas from the most recent "Generate 10 ideas" click. */
+export async function getLatestIdeaBatch(
+  supabase: SupabaseClient,
+): Promise<IdeationItem[]> {
+  const { data: latest, error: latestError } = await supabase
+    .from("ideation_items")
+    .select("batch_id")
+    .not("batch_id", "is", null)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  // Migration not applied yet, or nothing generated: show an empty batch.
+  if (latestError || !latest?.batch_id) return [];
+
+  const { data } = await supabase
+    .from("ideation_items")
+    .select("id, idea_text, requested_by, rating, comment, platform, format, audience_group, carousel_slides, used_at, created_at, lane, intent, post_style, topic_key, slot_date, week_start")
+    .eq("batch_id", latest.batch_id)
+    .is("used_at", null)
+    .order("created_at", { ascending: true });
+  return (data ?? []) as IdeationItem[];
+}
+
 const QUEUE_SELECT = "*";
 
 type QueueRow = Omit<ContentQueueItem, "image_urls">;

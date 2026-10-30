@@ -29,6 +29,7 @@ import {
   type ContentQueuePlatform,
   type ContentQueueStatus,
 } from "@/lib/admin/content-queue";
+import { downloadPost } from "@/components/admin/download-post";
 import { CONTENT_TYPE_META } from "@/lib/admin/platforms";
 import type { ContentQueueItem } from "@/lib/admin/types";
 import { cn } from "@/lib/cn";
@@ -169,6 +170,7 @@ function QueueCard({ item }: { item: ContentQueueItem }) {
   const [imageIndex, setImageIndex] = useState(0);
   const [retryingImage, setRetryingImage] = useState(false);
   const [shuffling, setShuffling] = useState(false);
+  const [approving, setApproving] = useState(false);
   const router = useRouter();
   const platform = contentQueuePlatformMeta(item.platform);
   const statusMeta = STATUS_PILL[item.status];
@@ -211,6 +213,19 @@ function QueueCard({ item }: { item: ContentQueueItem }) {
         router.refresh();
       } catch (err) {
         setError(err instanceof Error ? err.message : "Something went wrong.");
+      }
+    });
+  }
+
+  /** Download first, while the row and its images exist, then mark approved. */
+  function approveAndDownload() {
+    setApproving(true);
+    run(async () => {
+      try {
+        await downloadPost(item);
+        await approveContentQueueItem(item.id);
+      } finally {
+        setApproving(false);
       }
     });
   }
@@ -281,10 +296,10 @@ function QueueCard({ item }: { item: ContentQueueItem }) {
             <Button
               variant="primary"
               disabled={isPending || !imagesReady}
-              onClick={() => run(() => approveContentQueueItem(item.id))}
+              onClick={approveAndDownload}
               className="px-4 py-2"
             >
-              Approve
+              {approving ? "Downloading…" : "Approve & download"}
             </Button>
             <Button
               variant="default"

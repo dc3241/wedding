@@ -323,6 +323,9 @@ export async function runWeeklyContentQueue(
       "id, week_of, platform, format, carousel_slides, image_paths, slide_specs",
     )
     .eq("week_of", weekOf)
+    // Approved posts used to be deleted on approval. They stay now, so keep
+    // them out of the batch cap and the render retry.
+    .neq("status", "approved")
     .order("created_at", { ascending: true });
   if (existingError) throw new Error(existingError.message);
 
@@ -439,7 +442,10 @@ export async function produceOnDemand(input: OnDemandPostInput): Promise<Produce
   };
 }
 
-export async function produceIdeaNow(ideaId: string): Promise<ProduceIdeaResult> {
+export async function produceIdeaNow(
+  ideaId: string,
+  options: { allowUnrated?: boolean } = {},
+): Promise<ProduceIdeaResult> {
   if (!process.env.MODEL_API_KEY?.trim()) {
     throw new Error("MODEL_API_KEY is not configured.");
   }
@@ -459,11 +465,22 @@ export async function produceIdeaNow(ideaId: string): Promise<ProduceIdeaResult>
   if (row.used_at) {
     throw new ProduceIdeaError("This idea was already produced.", "already_used");
   }
-  if (row.rating !== "up") {
+  if (row.rating !== "up" && !options.allowUnrated) {
     throw new ProduceIdeaError(
       "Like this idea and pick a platform, format, and audience first.",
       "not_ready",
     );
+  }
+
+  // Picking an idea and clicking Create is a thumbs-up. Record it so the
+  // taste signal and the readiness check below agree.
+  if (row.rating !== "up") {
+    const { error: rateError } = await supabase
+      .from("ideation_items")
+      .update({ rating: "up" })
+      .eq("id", ideaId);
+    if (rateError) throw new Error(rateError.message);
+    row.rating = "up";
   }
 
   const slot = asLikedIdeaSlot(row);

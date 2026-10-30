@@ -44,13 +44,17 @@ function revalidateQueueAndBank() {
   revalidatePath("/admin");
 }
 
+/**
+ * Approve = the post looks good and has been downloaded. There is no bank
+ * step: the queue row stays (marked approved) so the duplicate check keeps
+ * its caption and the page can show it as done. The browser downloads the
+ * files from /api/admin/queue-download before this runs.
+ */
 export async function approveContentQueueItem(id: string) {
   const supabase = await requireAdmin();
   const { data: row, error: rowError } = await supabase
     .from("content_queue")
-    .select(
-      "id, platform, pillar, content_type, caption, format, audience_group, carousel_slides, image_paths, status",
-    )
+    .select("id, format, carousel_slides, image_paths")
     .eq("id", id)
     .single();
   if (rowError || !row) throw new Error("Post not found");
@@ -66,42 +70,11 @@ export async function approveContentQueueItem(id: string) {
     throw new Error("Wait for images before approving.");
   }
 
-  const { data: existingBank } = await supabase
-    .from("content_bank_items")
-    .select("id")
-    .eq("source_queue_id", id)
-    .maybeSingle();
-
-  const bankPayload = {
-    platform: row.platform,
-    idea: row.pillar,
-    type: row.content_type,
-    format: format ?? row.format,
-    title: null,
-    body: row.caption ?? "",
-    notes: null,
-    audience_group: row.audience_group,
-    // Queue row is deleted next; don't keep a dangling FK.
-    source_queue_id: null as string | null,
-    image_paths: filledImagePaths(row.image_paths),
-  };
-
-  if (existingBank) {
-    const { error: updateBankError } = await supabase
-      .from("content_bank_items")
-      .update({ ...bankPayload, updated_at: new Date().toISOString() })
-      .eq("id", existingBank.id);
-    if (updateBankError) throw new Error(updateBankError.message);
-  } else {
-    const { error: insertBankError } = await supabase
-      .from("content_bank_items")
-      .insert(bankPayload);
-    if (insertBankError) throw new Error(insertBankError.message);
-  }
-
-  // Bank is the home for approved posts — drop the queue row so the
-  // review inbox stays pending/denied only.
-  const { error } = await supabase.from("content_queue").delete().eq("id", id);
+  const now = new Date().toISOString();
+  const { error } = await supabase
+    .from("content_queue")
+    .update({ status: "approved", approved_at: now, denied_at: null, updated_at: now })
+    .eq("id", id);
   if (error) throw new Error(error.message);
   revalidateQueueAndBank();
 }
