@@ -12,6 +12,7 @@ import {
   type ContentQueuePlatform,
 } from "@/lib/admin/content-queue";
 import type { AudienceGroup } from "@/lib/admin/platform-audience";
+import type { PostResultInput } from "@/lib/admin/post-results";
 import { createClient } from "@/utils/supabase/server";
 
 async function requireAdmin() {
@@ -76,5 +77,53 @@ export async function deleteIdea(id: string) {
   const supabase = await requireAdmin();
   const { error } = await supabase.from("ideation_items").delete().eq("id", id);
   if (error) throw new Error(error.message);
+  revalidatePath("/admin/ideation");
+}
+
+function cleanCount(value: unknown): number | null {
+  if (value === null || value === undefined || value === "") return null;
+  const num = typeof value === "number" ? value : Number(String(value).replace(/[,\s]/g, ""));
+  if (!Number.isFinite(num) || num < 0) return null;
+  return Math.min(Math.round(num), 2_000_000_000);
+}
+
+/** Save (or update) the numbers logged for one approved post. */
+export async function savePostResults(queueId: string, input: PostResultInput) {
+  const supabase = await requireAdmin();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const { data: post, error: postError } = await supabase
+    .from("content_queue")
+    .select("id, platform")
+    .eq("id", queueId)
+    .single();
+  if (postError || !post) throw new Error("Post not found");
+
+  const url = input.post_url?.trim() || null;
+  if (url && !/^https?:\/\//i.test(url)) throw new Error("The post link should start with https://");
+
+  const row = {
+    queue_id: queueId,
+    platform: post.platform as string,
+    post_url: url,
+    views: cleanCount(input.views),
+    likes: cleanCount(input.likes),
+    comments: cleanCount(input.comments),
+    shares: cleanCount(input.shares),
+    saves: cleanCount(input.saves),
+    notable_comments: input.notable_comments?.trim().slice(0, 2000) || null,
+    logged_by: user?.id ?? null,
+    updated_at: new Date().toISOString(),
+  };
+
+  const { error } = await supabase.from("post_results").upsert(row, { onConflict: "queue_id" });
+  if (error) {
+    if (/post_results/.test(error.message) && /does not exist|schema cache/i.test(error.message)) {
+      throw new Error("Results table is missing. Run the post_results migration in Supabase.");
+    }
+    throw new Error(error.message);
+  }
   revalidatePath("/admin/ideation");
 }

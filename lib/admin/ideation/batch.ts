@@ -36,6 +36,7 @@ import {
   type ContentTopic,
   type TopicDeckId,
 } from "@/lib/admin/content-topics";
+import { performancePromptBlock } from "@/lib/admin/ideation/performance";
 import { lockedAudienceForPlatform } from "@/lib/admin/platform-audience";
 import { callClaudeJson, isRecord } from "@/lib/inquiry/llm-json";
 
@@ -58,6 +59,10 @@ How to read what's working:
   thing they must not miss ("First month engaged? Here's what actually can't wait.").
   The pattern is "audience callout + open loop about what matters first". It can be reused
   on budgets, vendors, guests, or timelines. The exact sentence can never be reused.
+- You may also get logged results (views, engagement, what people commented) for this account's
+  own posts. Compare the best and weakest: what do the winning covers share (audience callout,
+  number, open question, length, post style, slide count)? What do the weak ones share? Lean on
+  the founders' notes when they disagree with the numbers. Comments show what made people react.
 - Most ideas should follow a winning pattern. A couple may try something adjacent so the
   founders can find the next winner.
 
@@ -309,6 +314,7 @@ export async function generateIdeaBatch(
   );
   const formats = imageFormatsFor(args.platform);
   const taste = await tasteBlock(supabase, history.shownTexts);
+  const performance = await performancePromptBlock(supabase, args.platform);
 
   const user = `Platform: ${args.platform}. Audience: ${audience === "planner" ? "venues and planners" : "couples"}.
 Allowed formats for this platform: ${formats.join(", ")}.
@@ -316,8 +322,8 @@ Write exactly ${IDEA_BATCH_SIZE} ideas. Use a different topic for each, chosen f
 ${offered.map((t) => `- ${t.key}: ${t.label} — ${t.brief}`).join("\n")}
 
 What the founders say is working right now:
-${signal || "(nothing provided — mix several proven post shapes)"}
-
+${signal || (performance.block ? "(no notes — go by the logged results below)" : "(nothing provided — mix several proven post shapes)")}
+${performance.block ? `\n${performance.block}\n` : ""}
 ${taste}`;
 
   const parsed = await callClaudeJson({

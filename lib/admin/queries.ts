@@ -14,6 +14,7 @@ import type {
   ScheduleWeek,
   WeekWithDetail,
 } from "@/lib/admin/types";
+import type { PostResult } from "@/lib/admin/post-results";
 
 /** All weeks, each with its days + performance row, oldest first. */
 export async function getScheduleWeeks(
@@ -157,6 +158,70 @@ async function hydrateQueueRows(
       ),
     })),
   );
+}
+
+export type PostedPost = {
+  id: string;
+  platform: ContentQueueItem["platform"];
+  pillar: string;
+  hook: string;
+  format: ContentQueueItem["format"];
+  approved_at: string | null;
+  thumb_url: string | null;
+  result: PostResult | null;
+};
+
+/**
+ * Approved (downloaded) posts, newest first, with any results already logged.
+ * Results are empty until the post_results migration is applied.
+ */
+export async function getPostedPosts(supabase: SupabaseClient): Promise<PostedPost[]> {
+  const { data, error } = await supabase
+    .from("content_queue")
+    .select("id, platform, pillar, prompt, format, approved_at, image_paths")
+    .eq("status", "approved")
+    .order("approved_at", { ascending: false, nullsFirst: false })
+    .limit(30);
+  if (error) throw new Error(error.message);
+  const rows = data ?? [];
+  if (rows.length === 0) return [];
+
+  const results = new Map<string, PostResult>();
+  const { data: resultRows, error: resultError } = await supabase
+    .from("post_results")
+    .select("queue_id, platform, post_url, views, likes, comments, shares, saves, notable_comments, updated_at")
+    .in(
+      "queue_id",
+      rows.map((row) => row.id as string),
+    );
+  if (!resultError) {
+    for (const row of (resultRows ?? []) as PostResult[]) results.set(row.queue_id, row);
+  }
+
+  const firstPaths = rows.map(
+    (row) => ((row.image_paths as string[] | null) ?? []).find((p) => p.trim().length > 0) ?? null,
+  );
+  const toSign = firstPaths.filter((p): p is string => Boolean(p));
+  const urlByPath = new Map<string, string>();
+  if (toSign.length > 0) {
+    const { data: signed } = await supabase.storage
+      .from(CONTENT_QUEUE_BUCKET)
+      .createSignedUrls(toSign, CONTENT_QUEUE_SIGNED_TTL_SECONDS);
+    for (const item of signed ?? []) {
+      if (item.path && item.signedUrl && !item.error) urlByPath.set(item.path, item.signedUrl);
+    }
+  }
+
+  return rows.map((row, i) => ({
+    id: row.id as string,
+    platform: row.platform as PostedPost["platform"],
+    pillar: (row.pillar as string) ?? "",
+    hook: ((row.prompt as string | null) ?? "").split("\n")[0]?.trim() ?? "",
+    format: (row.format as PostedPost["format"]) ?? null,
+    approved_at: (row.approved_at as string | null) ?? null,
+    thumb_url: firstPaths[i] ? (urlByPath.get(firstPaths[i]!) ?? null) : null,
+    result: results.get(row.id as string) ?? null,
+  }));
 }
 
 /** Pending and denied posts waiting on Ideation, newest first. */
