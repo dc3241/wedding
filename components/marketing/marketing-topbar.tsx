@@ -3,17 +3,30 @@
 import { ButtonLink } from "@/components/ui/button";
 import { NavLink, NavLinks, Wordmark } from "@/components/ui/topbar";
 import { cn } from "@/lib/cn";
+import { B2B_MARKETING_ENABLED } from "@/lib/marketing-flags";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState, type MouseEvent } from "react";
 
-const NAV = [
+type NavItem = { id: string; label: string; href: string; hash: boolean };
+
+const B2B_NAV: readonly NavItem[] = [
   { id: "features", label: "Features", href: "/#features", hash: true },
   { id: "planners", label: "For planners", href: "/for-planners", hash: false },
   { id: "venues", label: "For venues", href: "/for-venues", hash: false },
-  { id: "couples", label: "For couples", href: "/for-couples", hash: false },
   { id: "pricing", label: "Pricing", href: "/pricing", hash: false },
-] as const;
+];
+
+/** COUPLES-PIVOT: "/" is the couple landing; nav points at couple guides. */
+const COUPLE_NAV: readonly NavItem[] = [
+  { id: "features", label: "Features", href: "/#features", hash: true },
+  { id: "checklist", label: "Checklist", href: "/wedding-planning-checklist", hash: false },
+  { id: "budget", label: "Budget", href: "/wedding-budget-tracking", hash: false },
+  { id: "guests", label: "Guest list", href: "/wedding-guest-list", hash: false },
+  { id: "pricing", label: "Pricing", href: "/pricing", hash: false },
+];
+
+const NAV = B2B_MARKETING_ENABLED ? B2B_NAV : COUPLE_NAV;
 
 const navLinkClass =
   "relative rounded-none bg-transparent px-3 py-1.5 text-[14px] font-medium text-muted no-underline transition-colors duration-150 hover:bg-transparent hover:text-ink after:absolute after:inset-x-3 after:bottom-0.5 after:h-[2px] after:origin-left after:scale-x-0 after:bg-accent after:transition-transform after:duration-150 hover:after:scale-x-100 motion-reduce:after:transition-none";

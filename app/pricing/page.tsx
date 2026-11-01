@@ -4,17 +4,51 @@ import { MarketingTopbar } from "@/components/marketing/marketing-topbar";
 import { PricingPlans } from "@/components/marketing/pricing-plans";
 import { ButtonLink } from "@/components/ui/button";
 import { Eyebrow } from "@/components/ui/eyebrow";
+import {
+  COUPLE_LIFETIME_PRICE,
+  COUPLE_MONTHLY_PRICE,
+  formatCouplePrice,
+} from "@/lib/billing/couple-pricing";
+import { B2B_MARKETING_ENABLED } from "@/lib/marketing-flags";
 import { pageMetadata } from "@/lib/seo";
 import type { Metadata } from "next";
 
-export const metadata: Metadata = pageMetadata({
-  title: "Pricing",
-  description:
-    "Wedding planning CRM pricing for planners and venues, plus a couple workspace. 7-day free trial, no card to start.",
-  path: "/pricing",
-});
+const MONTHLY = formatCouplePrice(COUPLE_MONTHLY_PRICE);
+const LIFETIME = formatCouplePrice(COUPLE_LIFETIME_PRICE);
 
-const FAQS = [
+export const metadata: Metadata = B2B_MARKETING_ENABLED
+  ? pageMetadata({
+      title: "Pricing",
+      description:
+        "Wedding planning CRM pricing for planners and venues, plus a couple workspace. 7-day free trial, no card to start.",
+      path: "/pricing",
+    })
+  : pageMetadata({
+      title: "Wedding Planning App Pricing",
+      description: `First Look is free for couples: checklist, budget, guest list, RSVP, seating chart, and wedding website. Add the planning assistant for ${MONTHLY}/month or ${LIFETIME} once.`,
+      path: "/pricing",
+    });
+
+const COUPLE_FAQS = [
+  {
+    q: "What's free?",
+    a: "All of the planning tools: the wedding checklist and calendar, budget tracker and payment log, guest list with online RSVP, seating chart, vendor search and tracking, day-of timeline, and your wedding website. No card and no trial clock.",
+  },
+  {
+    q: "What does the assistant do?",
+    a: "You ask in plain language and it updates your checklist, budget, and guests for you. It also emails a weekly planning summary, flags things that need attention, and drafts vendor emails for you to approve before anything is sent.",
+  },
+  {
+    q: "Monthly or lifetime — which should we pick?",
+    a: `Monthly is ${MONTHLY} and you can cancel anytime. Lifetime is ${LIFETIME} once, which works out cheaper if you'll want the assistant for more than about five months of planning.`,
+  },
+  {
+    q: "What happens if we cancel the assistant?",
+    a: "You keep everything. Your plan, guests, budget, and website stay exactly where they are, and all the free tools keep working.",
+  },
+] as const;
+
+const B2B_FAQS = [
   {
     q: "Do I keep paying after the wedding?",
     a: "No. Cancel anytime. The workspace locks until you subscribe again. A site already published at its public address stays up, and nothing is deleted.",
@@ -33,6 +67,8 @@ const FAQS = [
   },
 ] as const;
 
+const FAQS = B2B_MARKETING_ENABLED ? B2B_FAQS : COUPLE_FAQS;
+
 export default function PricingPage() {
   return (
     <div className="min-h-full bg-canvas text-ink">
@@ -42,12 +78,14 @@ export default function PricingPage() {
           <div className="mx-auto max-w-[60ch] text-center">
             <Eyebrow className="mb-4 block">Pricing</Eyebrow>
             <h1 className="text-[32px] font-extrabold tracking-[-0.03em] text-ink md:text-[42px]">
-              One workspace. Two sides of the aisle.
+              {B2B_MARKETING_ENABLED
+                ? "One workspace. Two sides of the aisle."
+                : "Plan your wedding free. Add help when you want it."}
             </h1>
             <p className="mt-4 text-[15px] leading-relaxed text-muted md:text-[16px]">
-              Couples open the workspace on a 7-day trial, then the Couple
-              plan. Planners run their whole book from one account. No setup
-              fees, cancel anytime.
+              {B2B_MARKETING_ENABLED
+                ? "Couples plan free and can add the assistant. Planners run their whole book from one account. No setup fees, cancel anytime."
+                : `Every planning tool is free. The assistant is the one upgrade: ${MONTHLY} a month, or ${LIFETIME} once.`}
             </p>
           </div>
 
@@ -64,7 +102,8 @@ export default function PricingPage() {
               Start planning in minutes.
             </h2>
             <p className="mx-auto mt-3 max-w-md text-[15px] leading-relaxed text-muted">
-              Free to begin. Upgrade when you&apos;re ready — no card required.
+              Free to plan. Add the assistant whenever you like — no card
+              required.
             </p>
             <ButtonLink
               href="/login"

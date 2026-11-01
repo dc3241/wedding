@@ -5,6 +5,12 @@ import {
   SegmentedToggle,
   SegmentedToggleItem,
 } from "@/components/ui/topbar";
+import {
+  COUPLE_LIFETIME_PRICE,
+  COUPLE_MONTHLY_PRICE,
+  formatCouplePrice,
+} from "@/lib/billing/couple-pricing";
+import { B2B_MARKETING_ENABLED } from "@/lib/marketing-flags";
 import { useState } from "react";
 
 type Audience = "couples" | "planners";
@@ -12,14 +18,24 @@ type PlannerCadence = "monthly" | "annual";
 type VenueCadence = "monthly" | "annual";
 type CoupleCadence = "monthly" | "lifetime";
 
-const COUPLE_MONTHLY_PRICE = 10;
-const COUPLE_LIFETIME_PRICE = 99;
+/** COUPLES-PIVOT: every planning tool is free; the assistant is the upgrade. */
+const COUPLE_FREE_FEATURES = [
+  "Wedding checklist & calendar",
+  "Budget tracker & payment log",
+  "Guest list with online RSVP",
+  "Seating chart",
+  "Vendor search & tracking",
+  "Wedding website",
+  "Printable day-of timeline",
+] as const;
 
-const COUPLE_FEATURES = [
-  "Planning assistant & vendor outreach",
-  "Full budget with vendor links",
-  "Seating chart, RSVP & registry",
-  "Photo-led website + custom RSVP",
+const COUPLE_ASSISTANT_FEATURES = [
+  "Everything in Free",
+  "The planning assistant on every page",
+  "Updates tasks, budget & guests for you",
+  "Weekly planning summary by email",
+  "Heads-up when something needs attention",
+  "Vendor emails drafted for you to approve",
 ] as const;
 
 /** Planner list prices — presentation only; Stripe objects land in PRICE-02. */
@@ -56,7 +72,9 @@ const VENUE_FEATURES = [
   "Dedicated support getting set up",
 ] as const;
 
-const TRIAL_FOOTER = "7-day free trial · no card to start · cancel anytime.";
+const PLANNER_FOOTER = "7-day free trial · no card to start · cancel anytime.";
+const COUPLE_FOOTER =
+  "Free to plan · no card required · upgrade or cancel anytime.";
 
 function FeatureTick({ children }: { children: string }) {
   return (
@@ -72,29 +90,59 @@ function FeatureTick({ children }: { children: string }) {
   );
 }
 
-/** PRICE-08: marketing couple card — real plan choice is post-login on billing. */
-function CoupleCard() {
+function CoupleFreeCard() {
+  return (
+    <article className="relative flex h-full flex-col rounded-[var(--radius-card)] bg-surface p-7 shadow-raised">
+      <h3 className="text-[19px] font-extrabold tracking-[-0.02em] text-ink">
+        Free
+      </h3>
+      <p className="mt-4 flex items-baseline gap-1.5">
+        <span className="text-[40px] font-extrabold tracking-[-0.035em] tabular-nums text-ink">
+          $0
+        </span>
+        <span className="text-[14px] font-medium text-muted">/ forever</span>
+      </p>
+      <p className="mt-3 flex-1 text-[14.5px] leading-relaxed text-muted">
+        Every tool you need to plan the wedding yourself. No card, no trial
+        clock.
+      </p>
+      <ButtonLink href="/login" variant="default" className="mt-6 w-full">
+        Start planning free
+      </ButtonLink>
+      <ul className="mt-6 space-y-3 border-t border-hairline pt-6">
+        {COUPLE_FREE_FEATURES.map((f) => (
+          <FeatureTick key={f}>{f}</FeatureTick>
+        ))}
+      </ul>
+    </article>
+  );
+}
+
+/** Marketing card only — real Checkout is post-login on /account/billing. */
+function CoupleAssistantCard() {
   const [cadence, setCadence] = useState<CoupleCadence>("monthly");
   const lifetime = cadence === "lifetime";
+  const monthly = formatCouplePrice(COUPLE_MONTHLY_PRICE);
+  const once = formatCouplePrice(COUPLE_LIFETIME_PRICE);
 
   return (
     <article className="relative flex h-full flex-col rounded-[var(--radius-card)] bg-surface p-7 shadow-raised ring-2 ring-accent">
       <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-[var(--radius-pill)] bg-accent px-3 py-1 text-[11px] font-semibold tracking-[0.06em] text-surface uppercase">
-        Most popular
+        Most help
       </span>
       <h3 className="text-[19px] font-extrabold tracking-[-0.02em] text-ink">
-        The full plan
+        Free + Assistant
       </h3>
 
       <div className="mt-4">
-        <SegmentedToggle aria-label="Couple plan" className="w-full p-0.5">
+        <SegmentedToggle aria-label="Assistant plan" className="w-full p-0.5">
           <SegmentedToggleItem
             active={cadence === "monthly"}
             aria-pressed={cadence === "monthly"}
             onClick={() => setCadence("monthly")}
             className="flex-1 px-3 py-1.5 text-[12px] font-semibold"
           >
-            Monthly · ${COUPLE_MONTHLY_PRICE}
+            Monthly · {monthly}
           </SegmentedToggleItem>
           <SegmentedToggleItem
             active={cadence === "lifetime"}
@@ -102,39 +150,30 @@ function CoupleCard() {
             onClick={() => setCadence("lifetime")}
             className="flex-1 px-3 py-1.5 text-[12px] font-semibold"
           >
-            Lifetime · ${COUPLE_LIFETIME_PRICE}
+            Lifetime · {once}
           </SegmentedToggleItem>
         </SegmentedToggle>
       </div>
 
-      <div className="mt-3">
-        {lifetime ? (
-          <p className="flex items-baseline gap-1.5">
-            <span className="text-[40px] font-extrabold tracking-[-0.035em] tabular-nums text-ink">
-              ${COUPLE_LIFETIME_PRICE}
-            </span>
-            <span className="text-[14px] font-medium text-muted">/ one-time</span>
-          </p>
-        ) : (
-          <p className="flex items-baseline gap-1.5">
-            <span className="text-[40px] font-extrabold tracking-[-0.035em] tabular-nums text-ink">
-              ${COUPLE_MONTHLY_PRICE}
-            </span>
-            <span className="text-[14px] font-medium text-muted">/ month</span>
-          </p>
-        )}
-      </div>
+      <p className="mt-3 flex items-baseline gap-1.5">
+        <span className="text-[40px] font-extrabold tracking-[-0.035em] tabular-nums text-ink">
+          {lifetime ? once : monthly}
+        </span>
+        <span className="text-[14px] font-medium text-muted">
+          {lifetime ? "/ one-time" : "/ month"}
+        </span>
+      </p>
 
       <p className="mt-3 flex-1 text-[14.5px] leading-relaxed text-muted">
         {lifetime
-          ? "Pay once, plan forever — no recurring charges."
-          : "Full planning tools, billed monthly. Cancel anytime."}
+          ? "Pay once and keep the assistant for the whole engagement."
+          : "Add the assistant when you want help doing the work. Cancel anytime."}
       </p>
       <ButtonLink href="/login" variant="primary" className="mt-6 w-full">
-        Start free trial
+        Start free, upgrade anytime
       </ButtonLink>
       <ul className="mt-6 space-y-3 border-t border-hairline pt-6">
-        {COUPLE_FEATURES.map((f) => (
+        {COUPLE_ASSISTANT_FEATURES.map((f) => (
           <FeatureTick key={f}>{f}</FeatureTick>
         ))}
       </ul>
@@ -292,39 +331,40 @@ function VenueCard() {
 
 export function PricingPlans() {
   const [audience, setAudience] = useState<Audience>("couples");
+  // COUPLES-PIVOT: planner/venue cards only when B2B marketing is on.
+  const showCouples = !B2B_MARKETING_ENABLED || audience === "couples";
 
   return (
     <div>
-      <div className="flex justify-center">
-        <SegmentedToggle aria-label="Pricing audience">
-          <SegmentedToggleItem
-            active={audience === "couples"}
-            aria-pressed={audience === "couples"}
-            onClick={() => setAudience("couples")}
-            className="px-5 py-2.5 text-[14px] font-semibold"
-          >
-            For couples
-          </SegmentedToggleItem>
-          <SegmentedToggleItem
-            active={audience === "planners"}
-            aria-pressed={audience === "planners"}
-            onClick={() => setAudience("planners")}
-            className="px-5 py-2.5 text-[14px] font-semibold"
-          >
-            For planners
-          </SegmentedToggleItem>
-        </SegmentedToggle>
-      </div>
+      {B2B_MARKETING_ENABLED ? (
+        <div className="mb-10 flex justify-center">
+          <SegmentedToggle aria-label="Pricing audience">
+            <SegmentedToggleItem
+              active={audience === "couples"}
+              aria-pressed={audience === "couples"}
+              onClick={() => setAudience("couples")}
+              className="px-5 py-2.5 text-[14px] font-semibold"
+            >
+              For couples
+            </SegmentedToggleItem>
+            <SegmentedToggleItem
+              active={audience === "planners"}
+              aria-pressed={audience === "planners"}
+              onClick={() => setAudience("planners")}
+              className="px-5 py-2.5 text-[14px] font-semibold"
+            >
+              For planners
+            </SegmentedToggleItem>
+          </SegmentedToggle>
+        </div>
+      ) : null}
 
-      <div
-        className={
-          audience === "couples"
-            ? "mx-auto mt-10 grid max-w-md gap-6"
-            : "mx-auto mt-10 grid max-w-3xl gap-6 sm:grid-cols-2"
-        }
-      >
-        {audience === "couples" ? (
-          <CoupleCard />
+      <div className="mx-auto grid max-w-3xl gap-6 sm:grid-cols-2">
+        {showCouples ? (
+          <>
+            <CoupleFreeCard />
+            <CoupleAssistantCard />
+          </>
         ) : (
           <>
             <PlannerCard />
@@ -334,7 +374,7 @@ export function PricingPlans() {
       </div>
 
       <p className="mx-auto mt-10 max-w-xl text-center text-[13px] font-medium text-muted">
-        {TRIAL_FOOTER}
+        {showCouples ? COUPLE_FOOTER : PLANNER_FOOTER}
       </p>
     </div>
   );

@@ -1,12 +1,20 @@
 import Link from "next/link";
 import { Wordmark } from "@/components/ui/topbar";
+import { demoEntryPath } from "@/lib/demo/entry-path";
+import { B2B_MARKETING_ENABLED } from "@/lib/marketing-flags";
 
-const PRODUCT = [
-  { href: "/for-planners", label: "For planners" },
-  { href: "/for-venues", label: "For venues" },
-  { href: "/for-couples", label: "For couples" },
-  { href: "/pricing", label: "Pricing" },
-] as const;
+const PRODUCT = B2B_MARKETING_ENABLED
+  ? ([
+      { href: "/for-planners", label: "For planners" },
+      { href: "/for-venues", label: "For venues" },
+      { href: "/", label: "For couples" },
+      { href: "/pricing", label: "Pricing" },
+    ] as const)
+  : ([
+      { href: "/", label: "Wedding planning app" },
+      { href: "/pricing", label: "Pricing" },
+      { href: demoEntryPath("personal"), label: "Live demo" },
+    ] as const);
 
 const COMPARE = [
   { href: "/wedding-planner-crm", label: "Wedding planner CRM" },
@@ -44,11 +52,19 @@ function FooterNav({
 }) {
   return (
     <nav aria-label={label} className="flex flex-wrap gap-x-5 gap-y-2">
-      {links.map((link) => (
-        <Link key={link.href} href={link.href} className="hover:text-ink">
-          {link.label}
-        </Link>
-      ))}
+      {links.map((link) =>
+        // /demo is a route handler that mints a demo session — a plain
+        // anchor so Link prefetch can never start one in the background.
+        link.href.startsWith("/demo") ? (
+          <a key={link.href} href={link.href} className="hover:text-ink">
+            {link.label}
+          </a>
+        ) : (
+          <Link key={link.href} href={link.href} className="hover:text-ink">
+            {link.label}
+          </Link>
+        ),
+      )}
     </nav>
   );
 }
@@ -63,7 +79,9 @@ export function MarketingFooter() {
           </Link>
           <div className="flex flex-col gap-3 text-[13px] text-muted">
             <FooterNav label="Product" links={PRODUCT} />
-            <FooterNav label="Compare" links={COMPARE} />
+            {B2B_MARKETING_ENABLED ? (
+              <FooterNav label="Compare" links={COMPARE} />
+            ) : null}
             <FooterNav label="Planning" links={PLAN} />
             <FooterNav label="Company" links={COMPANY} />
           </div>
