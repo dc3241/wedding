@@ -1,10 +1,15 @@
 "use client";
 
+import {
+  OPEN_ASSISTANT_EVENT,
+  type OpenAssistantDetail,
+} from "@/components/assistant/open-assistant-event";
 import type { EventType } from "@/lib/event-type";
 import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -57,6 +62,16 @@ export function AssistantProvider({
   const hasShownTabSuggestion = useCallback((segment: string) => {
     return shownTabSuggestionsRef.current.has(segment);
   }, []);
+
+  // Couple sidebar renders outside this provider — listen for its open request.
+  useEffect(() => {
+    function onOpenRequest(event: Event) {
+      const detail = (event as CustomEvent<OpenAssistantDetail>).detail;
+      openAssistant(detail?.prefill);
+    }
+    window.addEventListener(OPEN_ASSISTANT_EVENT, onOpenRequest);
+    return () => window.removeEventListener(OPEN_ASSISTANT_EVENT, onOpenRequest);
+  }, [openAssistant]);
 
   const value = useMemo(
     () => ({
