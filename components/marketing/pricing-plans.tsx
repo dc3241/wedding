@@ -74,7 +74,7 @@ const VENUE_FEATURES = [
 
 const PLANNER_FOOTER = "7-day free trial · no card to start · cancel anytime.";
 const COUPLE_FOOTER =
-  "Free to plan · no card required · upgrade or cancel anytime.";
+  "Free to plan · 7-day assistant trial, no card required · cancel anytime.";
 
 function FeatureTick({ children }: { children: string }) {
   return (
@@ -166,11 +166,11 @@ function CoupleAssistantCard() {
 
       <p className="mt-3 flex-1 text-[14.5px] leading-relaxed text-muted">
         {lifetime
-          ? "Pay once and keep the assistant for the whole engagement."
-          : "Add the assistant when you want help doing the work. Cancel anytime."}
+          ? "Try it free for 7 days, then pay once and keep the assistant for the whole engagement."
+          : "Try it free for 7 days, then keep it for help doing the work. Cancel anytime."}
       </p>
       <ButtonLink href="/login" variant="primary" className="mt-6 w-full">
-        Start free, upgrade anytime
+        Try the assistant free
       </ButtonLink>
       <ul className="mt-6 space-y-3 border-t border-hairline pt-6">
         {COUPLE_ASSISTANT_FEATURES.map((f) => (

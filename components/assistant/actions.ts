@@ -7,6 +7,12 @@ import type {
   AssistantMessage,
   SendAssistantResult,
 } from "@/components/assistant/types";
+import {
+  ensureChatAccess,
+  getProjectAssistantSummary,
+  recordAssistantUsage,
+} from "@/lib/billing/assistant-access";
+import type { AssistantAccessSummary } from "@/lib/billing/assistant-budget";
 import { parseEventType, parseHiddenTools } from "@/lib/event-type";
 import { createClient } from "@/utils/supabase/server";
 
@@ -71,6 +77,28 @@ export async function sendAssistantMessage(
     return { success: false, error: "Project not found." };
   }
 
+  // COUPLES-PIVOT part 3: the project read above passed RLS, so the viewer
+  // can see this wedding. Access is billed to the account that owns it.
+  let gate: Awaited<ReturnType<typeof ensureChatAccess>>;
+  try {
+    gate = await ensureChatAccess(projectId, account?.accountId ?? null);
+  } catch (error) {
+    console.error("[assistant.access] gate failed", error);
+    return {
+      success: false,
+      error: "The assistant is unavailable right now. Please try again shortly.",
+    };
+  }
+
+  if (!gate.access.allowed) {
+    return {
+      success: false,
+      error: lockedMessage(gate.summary),
+      code: gate.summary.lockReason ?? "upgrade_required",
+      access: gate.summary,
+    };
+  }
+
   const conversation = [...(history ?? [])].reverse().map((row) => ({
     role: row.role as "user" | "assistant",
     content: row.content,
@@ -90,8 +118,15 @@ export async function sendAssistantMessage(
     },
   );
 
+  await recordAssistantUsage({
+    accountId: gate.access.accountId,
+    projectId,
+    source: "chat",
+    usage: result.usage,
+  });
+
   if (!result.ok) {
-    return { success: false, error: result.error };
+    return { success: false, error: result.error, access: gate.summary };
   }
 
   const { error: insertError } = await supabase.from("assistant_messages").insert([
@@ -111,5 +146,31 @@ export async function sendAssistantMessage(
     };
   }
 
-  return { success: true, reply: result.reply };
+  return { success: true, reply: result.reply, access: gate.summary };
+}
+
+function lockedMessage(summary: AssistantAccessSummary): string {
+  if (summary.lockReason === "limit_reached") {
+    return summary.resetsAt
+      ? "You've used this month's assistant allowance. It resets on the 1st."
+      : "You've used the assistant allowance on this plan.";
+  }
+  return summary.canUpgrade
+    ? "Your free assistant trial has ended. Upgrade to keep using the assistant."
+    : "The assistant isn't included on this wedding's plan right now.";
+}
+
+/** Panel status (trial days left, allowance used). Never starts a trial. */
+export async function loadAssistantAccess(
+  projectId: string,
+): Promise<AssistantAccessSummary | null> {
+  const supabase = await createClient();
+  const { data: project } = await supabase
+    .from("projects")
+    .select("id")
+    .eq("id", projectId)
+    .maybeSingle();
+  if (!project) return null;
+  const account = await getAccountContext(supabase);
+  return getProjectAssistantSummary(projectId, account?.accountId ?? null);
 }

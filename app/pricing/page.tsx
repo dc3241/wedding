@@ -39,6 +39,14 @@ const COUPLE_FAQS = [
     a: "You ask in plain language and it updates your checklist, budget, and guests for you. It also emails a weekly planning summary, flags things that need attention, and drafts vendor emails for you to approve before anything is sent.",
   },
   {
+    q: "Is there a free trial of the assistant?",
+    a: "Yes. Your first message to the assistant starts a free 7-day trial, no card required. When it ends, the assistant pauses until you upgrade — every planning tool stays free either way.",
+  },
+  {
+    q: "Is there a limit on assistant use?",
+    a: "Each plan includes a generous monthly allowance, far more than couples typically use. If you ever reach it, the assistant pauses until the next month while every planning tool keeps working.",
+  },
+  {
     q: "Monthly or lifetime — which should we pick?",
     a: `Monthly is ${MONTHLY} and you can cancel anytime. Lifetime is ${LIFETIME} once, which works out cheaper if you'll want the assistant for more than about five months of planning.`,
   },
@@ -85,7 +93,7 @@ export default function PricingPage() {
             <p className="mt-4 text-[15px] leading-relaxed text-muted md:text-[16px]">
               {B2B_MARKETING_ENABLED
                 ? "Couples plan free and can add the assistant. Planners run their whole book from one account. No setup fees, cancel anytime."
-                : `Every planning tool is free. The assistant is the one upgrade: ${MONTHLY} a month, or ${LIFETIME} once.`}
+                : `Every planning tool is free. Try the assistant free for 7 days, then keep it for ${MONTHLY} a month or ${LIFETIME} once.`}
             </p>
           </div>
 

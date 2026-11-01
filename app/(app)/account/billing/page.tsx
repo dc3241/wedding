@@ -21,7 +21,13 @@ import { reconcileCheckoutReturn } from "@/lib/billing/sync-subscription";
 import type { AccountKind } from "@/lib/account-context";
 import { getAccountContext } from "@/lib/account-context";
 import { shellLayoutClass } from "@/lib/density";
+import {
+  getAccountAssistantAccess,
+  toAccessSummary,
+} from "@/lib/billing/assistant-access";
+import type { AssistantAccessSummary } from "@/lib/billing/assistant-budget";
 import { createClient } from "@/utils/supabase/server";
+import { createServiceRoleClient } from "@/utils/supabase/service-role";
 
 function formatRenewalDate(iso: string | null) {
   if (!iso) return null;
@@ -40,11 +46,58 @@ function resolveVenueCadence(priceId: string | null) {
 }
 
 const FREE_COPY: Record<AccountKind, string> = {
+  // COUPLES-PIVOT part 3: planning is free; only the assistant is paid.
   personal:
-    "Start your 7-day free trial to unlock the full couple experience.",
+    "Every planning tool is free. Add the assistant to have it update your checklist, budget, and guests for you. Your first message starts a free 7-day trial.",
   business:
     "The workspace is locked until you subscribe.",
 };
+
+const COUPLE_LAPSED_COPY =
+  "Your assistant trial has ended. Everything else stays free — upgrade any time to turn the assistant back on.";
+
+function AssistantAllowance({ summary }: { summary: AssistantAccessSummary }) {
+  if (summary.usedPercent === null) return null;
+  const resets = formatRenewalDate(summary.resetsAt);
+  const label =
+    summary.plan === "trial"
+      ? "Trial allowance"
+      : resets
+        ? "This month's assistant allowance"
+        : "Assistant allowance";
+  return (
+    <div className="mt-5 border-t border-hairline pt-4">
+      <div className="flex items-baseline justify-between gap-3">
+        <p className="text-[13px] font-medium text-ink">{label}</p>
+        <p className="text-[13px] tabular-nums text-muted">
+          {summary.usedPercent}% used
+        </p>
+      </div>
+      <div
+        className="mt-2 h-2 overflow-hidden rounded-[var(--radius-pill)] bg-well shadow-recessed"
+        role="progressbar"
+        aria-valuenow={summary.usedPercent}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-label={`${label}: ${summary.usedPercent}% used`}
+      >
+        <div
+          className={
+            summary.usedPercent >= 90
+              ? "h-full rounded-[var(--radius-pill)] bg-rosewood"
+              : summary.usedPercent >= 75
+                ? "h-full rounded-[var(--radius-pill)] bg-clay"
+                : "h-full rounded-[var(--radius-pill)] bg-sage"
+          }
+          style={{ width: `${summary.usedPercent}%` }}
+        />
+      </div>
+      {resets ? (
+        <p className="mt-1.5 text-[12px] text-muted">Resets {resets}</p>
+      ) : null}
+    </div>
+  );
+}
 
 export default async function BillingPage({
   searchParams,
@@ -72,7 +125,18 @@ export default async function BillingPage({
     ? BILLING_PLANS.venue.label
     : isPlanner
       ? BILLING_PLANS.planner.label
-      : BILLING_PLANS.couple.label;
+      : "Assistant";
+  let assistantSummary: AssistantAccessSummary | null = null;
+  if (!isPlanner) {
+    try {
+      assistantSummary = toAccessSummary(
+        await getAccountAssistantAccess(createServiceRoleClient(), accountId),
+        true,
+      );
+    } catch (error) {
+      console.error("[billing] assistant allowance", error);
+    }
+  }
   const venueCadence = isVenuePlan
     ? resolveVenueCadence(subscription.priceId)
     : null;
@@ -102,7 +166,7 @@ export default async function BillingPage({
         description={
           isPlanner
             ? "Manage your planner subscription."
-            : "Manage your couple plan."
+            : "Planning is free. The assistant is the one paid upgrade."
         }
       />
 
@@ -153,8 +217,9 @@ export default async function BillingPage({
                     </>
                   ) : (
                     <p className="text-[13px] text-muted">
-                      Full plan — you&apos;re all set. No further charges for this
-                      account.
+                      {isPlanner
+                        ? "Full plan — you're all set. No further charges for this account."
+                        : "Lifetime assistant — you're all set. No further charges."}
                     </p>
                   )}
                 </div>
@@ -177,13 +242,14 @@ export default async function BillingPage({
                     <>
                       {renewalDate ? (
                         <p className="text-[13px] text-muted">
-                          Trial ends {renewalDate}. Choose Monthly or Lifetime
-                          anytime — no card required until you do.
+                          Assistant trial ends {renewalDate}. Choose Monthly or
+                          Lifetime anytime to keep it — no card required until
+                          you do.
                         </p>
                       ) : (
                         <p className="text-[13px] text-muted">
-                          Choose Monthly or Lifetime anytime — no card required
-                          until you do.
+                          Choose Monthly or Lifetime anytime to keep the
+                          assistant — no card required until you do.
                         </p>
                       )}
                     </>
@@ -197,8 +263,10 @@ export default async function BillingPage({
                   </p>
                 </div>
               ) : (
-                <p className="mt-2 text-[13px] text-muted">
-                  {FREE_COPY[account.kind]}
+                <p className="mt-2 max-w-[46ch] text-[13px] text-muted">
+                  {!isPlanner && subscription.status !== null
+                    ? COUPLE_LAPSED_COPY
+                    : FREE_COPY[account.kind]}
                 </p>
               )}
             </div>
@@ -215,6 +283,9 @@ export default async function BillingPage({
               ) : null}
             </div>
           </div>
+          {assistantSummary ? (
+            <AssistantAllowance summary={assistantSummary} />
+          ) : null}
         </Card>
 
         {/* VENUE-08: venue subscribers see plan + cadence pricing (not the upgrade CTA). */}

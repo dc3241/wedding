@@ -4,6 +4,10 @@
  * Own route: weekly, offset from AGENT-01 Monday 15:10 UTC.
  */
 import { NextResponse } from "next/server";
+import {
+  filterProjectsWithAgentAccess,
+  recordAssistantUsage,
+} from "@/lib/billing/assistant-access";
 import { runAssistantWithTools } from "@/lib/assistant/call-assistant";
 import {
   buildOutreachSystemPrompt,
@@ -56,11 +60,14 @@ export async function GET(request: Request) {
   const supabase = createServiceRoleClient();
 
   try {
-    const eligible = (await loadEligibleActiveProjects(supabase)).filter(
-      (project) => {
+    // COUPLES-PIVOT part 3: agentic runs need assistant access (paid plan,
+    // live trial, or an entitled business account) and an unspent cap.
+    const eligible = await filterProjectsWithAgentAccess(
+      supabase,
+      (await loadEligibleActiveProjects(supabase)).filter((project) => {
         if (filterProjectId && project.id !== filterProjectId) return false;
         return isWithinOutreachWindow(project.wedding_date);
-      },
+      }),
     );
 
     if (filterProjectId && eligible.length === 0) {
@@ -131,6 +138,12 @@ export async function GET(request: Request) {
           deferWrites: true,
         },
       );
+      await recordAssistantUsage({
+        accountId: project.account_id,
+        projectId: project.id,
+        source: "outreach_scan",
+        usage: result.usage,
+      });
 
       const completedAt = new Date().toISOString();
       let outcome: "ok" | "capped" | "error";

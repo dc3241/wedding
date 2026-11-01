@@ -3,17 +3,26 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useAssistant } from "@/components/assistant/assistant-context";
 import {
+  loadAssistantAccess,
   loadAssistantMessages,
   sendAssistantMessage,
 } from "@/components/assistant/actions";
+import {
+  AssistantLockedCard,
+  AssistantStatusLine,
+} from "@/components/assistant/AssistantAccessNotice";
 import { formatBoldText } from "@/components/assistant/format-bold-text";
 import { PendingDraftList } from "@/components/assistant/PendingDraftList";
-import type { AgentDraftPreview, AssistantMessage } from "@/components/assistant/types";
+import type {
+  AgentDraftPreview,
+  AssistantMessage,
+} from "@/components/assistant/types";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { Textarea } from "@/components/ui/textarea";
 import type { AccountKind } from "@/lib/account-context";
+import type { AssistantAccessSummary } from "@/lib/billing/assistant-budget";
 import type { EventType } from "@/lib/event-type";
 import { isPlannerAccount } from "@/lib/density";
 import { acquireScrollLock, releaseScrollLock } from "@/lib/scroll-lock";
@@ -25,6 +34,8 @@ type AssistantPanelProps = {
   eventType: EventType;
   initialMessages: AssistantMessage[];
   pendingDrafts: AgentDraftPreview[];
+  /** COUPLES-PIVOT part 3. Null for planner accounts (no plan messaging). */
+  initialAccess: AssistantAccessSummary | null;
 };
 
 function formatMessageTime(iso: string) {
@@ -76,6 +87,7 @@ export function AssistantPanel({
   eventType,
   initialMessages,
   pendingDrafts,
+  initialAccess,
 }: AssistantPanelProps) {
   const isPlanner = isPlannerAccount(accountKind);
   const isEvent = eventType === "event";
@@ -86,6 +98,7 @@ export function AssistantPanel({
   const [error, setError] = useState<string | null>(null);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const [access, setAccess] = useState(initialAccess);
   const listRef = useRef<HTMLDivElement>(null);
   const fullHistoryLoadedRef = useRef(false);
 
@@ -122,6 +135,18 @@ export function AssistantPanel({
       if (showSpinner) setHistoryLoading(false);
     };
   }, [open, projectId]);
+
+  // Trial days / allowance can change between page loads — refresh on open.
+  useEffect(() => {
+    if (!open || isPlanner) return;
+    let cancelled = false;
+    void loadAssistantAccess(projectId).then((next) => {
+      if (!cancelled && next) setAccess(next);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [open, projectId, isPlanner]);
 
   useEffect(() => {
     if (!open || !pendingPrefill) return;
@@ -160,9 +185,11 @@ export function AssistantPanel({
 
     startTransition(async () => {
       const result = await sendAssistantMessage(projectId, text);
+      if (!isPlanner && result.access) setAccess(result.access);
       if (!result.success) {
         setMessages((prev) => prev.filter((m) => m.id !== optimisticUser.id));
-        setError(result.error);
+        // A lock shows the upgrade card instead of an error line.
+        setError(result.code ? null : result.error);
         setInput(text);
         return;
       }
@@ -231,6 +258,7 @@ export function AssistantPanel({
                   : "Ask about checklist, budget, guests, vendors, and notes for this wedding."
                 : "Ask me about your checklist, budget, guests, vendors, or notes."}
             </p>
+            {isPlanner ? null : <AssistantStatusLine access={access} />}
           </div>
           <button
             type="button"
@@ -288,8 +316,8 @@ export function AssistantPanel({
                   : "Hi! I'm here to help with your wedding planning."}
               </p>
               <p className="mt-2 text-[13px] text-muted">
-                Try &ldquo;What&apos;s overdue?&rdquo;, &ldquo;How much budget is
-                left?&rdquo;, or &ldquo;Who hasn&apos;t RSVP&apos;d?&rdquo;
+                Try &ldquo;What&apos;s overdue?&rdquo;, &ldquo;How much budget
+                is left?&rdquo;, or &ldquo;Who hasn&apos;t RSVP&apos;d?&rdquo;
               </p>
             </div>
           ) : (
@@ -350,33 +378,40 @@ export function AssistantPanel({
               {error}
             </p>
           ) : null}
-          <div className="flex flex-col gap-2">
-            <Textarea
-              value={input}
-              onChange={(event) => setInput(event.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder={
-                isPlanner
-                  ? isEvent
-                    ? "Ask about this event…"
-                    : "Ask about this wedding…"
-                  : "Ask about your wedding…"
-              }
-              rows={isPlanner ? 2 : 3}
-              disabled={isPending}
-              className={cn("resize-none", isPlanner && "text-[14px]")}
-            />
-            <div className="flex justify-end">
-              <Button
-                type="button"
-                variant="primary"
-                onClick={handleSend}
-                disabled={isPending || !input.trim()}
-              >
-                {isPending ? "Sending…" : "Send"}
-              </Button>
+          {!isPlanner &&
+          access &&
+          !access.allowed &&
+          access.lockReason !== "trial_available" ? (
+            <AssistantLockedCard access={access} />
+          ) : (
+            <div className="flex flex-col gap-2">
+              <Textarea
+                value={input}
+                onChange={(event) => setInput(event.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder={
+                  isPlanner
+                    ? isEvent
+                      ? "Ask about this event…"
+                      : "Ask about this wedding…"
+                    : "Ask about your wedding…"
+                }
+                rows={isPlanner ? 2 : 3}
+                disabled={isPending}
+                className={cn("resize-none", isPlanner && "text-[14px]")}
+              />
+              <div className="flex justify-end">
+                <Button
+                  type="button"
+                  variant="primary"
+                  onClick={handleSend}
+                  disabled={isPending || !input.trim()}
+                >
+                  {isPending ? "Sending…" : "Send"}
+                </Button>
+              </div>
             </div>
-          </div>
+          )}
         </footer>
       </aside>
     </>

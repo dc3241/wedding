@@ -8,6 +8,7 @@ import { ProjectShell } from "@/components/projects/project-shell";
 import { ProjectWorkspaceNav } from "@/components/projects/project-workspace-nav";
 import { getAccountContext } from "@/lib/account-context";
 import { getBrandingForProject } from "@/lib/branding/get-branding";
+import { getProjectAssistantSummary } from "@/lib/billing/assistant-access";
 import { coupleOnboardingRedirect } from "@/lib/onboarding-gate";
 import { parseEventType, parseHiddenTools } from "@/lib/event-type";
 import { canCustomizeWorkspace } from "@/lib/project-tabs";
@@ -152,6 +153,12 @@ export default async function ProjectLayout({
     (row) => row.tour_key,
   );
   const projectMemberRole = memberRoleResult.data?.role ?? null;
+  // COUPLES-PIVOT part 3: trial / allowance messaging for couples and
+  // invited members. Planners keep today's panel (no plan messaging).
+  const assistantAccess =
+    account?.kind === "business"
+      ? null
+      : await getProjectAssistantSummary(projectId, account?.accountId ?? null);
   const eventType = parseEventType(project.event_type);
   const hiddenTools = parseHiddenTools(project.hidden_tools);
 
@@ -162,6 +169,7 @@ export default async function ProjectLayout({
       eventType={eventType}
       initialMessages={initialMessages}
       pendingDrafts={pendingDrafts}
+      initialAccess={assistantAccess}
     >
       <TourProvider
         projectId={projectId}

@@ -111,7 +111,7 @@ const STEPS = [
 const FAQS = [
   {
     q: "Is First Look really free?",
-    a: `Yes. The checklist, budget tracker, guest list, online RSVP, seating chart, vendor tracking, and wedding website are free, with no card required. The planning assistant is the only paid part: ${MONTHLY} a month, or ${LIFETIME} once for the life of your wedding.`,
+    a: `Yes. The checklist, budget tracker, guest list, online RSVP, seating chart, vendor tracking, and wedding website are free, with no card required. The planning assistant is the only paid part. Try it free for 7 days, then keep it for ${MONTHLY} a month, or ${LIFETIME} once for the life of your wedding.`,
   },
   {
     q: "What does the paid plan add?",
@@ -203,10 +203,10 @@ function AssistantSection() {
               Want help doing the work? Add the assistant.
             </h2>
             <p className="mt-3 text-[15px] leading-relaxed text-muted md:text-[16px]">
-              Planning is free. The assistant is the one paid upgrade:{" "}
-              {MONTHLY} a month, or {LIFETIME} once. It works inside your
-              wedding, so it updates the same checklist, budget, and guest list
-              you do.
+              Planning is free. The assistant is the one paid upgrade: try it
+              free for 7 days, then {MONTHLY} a month or {LIFETIME} once. It
+              works inside your wedding, so it updates the same checklist,
+              budget, and guest list you do.
             </p>
           </div>
           <div className="mt-8 grid gap-4 md:grid-cols-3">
@@ -322,8 +322,8 @@ export function CoupleLandingPage() {
                 <DemoCta kind="personal" compact />
               </div>
               <p className="mt-5 text-[13.5px] font-medium text-muted">
-                Free to plan · No card required · Add the assistant for{" "}
-                {MONTHLY}/mo or {LIFETIME} once
+                Free to plan · No card required · Try the assistant free for
+                7 days
               </p>
             </ScrollReveal>
             <ScrollReveal delayMs={80}>
