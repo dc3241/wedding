@@ -1,3 +1,8 @@
+import type {
+  AssistantAccessSummary,
+  AssistantLockReason,
+} from "@/lib/billing/assistant-budget";
+
 export type AssistantMessage = {
   id: string;
   role: "user" | "assistant";
@@ -27,5 +32,11 @@ export function isLeadEmailDraftKind(
 }
 
 export type SendAssistantResult =
-  | { success: true; reply: string }
-  | { success: false; error: string };
+  | { success: true; reply: string; access?: AssistantAccessSummary }
+  | {
+      success: false;
+      error: string;
+      /** Set when the assistant is locked (trial over / allowance used). */
+      code?: AssistantLockReason;
+      access?: AssistantAccessSummary;
+    };

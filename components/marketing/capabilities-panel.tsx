@@ -1,6 +1,7 @@
 import { Eyebrow } from "@/components/ui/eyebrow";
+import { B2B_MARKETING_ENABLED } from "@/lib/marketing-flags";
 
-const GROUPS = [
+const B2B_GROUPS = [
   {
     label: "For planners & venues",
     items: [
@@ -92,6 +93,95 @@ function SageCheck() {
  * Static capabilities checklist — authored copy only, no data wiring.
  * Owns `id="features"` for the Features nav anchor.
  */
+/** COUPLES-PIVOT: couple-only, and only claims that match shipped features. */
+const COUPLE_GROUPS = [
+  {
+    label: "The plan",
+    items: [
+      "Starter plan from your date & budget",
+      "Wedding checklist with due dates",
+      "Calendar of every deadline",
+      "Printable day-of timeline",
+      "Notes, files & vendor contracts",
+    ],
+  },
+  {
+    label: "Budget",
+    items: [
+      "Estimated vs. actual spend",
+      "Payment log — what's paid",
+      "Payment due dates",
+      "Spend by category",
+    ],
+  },
+  {
+    label: "Guests",
+    items: [
+      "Guest list by household",
+      "Plus-ones & children",
+      "Online RSVP with meal choices",
+      "Dietary notes & song requests",
+    ],
+  },
+  {
+    label: "Vendors",
+    items: [
+      "Vendor search by category",
+      "Email vendors from your Gmail",
+      "Track contacted → booked",
+      "Shortlist what's still to book",
+    ],
+  },
+  {
+    label: "Seating",
+    items: [
+      "Drag-and-drop seating chart",
+      "Sweetheart & head tables",
+      "Dance floor layout",
+      "Searchable guest roster",
+    ],
+  },
+  {
+    label: "Your website",
+    items: [
+      "Designer website templates",
+      "Your story, photos & wedding party",
+      "Travel details & registry links",
+      "RSVP built in",
+    ],
+  },
+  {
+    label: "Assistant · paid",
+    items: [
+      "Ask in plain language",
+      "Updates tasks, budget & guests",
+      "Weekly planning summary",
+      "Vendor emails drafted for you",
+    ],
+  },
+] as const;
+
+const GROUPS: readonly { label: string; items: readonly string[] }[] =
+  B2B_MARKETING_ENABLED ? B2B_GROUPS : COUPLE_GROUPS;
+
+const COPY = B2B_MARKETING_ENABLED
+  ? {
+      eyebrow: "Everything in one place",
+      title: "The CRM and the wedding workbook, together.",
+      subhead:
+        "From the first inquiry to the last dance — here's exactly what lives in one platform.",
+      footnote:
+        "Couples get every couple-facing tool free to start — planners get the whole book from one login.",
+    }
+  : {
+      eyebrow: "Everything in one place",
+      title: "Every wedding planning tool, in one app.",
+      subhead:
+        "From the engagement to the last dance — here's exactly what you get.",
+      footnote:
+        "Everything except the assistant is free. Add the assistant when you want help doing the work.",
+    };
+
 export function CapabilitiesPanel() {
   return (
     <section
@@ -99,13 +189,12 @@ export function CapabilitiesPanel() {
       className="mx-auto max-w-6xl scroll-mt-24 px-6 py-14 md:px-10 md:py-16"
     >
       <div className="mx-auto mb-9 max-w-[52ch] text-center">
-        <Eyebrow className="mb-4 block">Everything in one place</Eyebrow>
+        <Eyebrow className="mb-4 block">{COPY.eyebrow}</Eyebrow>
         <h2 className="text-[32px] font-extrabold tracking-[-0.03em] text-ink md:text-[42px]">
-          The CRM and the wedding workbook, together.
+          {COPY.title}
         </h2>
         <p className="mt-3 text-[15px] leading-relaxed text-muted md:text-[16px]">
-          From the first inquiry to the last dance — here&apos;s exactly what
-          lives in one platform.
+          {COPY.subhead}
         </p>
       </div>
 
@@ -133,8 +222,7 @@ export function CapabilitiesPanel() {
       </div>
 
       <p className="mx-auto mt-6 max-w-[48ch] text-center text-[13px] leading-relaxed text-muted">
-        Couples get every couple-facing tool free to start — planners get the
-        whole book from one login.
+        {COPY.footnote}
       </p>
     </section>
   );

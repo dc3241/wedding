@@ -13,6 +13,10 @@
  * venue own-brand via getOwnAccountBrandingForAccount (same VENUE-01 gate).
  */
 import { NextResponse } from "next/server";
+import {
+  filterProjectsWithAgentAccess,
+  recordAssistantUsage,
+} from "@/lib/billing/assistant-access";
 import { runAssistantWithTools } from "@/lib/assistant/call-assistant";
 import {
   buildSynthesisSystemPrompt,
@@ -262,7 +266,12 @@ export async function GET(request: Request) {
   const windowStartIso = new Date(Date.now() - RETRY_WINDOW_MS).toISOString();
 
   try {
-    const eligible = await loadEligibleActiveProjects(supabase);
+    // COUPLES-PIVOT part 3: agentic runs need assistant access (paid plan,
+    // live trial, or an entitled business account) and an unspent cap.
+    const eligible = await filterProjectsWithAgentAccess(
+      supabase,
+      await loadEligibleActiveProjects(supabase),
+    );
 
     const okSummaryByProject = await loadOkSummariesThisWindow(
       supabase,
@@ -311,6 +320,12 @@ export async function GET(request: Request) {
           readOnly: true,
         },
       );
+      await recordAssistantUsage({
+        accountId: project.account_id,
+        projectId: project.id,
+        source: "synthesis",
+        usage: result.usage,
+      });
 
       const completedAt = new Date().toISOString();
       let outcome: "ok" | "capped" | "error";

@@ -5,6 +5,10 @@
  * cadence differs (daily vs weekly).
  */
 import { NextResponse } from "next/server";
+import {
+  filterProjectsWithAgentAccess,
+  recordAssistantUsage,
+} from "@/lib/billing/assistant-access";
 import { runAssistantWithTools } from "@/lib/assistant/call-assistant";
 import {
   buildImplicationSystemPrompt,
@@ -60,8 +64,13 @@ export async function GET(request: Request) {
   const supabase = createServiceRoleClient();
 
   try {
-    const eligible = (await loadEligibleActiveProjects(supabase)).filter(
-      (project) => !filterProjectId || project.id === filterProjectId,
+    // COUPLES-PIVOT part 3: agentic runs need assistant access (paid plan,
+    // live trial, or an entitled business account) and an unspent cap.
+    const eligible = await filterProjectsWithAgentAccess(
+      supabase,
+      (await loadEligibleActiveProjects(supabase)).filter(
+        (project) => !filterProjectId || project.id === filterProjectId,
+      ),
     );
 
     if (filterProjectId && eligible.length === 0) {
@@ -104,6 +113,12 @@ export async function GET(request: Request) {
           deferWrites: true,
         },
       );
+      await recordAssistantUsage({
+        accountId: project.account_id,
+        projectId: project.id,
+        source: "implication_scan",
+        usage: result.usage,
+      });
 
       const completedAt = new Date().toISOString();
       let outcome: "ok" | "capped" | "error";

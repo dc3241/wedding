@@ -11,6 +11,11 @@ import {
   SegmentedToggle,
   SegmentedToggleItem,
 } from "@/components/ui/topbar";
+import {
+  COUPLE_LIFETIME_PRICE,
+  COUPLE_MONTHLY_PRICE,
+  formatCouplePrice,
+} from "@/lib/billing/couple-pricing";
 import { VENUE_ANNUAL_SAVINGS } from "@/lib/billing/plan-constants";
 import { useState } from "react";
 
@@ -28,7 +33,7 @@ export function CoupleSubscribeButton() {
           onClick={() => setPlan("monthly")}
           className="px-3 py-1 text-[12px] font-semibold"
         >
-          Monthly · $10
+          Monthly · {formatCouplePrice(COUPLE_MONTHLY_PRICE)}
         </SegmentedToggleItem>
         <SegmentedToggleItem
           type="button"
@@ -37,7 +42,7 @@ export function CoupleSubscribeButton() {
           onClick={() => setPlan("lifetime")}
           className="px-3 py-1 text-[12px] font-semibold"
         >
-          Lifetime · $99
+          Lifetime · {formatCouplePrice(COUPLE_LIFETIME_PRICE)}
         </SegmentedToggleItem>
       </SegmentedToggle>
       <form action={createCoupleCheckoutSession}>
@@ -46,8 +51,8 @@ export function CoupleSubscribeButton() {
       </form>
       <p className="max-w-[18rem] text-[13px] leading-snug text-muted sm:text-right">
         {plan === "monthly"
-          ? "$10/mo — cancel anytime from billing."
-          : "$99 once — no recurring charges."}
+          ? `${formatCouplePrice(COUPLE_MONTHLY_PRICE)}/mo — cancel anytime from billing.`
+          : `${formatCouplePrice(COUPLE_LIFETIME_PRICE)} once — no recurring charges.`}
       </p>
     </div>
   );

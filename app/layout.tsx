@@ -6,7 +6,8 @@ import {
   Hanken_Grotesk,
 } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
-import { SITE_NAME, SITE_URL } from "@/lib/seo";
+import { B2B_MARKETING_ENABLED } from "@/lib/marketing-flags";
+import { OG_IMAGES, SITE_NAME, SITE_URL } from "@/lib/seo";
 import "./globals.css";
 
 const figtree = Figtree({
@@ -33,9 +34,12 @@ const greatVibes = Great_Vibes({
   weight: "400",
 });
 
-const defaultTitle = "Wedding Planning CRM";
-const defaultDescription =
-  "First Look is a wedding planning CRM for planners and venues: lead, payment, and the wedding workbook in one platform. Couples can plan here too.";
+const defaultTitle = B2B_MARKETING_ENABLED
+  ? "Wedding Planning CRM"
+  : "Free Wedding Planning App";
+const defaultDescription = B2B_MARKETING_ENABLED
+  ? "First Look is a wedding planning CRM for planners and venues: lead, payment, and the wedding workbook in one platform. Couples can plan here too."
+  : "First Look is a free wedding planning app: a wedding checklist, budget tracker, guest list with online RSVP, seating chart, and wedding website in one place.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -50,18 +54,13 @@ export const metadata: Metadata = {
     url: "/",
     siteName: SITE_NAME,
     type: "website",
-    images: [
-      {
-        url: "/og-image.png",
-        width: 1200,
-        height: 630,
-      },
-    ],
+    images: OG_IMAGES,
   },
   twitter: {
     card: "summary_large_image",
     title: `${defaultTitle} — ${SITE_NAME}`,
     description: defaultDescription,
+    images: OG_IMAGES.map((image) => image.url),
   },
   other: {
     "p:domain_verify": "f9a920c89421ac33d1e95bb6074c7b07",

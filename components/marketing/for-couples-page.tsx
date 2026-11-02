@@ -41,7 +41,7 @@ const CHANGES = [
 const FAQS = [
   {
     q: "Is First Look free for couples?",
-    a: "Yes. You can start free, with no card required. Upgrade to the Couple plan when you want the full workspace for the rest of the planning.",
+    a: "Yes. Every planning tool is free, with no card required. Add the planning assistant whenever you want help doing the work.",
   },
   {
     q: "What if I already have a wedding planner?",

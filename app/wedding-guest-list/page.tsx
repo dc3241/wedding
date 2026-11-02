@@ -1,4 +1,5 @@
 import { IntentPage } from "@/components/marketing/intent-page";
+import { COUPLE_LANDING_PATH } from "@/lib/marketing-flags";
 import { pageMetadata } from "@/lib/seo";
 import type { Metadata } from "next";
 
@@ -65,7 +66,7 @@ export default function WeddingGuestListRoute() {
         },
       ]}
       related={[
-        { href: "/for-couples", label: "Couple workspace" },
+        { href: COUPLE_LANDING_PATH, label: "Wedding planning app" },
         { href: "/wedding-seating-chart", label: "Seating chart" },
         {
           href: "/wedding-planning-checklist",

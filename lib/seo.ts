@@ -1,4 +1,15 @@
 import type { Metadata } from "next";
+import {
+  B2B_MARKETING_ENABLED,
+  isB2bMarketingPath,
+  OG_IMAGE_PATH,
+} from "@/lib/marketing-flags";
+
+/**
+ * Next merges metadata shallowly: a page's `openGraph` replaces the root
+ * layout's, images included. Every pageMetadata() page restates the image.
+ */
+export const OG_IMAGES = [{ url: OG_IMAGE_PATH, width: 1200, height: 630 }];
 
 export const SITE_URL = "https://usefirstlook.app";
 export const SITE_NAME = "First Look";
@@ -8,11 +19,16 @@ export const noIndexRobots = {
   robots: { index: false, follow: false },
 } satisfies Pick<Metadata, "robots">;
 
-export const MARKETING_ROUTES = [
+const ALL_MARKETING_ROUTES = [
   { path: "/", changeFrequency: "weekly", priority: 1 },
   { path: "/for-planners", changeFrequency: "monthly", priority: 0.9 },
   { path: "/for-venues", changeFrequency: "monthly", priority: 0.9 },
   { path: "/for-couples", changeFrequency: "monthly", priority: 0.9 },
+  { path: "/wedding-planning-checklist", changeFrequency: "monthly", priority: 0.8 },
+  { path: "/wedding-budget-tracking", changeFrequency: "monthly", priority: 0.8 },
+  { path: "/wedding-guest-list", changeFrequency: "monthly", priority: 0.8 },
+  { path: "/wedding-seating-chart", changeFrequency: "monthly", priority: 0.8 },
+  { path: "/pricing", changeFrequency: "monthly", priority: 0.8 },
   { path: "/honeybook-alternative", changeFrequency: "monthly", priority: 0.8 },
   { path: "/dubsado-alternative", changeFrequency: "monthly", priority: 0.8 },
   { path: "/wedding-planner-crm", changeFrequency: "monthly", priority: 0.8 },
@@ -26,18 +42,19 @@ export const MARKETING_ROUTES = [
     changeFrequency: "monthly",
     priority: 0.8,
   },
-  {
-    path: "/wedding-planning-checklist",
-    changeFrequency: "monthly",
-    priority: 0.7,
-  },
-  { path: "/wedding-guest-list", changeFrequency: "monthly", priority: 0.7 },
-  { path: "/wedding-seating-chart", changeFrequency: "monthly", priority: 0.7 },
-  { path: "/pricing", changeFrequency: "monthly", priority: 0.7 },
-  { path: "/wedding-budget-tracking", changeFrequency: "monthly", priority: 0.7 },
   { path: "/contact", changeFrequency: "yearly", priority: 0.3 },
   { path: "/privacy", changeFrequency: "yearly", priority: 0.3 },
 ] as const;
+
+/**
+ * Sitemap routes. While B2B marketing is off, planner/venue pages drop out
+ * and /for-couples does too (it 308s to "/", which is the couple landing).
+ */
+export const MARKETING_ROUTES = ALL_MARKETING_ROUTES.filter(
+  (route) =>
+    B2B_MARKETING_ENABLED ||
+    (!isB2bMarketingPath(route.path) && route.path !== "/for-couples"),
+);
 
 type PageMetadataInput = {
   title: string;
@@ -54,7 +71,11 @@ export function pageMetadata({
   absoluteTitle,
 }: PageMetadataInput): Metadata {
   const ogTitle = absoluteTitle ?? `${title} — ${SITE_NAME}`;
+  // Hidden B2B pages stay reachable by URL but leave the index; "follow"
+  // keeps link equity flowing to the couple pages they link to.
+  const hiddenB2b = !B2B_MARKETING_ENABLED && isB2bMarketingPath(path);
   return {
+    ...(hiddenB2b ? { robots: { index: false, follow: true } } : {}),
     title: absoluteTitle ? { absolute: absoluteTitle } : title,
     description,
     alternates: { canonical: path },
@@ -64,11 +85,13 @@ export function pageMetadata({
       url: path,
       siteName: SITE_NAME,
       type: "website",
+      images: OG_IMAGES,
     },
     twitter: {
       card: "summary_large_image",
       title: ogTitle,
       description,
+      images: OG_IMAGES.map((image) => image.url),
     },
   };
 }
@@ -92,21 +115,44 @@ export function organizationJsonLd() {
   };
 }
 
-export function softwareApplicationJsonLd(description: string) {
+type SoftwareOffer = { name: string; price: string };
+
+export function softwareApplicationJsonLd(
+  description: string,
+  options: {
+    /** schema.org category; couple pages use LifestyleApplication. */
+    category?: string;
+    /** Defaults to a single free offer. */
+    offers?: readonly SoftwareOffer[];
+  } = {},
+) {
+  const offers = options.offers ?? [{ name: "Free", price: "0" }];
   return {
     "@context": "https://schema.org",
     "@type": "SoftwareApplication",
     "@id": `${SITE_URL}/#app`,
     name: SITE_NAME,
     url: SITE_URL,
-    applicationCategory: "BusinessApplication",
+    applicationCategory: options.category ?? "BusinessApplication",
     operatingSystem: "Web",
     description,
-    offers: {
+    offers: offers.map((offer) => ({
       "@type": "Offer",
-      price: "0",
+      name: offer.name,
+      price: offer.price,
       priceCurrency: "USD",
-    },
+    })),
+    publisher: { "@id": `${SITE_URL}/#organization` },
+  };
+}
+
+export function websiteJsonLd() {
+  return {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "@id": `${SITE_URL}/#website`,
+    name: SITE_NAME,
+    url: SITE_URL,
     publisher: { "@id": `${SITE_URL}/#organization` },
   };
 }

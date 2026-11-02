@@ -6,6 +6,7 @@ import {
   type HideableTool,
 } from "@/lib/event-type";
 import { PROJECT_TABS } from "@/lib/project-tabs";
+import { emptyTokenUsage, type TokenUsage } from "@/lib/assistant/model-pricing";
 import {
   CHAT_ONLY_READ_TOOLS,
   executeReadTool,
@@ -61,7 +62,12 @@ export type AssistantSideEffects = {
   latestTimelineStartTime: string | null;
 };
 
-export type AssistantRunResult =
+/**
+ * Every result carries the run's summed token usage (all loop iterations),
+ * including failures — the tokens were spent either way. Callers meter it
+ * with recordAssistantUsage (COUPLES-PIVOT part 3).
+ */
+export type AssistantRunResult = (
   | { ok: true; reply: string; status: "completed"; pendingWrites: PendingWrite[] }
   | {
       ok: true;
@@ -75,7 +81,8 @@ export type AssistantRunResult =
       error: string;
       status: "cap_hit" | "error";
       pendingWrites: PendingWrite[];
-    };
+    }
+) & { usage: TokenUsage };
 
 type AnthropicTextBlock = { type: "text"; text: string };
 type AnthropicToolUseBlock = {
@@ -330,6 +337,14 @@ function buildCachedSystem(systemText: string): CachedSystemBlock[] {
   ];
 }
 
+function addUsage(total: TokenUsage, usage: AnthropicUsage | undefined) {
+  if (!usage) return;
+  total.inputTokens += usage.input_tokens ?? 0;
+  total.outputTokens += usage.output_tokens ?? 0;
+  total.cacheCreationInputTokens += usage.cache_creation_input_tokens ?? 0;
+  total.cacheReadInputTokens += usage.cache_read_input_tokens ?? 0;
+}
+
 function logAssistantUsage(usage: AnthropicUsage | undefined, messageCount: number) {
   if (!usage) {
     console.info("[assistant.usage]", { messages: messageCount });
@@ -349,8 +364,8 @@ async function callClaude(
   messages: ClaudeMessage[],
   tools: { name: string }[],
 ): Promise<
-  | { ok: true; content: AnthropicContentBlock[] }
-  | { ok: false; error: string }
+  | { ok: true; content: AnthropicContentBlock[]; usage?: AnthropicUsage }
+  | { ok: false; error: string; usage?: AnthropicUsage }
 > {
   const apiKey = process.env.MODEL_API_KEY;
   if (!apiKey) {
@@ -396,10 +411,11 @@ async function callClaude(
       return {
         ok: false,
         error: "The assistant returned an empty response. Please try again.",
+        usage: data.usage,
       };
     }
 
-    return { ok: true, content: data.content };
+    return { ok: true, content: data.content, usage: data.usage };
   } catch {
     return {
       ok: false,
@@ -456,11 +472,13 @@ export async function runAssistantWithTools(
   ];
   const sideEffects = emptySideEffects();
   const pendingWrites: PendingWrite[] = [];
+  const usage = emptyTokenUsage();
 
   for (let iteration = 0; iteration < MAX_TOOL_ITERATIONS; iteration++) {
     const result = await callClaude(system, messages, tools);
+    addUsage(usage, result.usage);
     if (!result.ok) {
-      return { ...result, status: "error", pendingWrites };
+      return { ok: false, error: result.error, status: "error", pendingWrites, usage };
     }
 
     const toolUses = result.content.filter(
@@ -475,6 +493,7 @@ export async function runAssistantWithTools(
           status: "error",
           error: "The assistant returned an empty response. Please try again.",
           pendingWrites,
+          usage,
         };
       }
       return {
@@ -482,6 +501,7 @@ export async function runAssistantWithTools(
         reply: reply || "",
         status: "completed",
         pendingWrites,
+        usage,
       };
     }
 
@@ -566,6 +586,7 @@ export async function runAssistantWithTools(
       sideEffects,
       reply: buildCapHitReplyWithSideEffects(sideEffects),
       pendingWrites,
+      usage,
     };
   }
 
@@ -575,5 +596,6 @@ export async function runAssistantWithTools(
     error:
       "The assistant needed too many lookups for that question. Try asking something more specific.",
     pendingWrites,
+    usage,
   };
 }

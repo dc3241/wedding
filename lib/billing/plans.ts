@@ -1,5 +1,6 @@
 import "server-only";
 
+import { COUPLE_LIFETIME_LABEL, COUPLE_MONTHLY_LABEL } from "./couple-pricing";
 import type {
   BillingPlanKey,
   CoupleBillingPlan,
@@ -22,12 +23,12 @@ export const BILLING_PLANS = {
     monthly: {
       priceId: process.env.STRIPE_PRICE_COUPLE_MONTHLY ?? "",
       label: "Monthly",
-      amountLabel: "$10/mo",
+      amountLabel: COUPLE_MONTHLY_LABEL,
     },
     lifetime: {
       priceId: process.env.STRIPE_PRICE_COUPLE_LIFETIME ?? "",
       label: "Lifetime",
-      amountLabel: "$99",
+      amountLabel: COUPLE_LIFETIME_LABEL,
     },
   },
   planner: {

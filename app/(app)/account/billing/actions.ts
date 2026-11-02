@@ -55,7 +55,8 @@ function parseCouplePlan(
 }
 
 /**
- * PRICE-08: couple paid Checkout — Monthly ($10/mo subscription) or
+ * PRICE-08: couple paid Checkout — Monthly ($19.99/mo subscription — COUPLES-PIVOT;
+ * charge follows STRIPE_PRICE_COUPLE_MONTHLY) or
  * Lifetime ($99 one-time). No trial_period_days; PRICE-07 owns the free window.
  */
 export async function createCoupleCheckoutSession(formData: FormData) {

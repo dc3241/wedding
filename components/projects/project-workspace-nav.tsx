@@ -4,19 +4,27 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { AssistantNavEntry } from "@/components/assistant/AssistantNavEntry";
+import { RailAssistantSuggestion } from "@/components/assistant/RailAssistantSuggestion";
 import { WorkspaceToolsMenu } from "@/components/projects/workspace-tools-menu";
 import type { AccountKind } from "@/lib/account-context";
 import { cn } from "@/lib/cn";
 import type { HideableTool } from "@/lib/event-type";
 import { projectTabHref, tabsForAccountKind } from "@/lib/project-tabs";
 
-export function ProjectWorkspaceNav({
-  projectId,
-  accountKind,
-  projectMemberRole = null,
-  hiddenTools = [],
-  canCustomize = false,
-}: {
+/**
+ * Planner (business) accounts: horizontal tab strip + Customize + Assistant.
+ * Couples and invited members: their sections, Customize and Assistant live
+ * in the CoupleShell sidebar, so this renders only the one-shot assistant
+ * tab tooltip (it needs the AssistantProvider that wraps this layout).
+ */
+export function ProjectWorkspaceNav(props: ProjectWorkspaceNavProps) {
+  if (props.accountKind !== "business") {
+    return <RailAssistantSuggestion projectId={props.projectId} />;
+  }
+  return <PlannerTabStrip {...props} />;
+}
+
+type ProjectWorkspaceNavProps = {
   projectId: string;
   /** Null = no account (invited member). Do not collapse to `"personal"`. */
   accountKind: AccountKind | null;
@@ -24,7 +32,15 @@ export function ProjectWorkspaceNav({
   projectMemberRole?: string | null;
   hiddenTools?: readonly HideableTool[];
   canCustomize?: boolean;
-}) {
+};
+
+function PlannerTabStrip({
+  projectId,
+  accountKind,
+  projectMemberRole = null,
+  hiddenTools = [],
+  canCustomize = false,
+}: ProjectWorkspaceNavProps) {
   const pathname = usePathname();
   const tabs = tabsForAccountKind(accountKind, projectMemberRole, hiddenTools);
   const scrollerRef = useRef<HTMLDivElement>(null);

@@ -6,6 +6,7 @@ import {
   bootstrapAccountAndProject,
   bootstrapAccountWithVenueIntent,
 } from "@/app/(app)/projects/actions";
+import { B2B_MARKETING_ENABLED } from "@/lib/marketing-flags";
 
 type AccountKindChoice = "couple" | "planner" | "venue";
 
@@ -52,11 +53,11 @@ export function OnboardingForm() {
   return (
     <div className="w-full max-w-lg space-y-6">
       <div className="space-y-1 text-center">
-        <h1 className="text-2xl font-semibold tracking-tight">
-          Welcome
-        </h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Welcome</h1>
         <p className="text-sm text-zinc-500">
-          Let&apos;s set up your account
+          {B2B_MARKETING_ENABLED
+            ? "Let's set up your account"
+            : "Let's set up your wedding"}
         </p>
       </div>
 
@@ -70,33 +71,37 @@ export function OnboardingForm() {
       >
         <input type="hidden" name="accountKind" value={accountKind} />
 
-        <fieldset className="space-y-2">
-          <legend className="text-sm font-medium">
-            How will you use First Look?
-          </legend>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            {KIND_OPTIONS.map((option) => (
-              <label
-                key={option.value}
-                className={`cursor-pointer rounded-[var(--radius-inner)] border px-3 py-3 text-center text-sm font-medium transition-colors ${
-                  choice === option.value
-                    ? "border-accent bg-accent text-surface shadow-raised"
-                    : "border-ring bg-surface text-ink hover:bg-well"
-                }`}
-              >
-                <input
-                  type="radio"
-                  name="kindChoice"
-                  value={option.value}
-                  checked={choice === option.value}
-                  onChange={() => setChoice(option.value)}
-                  className="sr-only"
-                />
-                {option.label}
-              </label>
-            ))}
-          </div>
-        </fieldset>
+        {/* COUPLES-PIVOT: new signups are couples. Planner/venue bootstrap
+            stays wired; flip B2B_MARKETING_ENABLED to offer it again. */}
+        {B2B_MARKETING_ENABLED ? (
+          <fieldset className="space-y-2">
+            <legend className="text-sm font-medium">
+              How will you use First Look?
+            </legend>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              {KIND_OPTIONS.map((option) => (
+                <label
+                  key={option.value}
+                  className={`cursor-pointer rounded-[var(--radius-inner)] border px-3 py-3 text-center text-sm font-medium transition-colors ${
+                    choice === option.value
+                      ? "border-accent bg-accent text-surface shadow-raised"
+                      : "border-ring bg-surface text-ink hover:bg-well"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="kindChoice"
+                    value={option.value}
+                    checked={choice === option.value}
+                    onChange={() => setChoice(option.value)}
+                    className="sr-only"
+                  />
+                  {option.label}
+                </label>
+              ))}
+            </div>
+          </fieldset>
+        ) : null}
 
         <div className="space-y-2">
           <label htmlFor="accountName" className="text-sm font-medium">

@@ -1,5 +1,20 @@
 import { ScrollReveal } from "@/components/marketing/scroll-reveal";
 import { ButtonLink } from "@/components/ui/button";
+import { B2B_MARKETING_ENABLED } from "@/lib/marketing-flags";
+
+const DEFAULT_COPY = B2B_MARKETING_ENABLED
+  ? {
+      eyebrow: "Ready when you are",
+      title: "Run the whole book on one platform.",
+      subhead:
+        "Leads, contracts, invoices, and the wedding workbook. Free to start — no card required.",
+    }
+  : {
+      eyebrow: "Ready when you are",
+      title: "Start planning your wedding today.",
+      subhead:
+        "Checklist, budget, guests, seating, and your wedding website — free. No card required.",
+    };
 
 type FinalCtaProps = {
   eyebrow?: string;
@@ -9,9 +24,9 @@ type FinalCtaProps = {
 
 /** Tier 2: exactly one deep field (`--deep`) per surface — this is it. */
 export function FinalCta({
-  eyebrow = "Ready when you are",
-  title = "Run the whole book on one platform.",
-  subhead = "Leads, contracts, invoices, and the wedding workbook. Free to start — no card required.",
+  eyebrow = DEFAULT_COPY.eyebrow,
+  title = DEFAULT_COPY.title,
+  subhead = DEFAULT_COPY.subhead,
 }: FinalCtaProps) {
   return (
     <section className="mx-auto max-w-6xl px-6 py-16 md:px-10 md:py-24">
@@ -32,7 +47,7 @@ export function FinalCta({
               variant="default"
               className="border-surface bg-surface px-5 py-3 text-[15px] hover:bg-well"
             >
-              Create your account
+              {B2B_MARKETING_ENABLED ? "Create your account" : "Start planning free"}
             </ButtonLink>
             <ButtonLink
               href="/login"
