@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition, useOptimistic } from "react";
 import {
   addDancefloor,
   addSeatingTable,
@@ -57,10 +57,23 @@ function isEditableTarget(target: EventTarget | null) {
 
 export function SeatingWorkspace({
   projectId,
-  tables,
+  tables: serverTables,
   people,
   assignments,
 }: SeatingWorkspaceProps) {
+  // Show a moved table at its new spot immediately and keep it there until
+  // the save round-trip lands, instead of snapping back to the old position
+  // for a moment. React drops the optimistic value when the transition ends
+  // (new server data on success, original position on failure).
+  const [tables, applyOptimisticMove] = useOptimistic(
+    serverTables,
+    (current: SeatingTable[], move: { id: string; posX: number; posY: number }) =>
+      current.map((table) =>
+        table.id === move.id
+          ? { ...table, pos_x: move.posX, pos_y: move.posY }
+          : table,
+      ),
+  );
   const [armedShape, setArmedShape] = useState<SeatingTableShape | null>(null);
   const [armedDancefloor, setArmedDancefloor] = useState(false);
   const [seatCount, setSeatCount] = useState(DEFAULT_SEAT_COUNT_BY_SHAPE.round);
@@ -254,19 +267,21 @@ export function SeatingWorkspace({
 
       const id = selectedTableId;
       startTransition(async () => {
+        applyOptimisticMove({ id, posX, posY });
         await moveSeatingTable(id, { posX, posY });
       });
     },
-    [placing, selectedTableId],
+    [placing, selectedTableId, applyOptimisticMove],
   );
 
   const handleTableDragMove = useCallback(
     (id: string, posX: number, posY: number) => {
       startTransition(async () => {
+        applyOptimisticMove({ id, posX, posY });
         await moveSeatingTable(id, { posX, posY });
       });
     },
-    [],
+    [applyOptimisticMove],
   );
 
   useEffect(() => {
