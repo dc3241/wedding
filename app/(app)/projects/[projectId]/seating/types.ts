@@ -64,10 +64,12 @@ export type RosterPerson = {
   rsvp_status: RsvpStatus;
 };
 
-export const CANVAS_WIDTH = 1200;
-// Provisional work-area height — re-tuned once seats render as numbered
-// positions in the later per-seat rework. Width and table geometry stay put.
-export const CANVAS_HEIGHT = 800;
+// Work area in logical units. Tables keep their logical size, so a larger
+// area means more room to place them (they look proportionally smaller at the
+// same screen width; zoom still works). Existing table positions are
+// unchanged and stay anchored to the top-left.
+export const CANVAS_WIDTH = 1400;
+export const CANVAS_HEIGHT = 1000;
 
 export const NUDGE_STEP = 15;
 export const NUDGE_FINE_STEP = 3;
