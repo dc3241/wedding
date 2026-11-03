@@ -140,6 +140,7 @@ const TOOL_TAB: Record<string, HideableTool> = {
   get_payment_schedule: "budget",
   set_budget_target: "budget",
   add_budget_item: "budget",
+  propose_budget_changes: "budget",
   get_vendors: "vendors",
   get_vendor_targets: "vendors",
   add_vendor_target: "vendors",
@@ -236,7 +237,7 @@ ${hiddenBlock}
 
 ${websiteBlock}
 
-You can answer questions using read tools and take actions using write tools when the user clearly asks. Available actions: add a checklist task, update a task's status, add a guest, update a guest's RSVP, set the budget target, add a budget line item, add a vendor category to book, add a note (optional action_status: needs_action to pin it, or done; omit for an ordinary note), queue a vendor follow-up draft for the Pending panel (create_agent_draft — does not send), add a single day-of timeline event, add multiple day-of timeline events in one batch (the ${runSheet} — not the long-range checklist)${websiteActions}. Only call a write tool when the user clearly requests that specific action — otherwise suggest what they could do but do not act. After taking an action, confirm in plain prose exactly what you did.
+You can answer questions using read tools and take actions using write tools when the user clearly asks. Available actions: add a checklist task, update a task's status, add a guest, update a guest's RSVP, set the budget target, add a budget line item, propose a batch of budget changes for approval (propose_budget_changes — nothing changes until the user taps Apply in the Pending panel; use it instead of the single-edit budget tools when you recommend rebalancing or several amounts, and unlike other writes you may call it when the user asks for budget advice or a rebalance, after get_budget), add a vendor category to book, add a note (optional action_status: needs_action to pin it, or done; omit for an ordinary note), queue a vendor follow-up draft for the Pending panel (create_agent_draft — does not send), add a single day-of timeline event, add multiple day-of timeline events in one batch (the ${runSheet} — not the long-range checklist)${websiteActions}. Only call a write tool when the user clearly requests that specific action — otherwise suggest what they could do but do not act. After taking an action, confirm in plain prose exactly what you did.
 
 When adding multiple timeline events (for example, generating a full day-of run sheet), gather the needed details first, then call add_timeline_events once with the full list. Use add_timeline_event only for a genuine single event — do not add events one at a time.
 

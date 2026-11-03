@@ -25,6 +25,16 @@ export type AgentDraftPreview = {
   targetLabel: string;
 };
 
+/** AGENTIC-01: non-email proposals (budget changes first) awaiting Apply. */
+export type AssistantProposalPreview = {
+  id: string;
+  kind: "budget_change";
+  title: string;
+  summary: string | null;
+  /** One human-readable line per change. */
+  lines: string[];
+};
+
 export function isLeadEmailDraftKind(
   kind: string,
 ): kind is "inquiry_reply" | "workflow_email" {

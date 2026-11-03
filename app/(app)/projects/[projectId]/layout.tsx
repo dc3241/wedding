@@ -2,7 +2,15 @@ import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { AssistantWorkspace } from "@/components/assistant/AssistantWorkspace";
 import { ASSISTANT_HISTORY_WINDOW } from "@/components/assistant/constants";
-import type { AgentDraftPreview, AssistantMessage } from "@/components/assistant/types";
+import type {
+  AgentDraftPreview,
+  AssistantMessage,
+  AssistantProposalPreview,
+} from "@/components/assistant/types";
+import {
+  describeBudgetChange,
+  type BudgetProposalPayload,
+} from "@/lib/assistant/proposals";
 import { TourProvider } from "@/components/tour/TourProvider";
 import { ProjectShell } from "@/components/projects/project-shell";
 import { ProjectWorkspaceNav } from "@/components/projects/project-workspace-nav";
@@ -149,6 +157,28 @@ export default async function ProjectLayout({
       | "approved",
     targetLabel: vendorNameById.get(row.target_id) ?? "Vendor",
   }));
+  // AGENTIC-01: pending non-email proposals (budget changes) for the panel.
+  const proposalsResult = account
+    ? await supabase
+        .from("assistant_proposals")
+        .select("id, kind, title, summary, payload")
+        .eq("account_id", account.accountId)
+        .eq("project_id", projectId)
+        .eq("status", "pending")
+        .order("created_at", { ascending: false })
+    : { data: [] as null | { id: string; kind: string; title: string; summary: string | null; payload: unknown }[] };
+  const pendingProposals: AssistantProposalPreview[] = (proposalsResult.data ?? [])
+    .filter((row) => row.kind === "budget_change")
+    .map((row) => {
+      const changes = (row.payload as BudgetProposalPayload | null)?.changes ?? [];
+      return {
+        id: row.id,
+        kind: "budget_change" as const,
+        title: row.title,
+        summary: row.summary,
+        lines: changes.map(describeBudgetChange),
+      };
+    });
   const dismissedTourKeys = (toursResult.data ?? []).map(
     (row) => row.tour_key,
   );
@@ -169,6 +199,7 @@ export default async function ProjectLayout({
       eventType={eventType}
       initialMessages={initialMessages}
       pendingDrafts={pendingDrafts}
+      pendingProposals={pendingProposals}
       initialAccess={assistantAccess}
     >
       <TourProvider

@@ -8,6 +8,7 @@ import {
 import { addNote, updateNote } from "@/app/(app)/projects/[projectId]/notes/actions";
 import type { NoteActionStatus } from "@/app/(app)/projects/[projectId]/notes/types";
 import { createAgentDraft } from "@/lib/assistant/create-agent-draft";
+import { createBudgetProposal } from "@/lib/assistant/proposals";
 import { addVendorTarget } from "@/app/(app)/projects/[projectId]/vendors/actions";
 import {
   addEvent,
@@ -146,6 +147,57 @@ export const WRITE_TOOL_DEFINITIONS = [
         },
       },
       required: ["planned_amount"] as string[],
+    },
+  },
+  {
+    name: "propose_budget_changes",
+    description:
+      "Propose a set of budget edits for the user to approve. NOTHING changes until they tap Apply in the Pending panel, so use this (not set_budget_target / add_budget_item) whenever you recommend rebalancing, reallocating, or setting several amounts. Call get_budget first so item_ids and current amounts are real. Max 12 changes.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        title: {
+          type: "string",
+          description: "Short title, e.g. 'Rebalance for a $35k budget'.",
+        },
+        summary: {
+          type: "string",
+          description: "One or two sentences on why, in plain prose.",
+        },
+        changes: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              op: {
+                type: "string",
+                enum: ["set_target", "set_planned", "add_item"],
+                description:
+                  "set_target: change the total budget. set_planned: change an existing line's planned amount. add_item: add a new line.",
+              },
+              item_id: {
+                type: "string",
+                description: "Required for set_planned: the budget item id from get_budget.",
+              },
+              category: {
+                type: "string",
+                description: "For add_item: category (e.g. Catering).",
+              },
+              label: {
+                type: "string",
+                description: "For add_item: optional vendor or line name.",
+              },
+              amount: {
+                type: "number",
+                description:
+                  "Dollars: the new total (set_target), new planned amount (set_planned), or planned amount (add_item).",
+              },
+            },
+            required: ["op", "amount"] as string[],
+          },
+        },
+      },
+      required: ["title", "changes"] as string[],
     },
   },
   {
@@ -551,6 +603,26 @@ export async function executeWriteTool(
         label,
         category: category.trim() || null,
         planned_amount: plannedAmount,
+      };
+    }
+
+    case "propose_budget_changes": {
+      const result = await createBudgetProposal(
+        projectId,
+        {
+          title: asString(input.title) ?? "",
+          summary: asString(input.summary),
+          changes: input.changes,
+        },
+        client,
+      );
+      if (!result.ok) return toolError(result.error);
+      return {
+        success: true,
+        action: "propose_budget_changes",
+        proposal_id: result.proposalId,
+        change_count: result.changeCount,
+        note: "Queued in the Pending panel. Nothing has changed yet — tell the user to review and tap Apply.",
       };
     }
 
