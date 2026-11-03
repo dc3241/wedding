@@ -13,6 +13,10 @@ import {
   createReplanProposal,
   createRsvpReminderProposal,
 } from "@/lib/assistant/proposals";
+import {
+  addSeatingRule,
+  createSeatingPlanProposal,
+} from "@/lib/seating/auto-seat";
 import { runVendorEnrichment } from "@/lib/vendor-enrichment";
 import {
   fetchPlaceBasics,
@@ -215,6 +219,36 @@ export const WRITE_TOOL_DEFINITIONS = [
         },
       },
       required: ["title", "changes"] as string[],
+    },
+  },
+  {
+    name: "add_seating_rule",
+    description:
+      "Save a seating rule between two guests: 'together' (sit at the same table) or 'apart' (never share a table). Use when the user clearly states one. Get member_ids from find_guests; never guess. Households already sit together automatically, so only add 'together' for people in different households.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        kind: { type: "string", enum: ["together", "apart"] },
+        member_a_id: { type: "string", description: "member_id from find_guests" },
+        member_b_id: { type: "string", description: "member_id from find_guests" },
+        note: { type: "string", description: "Optional short reason." },
+      },
+      required: ["kind", "member_a_id", "member_b_id"] as string[],
+    },
+  },
+  {
+    name: "propose_seating_plan",
+    description:
+      "Propose seats for guests who don't have one, for the user to approve. NOTHING changes until they tap Apply in the Pending panel. Only unseated people move; anyone already seated stays put. Households sit together, 'together'/'apart' rules are honored, and people cluster by partner side. Only standard tables are used (head, sweetheart and dance floor are skipped). By default only guests who RSVPed yes are seated; set include_pending to also seat people who haven't answered.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        include_pending: {
+          type: "boolean",
+          description: "Also seat guests whose RSVP is still pending. Default false.",
+        },
+      },
+      required: [] as string[],
     },
   },
   {
@@ -810,6 +844,38 @@ export async function executeWriteTool(
         proposal_id: result.proposalId,
         change_count: result.changeCount,
         note: "Queued in the Pending panel. Nothing has changed yet — tell the user to review and tap Apply.",
+      };
+    }
+
+    case "add_seating_rule": {
+      const result = await addSeatingRule(
+        projectId,
+        {
+          kind: asString(input.kind) ?? "",
+          memberA: asString(input.member_a_id)?.trim() ?? "",
+          memberB: asString(input.member_b_id)?.trim() ?? "",
+          note: asString(input.note),
+        },
+        client,
+      );
+      if (!result.ok) return toolError(result.error);
+      return { success: true, action: "add_seating_rule", rule_id: result.ruleId };
+    }
+
+    case "propose_seating_plan": {
+      const result = await createSeatingPlanProposal(
+        projectId,
+        { includePending: input.include_pending === true },
+        client,
+      );
+      if (!result.ok) return toolError(result.error);
+      return {
+        success: true,
+        action: "propose_seating_plan",
+        proposal_id: result.proposalId,
+        will_seat: result.seated,
+        not_seated: result.unplaced,
+        note: "Queued in the Pending panel. Nothing has moved yet — tell the user to review and tap Apply. Mention anyone who could not be seated and why.",
       };
     }
 

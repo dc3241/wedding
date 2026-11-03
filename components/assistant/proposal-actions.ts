@@ -16,6 +16,7 @@ import {
   type RsvpReminderPayload,
   type VendorQuotePayload,
 } from "@/lib/assistant/proposals";
+import type { SeatingPlanPayload } from "@/lib/seating/auto-seat";
 import { sendEmail } from "@/lib/email/send";
 import { buildRsvpReminderEmail } from "@/lib/email/rsvp-reminder";
 import { appOrigin } from "@/lib/url";
@@ -35,6 +36,7 @@ type ProposalRow = {
     | VendorQuotePayload
     | ChecklistReplanPayload
     | RsvpReminderPayload
+    | SeatingPlanPayload
     | null;
 };
 
@@ -91,6 +93,9 @@ export async function applyAssistantProposal(
   }
   if (proposal.kind === "checklist_replan") {
     return applyChecklistReplan(supabase, proposal, user.id);
+  }
+  if (proposal.kind === "seating_plan") {
+    return applySeatingPlan(supabase, proposal, user.id);
   }
   if (proposal.kind === "rsvp_reminder") {
     return applyRsvpReminder(supabase, proposal, user.id, user.email ?? null);
@@ -348,6 +353,114 @@ async function applyChecklistReplan(
   revalidatePath(`/projects/${proposal.project_id}`, "layout");
   revalidatePath(`/projects/${proposal.project_id}/checklist`);
   revalidatePath(`/projects/${proposal.project_id}/calendar`);
+  return { ok: true };
+}
+
+/**
+ * AGENTIC-07: seat the proposed people in one insert. Stale check first:
+ * every person must still be unseated, every table must still exist with
+ * the seat free. Anything that moved since the proposal fails the whole
+ * plan, so nobody is ever double-seated or bumped.
+ */
+async function applySeatingPlan(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  proposal: ProposalRow,
+  userId: string,
+): Promise<ProposalActionResult> {
+  if (proposal.status !== "pending") {
+    return { ok: false, error: "This proposal was already handled." };
+  }
+  const placements = (proposal.payload as SeatingPlanPayload | null)?.placements ?? [];
+  if (placements.length === 0) return { ok: false, error: "This plan has no seats." };
+
+  const tableIds = [...new Set(placements.map((p) => p.tableId))];
+  const memberIds = placements.map((p) => p.memberId);
+
+  const [tablesResult, taken, seatedAlready, membersResult] = await Promise.all([
+    supabase
+      .from("seating_tables")
+      .select("id, seat_count, kind")
+      .eq("project_id", proposal.project_id)
+      .in("id", tableIds),
+    supabase
+      .from("seating_assignments")
+      .select("table_id, seat_index")
+      .eq("project_id", proposal.project_id)
+      .in("table_id", tableIds),
+    supabase
+      .from("seating_assignments")
+      .select("guest_member_id")
+      .eq("project_id", proposal.project_id)
+      .in("guest_member_id", memberIds),
+    supabase
+      .from("guest_members")
+      .select("id")
+      .eq("project_id", proposal.project_id)
+      .in("id", memberIds),
+  ]);
+  for (const r of [tablesResult, taken, seatedAlready, membersResult]) {
+    if (r.error) return { ok: false, error: r.error.message };
+  }
+
+  const tableById = new Map((tablesResult.data ?? []).map((t) => [t.id as string, t]));
+  const takenKeys = new Set(
+    (taken.data ?? []).map((a) => `${a.table_id}:${a.seat_index}`),
+  );
+  const existingMembers = new Set((membersResult.data ?? []).map((m) => m.id as string));
+
+  let stale = (seatedAlready.data ?? []).length > 0;
+  for (const p of placements) {
+    const table = tableById.get(p.tableId);
+    if (
+      !table ||
+      table.kind !== "standard" ||
+      p.seatIndex < 1 ||
+      p.seatIndex > Number(table.seat_count) ||
+      takenKeys.has(`${p.tableId}:${p.seatIndex}`) ||
+      !existingMembers.has(p.memberId)
+    ) {
+      stale = true;
+      break;
+    }
+  }
+  if (stale) {
+    const message =
+      "Your seating or guest list changed since this was proposed. Ask the assistant to propose it again.";
+    await failProposal(supabase, proposal.id, message, userId);
+    revalidatePath(`/projects/${proposal.project_id}`, "layout");
+    return { ok: false, error: message };
+  }
+
+  const { data: claimed, error: claimError } = await supabase
+    .from("assistant_proposals")
+    .update({ status: "applied", resolved_at: new Date().toISOString(), resolved_by: userId })
+    .eq("id", proposal.id)
+    .eq("status", "pending")
+    .select("id")
+    .maybeSingle();
+  if (claimError) return { ok: false, error: claimError.message };
+  if (!claimed) return { ok: false, error: "This proposal was already handled." };
+
+  // One statement: all seats or none.
+  const { error: insertError } = await supabase.from("seating_assignments").insert(
+    placements.map((p) => ({
+      project_id: proposal.project_id,
+      table_id: p.tableId,
+      guest_member_id: p.memberId,
+      seat_index: p.seatIndex,
+    })),
+  );
+  if (insertError) {
+    await failProposal(supabase, proposal.id, insertError.message, userId);
+    revalidatePath(`/projects/${proposal.project_id}`, "layout");
+    return {
+      ok: false,
+      error: "Couldn't seat everyone (the seating changed). Nothing was moved; ask the assistant to propose it again.",
+    };
+  }
+
+  revalidatePath(`/projects/${proposal.project_id}`, "layout");
+  revalidatePath(`/projects/${proposal.project_id}/seating`);
   return { ok: true };
 }
 

@@ -8,6 +8,10 @@ import type {
   AssistantProposalPreview,
 } from "@/components/assistant/types";
 import {
+  describeSeatingPlan,
+  type SeatingPlanPayload,
+} from "@/lib/seating/auto-seat";
+import {
   describeBudgetChange,
   describeReplanChange,
   describeRsvpReminder,
@@ -179,9 +183,19 @@ export default async function ProjectLayout({
         row.kind === "budget_change" ||
         row.kind === "vendor_quote" ||
         row.kind === "checklist_replan" ||
-        row.kind === "rsvp_reminder",
+        row.kind === "rsvp_reminder" ||
+        row.kind === "seating_plan",
     )
     .map((row) => {
+      if (row.kind === "seating_plan") {
+        return {
+          id: row.id,
+          kind: "seating_plan" as const,
+          title: row.title,
+          summary: row.summary,
+          lines: describeSeatingPlan(row.payload as SeatingPlanPayload),
+        };
+      }
       if (row.kind === "rsvp_reminder") {
         return {
           id: row.id,

@@ -13,6 +13,7 @@ import {
 import { placesTextSearch } from "@/lib/places-text-search";
 import { SCOUT_CATEGORY_IDS, scoutVendors } from "@/lib/vendors/scout";
 import { computeBookingWindows } from "@/lib/booking-windows";
+import { findGuestMembers } from "@/lib/seating/auto-seat";
 import { resolveProjectLocationHint } from "@/lib/resolve-project-location-hint";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { isTaskPastDue } from "@/lib/task-overdue";
@@ -152,6 +153,28 @@ export const READ_TOOL_DEFINITIONS = [
       type: "object" as const,
       properties: {},
       required: [] as string[],
+    },
+  },
+  {
+    name: "get_seating",
+    description:
+      "Seating overview: each table (label, kind, seats, how many seated), how many attending / pending guests still have no seat, and the saved keep-together / keep-apart rules by name. Use before proposing a seating plan or answering seating questions.",
+    input_schema: {
+      type: "object" as const,
+      properties: {},
+      required: [] as string[],
+    },
+  },
+  {
+    name: "find_guests",
+    description:
+      "Look up guest members by name (2+ characters) and get their member_id, needed to add a seating rule. Returns up to 10 matches with household.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        query: { type: "string", description: "Part of the person's name." },
+      },
+      required: ["query"] as string[],
     },
   },
   {
@@ -1098,6 +1121,72 @@ function isNearbyPlaceCategory(value: string): value is NearbyPlaceCategory {
   return (NEARBY_PLACE_CATEGORIES as readonly string[]).includes(value);
 }
 
+async function getSeating(supabase: SupabaseClient, projectId: string) {
+  const [tablesResult, assignmentsResult, membersResult, rulesResult] =
+    await Promise.all([
+      supabase
+        .from("seating_tables")
+        .select("id, label, kind, seat_count")
+        .eq("project_id", projectId)
+        .order("created_at", { ascending: true }),
+      supabase
+        .from("seating_assignments")
+        .select("table_id, guest_member_id")
+        .eq("project_id", projectId),
+      supabase
+        .from("guest_members")
+        .select("id, name, guests ( rsvp_status )")
+        .eq("project_id", projectId),
+      supabase
+        .from("seating_rules")
+        .select("kind, member_a, member_b")
+        .eq("project_id", projectId),
+    ]);
+  for (const r of [tablesResult, assignmentsResult, membersResult, rulesResult]) {
+    if (r.error) return { error: r.error.message };
+  }
+
+  const seatedBy = new Map<string, number>();
+  const seatedIds = new Set<string>();
+  for (const a of assignmentsResult.data ?? []) {
+    seatedBy.set(a.table_id as string, (seatedBy.get(a.table_id as string) ?? 0) + 1);
+    if (a.guest_member_id) seatedIds.add(a.guest_member_id as string);
+  }
+  const tables = (tablesResult.data ?? [])
+    .filter((t) => t.kind !== "dancefloor")
+    .map((t) => ({
+      label: t.label,
+      kind: t.kind,
+      seats: t.seat_count,
+      seated: seatedBy.get(t.id as string) ?? 0,
+    }));
+
+  const nameById = new Map<string, string>();
+  let attendingUnseated = 0;
+  let pendingUnseated = 0;
+  for (const m of membersResult.data ?? []) {
+    nameById.set(m.id as string, (m.name as string | null)?.trim() || "Guest");
+    if (seatedIds.has(m.id as string)) continue;
+    const guest = Array.isArray(m.guests) ? m.guests[0] : m.guests;
+    if (guest?.rsvp_status === "attending") attendingUnseated += 1;
+    else if (guest?.rsvp_status === "pending") pendingUnseated += 1;
+  }
+
+  const rules = (rulesResult.data ?? []).slice(0, 40).map((r) => ({
+    kind: r.kind,
+    people: [nameById.get(r.member_a as string) ?? "Guest", nameById.get(r.member_b as string) ?? "Guest"],
+  }));
+
+  return {
+    tables,
+    standard_table_seats: tables
+      .filter((t) => t.kind === "standard")
+      .reduce((n, t) => n + Number(t.seats), 0),
+    unseated: { attending: attendingUnseated, pending: pendingUnseated },
+    rules,
+  };
+}
+
 async function getBookingWindows(supabase: SupabaseClient, projectId: string) {
   const { data: project } = await supabase
     .from("projects")
@@ -1231,6 +1320,12 @@ export async function executeReadTool(
       return scoutVendors(supabase, projectId, input);
     case "get_booking_windows":
       return getBookingWindows(supabase, projectId);
+    case "get_seating":
+      return getSeating(supabase, projectId);
+    case "find_guests": {
+      const query = typeof input.query === "string" ? input.query : "";
+      return findGuestMembers(supabase, projectId, query);
+    }
     case "get_files":
       return getFiles(supabase, projectId);
     case "get_file": {

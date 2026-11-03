@@ -145,6 +145,10 @@ const TOOL_TAB: Record<string, HideableTool> = {
   get_booking_windows: "vendors",
   propose_checklist_replan: "checklist",
   propose_rsvp_reminders: "guests",
+  get_seating: "seating",
+  find_guests: "seating",
+  add_seating_rule: "seating",
+  propose_seating_plan: "seating",
   add_vendors_to_shortlist: "vendors",
   get_vendors: "vendors",
   get_vendor_targets: "vendors",
@@ -205,6 +209,8 @@ function buildSystemPrompt(ctx: AssistantContext): string {
 
   const rsvpBlock = `RSVP follow-up: when the user asks about non-responders or wants to chase RSVPs, call get_guests (pending items show has_email, has_phone, last_reminded_at), then propose_rsvp_reminders. It emails each pending household with an email on file (never more than once every 7 days), each with its own RSVP link; nothing is sent until the user approves in the Pending panel. Keep the note short and warm in the couple's voice, with no links and no deadline or detail you were not given. After queuing, say how many will be emailed and name the households with no email; for those, offer a short text message the couple can send themselves, and suggest adding emails on the Guests tab. Never claim a reminder was sent before they approve.`;
 
+  const seatingBlock = `Seating: to help seat guests, call get_seating first (tables, who is unseated, saved rules). Ask about anyone who must sit together or apart that is not already a rule; when the user states one, find the people with find_guests (never guess ids) and save it with add_seating_rule. Households always sit together. Then use propose_seating_plan: it only seats guests who have no seat, uses standard tables only, and nothing moves until the user taps Apply in the Pending panel. By default only guests who RSVPed yes are seated; offer include_pending if many are still pending. Report anyone who could not be seated and why (for example not enough seats, or a rule conflict) and suggest a fix such as adding a table. If there are no standard tables, tell them to add tables on the Seating tab. Never describe a plan as final before they apply it.`;
+
   const websiteBlock = !websiteOn
     ? `The website tool is turned off for this ${noun}. Do not offer to build or fill a website, and do not point them to the Website tab.`
     : event
@@ -255,6 +261,8 @@ ${vendorScoutBlock}
 ${planningBlock}
 
 ${rsvpBlock}
+
+${seatingBlock}
 
 You can answer questions using read tools and take actions using write tools when the user clearly asks. Available actions: add a checklist task, update a task's status, add a guest, update a guest's RSVP, set the budget target, add a budget line item, propose a batch of budget changes for approval (propose_budget_changes — nothing changes until the user taps Apply in the Pending panel; use it instead of the single-edit budget tools when you recommend rebalancing or several amounts, and unlike other writes you may call it when the user asks for budget advice or a rebalance, after get_budget), add a vendor category to book, add a note (optional action_status: needs_action to pin it, or done; omit for an ordinary note), queue a vendor follow-up draft for the Pending panel (create_agent_draft — does not send), add a single day-of timeline event, add multiple day-of timeline events in one batch (the ${runSheet} — not the long-range checklist)${websiteActions}. Only call a write tool when the user clearly requests that specific action — otherwise suggest what they could do but do not act. After taking an action, confirm in plain prose exactly what you did.
 

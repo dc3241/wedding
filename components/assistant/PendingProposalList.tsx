@@ -66,7 +66,9 @@ function ProposalRow({
             ? "Checklist update"
             : proposal.kind === "rsvp_reminder"
               ? "RSVP reminder"
-              : "Budget suggestion"}
+              : proposal.kind === "seating_plan"
+                ? "Seating plan"
+                : "Budget suggestion"}
       </p>
       <h3 className="mt-1 text-[15px] font-medium text-ink">{proposal.title}</h3>
       {proposal.summary ? (
