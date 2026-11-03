@@ -157,7 +157,11 @@ export async function approveAgentDraft(
     };
   }
 
-  const sent = await sendOutreachMessage(message.id);
+  // AGENTIC-03: assistant vendor drafts route replies through First Look
+  // so quotes can be captured; lead emails keep the sender's own inbox.
+  const sent = await sendOutreachMessage(message.id, {
+    captureReplies: draft.kind === "vendor_outreach",
+  });
   if (!sent.ok) {
     revalidateDraftSurfaces(draft);
     return sent;

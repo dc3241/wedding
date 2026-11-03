@@ -60,7 +60,7 @@ function ProposalRow({
   return (
     <li className="rounded-[var(--radius-inner)] bg-well px-4 py-3 shadow-recessed">
       <p className="text-[12px] font-semibold uppercase tracking-[0.09em] text-accent">
-        Budget suggestion
+        {proposal.kind === "vendor_quote" ? "Vendor reply" : "Budget suggestion"}
       </p>
       <h3 className="mt-1 text-[15px] font-medium text-ink">{proposal.title}</h3>
       {proposal.summary ? (
@@ -83,7 +83,7 @@ function ProposalRow({
           disabled={isPending}
           onClick={() => run("apply")}
         >
-          Apply
+          {proposal.kind === "vendor_quote" ? "Save quote" : "Apply"}
         </Button>
         <Button
           type="button"

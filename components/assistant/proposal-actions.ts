@@ -9,6 +9,7 @@ import {
 import type {
   BudgetChange,
   BudgetProposalPayload,
+  VendorQuotePayload,
 } from "@/lib/assistant/proposals";
 import { createClient } from "@/utils/supabase/server";
 
@@ -19,7 +20,7 @@ type ProposalRow = {
   project_id: string;
   kind: string;
   status: string;
-  payload: BudgetProposalPayload | null;
+  payload: BudgetProposalPayload | VendorQuotePayload | null;
 };
 
 function isBudgetChange(value: unknown): value is BudgetChange {
@@ -70,6 +71,9 @@ export async function applyAssistantProposal(
   if (!data) return { ok: false, error: "Proposal not found." };
 
   const proposal = data as ProposalRow;
+  if (proposal.kind === "vendor_quote") {
+    return applyVendorQuote(supabase, proposal, user.id);
+  }
   if (proposal.kind !== "budget_change") {
     return { ok: false, error: "This proposal type can't be applied yet." };
   }
@@ -77,7 +81,9 @@ export async function applyAssistantProposal(
     return { ok: false, error: "This proposal was already handled." };
   }
 
-  const changes = (proposal.payload?.changes ?? []).filter(isBudgetChange);
+  const changes = (
+    (proposal.payload as BudgetProposalPayload | null)?.changes ?? []
+  ).filter(isBudgetChange);
   if (changes.length === 0) {
     return { ok: false, error: "This proposal has no changes." };
   }
@@ -149,6 +155,75 @@ export async function applyAssistantProposal(
   }
 
   revalidatePath(`/projects/${proposal.project_id}`, "layout");
+  return { ok: true };
+}
+
+/**
+ * AGENTIC-03: save an approved vendor quote onto the project vendor.
+ * quoted_price is only set when the vendor gave a flat total; per-person,
+ * hourly and "starting at" prices stay in quote_details so budget math never
+ * treats them as a total.
+ */
+async function applyVendorQuote(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  proposal: ProposalRow,
+  userId: string,
+): Promise<ProposalActionResult> {
+  if (proposal.status !== "pending") {
+    return { ok: false, error: "This proposal was already handled." };
+  }
+  const payload = proposal.payload as VendorQuotePayload | null;
+  if (!payload?.projectVendorId || !payload.quote) {
+    return { ok: false, error: "This proposal has no quote." };
+  }
+
+  const { data: claimed, error: claimError } = await supabase
+    .from("assistant_proposals")
+    .update({
+      status: "applied",
+      resolved_at: new Date().toISOString(),
+      resolved_by: userId,
+    })
+    .eq("id", proposal.id)
+    .eq("status", "pending")
+    .select("id")
+    .maybeSingle();
+  if (claimError) return { ok: false, error: claimError.message };
+  if (!claimed) return { ok: false, error: "This proposal was already handled." };
+
+  const { quote } = payload;
+  const updates: Record<string, unknown> = {
+    quote_details: {
+      ...quote,
+      outreachMessageId: payload.outreachMessageId,
+      approvedAt: new Date().toISOString(),
+    },
+  };
+  if (quote.price !== null && quote.priceBasis === "total") {
+    updates.quoted_price = quote.price;
+  }
+
+  const { data: updated, error: updateError } = await supabase
+    .from("project_vendors")
+    .update(updates)
+    .eq("id", payload.projectVendorId)
+    .eq("project_id", proposal.project_id)
+    .select("id")
+    .maybeSingle();
+
+  if (updateError || !updated) {
+    await failProposal(
+      supabase,
+      proposal.id,
+      updateError?.message ?? "Vendor not found on this wedding.",
+      userId,
+    );
+    revalidatePath(`/projects/${proposal.project_id}`, "layout");
+    return { ok: false, error: "Could not save this quote. Try again from the vendor's page." };
+  }
+
+  revalidatePath(`/projects/${proposal.project_id}`, "layout");
+  revalidatePath(`/projects/${proposal.project_id}/vendors`);
   return { ok: true };
 }
 

@@ -13,6 +13,7 @@ import {
   parseFromHeader,
   slugFromRecipientAddresses,
 } from "@/lib/inquiry/parse";
+import { handleVendorReply } from "@/lib/vendors/handle-vendor-reply";
 import { createServiceRoleClient } from "@/utils/supabase/service-role";
 
 export const runtime = "nodejs";
@@ -67,6 +68,12 @@ export async function POST(req: Request) {
   if (!domain) {
     console.info("resend-inbound: INQUIRY_INBOUND_DOMAIN unset; ignoring.");
     return NextResponse.json({ received: true, ignored: "domain_unconfigured" });
+  }
+
+  // AGENTIC-03: vendor replies (v-{token}@domain) are routed before slugs.
+  const vendorReply = await handleVendorReply(event, resend, domain);
+  if (vendorReply.handled) {
+    return NextResponse.json({ received: true, vendorReply: vendorReply.result });
   }
 
   const slug = slugFromRecipientAddresses(recipients, domain);

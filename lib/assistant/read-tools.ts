@@ -639,7 +639,7 @@ async function getVendors(supabase: SupabaseClient, projectId: string) {
   const { data: rows, error } = await supabase
     .from("project_vendors")
     .select(
-      "id, status, quoted_price, vendors(id, name, category, contact_email, website)",
+      "id, status, quoted_price, quote_details, vendors(id, name, category, contact_email, website)",
     )
     .eq("project_id", projectId)
     .order("created_at", { ascending: true });
@@ -657,6 +657,7 @@ async function getVendors(supabase: SupabaseClient, projectId: string) {
           row.quoted_price === null || row.quoted_price === undefined
             ? null
             : Number(row.quoted_price),
+        quote_details: (row.quote_details ?? null) as Record<string, unknown> | null,
         vendor: {
           id: vendor.id,
           name: vendor.name,
@@ -681,6 +682,17 @@ async function getVendors(supabase: SupabaseClient, projectId: string) {
     category: row.vendor.category,
     status: row.status,
     quote: row.quoted_price,
+    // Approved emailed quote (AGENTIC-03). price_basis says what price means.
+    quote_details: row.quote_details
+      ? {
+          availability: row.quote_details.availability ?? null,
+          price: row.quote_details.price ?? null,
+          price_basis: row.quote_details.priceBasis ?? null,
+          deposit: row.quote_details.deposit ?? null,
+          inclusions: row.quote_details.inclusions ?? [],
+          conditions: row.quote_details.conditions ?? null,
+        }
+      : null,
     primary_contact: row.vendor.contact_email ?? row.vendor.website ?? null,
   }));
 

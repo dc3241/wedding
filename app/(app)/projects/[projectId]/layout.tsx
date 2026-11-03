@@ -9,7 +9,9 @@ import type {
 } from "@/components/assistant/types";
 import {
   describeBudgetChange,
+  describeVendorQuote,
   type BudgetProposalPayload,
+  type VendorQuotePayload,
 } from "@/lib/assistant/proposals";
 import { TourProvider } from "@/components/tour/TourProvider";
 import { ProjectShell } from "@/components/projects/project-shell";
@@ -168,8 +170,17 @@ export default async function ProjectLayout({
         .order("created_at", { ascending: false })
     : { data: [] as null | { id: string; kind: string; title: string; summary: string | null; payload: unknown }[] };
   const pendingProposals: AssistantProposalPreview[] = (proposalsResult.data ?? [])
-    .filter((row) => row.kind === "budget_change")
+    .filter((row) => row.kind === "budget_change" || row.kind === "vendor_quote")
     .map((row) => {
+      if (row.kind === "vendor_quote") {
+        return {
+          id: row.id,
+          kind: "vendor_quote" as const,
+          title: row.title,
+          summary: row.summary,
+          lines: describeVendorQuote(row.payload as VendorQuotePayload),
+        };
+      }
       const changes = (row.payload as BudgetProposalPayload | null)?.changes ?? [];
       return {
         id: row.id,

@@ -188,3 +188,54 @@ export async function createBudgetProposal(
 
   return { ok: true, proposalId: inserted.id, changeCount: changes.length };
 }
+
+/** AGENTIC-03 — a vendor's emailed quote, awaiting the couple's OK. */
+export type VendorQuotePayload = {
+  projectVendorId: string;
+  vendorName: string;
+  outreachMessageId: string | null;
+  quote: {
+    availability: "available" | "unavailable" | "unclear";
+    price: number | null;
+    priceBasis: "total" | "starting_at" | "per_person" | "hourly" | "unclear" | null;
+    deposit: number | null;
+    inclusions: string[];
+    conditions: string | null;
+    questionsForCouple: string[];
+    summary: string;
+  };
+};
+
+const BASIS_LABEL: Record<string, string> = {
+  total: "total",
+  starting_at: "starting at",
+  per_person: "per person",
+  hourly: "per hour",
+  unclear: "basis unclear",
+};
+
+/** One human line per fact, shared by the Pending card and the assistant. */
+export function describeVendorQuote(payload: VendorQuotePayload): string[] {
+  const { quote } = payload;
+  const lines: string[] = [];
+  if (quote.availability !== "unclear") {
+    lines.push(
+      quote.availability === "available"
+        ? "Says your date is available"
+        : "Says your date is NOT available",
+    );
+  }
+  if (quote.price !== null) {
+    const basis = quote.priceBasis ? ` (${BASIS_LABEL[quote.priceBasis]})` : "";
+    lines.push(`Price: ${money(quote.price)}${basis}`);
+  }
+  if (quote.deposit !== null) lines.push(`Deposit: ${money(quote.deposit)}`);
+  if (quote.inclusions.length > 0) {
+    lines.push(`Includes: ${quote.inclusions.join(", ")}`);
+  }
+  if (quote.conditions) lines.push(quote.conditions);
+  for (const question of quote.questionsForCouple) {
+    lines.push(`They asked: ${question}`);
+  }
+  return lines;
+}
