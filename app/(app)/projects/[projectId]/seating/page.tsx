@@ -1,3 +1,4 @@
+import { SeatingRulesCard } from "./SeatingRulesCard";
 import { SeatingWorkspace } from "./SeatingWorkspace";
 import type {
   RosterPerson,
@@ -49,6 +50,7 @@ export default async function SeatingPage({
     { data: memberRows },
     { data: assignmentRows },
     { data: project },
+    { data: ruleRows },
   ] = await Promise.all([
     supabase
       .from("seating_tables")
@@ -71,6 +73,11 @@ export default async function SeatingPage({
       .select("name, wedding_date")
       .eq("id", projectId)
       .maybeSingle(),
+    supabase
+      .from("seating_rules")
+      .select("id, kind, member_a, member_b")
+      .eq("project_id", projectId)
+      .order("created_at", { ascending: true }),
   ]);
 
   const tables: SeatingTable[] = (tableRows ?? []).flatMap((row) => {
@@ -140,6 +147,32 @@ export default async function SeatingPage({
     },
   );
 
+  const personName = new Map(
+    people.map((p) => [p.id, p.name?.trim() || "Guest"]),
+  );
+  const personLabel = new Map(
+    people.map((p) => [
+      p.id,
+      `${p.name?.trim() || "Guest"}${p.household_name ? ` (${p.household_name})` : ""}`,
+    ]),
+  );
+  const rules = (ruleRows ?? []).flatMap((row) =>
+    row.kind === "together" || row.kind === "apart"
+      ? [
+          {
+            id: row.id as string,
+            kind: row.kind as "together" | "apart",
+            aName: personName.get(row.member_a as string) ?? "Guest",
+            bName: personName.get(row.member_b as string) ?? "Guest",
+          },
+        ]
+      : [],
+  );
+  const rulePeople = people.map((p) => ({
+    id: p.id,
+    label: personLabel.get(p.id) ?? "Guest",
+  }));
+
   const projectName = project?.name ?? "Your wedding";
   const weddingDate = project?.wedding_date ?? null;
   const eyebrow = projectWorkspaceEyebrow(projectName, weddingDate);
@@ -170,6 +203,8 @@ export default async function SeatingPage({
         people={people}
         assignments={assignments}
       />
+
+      <SeatingRulesCard projectId={projectId} rules={rules} people={rulePeople} />
     </div>
   );
 }

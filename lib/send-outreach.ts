@@ -1,5 +1,6 @@
 import { getGmailAccessForSend } from "@/lib/gmail-credentials";
 import { sendGmailMessage } from "@/lib/gmail-send";
+import { vendorReplyAddress } from "@/lib/vendors/reply-address";
 import { createClient } from "@/utils/supabase/server";
 
 type SendOutcome =
@@ -24,8 +25,8 @@ type MessageRow = {
   project_vendor_id: string | null;
   lead_id: string | null;
   project_vendors:
-    | { vendors: VendorEmbed | VendorEmbed[] | null }
-    | { vendors: VendorEmbed | VendorEmbed[] | null }[]
+    | { confirm_token: string | null; vendors: VendorEmbed | VendorEmbed[] | null }
+    | { confirm_token: string | null; vendors: VendorEmbed | VendorEmbed[] | null }[]
     | null;
   leads: LeadEmbed | LeadEmbed[] | null;
 };
@@ -37,6 +38,14 @@ function asOne<T>(value: T | T[] | null | undefined): T | null {
 
 export async function sendOutreachMessage(
   messageId: string,
+  options?: {
+    /**
+     * AGENTIC-03: route the vendor's reply through First Look (Reply-To) so
+     * quotes can be captured. Off by default — ordinary outreach keeps replies
+     * in the sender's own inbox.
+     */
+    captureReplies?: boolean;
+  },
 ): Promise<SendOutcome> {
   const supabase = await createClient();
 
@@ -60,6 +69,7 @@ export async function sendOutreachMessage(
       project_vendor_id,
       lead_id,
       project_vendors (
+        confirm_token,
         vendors ( contact_email, name )
       ),
       leads (
@@ -92,12 +102,19 @@ export async function sendOutreachMessage(
     return { ok: false, error: "Subject is required before sending." };
   }
 
+  const pvForReply = asOne(row.project_vendors);
+  const replyTo =
+    options?.captureReplies && row.project_vendor_id
+      ? vendorReplyAddress(pvForReply?.confirm_token ?? null)
+      : null;
+
   const sendResult = await sendGmailMessage(
     auth.accessToken,
     auth.fromEmail,
     recipient.toEmail,
     subject,
     row.body,
+    replyTo ? { replyTo } : undefined,
   );
 
   if (!sendResult.ok) {

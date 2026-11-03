@@ -16,13 +16,15 @@ function buildRfc2822Message(
   fromEmail: string,
   toEmail: string,
   subject: string,
-  body: string
+  body: string,
+  replyTo?: string,
 ): string {
   const normalizedBody = body.replace(/\r?\n/g, "\r\n");
 
   return [
     `From: ${fromEmail}`,
     `To: ${toEmail}`,
+    ...(replyTo ? [`Reply-To: ${replyTo}`] : []),
     `Subject: ${encodeMimeHeader(subject)}`,
     "MIME-Version: 1.0",
     "Content-Type: text/plain; charset=UTF-8",
@@ -37,11 +39,18 @@ export async function sendGmailMessage(
   fromEmail: string,
   toEmail: string,
   subject: string,
-  body: string
+  body: string,
+  options?: { replyTo?: string },
 ): Promise<
   { ok: true; threadId: string | null } | { ok: false; error: string }
 > {
-  const raw = buildRfc2822Message(fromEmail, toEmail, subject, body);
+  const raw = buildRfc2822Message(
+    fromEmail,
+    toEmail,
+    subject,
+    body,
+    options?.replyTo,
+  );
   const encoded = base64UrlEncode(raw);
 
   try {

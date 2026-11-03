@@ -8,7 +8,26 @@ import {
 import { addNote, updateNote } from "@/app/(app)/projects/[projectId]/notes/actions";
 import type { NoteActionStatus } from "@/app/(app)/projects/[projectId]/notes/types";
 import { createAgentDraft } from "@/lib/assistant/create-agent-draft";
-import { addVendorTarget } from "@/app/(app)/projects/[projectId]/vendors/actions";
+import {
+  createBudgetProposal,
+  createReplanProposal,
+  createRsvpReminderProposal,
+} from "@/lib/assistant/proposals";
+import { createContractTermsProposal } from "@/lib/assistant/contract-terms";
+import {
+  addSeatingRule,
+  createSeatingPlanProposal,
+} from "@/lib/seating/auto-seat";
+import { runVendorEnrichment } from "@/lib/vendor-enrichment";
+import {
+  fetchPlaceBasics,
+  MAX_SHORTLIST_ADDS,
+  SCOUT_CATEGORY_IDS,
+} from "@/lib/vendors/scout";
+import {
+  addDiscoveredVendor,
+  addVendorTarget,
+} from "@/app/(app)/projects/[projectId]/vendors/actions";
 import {
   addEvent,
   addEvents,
@@ -84,6 +103,10 @@ export const WRITE_TOOL_DEFINITIONS = [
           description: "Number of people in the party (default 1)",
         },
         phone: { type: "string", description: "Optional phone number" },
+        email: {
+          type: "string",
+          description: "Optional household email (used for RSVP reminders)",
+        },
         address: {
           type: "string",
           description: "Optional household mailing address",
@@ -146,6 +169,204 @@ export const WRITE_TOOL_DEFINITIONS = [
         },
       },
       required: ["planned_amount"] as string[],
+    },
+  },
+  {
+    name: "propose_budget_changes",
+    description:
+      "Propose a set of budget edits for the user to approve. NOTHING changes until they tap Apply in the Pending panel, so use this (not set_budget_target / add_budget_item) whenever you recommend rebalancing, reallocating, or setting several amounts. Call get_budget first so item_ids and current amounts are real. Max 12 changes.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        title: {
+          type: "string",
+          description: "Short title, e.g. 'Rebalance for a $35k budget'.",
+        },
+        summary: {
+          type: "string",
+          description: "One or two sentences on why, in plain prose.",
+        },
+        changes: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              op: {
+                type: "string",
+                enum: ["set_target", "set_planned", "add_item"],
+                description:
+                  "set_target: change the total budget. set_planned: change an existing line's planned amount. add_item: add a new line.",
+              },
+              item_id: {
+                type: "string",
+                description: "Required for set_planned: the budget item id from get_budget.",
+              },
+              category: {
+                type: "string",
+                description: "For add_item: category (e.g. Catering).",
+              },
+              label: {
+                type: "string",
+                description: "For add_item: optional vendor or line name.",
+              },
+              amount: {
+                type: "number",
+                description:
+                  "Dollars: the new total (set_target), new planned amount (set_planned), or planned amount (add_item).",
+              },
+            },
+            required: ["op", "amount"] as string[],
+          },
+        },
+      },
+      required: ["title", "changes"] as string[],
+    },
+  },
+  {
+    name: "propose_contract_terms",
+    description:
+      "After reading an uploaded contract with get_file, propose payment installments, deadline tasks, and a vendor arrival time taken FROM THE CONTRACT, for the user to approve. NOTHING is added until they tap Apply in the Pending panel. EVERY item must include a 'quote': exact words copied from the contract (8+ characters); the server rejects any item whose quote isn't in the file, so never paraphrase or invent. Use amounts and dates exactly as written. Skip dates already past. Payments need budget_item_id (from get_budget) for that vendor. Arrival time needs the file to be linked to a vendor.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        file_id: { type: "string", description: "File id from get_files." },
+        budget_item_id: {
+          type: "string",
+          description: "Budget item the payments belong to (required if payments given).",
+        },
+        summary: { type: "string", description: "One sentence on what was found." },
+        payments: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              label: { type: "string", description: "e.g. Deposit, Final balance" },
+              amount: { type: "number", description: "Dollars, exactly as in the contract." },
+              due_date: { type: "string", description: "YYYY-MM-DD" },
+              quote: { type: "string", description: "Exact words from the contract." },
+            },
+            required: ["amount", "due_date", "quote"] as string[],
+          },
+        },
+        deadlines: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              title: { type: "string", description: "Task title, e.g. 'Send final guest count to caterer'" },
+              due_date: { type: "string", description: "YYYY-MM-DD" },
+              quote: { type: "string", description: "Exact words from the contract." },
+            },
+            required: ["title", "due_date", "quote"] as string[],
+          },
+        },
+        arrival: {
+          type: "object",
+          properties: {
+            time: { type: "string", description: "24-hour HH:MM" },
+            quote: { type: "string", description: "Exact words from the contract." },
+          },
+          required: ["time", "quote"] as string[],
+        },
+      },
+      required: ["file_id"] as string[],
+    },
+  },
+  {
+    name: "add_seating_rule",
+    description:
+      "Save a seating rule between two guests: 'together' (sit at the same table) or 'apart' (never share a table). Use when the user clearly states one. Get member_ids from find_guests; never guess. Households already sit together automatically, so only add 'together' for people in different households.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        kind: { type: "string", enum: ["together", "apart"] },
+        member_a_id: { type: "string", description: "member_id from find_guests" },
+        member_b_id: { type: "string", description: "member_id from find_guests" },
+        note: { type: "string", description: "Optional short reason." },
+      },
+      required: ["kind", "member_a_id", "member_b_id"] as string[],
+    },
+  },
+  {
+    name: "propose_seating_plan",
+    description:
+      "Propose seats for guests who don't have one, for the user to approve. NOTHING changes until they tap Apply in the Pending panel. Only unseated people move; anyone already seated stays put. Households sit together, 'together'/'apart' rules are honored, and people cluster by partner side. Only standard tables are used (head, sweetheart and dance floor are skipped). By default only guests who RSVPed yes are seated; set include_pending to also seat people who haven't answered.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        include_pending: {
+          type: "boolean",
+          description: "Also seat guests whose RSVP is still pending. Default false.",
+        },
+      },
+      required: [] as string[],
+    },
+  },
+  {
+    name: "propose_rsvp_reminders",
+    description:
+      "Queue an RSVP reminder email to every household that has not answered, for the user to approve. NOTHING is sent until they tap Send reminders in the Pending panel. Only households with an email on file and no reminder in the last 7 days are included; the rest are reported back. Each email links to that household's own RSVP page. Requires a published wedding website. Optionally pass a short warm message (plain text, no links, under 600 characters, first person plural 'we'); omit to use a default.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        message: {
+          type: "string",
+          description:
+            "Optional 1-3 sentence note from the couple. No links. Do not mention deadlines or details you have not been given.",
+        },
+      },
+      required: [] as string[],
+    },
+  },
+  {
+    name: "propose_checklist_replan",
+    description:
+      "Propose new due dates for existing checklist tasks and/or new tasks, for the user to approve. NOTHING changes until they tap Apply in the Pending panel. Use it to re-sequence the checklist after the wedding date moves, when tasks have slipped, or to fit booking windows. Call get_checklist first so task ids are real, and get_booking_windows for timing. Dates must be today or later and not after the wedding. Max 15 changes. Done tasks cannot be changed.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        title: { type: "string", description: "Short title, e.g. 'Re-sequence for a June date'." },
+        summary: { type: "string", description: "One or two sentences on why." },
+        changes: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              op: {
+                type: "string",
+                enum: ["set_due", "add_task"],
+                description: "set_due: move an existing task's due date. add_task: add a new task with a due date.",
+              },
+              task_id: { type: "string", description: "Required for set_due: id from get_checklist." },
+              title: { type: "string", description: "Required for add_task: the new task's title." },
+              due_date: { type: "string", description: "YYYY-MM-DD." },
+            },
+            required: ["op", "due_date"] as string[],
+          },
+        },
+      },
+      required: ["title", "changes"] as string[],
+    },
+  },
+  {
+    name: "add_vendors_to_shortlist",
+    description:
+      "Add up to 5 vendors from a search_vendors result to this wedding's shortlist (status: to contact) and look up their contact emails. Pass the place_id values EXACTLY as search_vendors returned them. Names and websites are re-verified with Google, so invented ids are rejected. Returns, per vendor, whether a contact email was found. Does not email anyone.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        category: {
+          type: "string",
+          enum: [...SCOUT_CATEGORY_IDS],
+          description: "The vendor category these places were searched under.",
+        },
+        place_ids: {
+          type: "array",
+          items: { type: "string" },
+          description: "place_id values from search_vendors. Max 5.",
+        },
+      },
+      required: ["category", "place_ids"] as string[],
     },
   },
   {
@@ -409,6 +630,108 @@ function isNoteActionStatus(value: string): value is Exclude<NoteActionStatus, n
   return value === "needs_action" || value === "done";
 }
 
+const ENRICH_TIMEOUT_MS = 20_000;
+
+/**
+ * AGENTIC-02: verify each place with Google, track it on the wedding, then
+ * run contact enrichment (awaited, in parallel, time-boxed) so outreach
+ * drafts can follow in the same turn.
+ */
+async function addVendorsToShortlist(
+  projectId: string,
+  input: Record<string, unknown>,
+  client?: SupabaseClient,
+) {
+  const category = asString(input.category)?.trim() ?? "";
+  if (!SCOUT_CATEGORY_IDS.includes(category)) {
+    return toolError(`category must be one of: ${SCOUT_CATEGORY_IDS.join(", ")}`);
+  }
+  const rawIds = Array.isArray(input.place_ids) ? input.place_ids : [];
+  const placeIds = [
+    ...new Set(
+      rawIds
+        .filter((id): id is string => typeof id === "string")
+        .map((id) => id.trim())
+        .filter(Boolean),
+    ),
+  ];
+  if (placeIds.length === 0) return toolError("place_ids is required");
+  if (placeIds.length > MAX_SHORTLIST_ADDS) {
+    return toolError(`Add at most ${MAX_SHORTLIST_ADDS} vendors at a time.`);
+  }
+
+  type Outcome = {
+    place_id: string;
+    name?: string;
+    vendor_id?: string;
+    added: boolean;
+    contact_email_found?: boolean;
+    error?: string;
+  };
+
+  const outcomes: Outcome[] = [];
+  for (const placeId of placeIds) {
+    const basics = await fetchPlaceBasics(placeId);
+    if (!basics) {
+      outcomes.push({
+        place_id: placeId,
+        added: false,
+        error: "Google could not verify this place_id. Use ids from search_vendors.",
+      });
+      continue;
+    }
+    const added = await addDiscoveredVendor(
+      projectId,
+      {
+        id: basics.id,
+        displayName: basics.name,
+        websiteUri: basics.website ?? undefined,
+      },
+      category,
+      { skipEnrichment: true },
+    );
+    outcomes.push(
+      added.ok
+        ? { place_id: placeId, name: basics.name, vendor_id: added.vendorId, added: true }
+        : { place_id: placeId, name: basics.name, added: false, error: added.error },
+    );
+  }
+
+  const addedOutcomes = outcomes.filter((o) => o.added && o.vendor_id);
+  await Promise.all(
+    addedOutcomes.map((o) =>
+      Promise.race([
+        runVendorEnrichment(o.vendor_id!).catch(() => null),
+        new Promise((resolve) => setTimeout(resolve, ENRICH_TIMEOUT_MS)),
+      ]),
+    ),
+  );
+
+  if (addedOutcomes.length > 0) {
+    const supabase = await clientForWrite(client);
+    const { data: rows } = await supabase
+      .from("vendors")
+      .select("id, contact_email")
+      .in(
+        "id",
+        addedOutcomes.map((o) => o.vendor_id!),
+      );
+    const emailById = new Map(
+      (rows ?? []).map((row) => [row.id as string, row.contact_email as string | null]),
+    );
+    for (const o of addedOutcomes) {
+      o.contact_email_found = Boolean(emailById.get(o.vendor_id!)?.trim());
+    }
+  }
+
+  return {
+    success: addedOutcomes.length > 0,
+    action: "add_vendors_to_shortlist",
+    vendors: outcomes,
+    note: "Vendors with contact_email_found=false cannot get an email draft; tell the user to reach them through their website. Draft the rest with create_agent_draft using vendor_id as target_id.",
+  };
+}
+
 export async function executeWriteTool(
   projectId: string,
   toolName: WriteToolName,
@@ -481,6 +804,7 @@ export async function executeWriteTool(
 
       const household = asString(input.household) ?? "";
       const phone = asString(input.phone) ?? "";
+      const email = asString(input.email) ?? "";
       const address = asString(input.address) ?? "";
       const partySize = asNumber(input.party_size) ?? 1;
 
@@ -493,7 +817,7 @@ export async function executeWriteTool(
         [],
         address,
         {},
-        { client },
+        { client, email },
       );
       return {
         success: true,
@@ -553,6 +877,124 @@ export async function executeWriteTool(
         planned_amount: plannedAmount,
       };
     }
+
+    case "propose_budget_changes": {
+      const result = await createBudgetProposal(
+        projectId,
+        {
+          title: asString(input.title) ?? "",
+          summary: asString(input.summary),
+          changes: input.changes,
+        },
+        client,
+      );
+      if (!result.ok) return toolError(result.error);
+      return {
+        success: true,
+        action: "propose_budget_changes",
+        proposal_id: result.proposalId,
+        change_count: result.changeCount,
+        note: "Queued in the Pending panel. Nothing has changed yet — tell the user to review and tap Apply.",
+      };
+    }
+
+    case "propose_contract_terms": {
+      const result = await createContractTermsProposal(
+        projectId,
+        {
+          fileId: asString(input.file_id)?.trim() ?? "",
+          budgetItemId: asString(input.budget_item_id),
+          summary: asString(input.summary),
+          payments: input.payments,
+          deadlines: input.deadlines,
+          arrival: input.arrival,
+        },
+        client,
+      );
+      if (!result.ok) return toolError(result.error);
+      return {
+        success: true,
+        action: "propose_contract_terms",
+        proposal_id: result.proposalId,
+        payments: result.payments,
+        deadlines: result.deadlines,
+        arrival: result.arrival,
+        note: "Queued in the Pending panel. Nothing has been added yet — tell the user to review each item against the contract and tap Apply.",
+      };
+    }
+
+    case "add_seating_rule": {
+      const result = await addSeatingRule(
+        projectId,
+        {
+          kind: asString(input.kind) ?? "",
+          memberA: asString(input.member_a_id)?.trim() ?? "",
+          memberB: asString(input.member_b_id)?.trim() ?? "",
+          note: asString(input.note),
+        },
+        client,
+      );
+      if (!result.ok) return toolError(result.error);
+      return { success: true, action: "add_seating_rule", rule_id: result.ruleId };
+    }
+
+    case "propose_seating_plan": {
+      const result = await createSeatingPlanProposal(
+        projectId,
+        { includePending: input.include_pending === true },
+        client,
+      );
+      if (!result.ok) return toolError(result.error);
+      return {
+        success: true,
+        action: "propose_seating_plan",
+        proposal_id: result.proposalId,
+        will_seat: result.seated,
+        not_seated: result.unplaced,
+        note: "Queued in the Pending panel. Nothing has moved yet — tell the user to review and tap Apply. Mention anyone who could not be seated and why.",
+      };
+    }
+
+    case "propose_rsvp_reminders": {
+      const result = await createRsvpReminderProposal(
+        projectId,
+        { message: asString(input.message) },
+        client,
+      );
+      if (!result.ok) return toolError(result.error);
+      return {
+        success: true,
+        action: "propose_rsvp_reminders",
+        proposal_id: result.proposalId,
+        will_email: result.recipientCount,
+        no_email_on_file: result.noEmail,
+        skipped_recently_reminded: result.recentlyReminded,
+        note: "Queued in the Pending panel. Nothing has been sent — tell the user to review and tap Send reminders. For households with no email, offer to write a short text message they can send themselves.",
+      };
+    }
+
+    case "propose_checklist_replan": {
+      const result = await createReplanProposal(
+        projectId,
+        {
+          title: asString(input.title) ?? "",
+          summary: asString(input.summary),
+          changes: input.changes,
+        },
+        client,
+      );
+      if (!result.ok) return toolError(result.error);
+      return {
+        success: true,
+        action: "propose_checklist_replan",
+        proposal_id: result.proposalId,
+        change_count: result.changeCount,
+        note: "Queued in the Pending panel. Nothing has changed yet — tell the user to review and tap Apply.",
+      };
+    }
+
+    case "add_vendors_to_shortlist":
+      return addVendorsToShortlist(projectId, input, client);
 
     case "add_vendor_target": {
       const category = asString(input.category)?.trim();

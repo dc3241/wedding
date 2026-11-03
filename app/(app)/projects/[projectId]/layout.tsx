@@ -2,7 +2,29 @@ import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { AssistantWorkspace } from "@/components/assistant/AssistantWorkspace";
 import { ASSISTANT_HISTORY_WINDOW } from "@/components/assistant/constants";
-import type { AgentDraftPreview, AssistantMessage } from "@/components/assistant/types";
+import type {
+  AgentDraftPreview,
+  AssistantMessage,
+  AssistantProposalPreview,
+} from "@/components/assistant/types";
+import {
+  describeContractTerms,
+  type ContractTermsPayload,
+} from "@/lib/assistant/contract-terms";
+import {
+  describeSeatingPlan,
+  type SeatingPlanPayload,
+} from "@/lib/seating/auto-seat";
+import {
+  describeBudgetChange,
+  describeReplanChange,
+  describeRsvpReminder,
+  type RsvpReminderPayload,
+  describeVendorQuote,
+  type BudgetProposalPayload,
+  type ChecklistReplanPayload,
+  type VendorQuotePayload,
+} from "@/lib/assistant/proposals";
 import { TourProvider } from "@/components/tour/TourProvider";
 import { ProjectShell } from "@/components/projects/project-shell";
 import { ProjectWorkspaceNav } from "@/components/projects/project-workspace-nav";
@@ -149,6 +171,82 @@ export default async function ProjectLayout({
       | "approved",
     targetLabel: vendorNameById.get(row.target_id) ?? "Vendor",
   }));
+  // AGENTIC-01: pending non-email proposals (budget changes) for the panel.
+  const proposalsResult = account
+    ? await supabase
+        .from("assistant_proposals")
+        .select("id, kind, title, summary, payload")
+        .eq("account_id", account.accountId)
+        .eq("project_id", projectId)
+        .eq("status", "pending")
+        .order("created_at", { ascending: false })
+    : { data: [] as null | { id: string; kind: string; title: string; summary: string | null; payload: unknown }[] };
+  const pendingProposals: AssistantProposalPreview[] = (proposalsResult.data ?? [])
+    .filter(
+      (row) =>
+        row.kind === "budget_change" ||
+        row.kind === "vendor_quote" ||
+        row.kind === "checklist_replan" ||
+        row.kind === "rsvp_reminder" ||
+        row.kind === "seating_plan" ||
+        row.kind === "contract_terms",
+    )
+    .map((row) => {
+      if (row.kind === "contract_terms") {
+        return {
+          id: row.id,
+          kind: "contract_terms" as const,
+          title: row.title,
+          summary: row.summary,
+          lines: describeContractTerms(row.payload as ContractTermsPayload),
+        };
+      }
+      if (row.kind === "seating_plan") {
+        return {
+          id: row.id,
+          kind: "seating_plan" as const,
+          title: row.title,
+          summary: row.summary,
+          lines: describeSeatingPlan(row.payload as SeatingPlanPayload),
+        };
+      }
+      if (row.kind === "rsvp_reminder") {
+        return {
+          id: row.id,
+          kind: "rsvp_reminder" as const,
+          title: row.title,
+          summary: row.summary,
+          lines: describeRsvpReminder(row.payload as RsvpReminderPayload),
+        };
+      }
+      if (row.kind === "checklist_replan") {
+        const replan = (row.payload as ChecklistReplanPayload | null)?.changes ?? [];
+        return {
+          id: row.id,
+          kind: "checklist_replan" as const,
+          title: row.title,
+          summary: row.summary,
+          lines: replan.map(describeReplanChange),
+        };
+      }
+      if (row.kind === "vendor_quote") {
+        return {
+          id: row.id,
+          kind: "vendor_quote" as const,
+          title: row.title,
+          summary: row.summary,
+          lines: describeVendorQuote(row.payload as VendorQuotePayload),
+        };
+      }
+      const changes = (row.payload as BudgetProposalPayload | null)?.changes ?? [];
+      return {
+        id: row.id,
+        kind: "budget_change" as const,
+        title: row.title,
+        summary: row.summary,
+        lines: changes.map(describeBudgetChange),
+      };
+    });
   const dismissedTourKeys = (toursResult.data ?? []).map(
     (row) => row.tour_key,
   );
@@ -169,6 +267,7 @@ export default async function ProjectLayout({
       eventType={eventType}
       initialMessages={initialMessages}
       pendingDrafts={pendingDrafts}
+      pendingProposals={pendingProposals}
       initialAccess={assistantAccess}
     >
       <TourProvider

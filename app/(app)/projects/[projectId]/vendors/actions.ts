@@ -75,8 +75,9 @@ export async function getAddedPlaceIds(projectId: string): Promise<string[]> {
 export async function addDiscoveredVendor(
   projectId: string,
   place: DiscoveredPlace,
-  categoryId: string
-): Promise<{ ok: true } | { ok: false; error: string }> {
+  categoryId: string,
+  options?: { skipEnrichment?: boolean },
+): Promise<{ ok: true; vendorId: string } | { ok: false; error: string }> {
   const category = getVendorCategoryById(categoryId.trim());
   if (!category) {
     return { ok: false, error: "Choose a valid vendor category." };
@@ -169,9 +170,11 @@ export async function addDiscoveredVendor(
 
   revalidatePath(vendorsPath(projectId));
 
-  scheduleVendorEnrichment(vendorId);
+  // AGENTIC-02: the assistant runs enrichment itself (awaited) so it can
+  // draft outreach in the same turn; everyone else stays background.
+  if (!options?.skipEnrichment) scheduleVendorEnrichment(vendorId);
 
-  return { ok: true };
+  return { ok: true, vendorId };
 }
 
 export type AddVendorStatus = "to_contact" | "booked";

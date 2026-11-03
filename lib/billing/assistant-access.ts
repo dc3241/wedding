@@ -34,7 +34,8 @@ export type AssistantUsageSource =
   | "chat"
   | "synthesis"
   | "implication_scan"
-  | "outreach_scan";
+  | "outreach_scan"
+  | "quote_extraction";
 
 export type AccountAssistantAccess = {
   accountId: string;
@@ -357,7 +358,10 @@ export async function recordAssistantUsage(input: {
   projectId: string | null;
   source: AssistantUsageSource;
   usage: TokenUsage;
+  /** Defaults to the main assistant model; pass the fast model for extraction. */
+  model?: string;
 }): Promise<void> {
+  const model = input.model ?? ANTHROPIC_MODEL;
   const { usage } = input;
   const total =
     usage.inputTokens +
@@ -372,12 +376,12 @@ export async function recordAssistantUsage(input: {
       account_id: input.accountId,
       project_id: input.projectId,
       source: input.source,
-      model: ANTHROPIC_MODEL,
+      model,
       input_tokens: usage.inputTokens,
       output_tokens: usage.outputTokens,
       cache_creation_input_tokens: usage.cacheCreationInputTokens,
       cache_read_input_tokens: usage.cacheReadInputTokens,
-      cost_micros: usageCostMicros(ANTHROPIC_MODEL, usage),
+      cost_micros: usageCostMicros(model, usage),
     });
     if (error) {
       console.error("[assistant.usage] insert failed", error.message);

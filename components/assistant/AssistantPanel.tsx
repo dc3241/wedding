@@ -13,9 +13,11 @@ import {
 } from "@/components/assistant/AssistantAccessNotice";
 import { formatBoldText } from "@/components/assistant/format-bold-text";
 import { PendingDraftList } from "@/components/assistant/PendingDraftList";
+import { PendingProposalList } from "@/components/assistant/PendingProposalList";
 import type {
   AgentDraftPreview,
   AssistantMessage,
+  AssistantProposalPreview,
 } from "@/components/assistant/types";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -34,6 +36,7 @@ type AssistantPanelProps = {
   eventType: EventType;
   initialMessages: AssistantMessage[];
   pendingDrafts: AgentDraftPreview[];
+  pendingProposals?: AssistantProposalPreview[];
   /** COUPLES-PIVOT part 3. Null for planner accounts (no plan messaging). */
   initialAccess: AssistantAccessSummary | null;
 };
@@ -87,6 +90,7 @@ export function AssistantPanel({
   eventType,
   initialMessages,
   pendingDrafts,
+  pendingProposals = [],
   initialAccess,
 }: AssistantPanelProps) {
   const isPlanner = isPlannerAccount(accountKind);
@@ -277,15 +281,18 @@ export function AssistantPanel({
           )}
         >
           <Eyebrow>Pending</Eyebrow>
-          {pendingDrafts.length === 0 ? (
+          {pendingDrafts.length === 0 && pendingProposals.length === 0 ? (
             <EmptyState recessed className="mt-3">
-              No drafts waiting for review.
+              Nothing waiting for your review.
             </EmptyState>
           ) : (
-            <PendingDraftList
-              drafts={pendingDrafts}
-              connectReturnTo={`/projects/${projectId}/vendors/outreach`}
-            />
+            <>
+              <PendingProposalList proposals={pendingProposals} />
+              <PendingDraftList
+                drafts={pendingDrafts}
+                connectReturnTo={`/projects/${projectId}/vendors/outreach`}
+              />
+            </>
           )}
         </section>
 

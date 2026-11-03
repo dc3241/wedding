@@ -11,6 +11,9 @@ import {
   type ProjectVendorOption,
 } from "@/lib/budget-aggregates";
 import { placesTextSearch } from "@/lib/places-text-search";
+import { SCOUT_CATEGORY_IDS, scoutVendors } from "@/lib/vendors/scout";
+import { computeBookingWindows } from "@/lib/booking-windows";
+import { findGuestMembers } from "@/lib/seating/auto-seat";
 import { resolveProjectLocationHint } from "@/lib/resolve-project-location-hint";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { isTaskPastDue } from "@/lib/task-overdue";
@@ -153,6 +156,59 @@ export const READ_TOOL_DEFINITIONS = [
     },
   },
   {
+    name: "get_seating",
+    description:
+      "Seating overview: each table (label, kind, seats, how many seated), how many attending / pending guests still have no seat, and the saved keep-together / keep-apart rules by name. Use before proposing a seating plan or answering seating questions.",
+    input_schema: {
+      type: "object" as const,
+      properties: {},
+      required: [] as string[],
+    },
+  },
+  {
+    name: "find_guests",
+    description:
+      "Look up guest members by name (2+ characters) and get their member_id, needed to add a seating rule. Returns up to 10 matches with household.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        query: { type: "string", description: "Part of the person's name." },
+      },
+      required: ["query"] as string[],
+    },
+  },
+  {
+    name: "get_booking_windows",
+    description:
+      "For each vendor category, when to start looking and when to have it booked (typical industry lead times, NOT vendor deadlines), compared with what is already booked or tracked on this wedding. Returns the most urgent first. Use for 'what should I book next', 'am I behind', or timeline advice. If the wedding date is not set it returns needsWeddingDate.",
+    input_schema: {
+      type: "object" as const,
+      properties: {},
+      required: [] as string[],
+    },
+  },
+  {
+    name: "search_vendors",
+    description:
+      "Search Google Places for wedding vendors in ONE category near the wedding (photographers, florists, venues, etc.). Read-only. Returns up to 10 candidates with rating, review count, rough price level, website, and whether they are already tracked, plus the median saved quote and this project's budget line for the category when known. Ratings and price level are NOT quotes. If location cannot be resolved it returns needsLocation and you must ask where.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        category: {
+          type: "string",
+          enum: [...SCOUT_CATEGORY_IDS],
+          description: "Canonical vendor category id.",
+        },
+        near: {
+          type: "string",
+          description:
+            "Optional city or address override. Defaults to the venue / wedding location.",
+        },
+      },
+      required: ["category"] as string[],
+    },
+  },
+  {
     name: "search_nearby_places",
     description:
       "Search Google Places for nearby hotels (lodging), airports, or restaurants near the couple's venue. Read-only — returns candidates for Travel & Stay copy. Pass near to override the venue location; if location cannot be resolved, returns needsLocation and you must ask the couple.",
@@ -200,7 +256,12 @@ export const READ_TOOL_DEFINITIONS = [
 export type ReadToolName = (typeof READ_TOOL_DEFINITIONS)[number]["name"];
 
 /** Contract bodies stay out of unattended jobs. Chat turns these on. */
-export const CHAT_ONLY_READ_TOOLS = new Set<string>(["get_files", "get_file"]);
+export const CHAT_ONLY_READ_TOOLS = new Set<string>([
+  "get_files",
+  "get_file",
+  // Calls paid Google Places; never from unattended runs.
+  "search_vendors",
+]);
 
 function excerpt(
   text: string | null | undefined,
@@ -280,7 +341,7 @@ async function getGuests(supabase: SupabaseClient, projectId: string) {
   const { data: guests, error } = await supabase
     .from("guests")
     .select(
-      "id, full_name, email, phone, household, party_size, rsvp_status, notes",
+      "id, full_name, email, phone, household, party_size, rsvp_status, notes, last_reminded_at",
     )
     .eq("project_id", projectId)
     .order("household", { ascending: true, nullsFirst: false })
@@ -288,7 +349,7 @@ async function getGuests(supabase: SupabaseClient, projectId: string) {
 
   if (error) throw error;
 
-  const list = ((guests ?? []) as Omit<Guest, "members">[]).map((guest) => ({
+  const list = ((guests ?? []) as unknown as Omit<Guest, "members">[]).map((guest) => ({
     ...guest,
     members: [],
   }));
@@ -302,6 +363,10 @@ async function getGuests(supabase: SupabaseClient, projectId: string) {
       name: guest.full_name,
       rsvp_status: guest.rsvp_status,
       party_size: guest.party_size,
+      has_email: Boolean(guest.email?.trim()),
+      has_phone: Boolean(guest.phone?.trim()),
+      last_reminded_at:
+        (guest as { last_reminded_at?: string | null }).last_reminded_at ?? null,
     }));
 
   const { items, truncated: capped } = capItems(pendingGuests, GUESTS_ITEMS_CAP);
@@ -612,7 +677,7 @@ async function getVendors(supabase: SupabaseClient, projectId: string) {
   const { data: rows, error } = await supabase
     .from("project_vendors")
     .select(
-      "id, status, quoted_price, vendors(id, name, category, contact_email, website)",
+      "id, status, quoted_price, quote_details, vendors(id, name, category, contact_email, website)",
     )
     .eq("project_id", projectId)
     .order("created_at", { ascending: true });
@@ -630,6 +695,7 @@ async function getVendors(supabase: SupabaseClient, projectId: string) {
           row.quoted_price === null || row.quoted_price === undefined
             ? null
             : Number(row.quoted_price),
+        quote_details: (row.quote_details ?? null) as Record<string, unknown> | null,
         vendor: {
           id: vendor.id,
           name: vendor.name,
@@ -654,6 +720,17 @@ async function getVendors(supabase: SupabaseClient, projectId: string) {
     category: row.vendor.category,
     status: row.status,
     quote: row.quoted_price,
+    // Approved emailed quote (AGENTIC-03). price_basis says what price means.
+    quote_details: row.quote_details
+      ? {
+          availability: row.quote_details.availability ?? null,
+          price: row.quote_details.price ?? null,
+          price_basis: row.quote_details.priceBasis ?? null,
+          deposit: row.quote_details.deposit ?? null,
+          inclusions: row.quote_details.inclusions ?? [],
+          conditions: row.quote_details.conditions ?? null,
+        }
+      : null,
     primary_contact: row.vendor.contact_email ?? row.vendor.website ?? null,
   }));
 
@@ -1044,6 +1121,123 @@ function isNearbyPlaceCategory(value: string): value is NearbyPlaceCategory {
   return (NEARBY_PLACE_CATEGORIES as readonly string[]).includes(value);
 }
 
+async function getSeating(supabase: SupabaseClient, projectId: string) {
+  const [tablesResult, assignmentsResult, membersResult, rulesResult] =
+    await Promise.all([
+      supabase
+        .from("seating_tables")
+        .select("id, label, kind, seat_count")
+        .eq("project_id", projectId)
+        .order("created_at", { ascending: true }),
+      supabase
+        .from("seating_assignments")
+        .select("table_id, guest_member_id")
+        .eq("project_id", projectId),
+      supabase
+        .from("guest_members")
+        .select("id, name, guests ( rsvp_status )")
+        .eq("project_id", projectId),
+      supabase
+        .from("seating_rules")
+        .select("kind, member_a, member_b")
+        .eq("project_id", projectId),
+    ]);
+  for (const r of [tablesResult, assignmentsResult, membersResult, rulesResult]) {
+    if (r.error) return { error: r.error.message };
+  }
+
+  const seatedBy = new Map<string, number>();
+  const seatedIds = new Set<string>();
+  for (const a of assignmentsResult.data ?? []) {
+    seatedBy.set(a.table_id as string, (seatedBy.get(a.table_id as string) ?? 0) + 1);
+    if (a.guest_member_id) seatedIds.add(a.guest_member_id as string);
+  }
+  const tables = (tablesResult.data ?? [])
+    .filter((t) => t.kind !== "dancefloor")
+    .map((t) => ({
+      label: t.label,
+      kind: t.kind,
+      seats: t.seat_count,
+      seated: seatedBy.get(t.id as string) ?? 0,
+    }));
+
+  const nameById = new Map<string, string>();
+  let attendingUnseated = 0;
+  let pendingUnseated = 0;
+  for (const m of membersResult.data ?? []) {
+    nameById.set(m.id as string, (m.name as string | null)?.trim() || "Guest");
+    if (seatedIds.has(m.id as string)) continue;
+    const guest = Array.isArray(m.guests) ? m.guests[0] : m.guests;
+    if (guest?.rsvp_status === "attending") attendingUnseated += 1;
+    else if (guest?.rsvp_status === "pending") pendingUnseated += 1;
+  }
+
+  const rules = (rulesResult.data ?? []).slice(0, 40).map((r) => ({
+    kind: r.kind,
+    people: [nameById.get(r.member_a as string) ?? "Guest", nameById.get(r.member_b as string) ?? "Guest"],
+  }));
+
+  return {
+    tables,
+    standard_table_seats: tables
+      .filter((t) => t.kind === "standard")
+      .reduce((n, t) => n + Number(t.seats), 0),
+    unseated: { attending: attendingUnseated, pending: pendingUnseated },
+    rules,
+  };
+}
+
+async function getBookingWindows(supabase: SupabaseClient, projectId: string) {
+  const { data: project } = await supabase
+    .from("projects")
+    .select("wedding_date")
+    .eq("id", projectId)
+    .maybeSingle();
+  const weddingDate = (project?.wedding_date as string | null) ?? null;
+  if (!weddingDate) return { needsWeddingDate: true };
+
+  const [linksResult, ignoredResult] = await Promise.all([
+    supabase
+      .from("project_vendors")
+      .select("status, vendors(category)")
+      .eq("project_id", projectId),
+    supabase
+      .from("ignored_vendor_categories")
+      .select("category")
+      .eq("project_id", projectId),
+  ]);
+
+  const booked = new Set<string>();
+  const tracked = new Set<string>();
+  for (const row of linksResult.data ?? []) {
+    const vendor = Array.isArray(row.vendors) ? row.vendors[0] : row.vendors;
+    const category = vendor?.category as string | null | undefined;
+    if (!category) continue;
+    if (row.status === "booked") booked.add(category);
+    else if (row.status !== "declined") tracked.add(category);
+  }
+  const ignored = new Set(
+    (ignoredResult.data ?? []).map((row) => row.category as string),
+  );
+
+  const now = new Date();
+  const todayIso = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  const rows = computeBookingWindows({
+    weddingDate,
+    todayIso,
+    booked,
+    tracked,
+    ignored,
+  });
+
+  return {
+    wedding_date: weddingDate,
+    today: todayIso,
+    note: "Typical lead times, not vendor deadlines. Popular dates, peak season, and big cities book earlier. Present as 'typically', never as a fact about a specific vendor.",
+    categories: rows,
+  };
+}
+
 async function searchNearbyPlaces(
   supabase: SupabaseClient,
   projectId: string,
@@ -1122,6 +1316,16 @@ export async function executeReadTool(
       return getWebsite(supabase, projectId);
     case "search_nearby_places":
       return searchNearbyPlaces(supabase, projectId, input);
+    case "search_vendors":
+      return scoutVendors(supabase, projectId, input);
+    case "get_booking_windows":
+      return getBookingWindows(supabase, projectId);
+    case "get_seating":
+      return getSeating(supabase, projectId);
+    case "find_guests": {
+      const query = typeof input.query === "string" ? input.query : "";
+      return findGuestMembers(supabase, projectId, query);
+    }
     case "get_files":
       return getFiles(supabase, projectId);
     case "get_file": {

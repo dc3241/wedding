@@ -2,7 +2,11 @@
 
 import { AssistantPanel } from "@/components/assistant/AssistantPanel";
 import { AssistantProvider } from "@/components/assistant/assistant-context";
-import type { AgentDraftPreview, AssistantMessage } from "@/components/assistant/types";
+import type {
+  AgentDraftPreview,
+  AssistantMessage,
+  AssistantProposalPreview,
+} from "@/components/assistant/types";
 import type { AccountKind } from "@/lib/account-context";
 import type { AssistantAccessSummary } from "@/lib/billing/assistant-budget";
 import type { EventType } from "@/lib/event-type";
@@ -15,6 +19,7 @@ export function AssistantWorkspace({
   eventType,
   initialMessages,
   pendingDrafts,
+  pendingProposals = [],
   initialAccess = null,
 }: {
   children: ReactNode;
@@ -23,6 +28,7 @@ export function AssistantWorkspace({
   eventType: EventType;
   initialMessages: AssistantMessage[];
   pendingDrafts: AgentDraftPreview[];
+  pendingProposals?: AssistantProposalPreview[];
   initialAccess?: AssistantAccessSummary | null;
 }) {
   return (
@@ -34,6 +40,7 @@ export function AssistantWorkspace({
         eventType={eventType}
         initialMessages={initialMessages}
         pendingDrafts={pendingDrafts}
+        pendingProposals={pendingProposals}
         initialAccess={initialAccess}
       />
     </AssistantProvider>
