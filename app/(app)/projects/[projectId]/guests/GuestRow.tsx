@@ -51,6 +51,7 @@ export function GuestPersonRow({
   const [envelope, setEnvelope] = useState(person.householdLabel ?? "");
   const [address, setAddress] = useState(person.address ?? "");
   const [phone, setPhone] = useState(person.phone ?? "");
+  const [email, setEmail] = useState(person.email ?? "");
   const [isPending, startTransition] = useTransition();
   const [isDeleting, startDeleteTransition] = useTransition();
 
@@ -86,6 +87,7 @@ export function GuestPersonRow({
     household?: string;
     address?: string;
     phone?: string;
+    email?: string;
   }) {
     startTransition(async () => {
       await updateGuest(person.guestId, fields);
@@ -169,6 +171,23 @@ export function GuestPersonRow({
                 placeholder="Mailing address"
                 disabled={isPending || isDeleting}
                 aria-label="Mailing address"
+                className="min-w-0 bg-surface py-2 text-[13px]"
+              />
+            </div>
+            <div>
+              <MobileLabel>Email</MobileLabel>
+              <Input
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                onBlur={() => {
+                  if ((person.email ?? "") !== email) {
+                    saveHousehold({ email });
+                  }
+                }}
+                type="email"
+                placeholder="Email"
+                disabled={isPending || isDeleting}
+                aria-label="Email"
                 className="min-w-0 bg-surface py-2 text-[13px]"
               />
             </div>

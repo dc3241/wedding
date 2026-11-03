@@ -318,7 +318,7 @@ async function getGuests(supabase: SupabaseClient, projectId: string) {
   const { data: guests, error } = await supabase
     .from("guests")
     .select(
-      "id, full_name, email, phone, household, party_size, rsvp_status, notes",
+      "id, full_name, email, phone, household, party_size, rsvp_status, notes, last_reminded_at",
     )
     .eq("project_id", projectId)
     .order("household", { ascending: true, nullsFirst: false })
@@ -326,7 +326,7 @@ async function getGuests(supabase: SupabaseClient, projectId: string) {
 
   if (error) throw error;
 
-  const list = ((guests ?? []) as Omit<Guest, "members">[]).map((guest) => ({
+  const list = ((guests ?? []) as unknown as Omit<Guest, "members">[]).map((guest) => ({
     ...guest,
     members: [],
   }));
@@ -340,6 +340,10 @@ async function getGuests(supabase: SupabaseClient, projectId: string) {
       name: guest.full_name,
       rsvp_status: guest.rsvp_status,
       party_size: guest.party_size,
+      has_email: Boolean(guest.email?.trim()),
+      has_phone: Boolean(guest.phone?.trim()),
+      last_reminded_at:
+        (guest as { last_reminded_at?: string | null }).last_reminded_at ?? null,
     }));
 
   const { items, truncated: capped } = capItems(pendingGuests, GUESTS_ITEMS_CAP);

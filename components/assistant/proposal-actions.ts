@@ -7,12 +7,18 @@ import {
   updateBudgetItem,
 } from "@/app/(app)/projects/[projectId]/budget/actions";
 import { addTask } from "@/app/(app)/projects/[projectId]/checklist/actions";
-import type {
-  BudgetChange,
-  BudgetProposalPayload,
-  ChecklistReplanPayload,
-  VendorQuotePayload,
+import {
+  firstNameFor,
+  RSVP_REMINDER_COOLDOWN_DAYS,
+  type BudgetChange,
+  type BudgetProposalPayload,
+  type ChecklistReplanPayload,
+  type RsvpReminderPayload,
+  type VendorQuotePayload,
 } from "@/lib/assistant/proposals";
+import { sendEmail } from "@/lib/email/send";
+import { buildRsvpReminderEmail } from "@/lib/email/rsvp-reminder";
+import { appOrigin } from "@/lib/url";
 import { isCanonicalPhase, phaseFromMonthsBefore } from "@/lib/checklist-phases";
 import { wholeMonthsBetween } from "@/lib/date-months";
 import { createClient } from "@/utils/supabase/server";
@@ -28,6 +34,7 @@ type ProposalRow = {
     | BudgetProposalPayload
     | VendorQuotePayload
     | ChecklistReplanPayload
+    | RsvpReminderPayload
     | null;
 };
 
@@ -84,6 +91,9 @@ export async function applyAssistantProposal(
   }
   if (proposal.kind === "checklist_replan") {
     return applyChecklistReplan(supabase, proposal, user.id);
+  }
+  if (proposal.kind === "rsvp_reminder") {
+    return applyRsvpReminder(supabase, proposal, user.id, user.email ?? null);
   }
   if (proposal.kind !== "budget_change") {
     return { ok: false, error: "This proposal type can't be applied yet." };
@@ -338,6 +348,133 @@ async function applyChecklistReplan(
   revalidatePath(`/projects/${proposal.project_id}`, "layout");
   revalidatePath(`/projects/${proposal.project_id}/checklist`);
   revalidatePath(`/projects/${proposal.project_id}/calendar`);
+  return { ok: true };
+}
+
+/**
+ * RSVP-CHASE-01: send approved reminders. Everything that matters is
+ * re-read at send time (email, token, still pending, cooldown) so a guest
+ * who RSVPed or was reminded since the proposal is skipped, not re-mailed.
+ * Individual emails, Reply-To the approving member, never a group send.
+ */
+async function applyRsvpReminder(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  proposal: ProposalRow,
+  userId: string,
+  userEmail: string | null,
+): Promise<ProposalActionResult> {
+  if (proposal.status !== "pending") {
+    return { ok: false, error: "This proposal was already handled." };
+  }
+  const payload = proposal.payload as RsvpReminderPayload | null;
+  const ids = (payload?.recipients ?? []).map((r) => r.guestId);
+  if (!payload || ids.length === 0) {
+    return { ok: false, error: "This proposal has no recipients." };
+  }
+
+  const { data: site } = await supabase
+    .from("wedding_websites")
+    .select("slug, published")
+    .eq("project_id", proposal.project_id)
+    .maybeSingle();
+  if (!site?.published || !site.slug) {
+    return {
+      ok: false,
+      error: "The wedding website isn't published, so the RSVP link wouldn't work. Publish it first.",
+    };
+  }
+
+  const { data: claimed, error: claimError } = await supabase
+    .from("assistant_proposals")
+    .update({ status: "applied", resolved_at: new Date().toISOString(), resolved_by: userId })
+    .eq("id", proposal.id)
+    .eq("status", "pending")
+    .select("id")
+    .maybeSingle();
+  if (claimError) return { ok: false, error: claimError.message };
+  if (!claimed) return { ok: false, error: "This proposal was already handled." };
+
+  const { data: guests, error: guestsError } = await supabase
+    .from("guests")
+    .select(
+      "id, email, rsvp_status, rsvp_token, last_reminded_at, guest_members ( name, sort_order )",
+    )
+    .eq("project_id", proposal.project_id)
+    .in("id", ids);
+  if (guestsError) {
+    await failProposal(supabase, proposal.id, guestsError.message, userId);
+    return { ok: false, error: guestsError.message };
+  }
+
+  const cutoff = Date.now() - RSVP_REMINDER_COOLDOWN_DAYS * 86_400_000;
+  const base = `${appOrigin()}/w/${encodeURIComponent(site.slug)}/rsvp`;
+  const eligible = (guests ?? []).filter((g) => {
+    const email = (g.email as string | null)?.trim();
+    const last = g.last_reminded_at ? new Date(g.last_reminded_at as string).getTime() : null;
+    return g.rsvp_status === "pending" && email && (last === null || last <= cutoff);
+  });
+  const skipped = ids.length - eligible.length;
+
+  const sentIds: string[] = [];
+  let failed = 0;
+  for (let i = 0; i < eligible.length; i += 5) {
+    const batch = eligible.slice(i, i + 5);
+    const results = await Promise.all(
+      batch.map(async (g) => {
+        const members = (Array.isArray(g.guest_members) ? g.guest_members : []) as {
+          name: string | null;
+          sort_order: number | null;
+        }[];
+        const email = buildRsvpReminderEmail({
+          firstName: firstNameFor(members),
+          message: payload.message,
+          coupleNames: payload.coupleNames,
+          rsvpUrl: `${base}?g=${encodeURIComponent(String(g.rsvp_token))}`,
+        });
+        try {
+          const sent = await sendEmail({
+            to: String(g.email).trim(),
+            subject: email.subject,
+            text: email.text,
+            html: email.html,
+            ...(userEmail ? { replyTo: userEmail } : {}),
+          });
+          return sent.ok ? (g.id as string) : null;
+        } catch {
+          return null;
+        }
+      }),
+    );
+    for (const id of results) {
+      if (id) sentIds.push(id);
+      else failed += 1;
+    }
+  }
+
+  if (sentIds.length > 0) {
+    await supabase
+      .from("guests")
+      .update({ last_reminded_at: new Date().toISOString() })
+      .in("id", sentIds)
+      .eq("project_id", proposal.project_id);
+  }
+  revalidatePath(`/projects/${proposal.project_id}`, "layout");
+  revalidatePath(`/projects/${proposal.project_id}/guests`);
+
+  if (sentIds.length === 0) {
+    const message =
+      eligible.length === 0
+        ? "Nobody was left to remind (they may have RSVPed or been reminded already)."
+        : "No reminders could be sent. Try again in a moment.";
+    await failProposal(supabase, proposal.id, message, userId);
+    return { ok: false, error: message };
+  }
+  if (failed > 0) {
+    return {
+      ok: false,
+      error: `Sent ${sentIds.length} of ${eligible.length} reminders; ${failed} failed. Skipped ${skipped}.`,
+    };
+  }
   return { ok: true };
 }
 

@@ -79,6 +79,8 @@ export async function addGuest(
   options: {
     member_type?: string | null;
     primaryMemberId?: string | null;
+    /** RSVP-CHASE-01: household email, used for RSVP reminders (optional). */
+    email?: string | null;
     client?: SupabaseClient;
   } = {},
 ) {
@@ -159,6 +161,7 @@ export async function addGuest(
       project_id: projectId,
       full_name: trimmedName,
       household: household.trim() || null,
+      email: options.email?.trim() || null,
       phone: phone.trim() || null,
       address: address.trim() || null,
       party_size: Math.max(1, partySize || 1),

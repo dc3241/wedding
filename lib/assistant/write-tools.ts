@@ -11,6 +11,7 @@ import { createAgentDraft } from "@/lib/assistant/create-agent-draft";
 import {
   createBudgetProposal,
   createReplanProposal,
+  createRsvpReminderProposal,
 } from "@/lib/assistant/proposals";
 import { runVendorEnrichment } from "@/lib/vendor-enrichment";
 import {
@@ -97,6 +98,10 @@ export const WRITE_TOOL_DEFINITIONS = [
           description: "Number of people in the party (default 1)",
         },
         phone: { type: "string", description: "Optional phone number" },
+        email: {
+          type: "string",
+          description: "Optional household email (used for RSVP reminders)",
+        },
         address: {
           type: "string",
           description: "Optional household mailing address",
@@ -210,6 +215,22 @@ export const WRITE_TOOL_DEFINITIONS = [
         },
       },
       required: ["title", "changes"] as string[],
+    },
+  },
+  {
+    name: "propose_rsvp_reminders",
+    description:
+      "Queue an RSVP reminder email to every household that has not answered, for the user to approve. NOTHING is sent until they tap Send reminders in the Pending panel. Only households with an email on file and no reminder in the last 7 days are included; the rest are reported back. Each email links to that household's own RSVP page. Requires a published wedding website. Optionally pass a short warm message (plain text, no links, under 600 characters, first person plural 'we'); omit to use a default.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        message: {
+          type: "string",
+          description:
+            "Optional 1-3 sentence note from the couple. No links. Do not mention deadlines or details you have not been given.",
+        },
+      },
+      required: [] as string[],
     },
   },
   {
@@ -698,6 +719,7 @@ export async function executeWriteTool(
 
       const household = asString(input.household) ?? "";
       const phone = asString(input.phone) ?? "";
+      const email = asString(input.email) ?? "";
       const address = asString(input.address) ?? "";
       const partySize = asNumber(input.party_size) ?? 1;
 
@@ -710,7 +732,7 @@ export async function executeWriteTool(
         [],
         address,
         {},
-        { client },
+        { client, email },
       );
       return {
         success: true,
@@ -788,6 +810,24 @@ export async function executeWriteTool(
         proposal_id: result.proposalId,
         change_count: result.changeCount,
         note: "Queued in the Pending panel. Nothing has changed yet — tell the user to review and tap Apply.",
+      };
+    }
+
+    case "propose_rsvp_reminders": {
+      const result = await createRsvpReminderProposal(
+        projectId,
+        { message: asString(input.message) },
+        client,
+      );
+      if (!result.ok) return toolError(result.error);
+      return {
+        success: true,
+        action: "propose_rsvp_reminders",
+        proposal_id: result.proposalId,
+        will_email: result.recipientCount,
+        no_email_on_file: result.noEmail,
+        skipped_recently_reminded: result.recentlyReminded,
+        note: "Queued in the Pending panel. Nothing has been sent — tell the user to review and tap Send reminders. For households with no email, offer to write a short text message they can send themselves.",
       };
     }
 

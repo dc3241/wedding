@@ -40,6 +40,7 @@ export function AddGuestForms({
     const name = (form.get("name") as string) ?? "";
     const household = (form.get("household") as string) ?? "";
     const phone = (form.get("phone") as string) ?? "";
+    const email = (form.get("email") as string) ?? "";
     const address = (form.get("address") as string) ?? "";
     const size = associating ? 1 : Number(form.get("party_size") ?? 1);
     const primarySide = (form.get("relationship_side") as string) ?? "";
@@ -80,6 +81,7 @@ export function AddGuestForms({
         {
           member_type: memberType,
           primaryMemberId: primaryMemberId || null,
+          email,
         },
       );
       formEl.reset();
@@ -320,6 +322,24 @@ export function AddGuestForms({
                     name="phone"
                     type="tel"
                     placeholder="(555) 555-5555"
+                    disabled={isAddPending}
+                  />
+                </div>
+                <div className="space-y-1.5 sm:col-span-2">
+                  <label
+                    htmlFor="guest-email"
+                    className="text-[14px] font-medium text-ink"
+                  >
+                    Email{" "}
+                    <span className="font-normal text-muted">
+                      (for RSVP reminders)
+                    </span>
+                  </label>
+                  <Input
+                    id="guest-email"
+                    name="email"
+                    type="email"
+                    placeholder="name@example.com"
                     disabled={isAddPending}
                   />
                 </div>

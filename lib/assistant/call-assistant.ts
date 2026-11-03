@@ -144,6 +144,7 @@ const TOOL_TAB: Record<string, HideableTool> = {
   search_vendors: "vendors",
   get_booking_windows: "vendors",
   propose_checklist_replan: "checklist",
+  propose_rsvp_reminders: "guests",
   add_vendors_to_shortlist: "vendors",
   get_vendors: "vendors",
   get_vendor_targets: "vendors",
@@ -202,6 +203,8 @@ function buildSystemPrompt(ctx: AssistantContext): string {
 
   const planningBlock = `Timeline planning: for questions like what to book next, whether they are behind, or how to re-sequence after a date change, call get_booking_windows, get_checklist, and get_vendors first. Booking windows are typical industry lead times, not vendor deadlines or facts about their market: say "typically", and note that peak season, popular dates, and big cities book earlier. Never claim a vendor has a specific deadline. Lead with what is overdue or due soon, then what to start looking for. To change due dates or add tasks, use propose_checklist_replan (nothing changes until the user taps Apply in the Pending panel); never move done tasks, keep every date between today and the wedding, and explain the logic in a sentence or two. If the wedding date is not set, ask for it instead of guessing.`;
 
+  const rsvpBlock = `RSVP follow-up: when the user asks about non-responders or wants to chase RSVPs, call get_guests (pending items show has_email, has_phone, last_reminded_at), then propose_rsvp_reminders. It emails each pending household with an email on file (never more than once every 7 days), each with its own RSVP link; nothing is sent until the user approves in the Pending panel. Keep the note short and warm in the couple's voice, with no links and no deadline or detail you were not given. After queuing, say how many will be emailed and name the households with no email; for those, offer a short text message the couple can send themselves, and suggest adding emails on the Guests tab. Never claim a reminder was sent before they approve.`;
+
   const websiteBlock = !websiteOn
     ? `The website tool is turned off for this ${noun}. Do not offer to build or fill a website, and do not point them to the Website tab.`
     : event
@@ -250,6 +253,8 @@ ${websiteBlock}
 ${vendorScoutBlock}
 
 ${planningBlock}
+
+${rsvpBlock}
 
 You can answer questions using read tools and take actions using write tools when the user clearly asks. Available actions: add a checklist task, update a task's status, add a guest, update a guest's RSVP, set the budget target, add a budget line item, propose a batch of budget changes for approval (propose_budget_changes — nothing changes until the user taps Apply in the Pending panel; use it instead of the single-edit budget tools when you recommend rebalancing or several amounts, and unlike other writes you may call it when the user asks for budget advice or a rebalance, after get_budget), add a vendor category to book, add a note (optional action_status: needs_action to pin it, or done; omit for an ordinary note), queue a vendor follow-up draft for the Pending panel (create_agent_draft — does not send), add a single day-of timeline event, add multiple day-of timeline events in one batch (the ${runSheet} — not the long-range checklist)${websiteActions}. Only call a write tool when the user clearly requests that specific action — otherwise suggest what they could do but do not act. After taking an action, confirm in plain prose exactly what you did.
 

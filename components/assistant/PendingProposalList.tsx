@@ -64,7 +64,9 @@ function ProposalRow({
           ? "Vendor reply"
           : proposal.kind === "checklist_replan"
             ? "Checklist update"
-            : "Budget suggestion"}
+            : proposal.kind === "rsvp_reminder"
+              ? "RSVP reminder"
+              : "Budget suggestion"}
       </p>
       <h3 className="mt-1 text-[15px] font-medium text-ink">{proposal.title}</h3>
       {proposal.summary ? (
@@ -87,7 +89,11 @@ function ProposalRow({
           disabled={isPending}
           onClick={() => run("apply")}
         >
-          {proposal.kind === "vendor_quote" ? "Save quote" : "Apply"}
+          {proposal.kind === "vendor_quote"
+            ? "Save quote"
+            : proposal.kind === "rsvp_reminder"
+              ? "Send reminders"
+              : "Apply"}
         </Button>
         <Button
           type="button"

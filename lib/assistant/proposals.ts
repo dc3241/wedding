@@ -403,3 +403,187 @@ export async function createReplanProposal(
   }
   return { ok: true, proposalId: inserted.id, changeCount: changes.length };
 }
+
+/** RSVP-CHASE-01 — reminder emails to guests who haven't answered. */
+export const RSVP_REMINDER_COOLDOWN_DAYS = 7;
+export const MAX_RSVP_RECIPIENTS = 40;
+export const DEFAULT_RSVP_MESSAGE =
+  "We haven't heard from you yet and would love to know if you can make it.";
+
+export type RsvpReminderPayload = {
+  message: string;
+  coupleNames: string;
+  /** Display only. Apply re-reads email, token, and status from the database. */
+  recipients: { guestId: string; name: string; email: string }[];
+  noEmail: { name: string; phone: string | null }[];
+  recentlyReminded: number;
+};
+
+export function describeRsvpReminder(payload: RsvpReminderPayload): string[] {
+  const lines: string[] = [];
+  const names = payload.recipients.map((r) => r.name);
+  lines.push(
+    `Email ${payload.recipients.length}: ${names.slice(0, 6).join(", ")}${
+      names.length > 6 ? `, +${names.length - 6} more` : ""
+    }`,
+  );
+  lines.push(`Message: "${payload.message}"`);
+  lines.push("Each email links to that household's own RSVP page.");
+  if (payload.noEmail.length > 0) {
+    lines.push(
+      `No email on file (${payload.noEmail.length}): ${payload.noEmail
+        .slice(0, 6)
+        .map((g) => g.name)
+        .join(", ")}${payload.noEmail.length > 6 ? ", ..." : ""}`,
+    );
+  }
+  if (payload.recentlyReminded > 0) {
+    lines.push(
+      `Skipped ${payload.recentlyReminded} reminded in the last ${RSVP_REMINDER_COOLDOWN_DAYS} days`,
+    );
+  }
+  return lines;
+}
+
+export type CreateRsvpReminderResult =
+  | {
+      ok: true;
+      proposalId: string;
+      recipientCount: number;
+      noEmail: { name: string; phone: string | null }[];
+      recentlyReminded: number;
+    }
+  | { ok: false; error: string };
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+export function firstNameFor(
+  members: { name: string | null; sort_order: number | null }[] | null,
+): string | null {
+  const first = [...(members ?? [])]
+    .filter((m) => m.name?.trim())
+    .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))[0];
+  const token = first?.name?.trim().split(/\s+/)[0];
+  return token || null;
+}
+
+/** Build a reminder proposal from live data. Sends nothing. */
+export async function createRsvpReminderProposal(
+  projectId: string,
+  input: { message?: string },
+  client?: SupabaseClient,
+): Promise<CreateRsvpReminderResult> {
+  const message = (input.message ?? "").trim() || DEFAULT_RSVP_MESSAGE;
+  if (message.length > 600) {
+    return { ok: false, error: "Keep the message under 600 characters." };
+  }
+  if (/https?:|www\./i.test(message)) {
+    return { ok: false, error: "Don't put links in the message; the RSVP link is added for you." };
+  }
+
+  const supabase = await clientForWrite(client);
+  const { data: project, error: projectError } = await supabase
+    .from("projects")
+    .select("id, account_id, name")
+    .eq("id", projectId)
+    .maybeSingle();
+  if (projectError) return { ok: false, error: projectError.message };
+  if (!project) return { ok: false, error: "Project not found." };
+
+  const { data: site } = await supabase
+    .from("wedding_websites")
+    .select("slug, published")
+    .eq("project_id", projectId)
+    .maybeSingle();
+  if (!site?.published || !site.slug) {
+    return {
+      ok: false,
+      error:
+        "The wedding website isn't published yet, so guests have nowhere to RSVP. Publish it from the Website tab first.",
+    };
+  }
+
+  const { data: guests, error: guestsError } = await supabase
+    .from("guests")
+    .select(
+      "id, full_name, email, phone, last_reminded_at, guest_members ( name, sort_order )",
+    )
+    .eq("project_id", projectId)
+    .eq("rsvp_status", "pending");
+  if (guestsError) return { ok: false, error: guestsError.message };
+
+  const cutoff = Date.now() - RSVP_REMINDER_COOLDOWN_DAYS * 86_400_000;
+  const recipients: RsvpReminderPayload["recipients"] = [];
+  const noEmail: RsvpReminderPayload["noEmail"] = [];
+  let recentlyReminded = 0;
+
+  for (const guest of guests ?? []) {
+    const email = (guest.email as string | null)?.trim() ?? "";
+    const hasEmail = EMAIL_RE.test(email);
+    const name = String(guest.full_name);
+    if (!hasEmail) {
+      noEmail.push({ name, phone: (guest.phone as string | null)?.trim() || null });
+      continue;
+    }
+    const last = guest.last_reminded_at
+      ? new Date(guest.last_reminded_at as string).getTime()
+      : null;
+    if (last !== null && last > cutoff) {
+      recentlyReminded += 1;
+      continue;
+    }
+    recipients.push({ guestId: guest.id as string, name, email });
+  }
+
+  if (recipients.length === 0) {
+    return {
+      ok: false,
+      error:
+        noEmail.length > 0
+          ? `Nobody to email: ${noEmail.length} pending household(s) have no email on file and ${recentlyReminded} were reminded recently. Add emails on the Guests tab, or send a text.`
+          : recentlyReminded > 0
+            ? `Everyone still pending was reminded in the last ${RSVP_REMINDER_COOLDOWN_DAYS} days.`
+            : "Nobody is waiting on an RSVP.",
+    };
+  }
+  if (recipients.length > MAX_RSVP_RECIPIENTS) {
+    recipients.length = MAX_RSVP_RECIPIENTS;
+  }
+
+  const coupleNames = String(project.name).trim() || "the couple";
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const payload: RsvpReminderPayload = {
+    message,
+    coupleNames,
+    recipients,
+    noEmail,
+    recentlyReminded,
+  };
+  const { data: inserted, error: insertError } = await supabase
+    .from("assistant_proposals")
+    .insert({
+      account_id: project.account_id,
+      project_id: projectId,
+      kind: "rsvp_reminder",
+      title: `RSVP reminder to ${recipients.length} household${recipients.length === 1 ? "" : "s"}`,
+      summary: null,
+      payload,
+      status: "pending",
+      created_by: user?.id ?? null,
+    })
+    .select("id")
+    .single();
+  if (insertError || !inserted) {
+    return { ok: false, error: insertError?.message ?? "Could not save the proposal." };
+  }
+  return {
+    ok: true,
+    proposalId: inserted.id,
+    recipientCount: recipients.length,
+    noEmail,
+    recentlyReminded,
+  };
+}

@@ -10,6 +10,8 @@ import type {
 import {
   describeBudgetChange,
   describeReplanChange,
+  describeRsvpReminder,
+  type RsvpReminderPayload,
   describeVendorQuote,
   type BudgetProposalPayload,
   type ChecklistReplanPayload,
@@ -176,9 +178,19 @@ export default async function ProjectLayout({
       (row) =>
         row.kind === "budget_change" ||
         row.kind === "vendor_quote" ||
-        row.kind === "checklist_replan",
+        row.kind === "checklist_replan" ||
+        row.kind === "rsvp_reminder",
     )
     .map((row) => {
+      if (row.kind === "rsvp_reminder") {
+        return {
+          id: row.id,
+          kind: "rsvp_reminder" as const,
+          title: row.title,
+          summary: row.summary,
+          lines: describeRsvpReminder(row.payload as RsvpReminderPayload),
+        };
+      }
       if (row.kind === "checklist_replan") {
         const replan = (row.payload as ChecklistReplanPayload | null)?.changes ?? [];
         return {
