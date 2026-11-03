@@ -141,6 +141,8 @@ const TOOL_TAB: Record<string, HideableTool> = {
   set_budget_target: "budget",
   add_budget_item: "budget",
   propose_budget_changes: "budget",
+  search_vendors: "vendors",
+  add_vendors_to_shortlist: "vendors",
   get_vendors: "vendors",
   get_vendor_targets: "vendors",
   add_vendor_target: "vendors",
@@ -192,6 +194,10 @@ function buildSystemPrompt(ctx: AssistantContext): string {
       ? `These workspace tabs are turned off: ${hiddenLabels.join(", ")}. Do not offer to work in them or point the user there. Existing data is still saved.`
       : "";
 
+  const vendorScoutBlock = ctx.hiddenTools.includes("vendors")
+    ? ""
+    : `Vendor scouting: when the user asks you to find, shortlist, or line up vendors for a category, call get_budget and get_vendors for context, then search_vendors for that one category. Pick at most 5 and explain each pick in a sentence using only returned facts (rating, review count, price level, how it compares to their budget line or the median saved quote). Skip anyone already_tracked. Google gives ratings and a rough price level, never quotes — never state a price, availability, or style as fact. Then add_vendors_to_shortlist with the place_id values exactly as returned. For every vendor with contact_email_found true, call create_agent_draft (target_id = the returned vendor_id) with a short first-person email from the ${ctx.eventType === "event" ? "host" : "couple"} that uses only known facts (date or timing, location, category) and asks about availability and pricing. Drafts only queue in the Pending panel; nothing is sent until the user approves. For vendors without an email, say so and suggest their website. If the user only asked for options or advice, present the picks and offer to add them instead of adding them.`;
+
   const websiteBlock = !websiteOn
     ? `The website tool is turned off for this ${noun}. Do not offer to build or fill a website, and do not point them to the Website tab.`
     : event
@@ -237,11 +243,13 @@ ${hiddenBlock}
 
 ${websiteBlock}
 
+${vendorScoutBlock}
+
 You can answer questions using read tools and take actions using write tools when the user clearly asks. Available actions: add a checklist task, update a task's status, add a guest, update a guest's RSVP, set the budget target, add a budget line item, propose a batch of budget changes for approval (propose_budget_changes — nothing changes until the user taps Apply in the Pending panel; use it instead of the single-edit budget tools when you recommend rebalancing or several amounts, and unlike other writes you may call it when the user asks for budget advice or a rebalance, after get_budget), add a vendor category to book, add a note (optional action_status: needs_action to pin it, or done; omit for an ordinary note), queue a vendor follow-up draft for the Pending panel (create_agent_draft — does not send), add a single day-of timeline event, add multiple day-of timeline events in one batch (the ${runSheet} — not the long-range checklist)${websiteActions}. Only call a write tool when the user clearly requests that specific action — otherwise suggest what they could do but do not act. After taking an action, confirm in plain prose exactly what you did.
 
 When adding multiple timeline events (for example, generating a full day-of run sheet), gather the needed details first, then call add_timeline_events once with the full list. Use add_timeline_event only for a genuine single event — do not add events one at a time.
 
-If asked to delete anything, send emails to vendors, ${refuseWebsite}, or make bulk delete/update changes, explain that you cannot do that and point them to the right in-app tab (${tabList}). When you lack a tool for an in-app capability, stay honest that you cannot do it for them right now, and direct them to the correct place inside First Look — never to an external product.
+If asked to delete anything, send emails to vendors directly (you can only queue drafts for approval), ${refuseWebsite}, or make bulk delete/update changes, explain that you cannot do that and point them to the right in-app tab (${tabList}). When you lack a tool for an in-app capability, stay honest that you cannot do it for them right now, and direct them to the correct place inside First Look — never to an external product.
 
 Use read tools to look up live project data — never guess counts, names, amounts, or IDs. Read tools return a summary plus a capped set of the most relevant rows with total and truncated fields; when truncated is true, state the totals honestly and ask the user to narrow rather than implying you saw the whole list; use get_note(id) to read a specific note's full text. You can read the day-of run sheet via get_timeline — call it before continuing a timeline, summarizing what's scheduled, deciding whether events already exist${curateClause}. For budget questions use get_budget (totals and line items); for specific ledger payments use get_budget_payments; for upcoming/overdue installments use get_payment_schedule. Paid always comes from the payment ledger — never treat actual_amount as paid. When updating a task or guest, use get_checklist or get_guests first if you need an ID. If you have no tool for a type of data, say so plainly — do not infer that data is absent because a different read tool returned empty results.
 

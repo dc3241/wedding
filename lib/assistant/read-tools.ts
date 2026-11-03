@@ -11,6 +11,7 @@ import {
   type ProjectVendorOption,
 } from "@/lib/budget-aggregates";
 import { placesTextSearch } from "@/lib/places-text-search";
+import { SCOUT_CATEGORY_IDS, scoutVendors } from "@/lib/vendors/scout";
 import { resolveProjectLocationHint } from "@/lib/resolve-project-location-hint";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { isTaskPastDue } from "@/lib/task-overdue";
@@ -153,6 +154,27 @@ export const READ_TOOL_DEFINITIONS = [
     },
   },
   {
+    name: "search_vendors",
+    description:
+      "Search Google Places for wedding vendors in ONE category near the wedding (photographers, florists, venues, etc.). Read-only. Returns up to 10 candidates with rating, review count, rough price level, website, and whether they are already tracked, plus the median saved quote and this project's budget line for the category when known. Ratings and price level are NOT quotes. If location cannot be resolved it returns needsLocation and you must ask where.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        category: {
+          type: "string",
+          enum: [...SCOUT_CATEGORY_IDS],
+          description: "Canonical vendor category id.",
+        },
+        near: {
+          type: "string",
+          description:
+            "Optional city or address override. Defaults to the venue / wedding location.",
+        },
+      },
+      required: ["category"] as string[],
+    },
+  },
+  {
     name: "search_nearby_places",
     description:
       "Search Google Places for nearby hotels (lodging), airports, or restaurants near the couple's venue. Read-only — returns candidates for Travel & Stay copy. Pass near to override the venue location; if location cannot be resolved, returns needsLocation and you must ask the couple.",
@@ -200,7 +222,12 @@ export const READ_TOOL_DEFINITIONS = [
 export type ReadToolName = (typeof READ_TOOL_DEFINITIONS)[number]["name"];
 
 /** Contract bodies stay out of unattended jobs. Chat turns these on. */
-export const CHAT_ONLY_READ_TOOLS = new Set<string>(["get_files", "get_file"]);
+export const CHAT_ONLY_READ_TOOLS = new Set<string>([
+  "get_files",
+  "get_file",
+  // Calls paid Google Places; never from unattended runs.
+  "search_vendors",
+]);
 
 function excerpt(
   text: string | null | undefined,
@@ -1122,6 +1149,8 @@ export async function executeReadTool(
       return getWebsite(supabase, projectId);
     case "search_nearby_places":
       return searchNearbyPlaces(supabase, projectId, input);
+    case "search_vendors":
+      return scoutVendors(supabase, projectId, input);
     case "get_files":
       return getFiles(supabase, projectId);
     case "get_file": {

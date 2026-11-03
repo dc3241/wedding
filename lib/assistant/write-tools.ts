@@ -9,7 +9,16 @@ import { addNote, updateNote } from "@/app/(app)/projects/[projectId]/notes/acti
 import type { NoteActionStatus } from "@/app/(app)/projects/[projectId]/notes/types";
 import { createAgentDraft } from "@/lib/assistant/create-agent-draft";
 import { createBudgetProposal } from "@/lib/assistant/proposals";
-import { addVendorTarget } from "@/app/(app)/projects/[projectId]/vendors/actions";
+import { runVendorEnrichment } from "@/lib/vendor-enrichment";
+import {
+  fetchPlaceBasics,
+  MAX_SHORTLIST_ADDS,
+  SCOUT_CATEGORY_IDS,
+} from "@/lib/vendors/scout";
+import {
+  addDiscoveredVendor,
+  addVendorTarget,
+} from "@/app/(app)/projects/[projectId]/vendors/actions";
 import {
   addEvent,
   addEvents,
@@ -198,6 +207,27 @@ export const WRITE_TOOL_DEFINITIONS = [
         },
       },
       required: ["title", "changes"] as string[],
+    },
+  },
+  {
+    name: "add_vendors_to_shortlist",
+    description:
+      "Add up to 5 vendors from a search_vendors result to this wedding's shortlist (status: to contact) and look up their contact emails. Pass the place_id values EXACTLY as search_vendors returned them. Names and websites are re-verified with Google, so invented ids are rejected. Returns, per vendor, whether a contact email was found. Does not email anyone.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        category: {
+          type: "string",
+          enum: [...SCOUT_CATEGORY_IDS],
+          description: "The vendor category these places were searched under.",
+        },
+        place_ids: {
+          type: "array",
+          items: { type: "string" },
+          description: "place_id values from search_vendors. Max 5.",
+        },
+      },
+      required: ["category", "place_ids"] as string[],
     },
   },
   {
@@ -461,6 +491,108 @@ function isNoteActionStatus(value: string): value is Exclude<NoteActionStatus, n
   return value === "needs_action" || value === "done";
 }
 
+const ENRICH_TIMEOUT_MS = 20_000;
+
+/**
+ * AGENTIC-02: verify each place with Google, track it on the wedding, then
+ * run contact enrichment (awaited, in parallel, time-boxed) so outreach
+ * drafts can follow in the same turn.
+ */
+async function addVendorsToShortlist(
+  projectId: string,
+  input: Record<string, unknown>,
+  client?: SupabaseClient,
+) {
+  const category = asString(input.category)?.trim() ?? "";
+  if (!SCOUT_CATEGORY_IDS.includes(category)) {
+    return toolError(`category must be one of: ${SCOUT_CATEGORY_IDS.join(", ")}`);
+  }
+  const rawIds = Array.isArray(input.place_ids) ? input.place_ids : [];
+  const placeIds = [
+    ...new Set(
+      rawIds
+        .filter((id): id is string => typeof id === "string")
+        .map((id) => id.trim())
+        .filter(Boolean),
+    ),
+  ];
+  if (placeIds.length === 0) return toolError("place_ids is required");
+  if (placeIds.length > MAX_SHORTLIST_ADDS) {
+    return toolError(`Add at most ${MAX_SHORTLIST_ADDS} vendors at a time.`);
+  }
+
+  type Outcome = {
+    place_id: string;
+    name?: string;
+    vendor_id?: string;
+    added: boolean;
+    contact_email_found?: boolean;
+    error?: string;
+  };
+
+  const outcomes: Outcome[] = [];
+  for (const placeId of placeIds) {
+    const basics = await fetchPlaceBasics(placeId);
+    if (!basics) {
+      outcomes.push({
+        place_id: placeId,
+        added: false,
+        error: "Google could not verify this place_id. Use ids from search_vendors.",
+      });
+      continue;
+    }
+    const added = await addDiscoveredVendor(
+      projectId,
+      {
+        id: basics.id,
+        displayName: basics.name,
+        websiteUri: basics.website ?? undefined,
+      },
+      category,
+      { skipEnrichment: true },
+    );
+    outcomes.push(
+      added.ok
+        ? { place_id: placeId, name: basics.name, vendor_id: added.vendorId, added: true }
+        : { place_id: placeId, name: basics.name, added: false, error: added.error },
+    );
+  }
+
+  const addedOutcomes = outcomes.filter((o) => o.added && o.vendor_id);
+  await Promise.all(
+    addedOutcomes.map((o) =>
+      Promise.race([
+        runVendorEnrichment(o.vendor_id!).catch(() => null),
+        new Promise((resolve) => setTimeout(resolve, ENRICH_TIMEOUT_MS)),
+      ]),
+    ),
+  );
+
+  if (addedOutcomes.length > 0) {
+    const supabase = await clientForWrite(client);
+    const { data: rows } = await supabase
+      .from("vendors")
+      .select("id, contact_email")
+      .in(
+        "id",
+        addedOutcomes.map((o) => o.vendor_id!),
+      );
+    const emailById = new Map(
+      (rows ?? []).map((row) => [row.id as string, row.contact_email as string | null]),
+    );
+    for (const o of addedOutcomes) {
+      o.contact_email_found = Boolean(emailById.get(o.vendor_id!)?.trim());
+    }
+  }
+
+  return {
+    success: addedOutcomes.length > 0,
+    action: "add_vendors_to_shortlist",
+    vendors: outcomes,
+    note: "Vendors with contact_email_found=false cannot get an email draft; tell the user to reach them through their website. Draft the rest with create_agent_draft using vendor_id as target_id.",
+  };
+}
+
 export async function executeWriteTool(
   projectId: string,
   toolName: WriteToolName,
@@ -625,6 +757,9 @@ export async function executeWriteTool(
         note: "Queued in the Pending panel. Nothing has changed yet — tell the user to review and tap Apply.",
       };
     }
+
+    case "add_vendors_to_shortlist":
+      return addVendorsToShortlist(projectId, input, client);
 
     case "add_vendor_target": {
       const category = asString(input.category)?.trim();

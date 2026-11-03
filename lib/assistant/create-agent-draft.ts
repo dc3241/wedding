@@ -129,7 +129,7 @@ async function insertVendorOutreach(
 
   const { data: vendor, error: vendorError } = await supabase
     .from("vendors")
-    .select("id, account_id")
+    .select("id, account_id, contact_email")
     .eq("id", targetId)
     .maybeSingle();
 
@@ -140,6 +140,14 @@ async function insertVendorOutreach(
     return {
       ok: false,
       error: "Vendor not found on this account.",
+    };
+  }
+
+  if (!vendor.contact_email?.trim()) {
+    return {
+      ok: false,
+      error:
+        "This vendor has no contact email yet, so a draft couldn't be sent. Tell the user to contact them through their website.",
     };
   }
 
