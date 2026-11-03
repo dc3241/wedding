@@ -6,11 +6,15 @@ import {
   setBudgetTarget,
   updateBudgetItem,
 } from "@/app/(app)/projects/[projectId]/budget/actions";
+import { addTask } from "@/app/(app)/projects/[projectId]/checklist/actions";
 import type {
   BudgetChange,
   BudgetProposalPayload,
+  ChecklistReplanPayload,
   VendorQuotePayload,
 } from "@/lib/assistant/proposals";
+import { isCanonicalPhase, phaseFromMonthsBefore } from "@/lib/checklist-phases";
+import { wholeMonthsBetween } from "@/lib/date-months";
 import { createClient } from "@/utils/supabase/server";
 
 export type ProposalActionResult = { ok: true } | { ok: false; error: string };
@@ -20,7 +24,11 @@ type ProposalRow = {
   project_id: string;
   kind: string;
   status: string;
-  payload: BudgetProposalPayload | VendorQuotePayload | null;
+  payload:
+    | BudgetProposalPayload
+    | VendorQuotePayload
+    | ChecklistReplanPayload
+    | null;
 };
 
 function isBudgetChange(value: unknown): value is BudgetChange {
@@ -73,6 +81,9 @@ export async function applyAssistantProposal(
   const proposal = data as ProposalRow;
   if (proposal.kind === "vendor_quote") {
     return applyVendorQuote(supabase, proposal, user.id);
+  }
+  if (proposal.kind === "checklist_replan") {
+    return applyChecklistReplan(supabase, proposal, user.id);
   }
   if (proposal.kind !== "budget_change") {
     return { ok: false, error: "This proposal type can't be applied yet." };
@@ -224,6 +235,109 @@ async function applyVendorQuote(
 
   revalidatePath(`/projects/${proposal.project_id}`, "layout");
   revalidatePath(`/projects/${proposal.project_id}/vendors`);
+  return { ok: true };
+}
+
+/**
+ * AGENTIC-05: apply a checklist replan. Stale check first (a task that was
+ * completed or re-dated since the proposal fails the whole thing), then an
+ * atomic claim, then the writes. Phase follows the new due date only when
+ * the task already sits in a canonical phase, so custom phases survive.
+ */
+async function applyChecklistReplan(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  proposal: ProposalRow,
+  userId: string,
+): Promise<ProposalActionResult> {
+  if (proposal.status !== "pending") {
+    return { ok: false, error: "This proposal was already handled." };
+  }
+  const changes = ((proposal.payload as ChecklistReplanPayload | null)?.changes ?? []).filter(
+    (c) => c && (c.op === "set_due" || c.op === "add_task"),
+  );
+  if (changes.length === 0) return { ok: false, error: "This proposal has no changes." };
+
+  const { data: project } = await supabase
+    .from("projects")
+    .select("wedding_date")
+    .eq("id", proposal.project_id)
+    .maybeSingle();
+  const weddingDate = (project?.wedding_date as string | null) ?? null;
+
+  const taskIds = changes.flatMap((c) => (c.op === "set_due" ? [c.taskId] : []));
+  const current = new Map<string, { status: string; due_date: string | null; phase: string | null }>();
+  if (taskIds.length > 0) {
+    const { data: rows, error: rowsError } = await supabase
+      .from("tasks")
+      .select("id, status, due_date, phase")
+      .eq("project_id", proposal.project_id)
+      .in("id", taskIds);
+    if (rowsError) return { ok: false, error: rowsError.message };
+    for (const row of rows ?? []) {
+      current.set(row.id as string, {
+        status: row.status as string,
+        due_date: (row.due_date as string | null) ?? null,
+        phase: (row.phase as string | null) ?? null,
+      });
+    }
+  }
+  for (const change of changes) {
+    if (change.op !== "set_due") continue;
+    const now = current.get(change.taskId);
+    if (!now || now.status === "done" || now.due_date !== change.from) {
+      const message =
+        "Your checklist changed since this was proposed. Ask the assistant to propose it again.";
+      await failProposal(supabase, proposal.id, message, userId);
+      revalidatePath(`/projects/${proposal.project_id}`, "layout");
+      return { ok: false, error: message };
+    }
+  }
+
+  const { data: claimed, error: claimError } = await supabase
+    .from("assistant_proposals")
+    .update({ status: "applied", resolved_at: new Date().toISOString(), resolved_by: userId })
+    .eq("id", proposal.id)
+    .eq("status", "pending")
+    .select("id")
+    .maybeSingle();
+  if (claimError) return { ok: false, error: claimError.message };
+  if (!claimed) return { ok: false, error: "This proposal was already handled." };
+
+  try {
+    for (const change of changes) {
+      if (change.op === "set_due") {
+        const updates: Record<string, string> = { due_date: change.to };
+        const existing = current.get(change.taskId);
+        if (weddingDate && existing?.phase && isCanonicalPhase(existing.phase)) {
+          updates.phase = phaseFromMonthsBefore(wholeMonthsBetween(change.to, weddingDate));
+        }
+        const { error } = await supabase
+          .from("tasks")
+          .update(updates)
+          .eq("id", change.taskId)
+          .eq("project_id", proposal.project_id);
+        if (error) throw error;
+      } else {
+        const phase = weddingDate
+          ? phaseFromMonthsBefore(wholeMonthsBetween(change.due, weddingDate))
+          : null;
+        await addTask(proposal.project_id, phase, change.title, change.due);
+      }
+    }
+  } catch (caught) {
+    const message = caught instanceof Error ? caught.message : "Could not apply every change.";
+    await failProposal(supabase, proposal.id, message, userId);
+    revalidatePath(`/projects/${proposal.project_id}`, "layout");
+    return {
+      ok: false,
+      error:
+        "Some changes may have applied before something went wrong. Check the Checklist, then ask the assistant to redo the rest.",
+    };
+  }
+
+  revalidatePath(`/projects/${proposal.project_id}`, "layout");
+  revalidatePath(`/projects/${proposal.project_id}/checklist`);
+  revalidatePath(`/projects/${proposal.project_id}/calendar`);
   return { ok: true };
 }
 

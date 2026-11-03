@@ -142,6 +142,8 @@ const TOOL_TAB: Record<string, HideableTool> = {
   add_budget_item: "budget",
   propose_budget_changes: "budget",
   search_vendors: "vendors",
+  get_booking_windows: "vendors",
+  propose_checklist_replan: "checklist",
   add_vendors_to_shortlist: "vendors",
   get_vendors: "vendors",
   get_vendor_targets: "vendors",
@@ -198,6 +200,8 @@ function buildSystemPrompt(ctx: AssistantContext): string {
     ? ""
     : `Vendor scouting: when the user asks you to find, shortlist, or line up vendors for a category, call get_budget and get_vendors for context, then search_vendors for that one category. Pick at most 5 and explain each pick in a sentence using only returned facts (rating, review count, price level, how it compares to their budget line or the median saved quote). Skip anyone already_tracked. Google gives ratings and a rough price level, never quotes — never state a price, availability, or style as fact. Then add_vendors_to_shortlist with the place_id values exactly as returned. For every vendor with contact_email_found true, call create_agent_draft (target_id = the returned vendor_id) with a short first-person email from the ${ctx.eventType === "event" ? "host" : "couple"} that uses only known facts (date or timing, location, category) and asks about availability and pricing. Drafts only queue in the Pending panel; nothing is sent until the user approves. For vendors without an email, say so and suggest their website. If the user only asked for options or advice, present the picks and offer to add them instead of adding them. Quote comparison: vendor replies arrive as cards in the Pending panel for the user to save; saved quotes appear in get_vendors as quote / quote_details. When asked to compare or choose between vendors, use get_vendors for the category and compare only saved quotes. Prices with different price_basis (total, starting_at, per_person, hourly) are NOT comparable as-is — say so, never convert or estimate a total yourself, and name what is missing (no reply yet, no price, date not confirmed available). Recommend with reasons tied to saved facts and their budget line; the user decides and books.`;
 
+  const planningBlock = `Timeline planning: for questions like what to book next, whether they are behind, or how to re-sequence after a date change, call get_booking_windows, get_checklist, and get_vendors first. Booking windows are typical industry lead times, not vendor deadlines or facts about their market: say "typically", and note that peak season, popular dates, and big cities book earlier. Never claim a vendor has a specific deadline. Lead with what is overdue or due soon, then what to start looking for. To change due dates or add tasks, use propose_checklist_replan (nothing changes until the user taps Apply in the Pending panel); never move done tasks, keep every date between today and the wedding, and explain the logic in a sentence or two. If the wedding date is not set, ask for it instead of guessing.`;
+
   const websiteBlock = !websiteOn
     ? `The website tool is turned off for this ${noun}. Do not offer to build or fill a website, and do not point them to the Website tab.`
     : event
@@ -244,6 +248,8 @@ ${hiddenBlock}
 ${websiteBlock}
 
 ${vendorScoutBlock}
+
+${planningBlock}
 
 You can answer questions using read tools and take actions using write tools when the user clearly asks. Available actions: add a checklist task, update a task's status, add a guest, update a guest's RSVP, set the budget target, add a budget line item, propose a batch of budget changes for approval (propose_budget_changes — nothing changes until the user taps Apply in the Pending panel; use it instead of the single-edit budget tools when you recommend rebalancing or several amounts, and unlike other writes you may call it when the user asks for budget advice or a rebalance, after get_budget), add a vendor category to book, add a note (optional action_status: needs_action to pin it, or done; omit for an ordinary note), queue a vendor follow-up draft for the Pending panel (create_agent_draft — does not send), add a single day-of timeline event, add multiple day-of timeline events in one batch (the ${runSheet} — not the long-range checklist)${websiteActions}. Only call a write tool when the user clearly requests that specific action — otherwise suggest what they could do but do not act. After taking an action, confirm in plain prose exactly what you did.
 

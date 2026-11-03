@@ -12,6 +12,7 @@ import {
 } from "@/lib/budget-aggregates";
 import { placesTextSearch } from "@/lib/places-text-search";
 import { SCOUT_CATEGORY_IDS, scoutVendors } from "@/lib/vendors/scout";
+import { computeBookingWindows } from "@/lib/booking-windows";
 import { resolveProjectLocationHint } from "@/lib/resolve-project-location-hint";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { isTaskPastDue } from "@/lib/task-overdue";
@@ -147,6 +148,16 @@ export const READ_TOOL_DEFINITIONS = [
     name: "get_website",
     description:
       "Get a compact summary of this project's website: whether it exists, schedule item count/titles, and whether the details section is populated. Use before filling the Schedule or answering website-state questions.",
+    input_schema: {
+      type: "object" as const,
+      properties: {},
+      required: [] as string[],
+    },
+  },
+  {
+    name: "get_booking_windows",
+    description:
+      "For each vendor category, when to start looking and when to have it booked (typical industry lead times, NOT vendor deadlines), compared with what is already booked or tracked on this wedding. Returns the most urgent first. Use for 'what should I book next', 'am I behind', or timeline advice. If the wedding date is not set it returns needsWeddingDate.",
     input_schema: {
       type: "object" as const,
       properties: {},
@@ -1083,6 +1094,57 @@ function isNearbyPlaceCategory(value: string): value is NearbyPlaceCategory {
   return (NEARBY_PLACE_CATEGORIES as readonly string[]).includes(value);
 }
 
+async function getBookingWindows(supabase: SupabaseClient, projectId: string) {
+  const { data: project } = await supabase
+    .from("projects")
+    .select("wedding_date")
+    .eq("id", projectId)
+    .maybeSingle();
+  const weddingDate = (project?.wedding_date as string | null) ?? null;
+  if (!weddingDate) return { needsWeddingDate: true };
+
+  const [linksResult, ignoredResult] = await Promise.all([
+    supabase
+      .from("project_vendors")
+      .select("status, vendors(category)")
+      .eq("project_id", projectId),
+    supabase
+      .from("ignored_vendor_categories")
+      .select("category")
+      .eq("project_id", projectId),
+  ]);
+
+  const booked = new Set<string>();
+  const tracked = new Set<string>();
+  for (const row of linksResult.data ?? []) {
+    const vendor = Array.isArray(row.vendors) ? row.vendors[0] : row.vendors;
+    const category = vendor?.category as string | null | undefined;
+    if (!category) continue;
+    if (row.status === "booked") booked.add(category);
+    else if (row.status !== "declined") tracked.add(category);
+  }
+  const ignored = new Set(
+    (ignoredResult.data ?? []).map((row) => row.category as string),
+  );
+
+  const now = new Date();
+  const todayIso = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  const rows = computeBookingWindows({
+    weddingDate,
+    todayIso,
+    booked,
+    tracked,
+    ignored,
+  });
+
+  return {
+    wedding_date: weddingDate,
+    today: todayIso,
+    note: "Typical lead times, not vendor deadlines. Popular dates, peak season, and big cities book earlier. Present as 'typically', never as a fact about a specific vendor.",
+    categories: rows,
+  };
+}
+
 async function searchNearbyPlaces(
   supabase: SupabaseClient,
   projectId: string,
@@ -1163,6 +1225,8 @@ export async function executeReadTool(
       return searchNearbyPlaces(supabase, projectId, input);
     case "search_vendors":
       return scoutVendors(supabase, projectId, input);
+    case "get_booking_windows":
+      return getBookingWindows(supabase, projectId);
     case "get_files":
       return getFiles(supabase, projectId);
     case "get_file": {

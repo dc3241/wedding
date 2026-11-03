@@ -8,7 +8,10 @@ import {
 import { addNote, updateNote } from "@/app/(app)/projects/[projectId]/notes/actions";
 import type { NoteActionStatus } from "@/app/(app)/projects/[projectId]/notes/types";
 import { createAgentDraft } from "@/lib/assistant/create-agent-draft";
-import { createBudgetProposal } from "@/lib/assistant/proposals";
+import {
+  createBudgetProposal,
+  createReplanProposal,
+} from "@/lib/assistant/proposals";
 import { runVendorEnrichment } from "@/lib/vendor-enrichment";
 import {
   fetchPlaceBasics,
@@ -203,6 +206,36 @@ export const WRITE_TOOL_DEFINITIONS = [
               },
             },
             required: ["op", "amount"] as string[],
+          },
+        },
+      },
+      required: ["title", "changes"] as string[],
+    },
+  },
+  {
+    name: "propose_checklist_replan",
+    description:
+      "Propose new due dates for existing checklist tasks and/or new tasks, for the user to approve. NOTHING changes until they tap Apply in the Pending panel. Use it to re-sequence the checklist after the wedding date moves, when tasks have slipped, or to fit booking windows. Call get_checklist first so task ids are real, and get_booking_windows for timing. Dates must be today or later and not after the wedding. Max 15 changes. Done tasks cannot be changed.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        title: { type: "string", description: "Short title, e.g. 'Re-sequence for a June date'." },
+        summary: { type: "string", description: "One or two sentences on why." },
+        changes: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              op: {
+                type: "string",
+                enum: ["set_due", "add_task"],
+                description: "set_due: move an existing task's due date. add_task: add a new task with a due date.",
+              },
+              task_id: { type: "string", description: "Required for set_due: id from get_checklist." },
+              title: { type: "string", description: "Required for add_task: the new task's title." },
+              due_date: { type: "string", description: "YYYY-MM-DD." },
+            },
+            required: ["op", "due_date"] as string[],
           },
         },
       },
@@ -752,6 +785,26 @@ export async function executeWriteTool(
       return {
         success: true,
         action: "propose_budget_changes",
+        proposal_id: result.proposalId,
+        change_count: result.changeCount,
+        note: "Queued in the Pending panel. Nothing has changed yet — tell the user to review and tap Apply.",
+      };
+    }
+
+    case "propose_checklist_replan": {
+      const result = await createReplanProposal(
+        projectId,
+        {
+          title: asString(input.title) ?? "",
+          summary: asString(input.summary),
+          changes: input.changes,
+        },
+        client,
+      );
+      if (!result.ok) return toolError(result.error);
+      return {
+        success: true,
+        action: "propose_checklist_replan",
         proposal_id: result.proposalId,
         change_count: result.changeCount,
         note: "Queued in the Pending panel. Nothing has changed yet — tell the user to review and tap Apply.",

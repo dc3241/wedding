@@ -9,8 +9,10 @@ import type {
 } from "@/components/assistant/types";
 import {
   describeBudgetChange,
+  describeReplanChange,
   describeVendorQuote,
   type BudgetProposalPayload,
+  type ChecklistReplanPayload,
   type VendorQuotePayload,
 } from "@/lib/assistant/proposals";
 import { TourProvider } from "@/components/tour/TourProvider";
@@ -170,8 +172,23 @@ export default async function ProjectLayout({
         .order("created_at", { ascending: false })
     : { data: [] as null | { id: string; kind: string; title: string; summary: string | null; payload: unknown }[] };
   const pendingProposals: AssistantProposalPreview[] = (proposalsResult.data ?? [])
-    .filter((row) => row.kind === "budget_change" || row.kind === "vendor_quote")
+    .filter(
+      (row) =>
+        row.kind === "budget_change" ||
+        row.kind === "vendor_quote" ||
+        row.kind === "checklist_replan",
+    )
     .map((row) => {
+      if (row.kind === "checklist_replan") {
+        const replan = (row.payload as ChecklistReplanPayload | null)?.changes ?? [];
+        return {
+          id: row.id,
+          kind: "checklist_replan" as const,
+          title: row.title,
+          summary: row.summary,
+          lines: replan.map(describeReplanChange),
+        };
+      }
       if (row.kind === "vendor_quote") {
         return {
           id: row.id,

@@ -60,7 +60,11 @@ function ProposalRow({
   return (
     <li className="rounded-[var(--radius-inner)] bg-well px-4 py-3 shadow-recessed">
       <p className="text-[12px] font-semibold uppercase tracking-[0.09em] text-accent">
-        {proposal.kind === "vendor_quote" ? "Vendor reply" : "Budget suggestion"}
+        {proposal.kind === "vendor_quote"
+          ? "Vendor reply"
+          : proposal.kind === "checklist_replan"
+            ? "Checklist update"
+            : "Budget suggestion"}
       </p>
       <h3 className="mt-1 text-[15px] font-medium text-ink">{proposal.title}</h3>
       {proposal.summary ? (
