@@ -13,6 +13,7 @@ import {
   createReplanProposal,
   createRsvpReminderProposal,
 } from "@/lib/assistant/proposals";
+import { createContractTermsProposal } from "@/lib/assistant/contract-terms";
 import {
   addSeatingRule,
   createSeatingPlanProposal,
@@ -219,6 +220,56 @@ export const WRITE_TOOL_DEFINITIONS = [
         },
       },
       required: ["title", "changes"] as string[],
+    },
+  },
+  {
+    name: "propose_contract_terms",
+    description:
+      "After reading an uploaded contract with get_file, propose payment installments, deadline tasks, and a vendor arrival time taken FROM THE CONTRACT, for the user to approve. NOTHING is added until they tap Apply in the Pending panel. EVERY item must include a 'quote': exact words copied from the contract (8+ characters); the server rejects any item whose quote isn't in the file, so never paraphrase or invent. Use amounts and dates exactly as written. Skip dates already past. Payments need budget_item_id (from get_budget) for that vendor. Arrival time needs the file to be linked to a vendor.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        file_id: { type: "string", description: "File id from get_files." },
+        budget_item_id: {
+          type: "string",
+          description: "Budget item the payments belong to (required if payments given).",
+        },
+        summary: { type: "string", description: "One sentence on what was found." },
+        payments: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              label: { type: "string", description: "e.g. Deposit, Final balance" },
+              amount: { type: "number", description: "Dollars, exactly as in the contract." },
+              due_date: { type: "string", description: "YYYY-MM-DD" },
+              quote: { type: "string", description: "Exact words from the contract." },
+            },
+            required: ["amount", "due_date", "quote"] as string[],
+          },
+        },
+        deadlines: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              title: { type: "string", description: "Task title, e.g. 'Send final guest count to caterer'" },
+              due_date: { type: "string", description: "YYYY-MM-DD" },
+              quote: { type: "string", description: "Exact words from the contract." },
+            },
+            required: ["title", "due_date", "quote"] as string[],
+          },
+        },
+        arrival: {
+          type: "object",
+          properties: {
+            time: { type: "string", description: "24-hour HH:MM" },
+            quote: { type: "string", description: "Exact words from the contract." },
+          },
+          required: ["time", "quote"] as string[],
+        },
+      },
+      required: ["file_id"] as string[],
     },
   },
   {
@@ -844,6 +895,31 @@ export async function executeWriteTool(
         proposal_id: result.proposalId,
         change_count: result.changeCount,
         note: "Queued in the Pending panel. Nothing has changed yet — tell the user to review and tap Apply.",
+      };
+    }
+
+    case "propose_contract_terms": {
+      const result = await createContractTermsProposal(
+        projectId,
+        {
+          fileId: asString(input.file_id)?.trim() ?? "",
+          budgetItemId: asString(input.budget_item_id),
+          summary: asString(input.summary),
+          payments: input.payments,
+          deadlines: input.deadlines,
+          arrival: input.arrival,
+        },
+        client,
+      );
+      if (!result.ok) return toolError(result.error);
+      return {
+        success: true,
+        action: "propose_contract_terms",
+        proposal_id: result.proposalId,
+        payments: result.payments,
+        deadlines: result.deadlines,
+        arrival: result.arrival,
+        note: "Queued in the Pending panel. Nothing has been added yet — tell the user to review each item against the contract and tap Apply.",
       };
     }
 

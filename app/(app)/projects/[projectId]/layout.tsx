@@ -8,6 +8,10 @@ import type {
   AssistantProposalPreview,
 } from "@/components/assistant/types";
 import {
+  describeContractTerms,
+  type ContractTermsPayload,
+} from "@/lib/assistant/contract-terms";
+import {
   describeSeatingPlan,
   type SeatingPlanPayload,
 } from "@/lib/seating/auto-seat";
@@ -184,9 +188,19 @@ export default async function ProjectLayout({
         row.kind === "vendor_quote" ||
         row.kind === "checklist_replan" ||
         row.kind === "rsvp_reminder" ||
-        row.kind === "seating_plan",
+        row.kind === "seating_plan" ||
+        row.kind === "contract_terms",
     )
     .map((row) => {
+      if (row.kind === "contract_terms") {
+        return {
+          id: row.id,
+          kind: "contract_terms" as const,
+          title: row.title,
+          summary: row.summary,
+          lines: describeContractTerms(row.payload as ContractTermsPayload),
+        };
+      }
       if (row.kind === "seating_plan") {
         return {
           id: row.id,

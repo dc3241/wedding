@@ -68,7 +68,9 @@ function ProposalRow({
               ? "RSVP reminder"
               : proposal.kind === "seating_plan"
                 ? "Seating plan"
-                : "Budget suggestion"}
+                : proposal.kind === "contract_terms"
+                  ? "From your contract"
+                  : "Budget suggestion"}
       </p>
       <h3 className="mt-1 text-[15px] font-medium text-ink">{proposal.title}</h3>
       {proposal.summary ? (

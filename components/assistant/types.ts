@@ -28,7 +28,7 @@ export type AgentDraftPreview = {
 /** AGENTIC-01: non-email proposals (budget changes first) awaiting Apply. */
 export type AssistantProposalPreview = {
   id: string;
-  kind: "budget_change" | "vendor_quote" | "checklist_replan" | "rsvp_reminder" | "seating_plan";
+  kind: "budget_change" | "vendor_quote" | "checklist_replan" | "rsvp_reminder" | "seating_plan" | "contract_terms";
   title: string;
   summary: string | null;
   /** One human-readable line per change. */

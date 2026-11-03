@@ -16,6 +16,9 @@ import {
   type RsvpReminderPayload,
   type VendorQuotePayload,
 } from "@/lib/assistant/proposals";
+import type { ContractTermsPayload } from "@/lib/assistant/contract-terms";
+import { addScheduleInstallment } from "@/app/(app)/projects/[projectId]/budget/actions";
+import { updateProjectVendorDayOf } from "@/app/(app)/projects/[projectId]/vendors/actions";
 import type { SeatingPlanPayload } from "@/lib/seating/auto-seat";
 import { sendEmail } from "@/lib/email/send";
 import { buildRsvpReminderEmail } from "@/lib/email/rsvp-reminder";
@@ -37,6 +40,7 @@ type ProposalRow = {
     | ChecklistReplanPayload
     | RsvpReminderPayload
     | SeatingPlanPayload
+    | ContractTermsPayload
     | null;
 };
 
@@ -96,6 +100,9 @@ export async function applyAssistantProposal(
   }
   if (proposal.kind === "seating_plan") {
     return applySeatingPlan(supabase, proposal, user.id);
+  }
+  if (proposal.kind === "contract_terms") {
+    return applyContractTerms(supabase, proposal, user.id);
   }
   if (proposal.kind === "rsvp_reminder") {
     return applyRsvpReminder(supabase, proposal, user.id, user.email ?? null);
@@ -353,6 +360,108 @@ async function applyChecklistReplan(
   revalidatePath(`/projects/${proposal.project_id}`, "layout");
   revalidatePath(`/projects/${proposal.project_id}/checklist`);
   revalidatePath(`/projects/${proposal.project_id}/calendar`);
+  return { ok: true };
+}
+
+/**
+ * AGENTIC-08: add approved contract terms. Re-checks the budget item and
+ * vendor link still exist, claims atomically, then writes through the
+ * normal budget / task / vendor writers.
+ */
+async function applyContractTerms(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  proposal: ProposalRow,
+  userId: string,
+): Promise<ProposalActionResult> {
+  if (proposal.status !== "pending") {
+    return { ok: false, error: "This proposal was already handled." };
+  }
+  const payload = proposal.payload as ContractTermsPayload | null;
+  if (!payload) return { ok: false, error: "This proposal is empty." };
+
+  if (payload.payments.length > 0) {
+    const { data: item } = await supabase
+      .from("budget_items")
+      .select("id")
+      .eq("project_id", proposal.project_id)
+      .eq("id", payload.budgetItemId ?? "")
+      .maybeSingle();
+    if (!item) {
+      const message = "The budget line for these payments is gone. Ask the assistant to propose it again.";
+      await failProposal(supabase, proposal.id, message, userId);
+      revalidatePath(`/projects/${proposal.project_id}`, "layout");
+      return { ok: false, error: message };
+    }
+  }
+  if (payload.arrival) {
+    const { data: link } = await supabase
+      .from("project_vendors")
+      .select("id")
+      .eq("project_id", proposal.project_id)
+      .eq("id", payload.projectVendorId ?? "")
+      .maybeSingle();
+    if (!link) {
+      const message = "The vendor for this arrival time is no longer on this wedding.";
+      await failProposal(supabase, proposal.id, message, userId);
+      revalidatePath(`/projects/${proposal.project_id}`, "layout");
+      return { ok: false, error: message };
+    }
+  }
+
+  const { data: claimed, error: claimError } = await supabase
+    .from("assistant_proposals")
+    .update({ status: "applied", resolved_at: new Date().toISOString(), resolved_by: userId })
+    .eq("id", proposal.id)
+    .eq("status", "pending")
+    .select("id")
+    .maybeSingle();
+  if (claimError) return { ok: false, error: claimError.message };
+  if (!claimed) return { ok: false, error: "This proposal was already handled." };
+
+  const { data: project } = await supabase
+    .from("projects")
+    .select("wedding_date")
+    .eq("id", proposal.project_id)
+    .maybeSingle();
+  const weddingDate = (project?.wedding_date as string | null) ?? null;
+
+  try {
+    for (const p of payload.payments) {
+      await addScheduleInstallment(
+        proposal.project_id,
+        payload.budgetItemId!,
+        p.amount,
+        p.dueOn,
+        p.label,
+      );
+    }
+    for (const d of payload.deadlines) {
+      const phase = weddingDate
+        ? phaseFromMonthsBefore(wholeMonthsBetween(d.dueOn, weddingDate))
+        : null;
+      await addTask(proposal.project_id, phase, d.title, d.dueOn);
+    }
+    if (payload.arrival) {
+      const saved = await updateProjectVendorDayOf(payload.projectVendorId!, {
+        arrival_time: payload.arrival.time,
+      });
+      if (!saved.ok) throw new Error(saved.error);
+    }
+  } catch (caught) {
+    const message = caught instanceof Error ? caught.message : "Could not add every item.";
+    await failProposal(supabase, proposal.id, message, userId);
+    revalidatePath(`/projects/${proposal.project_id}`, "layout");
+    return {
+      ok: false,
+      error:
+        "Some items may have been added before something went wrong. Check Budget and Checklist, then ask the assistant to redo the rest.",
+    };
+  }
+
+  revalidatePath(`/projects/${proposal.project_id}`, "layout");
+  revalidatePath(`/projects/${proposal.project_id}/budget`);
+  revalidatePath(`/projects/${proposal.project_id}/checklist`);
+  revalidatePath(`/projects/${proposal.project_id}/vendors`);
   return { ok: true };
 }
 
