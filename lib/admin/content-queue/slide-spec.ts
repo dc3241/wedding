@@ -10,7 +10,11 @@ export const SLIDE_LAYOUTS = [
   "tip-list",
   "steps",
   "statement",
+  "ask",
 ] as const;
+
+/** Layouts the legacy planner may choose. "ask" belongs to the slideshow batches. */
+export const PLANNER_LAYOUTS = SLIDE_LAYOUTS.filter((layout) => layout !== "ask");
 export const SLIDE_THEMES = ["blush", "white", "ink", "rose", "sage"] as const;
 export const SLIDE_TONES = ["good", "warn", "bad", "neutral"] as const;
 
@@ -133,6 +137,12 @@ export const layoutDataSchemas = {
   }),
   statement: z.object({
     highlight: clip(40).optional(),
+  }),
+  ask: z.object({
+    /** Button-shaped comment prompt, e.g. "Comment your score". */
+    pill: clip(48).optional(),
+    /** Small cards under the headline, e.g. City, Budget, Guest count. */
+    chips: z.array(clip(24)).max(4).optional(),
   }),
 } satisfies Record<SlideLayout, z.ZodType>;
 

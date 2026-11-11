@@ -15,6 +15,7 @@ export const SATORI_LAYOUTS = [
   "tip-list",
   "steps",
   "statement",
+  "ask",
 ] as const;
 
 export function satoriSupports(layout: string): boolean {
@@ -1062,6 +1063,65 @@ function Statement({ spec, t, u, W }: { spec: SlideSpec; t: Theme; u: number; W:
   );
 }
 
+/**
+ * The comment prompt slide for engagement posts: a headline, optional chips
+ * (what to include in the comment), and one big pill. No URL and no app
+ * button: one ask per post.
+ */
+function Ask({ spec, t, u, W }: { spec: SlideSpec; t: Theme; u: number; W: number }) {
+  const data = (spec.data ?? {}) as { pill?: string; chips?: string[] };
+  const chips = (data.chips ?? []).slice(0, 4);
+  const pill = data.pill?.trim() || spec.ctaLabel?.trim() || "Comment below";
+  return (
+    <div style={flex({ flexDirection: "column", width: "100%", alignItems: "center" })}>
+      <Headline text={spec.headline} color={t.fg} avail={W - 140 * u} max={124 * u} align="center" />
+      <Support text={spec.support} color={t.fg2} u={u} align="center" />
+      {chips.length > 0 ? (
+        <div
+          style={flex({
+            flexWrap: "wrap",
+            justifyContent: "center",
+            gap: 18 * u,
+            marginTop: 48 * u,
+          })}
+        >
+          {chips.map((chip, i) => (
+            <div
+              key={`${chip}-${i}`}
+              style={flex({
+                background: "#fff",
+                borderRadius: 30 * u,
+                padding: `${20 * u}px ${40 * u}px`,
+                boxShadow: softStack,
+                border: `${3 * u}px solid ${tokens.accentSoft}`,
+              })}
+            >
+              <SlideText
+                text={chip}
+                style={{ fontFamily: "Figtree", fontWeight: 700, fontSize: 40 * u, color: tokens.ink }}
+              />
+            </div>
+          ))}
+        </div>
+      ) : null}
+      <div
+        style={flex({
+          marginTop: 56 * u,
+          background: t.ctaBg,
+          borderRadius: 999,
+          padding: `${26 * u}px ${58 * u}px`,
+          boxShadow: softStack,
+        })}
+      >
+        <SlideText
+          text={pill}
+          style={{ fontFamily: "Figtree", fontWeight: 800, fontSize: 52 * u, color: t.ctaFg, textAlign: "center" }}
+        />
+      </div>
+    </div>
+  );
+}
+
 const LEFT_LAYOUTS = new Set(["headline-phone", "tip-list", "steps", "statement"]);
 
 /**
@@ -1237,7 +1297,7 @@ export function SlideImage({
   const tall = height / width > 1.6;
   const edge = (tall ? TIKTOK_EDGE : 70) * u;
   const left = LEFT_LAYOUTS.has(spec.layout);
-  const showCta = spec.cta !== false && spec.layout !== "headline-phone";
+  const showCta = spec.cta !== false && spec.layout !== "headline-phone" && spec.layout !== "ask";
   const showSnippet = Boolean(snippetSrc) && spec.layout !== "headline-phone" && spec.layout !== "headline-card";
   const snippetSize = snippetSrc ? imagePixelSize(snippetSrc) : null;
   const body =
@@ -1253,6 +1313,8 @@ export function SlideImage({
       <Steps spec={spec} t={t} u={u} W={width} />
     ) : spec.layout === "statement" ? (
       <Statement spec={spec} t={t} u={u} W={width} />
+    ) : spec.layout === "ask" ? (
+      <Ask spec={spec} t={t} u={u} W={width} />
     ) : (
       <HeadlineCard spec={spec} t={t} u={u} W={width} />
     );

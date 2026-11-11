@@ -20,7 +20,7 @@ import {
 } from "@/lib/admin/content-styles";
 import { PRODUCT_SHOT_SLUGS } from "@/lib/admin/content-queue/product-shots";
 import {
-  SLIDE_LAYOUTS,
+  PLANNER_LAYOUTS,
   slidesFromModel,
   type SlideFragment,
 } from "@/lib/admin/content-queue/slide-spec";
@@ -124,7 +124,7 @@ Never tell the viewer to build or switch to a spreadsheet, external calendar, No
 Do not replace the approved idea with a retired hook. Timeline copy is fine. Never substitute the 15-minute ceremony-to-reception photo-gap myth unless the approved idea is already that claim.
 
 Layouts (pick one per slide; code may override):
-${SLIDE_LAYOUTS.join(", ")}.
+${PLANNER_LAYOUTS.join(", ")}.
 - headline-card: a short list with a status on each row.
 - headline-phone: a product screen. Use only with a surface slug.
 - big-number: one stat. Put the stat in data.value (for example "17 days"). The headline is the caption under the number.
@@ -258,7 +258,7 @@ function weeklyPlanJsonSchema(count: number) {
                 properties: {
                   headline: { type: "string" },
                   support: { type: "string" },
-                  layout: { type: "string", enum: [...SLIDE_LAYOUTS] },
+                  layout: { type: "string", enum: [...PLANNER_LAYOUTS] },
                   surface: {
                     type: "string",
                     enum: ["none", ...PRODUCT_SHOT_SLUGS],
