@@ -31,6 +31,7 @@ const COMPARE = [
 ] as const;
 
 const PLAN = [
+  { href: "/wedding-vendors", label: "Find venues" },
   { href: "/wedding-planning-checklist", label: "Checklist" },
   { href: "/wedding-guest-list", label: "Guest list" },
   { href: "/wedding-seating-chart", label: "Seating chart" },

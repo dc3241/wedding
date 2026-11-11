@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { pendingReachOutPath } from "@/lib/directory/pending";
 import type { GeneratePlanResult, WeddingPlan } from "./plan-types";
 import { phaseFromMonthsBefore } from "@/lib/checklist-phases";
 import { clampDueDateToToday, wholeMonthsBetween } from "@/lib/date-months";
@@ -164,7 +165,7 @@ export async function commitPlan(projectId: string, approvedPlan: WeddingPlan) {
     .eq("project_id", projectId);
 
   if (count && count > 0) {
-    redirect(projectPath(projectId));
+    redirect((await pendingReachOutPath()) ?? projectPath(projectId));
   }
 
   const phasePositions = new Map<string, number>();
@@ -240,7 +241,7 @@ export async function commitPlan(projectId: string, approvedPlan: WeddingPlan) {
 
   if (error) {
     if (error.message.includes("already_committed")) {
-      redirect(projectPath(projectId));
+      redirect((await pendingReachOutPath()) ?? projectPath(projectId));
     }
     throw error;
   }
@@ -251,5 +252,5 @@ export async function commitPlan(projectId: string, approvedPlan: WeddingPlan) {
   revalidatePath(`${projectPath(projectId)}/budget`);
   revalidatePath(`${projectPath(projectId)}/vendors`);
 
-  redirect(projectPath(projectId));
+  redirect((await pendingReachOutPath()) ?? projectPath(projectId));
 }

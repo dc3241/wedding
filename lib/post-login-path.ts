@@ -5,6 +5,7 @@ import {
   checkEntitlement,
 } from "@/lib/billing/entitlement-gate";
 import { getCoupleDestinationPath } from "@/lib/onboarding-gate";
+import { pendingReachOutPath } from "@/lib/directory/pending";
 import { hasClaimedVendorShares } from "@/lib/vendors/claimed-shares";
 
 /** Resolve where to send a user immediately after authentication. */
@@ -30,7 +31,14 @@ export async function getPostLoginPath(
   }
 
   if (account.singleProjectId) {
-    return getCoupleDestinationPath(supabase, account.singleProjectId);
+    const destination = await getCoupleDestinationPath(supabase, account.singleProjectId);
+    // A couple who tapped "Reach out" on a directory venue before signing in
+    // finishes that first, once onboarding is done.
+    if (destination !== "/onboarding") {
+      const reachOut = await pendingReachOutPath();
+      if (reachOut) return reachOut;
+    }
+    return destination;
   }
 
   return "/projects";
