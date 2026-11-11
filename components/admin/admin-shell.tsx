@@ -50,6 +50,7 @@ const NAV: NavBlock[] = [
     items: [
       { href: "/admin", label: "Overview", tooltip: "Overview", icon: overviewIcon },
       { href: "/admin/ideation", label: "Ideation", tooltip: "Ideation", icon: ideationIcon },
+      { href: "/admin/slideshows", label: "Slideshows", tooltip: "Slideshows", icon: ideationIcon },
       { href: "/admin/product-shots", label: "Product screens", tooltip: "Product screens", icon: productShotIcon },
     ],
   },

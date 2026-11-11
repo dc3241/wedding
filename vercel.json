@@ -35,6 +35,14 @@
     {
       "path": "/api/cron/vendor-share-changes",
       "schedule": "35 * * * *"
+    },
+    {
+      "path": "/api/cron/slideshow-batch",
+      "schedule": "30 14 * * *"
+    },
+    {
+      "path": "/api/cron/slideshow-summary",
+      "schedule": "45 15 * * *"
     }
   ]
 }
