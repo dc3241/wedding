@@ -1,0 +1,40 @@
+name: Render video
+
+# Triggered by the First Look admin (Videos → Generate). The job file is a signed
+# URL to a JSON in Supabase storage; the render uploads the MP4 back with a signed
+# upload token and calls the app's /api/video-render/callback. No secrets live here.
+on:
+  workflow_dispatch:
+    inputs:
+      job_url:
+        description: Signed URL of the render job JSON
+        required: true
+        type: string
+
+concurrency:
+  group: render-video
+  cancel-in-progress: false
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: video
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: video/package-lock.json
+      - name: Browser libraries for Remotion
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libnss3 libdbus-1-3 libatk1.0-0 libgbm-dev libasound2t64 libxrandr2 libxkbcommon-dev libxfixes3 libxcomposite1 libxdamage1 libatk-bridge2.0-0 libpango-1.0-0 libcairo2 libcups2
+      - name: Install
+        working-directory: video
+        run: npm ci
+      - name: Render
+        working-directory: video
+        run: node render.mjs "${{ inputs.job_url }}"
