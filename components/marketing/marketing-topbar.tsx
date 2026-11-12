@@ -23,6 +23,7 @@ const COUPLE_NAV: readonly NavItem[] = [
   { id: "checklist", label: "Checklist", href: "/wedding-planning-checklist", hash: false },
   { id: "budget", label: "Budget", href: "/wedding-budget-tracking", hash: false },
   { id: "guests", label: "Guest list", href: "/wedding-guest-list", hash: false },
+  { id: "venues", label: "Find venues", href: "/wedding-vendors", hash: false },
   { id: "pricing", label: "Pricing", href: "/pricing", hash: false },
 ];
 
