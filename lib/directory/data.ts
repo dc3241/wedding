@@ -65,3 +65,24 @@ export async function getPublishedSlugs(): Promise<{ slug: string; state: string
   }
   return (data ?? []) as { slug: string; state: string }[];
 }
+
+export async function getListingsByCategories(
+  stateCode: string,
+  categories: readonly string[],
+): Promise<DirectoryListing[]> {
+  const lists = await Promise.all(categories.map((c) => getListingsByState(stateCode, c)));
+  return lists
+    .flat()
+    .sort((a, b) => (a.city ?? "\uffff").localeCompare(b.city ?? "\uffff") || a.name.localeCompare(b.name));
+}
+
+/** state code -> category id -> published count. */
+export async function getCategoryCounts(): Promise<Record<string, Record<string, number>>> {
+  const { data, error } = await createAnonServerClient().rpc("directory_category_counts");
+  if (error) return {};
+  const out: Record<string, Record<string, number>> = {};
+  for (const r of (data ?? []) as { state: string; category: string; listing_count: number }[]) {
+    (out[r.state] ??= {})[r.category] = Number(r.listing_count);
+  }
+  return out;
+}

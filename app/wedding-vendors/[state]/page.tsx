@@ -6,6 +6,7 @@ import { VenueBrowser } from "@/components/directory/venue-browser";
 import { JsonLd } from "@/components/marketing/json-ld";
 import { Card } from "@/components/ui/card";
 import { Eyebrow } from "@/components/ui/eyebrow";
+import { VENDOR_CATEGORIES } from "@/lib/directory/categories";
 import { getListingsByState } from "@/lib/directory/data";
 import { DIRECTORY_STATES, stateBySlug } from "@/lib/directory/states";
 import { breadcrumbJsonLd, pageMetadata } from "@/lib/seo";
@@ -57,6 +58,23 @@ export default async function StatePage({ params }: { params: Promise<{ state: s
           <h1 className="mt-3 text-[30px] font-extrabold leading-tight text-white md:text-[42px]">
             Wedding venues in {state.name}
           </h1>
+          <nav aria-label="Vendor types" className="mt-5 flex flex-wrap gap-2">
+            <span
+              aria-current="page"
+              className="rounded-[var(--radius-pill)] bg-white px-3 py-1.5 text-[13px] font-semibold text-ink"
+            >
+              Venues
+            </span>
+            {VENDOR_CATEGORIES.map((c) => (
+              <Link
+                key={c.path}
+                href={`/wedding-vendors/${state.slug}/${c.path}`}
+                className="rounded-[var(--radius-pill)] border border-white/30 px-3 py-1.5 text-[13px] font-semibold text-white no-underline"
+              >
+                {c.tab}
+              </Link>
+            ))}
+          </nav>
         </div>
       </section>
 
