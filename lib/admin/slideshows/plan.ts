@@ -246,9 +246,13 @@ function assemble(
 ): { post: GeneratedPost | null; issues: string[] } {
   const issues: string[] = [];
   const fragments: SlideFragment[] = raw.slides.map((slide, i) => parseSlideFragment(slide, `Slide ${i + 1}`));
-  fragments.forEach((f, i) => {
-    if (f.degraded) issues.push(`slide ${i + 1} data did not match its layout`);
-  });
+  // A slide whose layout data did not validate has already fallen back to a plain
+  // statement slide with its headline and support intact, so it is still usable.
+  // Only reject the post when most of the slides fell back (the model ignored the layouts).
+  const degradedCount = fragments.filter((f) => f.degraded).length;
+  if (degradedCount > Math.floor(fragments.length / 2)) {
+    issues.push("most slides had layout data that did not match their layout; fill only the data fields the chosen layout uses");
+  }
   const ctaFlags = raw.slides.map((s) => (isRecord(s) && s.cta === true ? true : false));
   const copy: CopyPost = {
     kind: slot.kind,
@@ -299,11 +303,11 @@ function assemble(
 
 export type GenerateResult = { ok: true; post: GeneratedPost } | { ok: false; issues: string[] };
 
-/** One post for a planned slot. Retries once with the rule violations spelled out. */
+/** One post for a planned slot. Retries (up to 3 tries) with the rule violations spelled out. */
 export async function generatePost(slot: Slot, ctx: GenerationContext): Promise<GenerateResult> {
   const base = `${playbookFor(slot.mechanic, slot.feature)}\n\n${contextBlock(ctx)}`;
   let issues: string[] = [];
-  for (let attempt = 0; attempt < 2; attempt += 1) {
+  for (let attempt = 0; attempt < 3; attempt += 1) {
     const prompt = issues.length
       ? `${base}\n\nYour previous attempt broke these rules. Fix every one:\n${issues.map((i) => `- ${i}`).join("\n")}`
       : base;
@@ -342,7 +346,7 @@ export async function generateCustomPost(brief: string, ctx: GenerationContext):
   const facts = FEATURES.map((f) => `- ${f.key}: ${FEATURE_FACTS[f.key] ?? ""}`).join("\n");
   const base = `The founder wants this post. Follow the idea as written; do not swap it for a different one:\n"""\n${brief.trim()}\n"""\n\nChoose the mechanic and feature that fit the idea best.\nMechanics:\n${guide}\nFeatures:\n${features}\n\nPlaybooks by mechanic:\n${playbooks}\n\nFeature facts (the only product claims you may make):\n${facts}\n\nComment-to-run only fits the assistant features. If no mechanic fits, use "tip" or "story_ask".\n\n${contextBlock(ctx)}`;
   let issues: string[] = [];
-  for (let attempt = 0; attempt < 2; attempt += 1) {
+  for (let attempt = 0; attempt < 3; attempt += 1) {
     const prompt = issues.length
       ? `${base}\n\nYour previous attempt broke these rules. Fix every one:\n${issues.map((i) => `- ${i}`).join("\n")}`
       : base;
