@@ -185,7 +185,6 @@ async function loadActiveNonDemoProjects(
         name,
         account_id,
         accounts!inner(id, is_demo),
-        payment_schedule(id, budget_item_id, amount, due_on, label),
         budget_payments(budget_item_id, amount),
         budget_items(id, label)
       `,
@@ -199,7 +198,35 @@ async function loadActiveNonDemoProjects(
       throw new Error(error.message);
     }
 
-    const page = (data ?? []) as ProjectRow[];
+    // payment_schedule has no direct FK to projects (it references
+    // budget_items via (project_id, budget_item_id)), so PostgREST cannot
+    // embed it under projects. Load it separately and attach by project_id.
+    const page = (data ?? []).map((row) => ({
+      ...(row as Omit<ProjectRow, "payment_schedule">),
+      payment_schedule: [] as ScheduleRow[],
+    })) as ProjectRow[];
+    if (page.length > 0) {
+      const byId = new Map(page.map((project) => [project.id, project]));
+      const ids = [...byId.keys()];
+      const schedule: Record<string, unknown>[] = [];
+      for (let i = 0; i < ids.length; i += 100) {
+        const { data: chunk, error: scheduleError } = await supabase
+          .from("payment_schedule")
+          .select("id, project_id, budget_item_id, amount, due_on, label")
+          .in("project_id", ids.slice(i, i + 100));
+        if (scheduleError) {
+          throw new Error(scheduleError.message);
+        }
+        schedule.push(...(chunk ?? []));
+      }
+      for (const row of schedule) {
+        const project = byId.get(row.project_id as string);
+        if (!project) continue;
+        const { project_id: _projectId, ...installment } = row;
+        void _projectId;
+        project.payment_schedule!.push(installment as ScheduleRow);
+      }
+    }
     rows.push(...page);
     if (page.length < PROJECT_PAGE_SIZE) break;
     from += PROJECT_PAGE_SIZE;

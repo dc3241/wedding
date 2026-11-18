@@ -25,6 +25,8 @@ export type DigestSection = {
   projectName: string;
   summary: string;
   highlights: string[];
+  /** Absolute link to this wedding in the app; renders an "Open" button. */
+  url?: string | null;
 };
 
 export type RenderBrandedDigestEmailInput = {
@@ -91,6 +93,11 @@ export function renderBrandedDigestEmail(
           <p style="margin:0 0 10px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:17px;font-weight:700;letter-spacing:-0.02em;color:${FL.ink};">${escapeHtml(section.projectName)}</p>
           <p style="margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:15px;font-weight:400;line-height:1.55;color:${FL.ink};">${escapeHtml(section.summary)}</p>
           ${highlights}
+          ${
+            section.url
+              ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin-top:16px;"><tr><td style="border-radius:999px;background-color:${brandAccentColor};"><a href="${escapeHtml(section.url)}" style="display:inline-block;padding:10px 20px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:14px;font-weight:600;color:#FFFFFF;text-decoration:none;border-radius:999px;">Open in ${escapeHtml(brandName)}</a></td></tr></table>`
+              : ""
+          }
         </td>
       </tr>
     </table>
