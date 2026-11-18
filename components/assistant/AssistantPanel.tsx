@@ -20,6 +20,7 @@ import type {
   AssistantProposalPreview,
 } from "@/components/assistant/types";
 import { Button } from "@/components/ui/button";
+import { CollapseSection } from "@/components/ui/collapse-section";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { Textarea } from "@/components/ui/textarea";
@@ -219,6 +220,8 @@ export function AssistantPanel({
     }
   }
 
+  const pendingCount = pendingDrafts.length + pendingProposals.length;
+
   return (
     <>
       {open ? (
@@ -274,25 +277,41 @@ export function AssistantPanel({
           </button>
         </header>
 
+        {/* ASSIST-PENDING-SCROLL-01: Pending is capped + scrolls on its own so
+            a long draft queue can never push the chat and composer off-screen.
+            Collapsible via the shared chevron affordance. */}
         <section
           className={cn(
-            "shrink-0 border-b border-hairline bg-surface px-5 py-4",
+            "flex min-h-0 shrink-0 flex-col border-b border-hairline bg-surface px-5 py-4",
             isPlanner && "px-4 py-3",
           )}
         >
-          <Eyebrow>Pending</Eyebrow>
-          {pendingDrafts.length === 0 && pendingProposals.length === 0 ? (
-            <EmptyState recessed className="mt-3">
-              Nothing waiting for your review.
-            </EmptyState>
-          ) : (
+          {pendingCount === 0 ? (
             <>
+              <Eyebrow>Pending</Eyebrow>
+              <EmptyState recessed className="mt-3">
+                Nothing waiting for your review.
+              </EmptyState>
+            </>
+          ) : (
+            <CollapseSection
+              title={
+                <span className="flex items-center gap-2">
+                  <Eyebrow>Pending</Eyebrow>
+                  <span className="rounded-[var(--radius-pill)] bg-accent-wash px-2 py-0.5 text-[12px] font-medium text-accent">
+                    {pendingCount}
+                  </span>
+                </span>
+              }
+              className="flex min-h-0 flex-col"
+              bodyClassName="-mr-2 max-h-[45dvh] overflow-y-auto overscroll-contain pr-2 pb-1"
+            >
               <PendingProposalList proposals={pendingProposals} />
               <PendingDraftList
                 drafts={pendingDrafts}
                 connectReturnTo={`/projects/${projectId}/vendors/outreach`}
               />
-            </>
+            </CollapseSection>
           )}
         </section>
 
