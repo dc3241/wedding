@@ -16,6 +16,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { deriveScheduleWaterfall } from "@/lib/budget-aggregates";
 import { isTaskPastDue } from "@/lib/task-overdue";
 import { createClient } from "@/utils/supabase/server";
+import { CalendarSubscribeButton } from "./CalendarSubscribeButton";
 import { ProjectCalendarWorkspace } from "./ProjectCalendarWorkspace";
 
 type SearchParams = Promise<{ ym?: string }>;
@@ -242,6 +243,7 @@ export default async function ProjectCalendarPage({
           eyebrow="Schedule"
           title="Calendar"
           description="Appointments, payment dues, and task dues for your wedding."
+          actions={<CalendarSubscribeButton projectId={projectId} />}
         />
       </div>
       <ProjectCalendarWorkspace

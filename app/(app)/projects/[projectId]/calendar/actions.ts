@@ -308,3 +308,39 @@ export async function deleteProjectCalendarEvent(
   revalidateProjectCalendar(projectId);
   return { ok: true };
 }
+
+/**
+ * CAL-FEED-01 — return this wedding's private calendar-feed token, creating
+ * it on first use. reset=true replaces it so previously shared links stop
+ * working. Written through the projects UPDATE policy (can_edit_project).
+ */
+export async function getCalendarFeedToken(
+  projectId: string,
+  reset = false,
+): Promise<{ ok: true; token: string } | { ok: false; error: string }> {
+  const supabase = await createClient();
+  const { data: project, error } = await supabase
+    .from("projects")
+    .select("id, calendar_feed_token")
+    .eq("id", projectId)
+    .maybeSingle();
+  if (error) return { ok: false, error: error.message };
+  if (!project) return { ok: false, error: "Wedding not found." };
+
+  const existing = project.calendar_feed_token as string | null;
+  if (existing && !reset) return { ok: true, token: existing };
+
+  const { randomBytes } = await import("node:crypto");
+  const token = randomBytes(16).toString("hex");
+  const { data: updated, error: updateError } = await supabase
+    .from("projects")
+    .update({ calendar_feed_token: token })
+    .eq("id", projectId)
+    .select("calendar_feed_token")
+    .maybeSingle();
+  if (updateError) return { ok: false, error: updateError.message };
+  if (!updated) {
+    return { ok: false, error: "Only people who can edit this wedding can create a calendar link." };
+  }
+  return { ok: true, token };
+}
