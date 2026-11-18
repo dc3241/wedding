@@ -201,3 +201,50 @@ export async function deleteMealOption(id: string) {
 
   revalidateGuestSurfaces(data.project_id);
 }
+
+/**
+ * RSVP-AUTO-01 — set (or clear) the RSVP-by date. Changing it resets which
+ * automatic reminder rounds were queued, so a new deadline gets fresh ones.
+ */
+export async function setRsvpDeadline(
+  projectId: string,
+  deadline: string | null,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const value = deadline?.trim() || null;
+  if (value && !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return { ok: false, error: "Choose a valid date." };
+  }
+
+  const supabase = await createClient();
+  const { data: website, error: lookupError } = await supabase
+    .from("wedding_websites")
+    .select("project_id")
+    .eq("project_id", projectId)
+    .maybeSingle();
+  if (lookupError) return { ok: false, error: lookupError.message };
+  if (!website) {
+    const created = await createWeddingWebsite(projectId);
+    if (!created.ok) return { ok: false, error: "Could not save the date." };
+  }
+
+  const { data: updated, error } = await supabase
+    .from("wedding_websites")
+    .update({
+      rsvp_deadline: value,
+      rsvp_chase_sent: [],
+      updated_at: new Date().toISOString(),
+    })
+    .eq("project_id", projectId)
+    .select("project_id, slug")
+    .maybeSingle();
+  if (error) return { ok: false, error: error.message };
+  if (!updated) return { ok: false, error: "You don't have permission to change this." };
+
+  revalidateGuestSurfaces(projectId);
+  revalidatePath(`/projects/${projectId}/website`);
+  if (updated.slug) {
+    revalidatePath(`/w/${updated.slug}`);
+    revalidatePath(`/w/${updated.slug}/rsvp`);
+  }
+  return { ok: true };
+}

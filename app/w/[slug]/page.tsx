@@ -35,7 +35,7 @@ async function loadPublishedWebsite(slug: string) {
   const { data: row, error } = await supabase
     .from("wedding_websites")
     .select(
-      "content, template, theme, meal_service_style, song_requests_enabled, project_id, external_registry_links",
+      "content, template, theme, meal_service_style, song_requests_enabled, rsvp_deadline, project_id, external_registry_links",
     )
     .eq("slug", slug)
     .maybeSingle();
@@ -71,6 +71,7 @@ async function loadPublishedWebsite(slug: string) {
     mealOptions,
     songRequestsEnabled,
     externalRegistryLinks,
+    rsvpDeadline: (row.rsvp_deadline as string | null) ?? null,
   };
 }
 
@@ -130,6 +131,7 @@ export default async function PublicWeddingPage({
           mealServiceStyle={site.mealServiceStyle}
           mealOptions={site.mealOptions}
           songRequestsEnabled={site.songRequestsEnabled}
+          rsvpDeadline={site.rsvpDeadline}
           appearance="on-dark"
         />
       }

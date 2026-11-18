@@ -33,6 +33,8 @@ type RsvpFormProps = {
   mealServiceStyle: PublicMealServiceStyle;
   mealOptions: PublicMealOption[];
   songRequestsEnabled?: boolean;
+  /** RSVP-AUTO-01: YYYY-MM-DD; shown as "Please RSVP by …" on the lookup step. */
+  rsvpDeadline?: string | null;
   initialGuestToken?: string | null;
   /** Light-on-dark controls for the mockup RSVP flood band. */
   appearance?: "default" | "on-dark";
@@ -53,11 +55,20 @@ function resizeAttendees(current: AttendeeDraft[], count: number): AttendeeDraft
   return next;
 }
 
+/** "2027-09-01" → "September 1, 2027". Parsed as a local date (no tz shift). */
+function formatRsvpDeadline(value: string | null): string | null {
+  const match = value ? /^(\d{4})-(\d{2})-(\d{2})$/.exec(value) : null;
+  if (!match) return null;
+  const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+  return date.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+}
+
 export function RsvpForm({
   slug,
   mealServiceStyle,
   mealOptions,
   songRequestsEnabled = false,
+  rsvpDeadline = null,
   initialGuestToken = null,
   appearance = "default",
 }: RsvpFormProps) {
@@ -345,6 +356,11 @@ export function RsvpForm({
   if (gatePhase === "search" || gatePhase === "pick") {
     return (
       <div className="space-y-5" style={darkVars}>
+        {gatePhase === "search" && formatRsvpDeadline(rsvpDeadline) ? (
+          <p className="text-[14px] font-medium" style={{ color: "var(--ws-ink)" }}>
+            Please RSVP by {formatRsvpDeadline(rsvpDeadline)}.
+          </p>
+        ) : null}
         {gatePhase === "search" ? (
           <form onSubmit={handleLookup} className="space-y-4">
             <div>
