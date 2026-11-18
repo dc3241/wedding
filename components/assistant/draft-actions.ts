@@ -224,3 +224,35 @@ export async function rejectAgentDraft(
   revalidateDraftSurfaces(draft);
   return { ok: true };
 }
+
+export type ApproveAllResult = {
+  approved: number;
+  failed: { draftId: string; error: string }[];
+  needsConnect: boolean;
+};
+
+/**
+ * PENDING-BULK-01 — approve several drafts in one click. Runs the ordinary
+ * single-draft approve for each, one after another, so every draft goes
+ * through the same RLS checks and send path. Stops early when a send needs
+ * a mailbox connection, since every later draft would fail the same way.
+ */
+export async function approveAgentDrafts(
+  draftIds: string[],
+): Promise<ApproveAllResult> {
+  const ids = Array.from(new Set(draftIds)).slice(0, 25);
+  const result: ApproveAllResult = { approved: 0, failed: [], needsConnect: false };
+  for (const id of ids) {
+    const outcome = await approveAgentDraft(id);
+    if (outcome.ok) {
+      result.approved += 1;
+      continue;
+    }
+    result.failed.push({ draftId: id, error: outcome.error });
+    if (outcome.needsConnect) {
+      result.needsConnect = true;
+      break;
+    }
+  }
+  return result;
+}
