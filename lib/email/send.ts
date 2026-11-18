@@ -23,6 +23,8 @@ export type SendEmailInput = {
   text: string;
   html: string;
   replyTo?: string | string[];
+  /** Full From header. Defaults to "First Look <hello@usefirstlook.app>". */
+  from?: string;
 };
 
 export type SendEmailResult =
@@ -34,7 +36,7 @@ export async function sendEmail(
   input: SendEmailInput,
 ): Promise<SendEmailResult> {
   const { data, error } = await getResend().emails.send({
-    from: FROM_ADDRESS,
+    from: input.from ?? FROM_ADDRESS,
     to: input.to,
     subject: input.subject,
     text: input.text,

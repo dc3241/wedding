@@ -7,6 +7,7 @@ import { sendEmail } from "@/lib/email/send";
 import { parseFromHeader } from "@/lib/inquiry/parse";
 import type { VendorQuotePayload } from "@/lib/assistant/proposals";
 import { extractQuote } from "@/lib/vendors/quote-extract";
+import { queueQuoteFollowUp } from "@/lib/vendors/quote-follow-up";
 import { vendorTokenFromRecipients } from "@/lib/vendors/reply-address";
 import { createServiceRoleClient } from "@/utils/supabase/service-role";
 
@@ -56,6 +57,7 @@ function escapeHtml(value: string): string {
 
 type PvRow = {
   id: string;
+  vendor_id: string;
   project_id: string;
   vendors: { name: string; category: string | null } | { name: string; category: string | null }[] | null;
   projects: { account_id: string; name: string } | { account_id: string; name: string }[] | null;
@@ -84,7 +86,7 @@ export async function handleVendorReply(
   const { data: pvRaw } = await admin
     .from("project_vendors")
     .select(
-      "id, project_id, vendors ( name, category ), projects ( account_id, name )",
+      "id, project_id, vendor_id, vendors ( name, category ), projects ( account_id, name )",
     )
     .eq("confirm_token", token)
     .maybeSingle();
@@ -220,6 +222,18 @@ export async function handleVendorReply(
     if (proposalError) {
       console.error("vendor-reply: proposal insert", proposalError.message);
       return { handled: true, result: "proposal_failed" };
+    }
+
+    const followUp = await queueQuoteFollowUp(admin, {
+      projectId: pv.project_id,
+      vendorId: pv.vendor_id,
+      vendorName: vendor.name,
+      projectName: project.name,
+      subject,
+      quote: q,
+    });
+    if (followUp === "failed") {
+      console.warn("vendor-reply: follow-up draft not queued");
     }
   } catch (err) {
     console.error("vendor-reply: extraction", err);

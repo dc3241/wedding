@@ -32,7 +32,7 @@ export function GmailConnection({
           href={connectHref}
           className="rounded-[var(--radius-pill)] bg-well px-3 py-1.5 font-semibold text-ink shadow-recessed hover:text-accent"
         >
-          Connect Gmail for outreach
+          Send from your Gmail (optional)
         </Link>
       )}
 

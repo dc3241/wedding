@@ -151,8 +151,9 @@ export default function PrivacyPage() {
                 and service email you request.
               </li>
               <li>
-                Send vendor outreach email only when you connect Gmail and
-                explicitly approve a message to send.
+                Send vendor outreach email only when you explicitly approve a
+                message, either from your connected Gmail or from First Look
+                on your behalf, with vendor replies routed back to your account.
               </li>
               <li>
                 Display wedding websites, RSVP forms, inquiry forms, and other
