@@ -228,6 +228,7 @@ function buildDigest(
     for (const highlight of item.highlights) {
       textParts.push(`- ${highlight}`);
     }
+    if (item.url) textParts.push(`Open: ${item.url}`);
     textParts.push("");
   }
 
@@ -406,6 +407,7 @@ export async function GET(request: Request) {
             projectName: project.name,
             summary: payload.summary,
             highlights: payload.highlights,
+            url: `${(process.env.NEXT_PUBLIC_SITE_URL || "https://www.usefirstlook.app").replace(/\/$/, "")}/projects/${project.id}`,
           };
         })
         // Belt-and-suspenders: never ship JSON/fenced dumps into the email body.
