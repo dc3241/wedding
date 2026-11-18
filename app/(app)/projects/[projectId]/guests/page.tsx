@@ -9,6 +9,7 @@ import {
 } from "./meal-types";
 import { RsvpSubmissionsPanel } from "./RsvpSubmissionsPanel";
 import { SongRequestsCard } from "./SongRequestsCard";
+import { RsvpDeadlineCard } from "./RsvpDeadlineCard";
 import type { RsvpSubmission, SongRequestEntry } from "./rsvp-submissions";
 import {
   RSVP_STATUSES,
@@ -111,7 +112,7 @@ export default async function GuestsPage({
       .order("created_at", { ascending: true }),
     supabase
       .from("wedding_websites")
-      .select("meal_service_style, slug, published, song_requests_enabled")
+      .select("meal_service_style, slug, published, song_requests_enabled, rsvp_deadline")
       .eq("project_id", projectId)
       .maybeSingle(),
   ]);
@@ -409,6 +410,12 @@ export default async function GuestsPage({
           projectId={projectId}
           songRequestsEnabled={songRequestsEnabled}
           songRequests={songRequests}
+        />
+
+        <RsvpDeadlineCard
+          projectId={projectId}
+          rsvpDeadline={(websiteRow?.rsvp_deadline as string | null) ?? null}
+          published={Boolean(websiteRow?.published)}
         />
       </div>
 
