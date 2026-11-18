@@ -1,6 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
+import { autoProposeContractTerms } from "@/lib/assistant/auto-contract-review";
 import { ensureFileText } from "@/lib/files/ensure-file-text";
 import { COUPLE_CONTRACTS_SEGMENT } from "@/lib/project-tabs";
 import { getVendorCategoryById } from "@/lib/vendor-categories";
@@ -78,8 +80,9 @@ export async function recordFile(
 
   if (error) throw new Error(error.message);
 
+  let textReady = false;
   try {
-    await ensureFileText(supabase, projectId, {
+    const text = await ensureFileText(supabase, projectId, {
       id: inserted.id,
       mime_type: inserted.mime_type,
       storage_path: inserted.storage_path,
@@ -87,6 +90,7 @@ export async function recordFile(
       extracted_text: inserted.extracted_text,
       extraction_truncated: inserted.extraction_truncated,
     });
+    textReady = text.extraction_status === "ready";
   } catch (extractError) {
     console.error(
       "[files.extract]",
@@ -97,6 +101,24 @@ export async function recordFile(
   revalidatePathsForKind(projectId, meta.kind);
   if (meta.projectVendorId) {
     revalidatePath(`/projects/${projectId}/vendors`);
+  }
+
+  // CONTRACT-AUTO-01: read the contract in the background and queue its
+  // payments / deadlines / arrival time in Pending for approval.
+  if (meta.kind === "contract" && textReady) {
+    const fileId = inserted.id as string;
+    const fileName = meta.name.trim();
+    after(async () => {
+      try {
+        await autoProposeContractTerms(projectId, { id: fileId, name: fileName });
+        revalidatePath(`/projects/${projectId}`, "layout");
+      } catch (err) {
+        console.error(
+          "[contract.auto-review]",
+          err instanceof Error ? err.message : err,
+        );
+      }
+    });
   }
 }
 
