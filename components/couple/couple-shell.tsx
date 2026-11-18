@@ -506,7 +506,7 @@ export function CoupleShell({
           ) : null}
         </div>
 
-        <main className="flex min-w-0 flex-1 flex-col">{children}</main>
+        <main className="@container/main flex min-w-0 flex-1 flex-col">{children}</main>
       </div>
     </div>
   );
