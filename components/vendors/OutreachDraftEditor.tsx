@@ -72,11 +72,6 @@ export function OutreachDraftEditor({
   }
 
   function handleSend() {
-    if (!gmailConnected) {
-      setError("Connect Gmail before sending.");
-      return;
-    }
-
     if (isDirty) {
       handleSave(true);
       return;
@@ -160,18 +155,17 @@ export function OutreachDraftEditor({
           {isPending ? "Saving…" : "Save draft"}
         </Button>
 
-        {gmailConnected ? (
-          <Button
-            type="button"
-            variant="primary"
-            onClick={handleSend}
-            disabled={isPending}
-          >
-            {isPending ? "Sending…" : "Send"}
-          </Button>
-        ) : (
-          <ButtonLink href={connectHref} variant="primary">
-            Connect Gmail to send
+        <Button
+          type="button"
+          variant="primary"
+          onClick={handleSend}
+          disabled={isPending}
+        >
+          {isPending ? "Sending…" : "Send"}
+        </Button>
+        {gmailConnected ? null : (
+          <ButtonLink href={connectHref} variant="secondary">
+            Send from my Gmail instead
           </ButtonLink>
         )}
 

@@ -53,12 +53,13 @@ export function SendAllDraftsButton({
 
   return (
     <div className="flex flex-wrap items-center gap-3">
-      {gmailConnected ? (
-        <Button type="button" onClick={handleSendAll} disabled={isPending}>
-          {isPending ? "Sending…" : `Send all drafts (${draftCount})`}
-        </Button>
-      ) : (
-        <ButtonLink href={connectHref}>Connect Gmail to send all</ButtonLink>
+      <Button type="button" onClick={handleSendAll} disabled={isPending}>
+        {isPending ? "Sending…" : `Send all drafts (${draftCount})`}
+      </Button>
+      {gmailConnected ? null : (
+        <ButtonLink href={connectHref} variant="secondary">
+          Send from my Gmail instead
+        </ButtonLink>
       )}
       {summary && !error ? (
         <span className="text-sm text-sage">{summary}</span>

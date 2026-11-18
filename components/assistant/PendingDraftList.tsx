@@ -178,7 +178,7 @@ function PendingDraftRow({
       ) : null}
       {isApproved ? (
         <p className="mt-2 text-[13px] text-clay">
-          Approved but not sent. Retry after reconnecting Gmail if needed.
+          Approved but not sent yet. Try sending again.
         </p>
       ) : null}
       {error ? (

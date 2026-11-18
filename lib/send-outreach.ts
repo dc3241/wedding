@@ -1,6 +1,8 @@
+import { sendEmail } from "@/lib/email/send";
 import { getGmailAccessForSend } from "@/lib/gmail-credentials";
 import { sendGmailMessage } from "@/lib/gmail-send";
 import { vendorReplyAddress } from "@/lib/vendors/reply-address";
+import { isDateOnlyProjectName } from "@/lib/wedding-date";
 import { createClient } from "@/utils/supabase/server";
 
 type SendOutcome =
@@ -10,6 +12,13 @@ type SendOutcome =
 type VendorEmbed = {
   contact_email: string | null;
   name: string;
+};
+
+type PvEmbed = {
+  project_id: string;
+  confirm_token: string | null;
+  vendors: VendorEmbed | VendorEmbed[] | null;
+  projects: { name: string } | { name: string }[] | null;
 };
 
 type LeadEmbed = {
@@ -25,8 +34,8 @@ type MessageRow = {
   project_vendor_id: string | null;
   lead_id: string | null;
   project_vendors:
-    | { confirm_token: string | null; vendors: VendorEmbed | VendorEmbed[] | null }
-    | { confirm_token: string | null; vendors: VendorEmbed | VendorEmbed[] | null }[]
+    | PvEmbed
+    | PvEmbed[]
     | null;
   leads: LeadEmbed | LeadEmbed[] | null;
 };
@@ -50,13 +59,6 @@ export async function sendOutreachMessage(
   const supabase = await createClient();
 
   const auth = await getGmailAccessForSend();
-  if (!auth.ok) {
-    return {
-      ok: false,
-      error: auth.error,
-      needsConnect: auth.needsConnect,
-    };
-  }
 
   const { data: message, error: loadError } = await supabase
     .from("outreach_messages")
@@ -69,8 +71,10 @@ export async function sendOutreachMessage(
       project_vendor_id,
       lead_id,
       project_vendors (
+        project_id,
         confirm_token,
-        vendors ( contact_email, name )
+        vendors ( contact_email, name ),
+        projects ( name )
       ),
       leads (
         contact_email,
@@ -103,6 +107,39 @@ export async function sendOutreachMessage(
   }
 
   const pvForReply = asOne(row.project_vendors);
+
+  // OUTREACH-RESEND-01: no Gmail connected → vendor emails go out through
+  // First Look, with Reply-To routed back into the app (AGENTIC-03) so the
+  // reply is logged, forwarded to the couple, and turned into a quote.
+  // Lead emails (planner → couple) still need the planner's own mailbox.
+  if (!auth.ok) {
+    if (!row.project_vendor_id || !pvForReply) {
+      return { ok: false, error: auth.error, needsConnect: auth.needsConnect };
+    }
+    const replyAddress = vendorReplyAddress(pvForReply.confirm_token ?? null);
+    if (!replyAddress) {
+      return { ok: false, error: auth.error, needsConnect: auth.needsConnect };
+    }
+    const limit = await underDailyRelayLimit(supabase, pvForReply.project_id);
+    if (!limit.ok) {
+      return { ok: false, error: limit.error, needsConnect: true };
+    }
+    const projectName = asOne(pvForReply.projects)?.name ?? "";
+    const relayed = await sendEmail({
+      from: relayFromHeader(projectName),
+      to: recipient.toEmail,
+      subject,
+      text: `${row.body}\n\n—\nSent with First Look. Reply to this email to answer ${senderLabel(projectName)} directly.`,
+      html: `<div style="white-space:pre-wrap;font-family:inherit">${escapeHtml(row.body)}</div><p style="color:#8a7f86;font-size:12px;margin-top:24px">Sent with First Look. Reply to this email to answer ${escapeHtml(senderLabel(projectName))} directly.</p>`,
+      replyTo: replyAddress,
+    });
+    if (!relayed.ok) {
+      await markSendFailed(supabase, messageId, relayed.error);
+      return { ok: false, error: relayed.error };
+    }
+    return finishSent(supabase, row, messageId, null);
+  }
+
   const replyTo =
     options?.captureReplies && row.project_vendor_id
       ? vendorReplyAddress(pvForReply?.confirm_token ?? null)
@@ -123,6 +160,67 @@ export async function sendOutreachMessage(
     return { ...sendResult, needsConnect };
   }
 
+  return finishSent(supabase, row, messageId, sendResult.threadId ?? null);
+}
+
+/** Per-wedding cap on relayed (non-Gmail) sends, to protect our domain. */
+const RELAY_DAILY_LIMIT = 20;
+
+async function underDailyRelayLimit(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  projectId: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const { count, error } = await supabase
+    .from("outreach_messages")
+    .select("id, project_vendors!inner(project_id)", { count: "exact", head: true })
+    .eq("project_vendors.project_id", projectId)
+    .eq("direction", "outbound")
+    .eq("status", "sent")
+    .is("gmail_thread_id", null)
+    .gte("sent_at", since);
+  if (error) return { ok: true };
+  if ((count ?? 0) >= RELAY_DAILY_LIMIT) {
+    return {
+      ok: false,
+      error: `You've sent ${RELAY_DAILY_LIMIT} vendor emails through First Look today. Connect Gmail to keep sending, or try again tomorrow.`,
+    };
+  }
+  return { ok: true };
+}
+
+function senderLabel(projectName: string): string {
+  if (isDateOnlyProjectName(projectName.trim())) return "the couple";
+  const cleaned = projectName
+    .replace(/\b(19|20)\d{2}\b/g, "")
+    .replace(/[<>"\r\n]/g, "")
+    .replace(/\s+/g, " ")
+    .replace(/[\s,–-]+$/, "")
+    .trim();
+  if (!cleaned || /^\d|wedding$/i.test(cleaned)) return "the couple";
+  return cleaned.slice(0, 60);
+}
+
+function relayFromHeader(projectName: string): string {
+  const label = senderLabel(projectName);
+  const name = label === "the couple" ? "A couple" : label;
+  return `"${name} via First Look" <outreach@usefirstlook.app>`;
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+async function finishSent(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  row: MessageRow,
+  messageId: string,
+  threadId: string | null,
+): Promise<SendOutcome> {
   const { error: updateError } = await supabase
     .from("outreach_messages")
     .update({
@@ -130,7 +228,7 @@ export async function sendOutreachMessage(
       sent_at: new Date().toISOString(),
       send_error: null,
       updated_at: new Date().toISOString(),
-      ...(sendResult.threadId ? { gmail_thread_id: sendResult.threadId } : {}),
+      ...(threadId ? { gmail_thread_id: threadId } : {}),
     })
     .eq("id", messageId);
 
@@ -138,7 +236,7 @@ export async function sendOutreachMessage(
     return {
       ok: false,
       error:
-        "Email was sent but we could not update the record. Check your Gmail Sent folder.",
+        "Email was sent but we could not update the record.",
     };
   }
 
@@ -204,15 +302,6 @@ export async function sendAllOutreachDrafts(
   | { ok: false; error: string; needsConnect?: boolean }
 > {
   const supabase = await createClient();
-
-  const auth = await getGmailAccessForSend();
-  if (!auth.ok) {
-    return {
-      ok: false,
-      error: auth.error,
-      needsConnect: auth.needsConnect,
-    };
-  }
 
   const { data: pvRows } = await supabase
     .from("project_vendors")
