@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import {
   approveAgentDraft,
+  approveAgentDrafts,
   rejectAgentDraft,
 } from "@/components/assistant/draft-actions";
 import type { AgentDraftPreview } from "@/components/assistant/types";
@@ -33,17 +34,96 @@ export function PendingDraftList({
   if (drafts.length === 0) return null;
 
   return (
-    <ul className="mt-3 space-y-3">
-      {drafts.map((draft) => (
-        <PendingDraftRow
-          key={draft.id}
-          draft={draft}
+    <>
+      {drafts.length >= 2 ? (
+        <ApproveAllBar
+          drafts={drafts}
           connectHref={connectHref}
-          bodyDisplay={bodyDisplay}
           onSettled={() => router.refresh()}
         />
-      ))}
-    </ul>
+      ) : null}
+      <ul className="mt-3 space-y-3">
+        {drafts.map((draft) => (
+          <PendingDraftRow
+            key={draft.id}
+            draft={draft}
+            connectHref={connectHref}
+            bodyDisplay={bodyDisplay}
+            onSettled={() => router.refresh()}
+          />
+        ))}
+      </ul>
+    </>
+  );
+}
+
+function ApproveAllBar({
+  drafts,
+  connectHref,
+  onSettled,
+}: {
+  drafts: AgentDraftPreview[];
+  connectHref: string;
+  onSettled: () => void;
+}) {
+  const [message, setMessage] = useState<string | null>(null);
+  const [failed, setFailed] = useState(false);
+  const [needsConnect, setNeedsConnect] = useState(false);
+  const [isPending, startTransition] = useTransition();
+
+  function approveAll() {
+    startTransition(async () => {
+      setMessage(null);
+      setFailed(false);
+      setNeedsConnect(false);
+      const result = await approveAgentDrafts(drafts.map((d) => d.id));
+      const notSent = result.failed.length;
+      if (notSent === 0) {
+        setMessage(
+          `Sent ${result.approved} ${result.approved === 1 ? "message" : "messages"}.`,
+        );
+      } else {
+        setFailed(true);
+        setNeedsConnect(result.needsConnect);
+        setMessage(
+          result.approved > 0
+            ? `Sent ${result.approved}. ${notSent} couldn't send: ${result.failed[0]!.error}`
+            : `Couldn't send: ${result.failed[0]!.error}`,
+        );
+      }
+      onSettled();
+    });
+  }
+
+  return (
+    <div className="mt-3 flex flex-wrap items-center gap-2 rounded-[var(--radius-inner)] border border-hairline px-3 py-2">
+      <p className="min-w-0 flex-1 text-[13px] text-muted">
+        {isPending
+          ? "Sending…"
+          : `Reject any you don't want, then send the rest at once.`}
+      </p>
+      <Button
+        type="button"
+        variant="primary"
+        disabled={isPending}
+        onClick={approveAll}
+      >
+        Approve all ({drafts.length})
+      </Button>
+      {needsConnect ? (
+        <ButtonLink href={connectHref} variant="secondary">
+          Connect Gmail
+        </ButtonLink>
+      ) : null}
+      {message ? (
+        <p
+          className={`w-full text-[13px] ${failed ? "text-rosewood" : "text-sage"}`}
+          role={failed ? "alert" : "status"}
+        >
+          {message}
+        </p>
+      ) : null}
+    </div>
   );
 }
 
