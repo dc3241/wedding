@@ -198,7 +198,7 @@ export function PlannerShell({
           </Link>
         </div>
 
-        <main className="mx-auto w-full max-w-[1180px] min-w-0 flex-1 px-4 pt-5 pb-16 md:px-7">
+        <main className="@container/main mx-auto w-full max-w-[1180px] min-w-0 flex-1 px-4 pt-5 pb-16 md:px-7">
           {children}
         </main>
       </div>
