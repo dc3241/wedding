@@ -1,4 +1,5 @@
 import { AddGuestForms } from "./AddGuestForms";
+import { GuestImportButton } from "./GuestImportButton";
 import { GuestPersonList } from "./GuestPersonList";
 import { MealConfigCard } from "./MealConfigCard";
 import {
@@ -302,6 +303,7 @@ export default async function GuestsPage({
         description="RSVP & meals for your guest list."
         actions={
           <div className="flex items-center gap-2">
+            <GuestImportButton projectId={projectId} />
             <ButtonLink
               href={`/projects/${projectId}/guests/print`}
               variant="secondary"
