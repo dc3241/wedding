@@ -12,6 +12,9 @@ import { JsonLd } from "@/components/marketing/json-ld";
 import { MarketingFaq } from "@/components/marketing/marketing-faq";
 import { MarketingFooter } from "@/components/marketing/marketing-footer";
 import { MarketingTopbar } from "@/components/marketing/marketing-topbar";
+import { NewsletterSignup } from "@/components/marketing/newsletter-signup";
+import { VendorSearch } from "@/components/marketing/vendor-search";
+import { PlanToolGrid } from "@/components/plan/plan-tool-grid";
 import { ScrollReveal } from "@/components/marketing/scroll-reveal";
 import { ButtonLink } from "@/components/ui/button";
 import { Eyebrow } from "@/components/ui/eyebrow";
@@ -20,6 +23,7 @@ import {
   COUPLE_MONTHLY_PRICE,
   formatCouplePrice,
 } from "@/lib/billing/couple-pricing";
+import { DIRECTORY_STATES } from "@/lib/directory/states";
 import {
   howToJsonLd,
   organizationJsonLd,
@@ -29,6 +33,10 @@ import {
 import Link from "next/link";
 
 /**
+ * MEDIA-01: "/" is now a media front page — free tools, the vendor
+ * directory and planning guides first, then the app (#app). The app
+ * sections below keep their H2s and JSON-LD for search.
+ *
  * COUPLES-PIVOT homepage ("/"). Drafted from /for-couples, rewritten for
  * search: one H1 on the primary query ("wedding planning app"), H2s on the
  * secondary queries (checklist, budget tracker, guest list & RSVP, seating
@@ -59,33 +67,6 @@ const CHANGES = [
     label: "The website",
     before: "Another website builder, another login",
     after: "Your wedding website, with RSVP built in",
-  },
-] as const;
-
-const TOOLS = [
-  {
-    title: "Wedding planning checklist",
-    body: "A month-by-month to-do list that works backward from your wedding date, so you always know what to book next.",
-    href: "/wedding-planning-checklist",
-    cta: "See the checklist",
-  },
-  {
-    title: "Wedding budget tracker",
-    body: "Estimated vs. actual spend for every vendor, a log of what's paid, and the deposits still coming due.",
-    href: "/wedding-budget-tracking",
-    cta: "See budget tracking",
-  },
-  {
-    title: "Guest list & online RSVP",
-    body: "Track households, plus-ones, and kids. Guests RSVP on your wedding website with meal choices and dietary notes.",
-    href: "/wedding-guest-list",
-    cta: "See the guest list",
-  },
-  {
-    title: "Wedding seating chart",
-    body: "Drag guests onto tables, add a sweetheart table and dance floor, and keep the chart in sync with your RSVPs.",
-    href: "/wedding-seating-chart",
-    cta: "See the seating chart",
   },
 ] as const;
 
@@ -142,40 +123,6 @@ const FAQS = [
     a: "No. First Look runs in your browser on your phone, tablet, or computer, so you and your partner can plan from anywhere.",
   },
 ] as const;
-
-function ToolsSection() {
-  return (
-    <section className="mx-auto max-w-6xl px-6 py-14 md:px-10 md:py-16">
-      <ScrollReveal>
-        <AudienceCopyHeader
-          eyebrow="Free wedding planning tools"
-          title="Everything you'd build a spreadsheet for, already built."
-          subhead="Each tool is free, and they all share the same guest list, budget, and date, so you never copy anything twice."
-        />
-      </ScrollReveal>
-      <div className="mt-10 grid gap-5 sm:grid-cols-2">
-        {TOOLS.map((tool, index) => (
-          <ScrollReveal key={tool.href} delayMs={index * 50}>
-            <article className="marketing-card-hover flex h-full flex-col rounded-[var(--radius-card)] bg-surface p-6 shadow-raised">
-              <h3 className="text-[19px] font-extrabold tracking-[-0.02em] text-ink">
-                {tool.title}
-              </h3>
-              <p className="mt-2 flex-1 text-[14.5px] leading-relaxed text-muted">
-                {tool.body}
-              </p>
-              <Link
-                href={tool.href}
-                className="mt-4 text-[14.5px] font-semibold text-accent underline-offset-2 hover:underline"
-              >
-                {tool.cta} →
-              </Link>
-            </article>
-          </ScrollReveal>
-        ))}
-      </div>
-    </section>
-  );
-}
 
 function AssistantSection() {
   const points = [
@@ -299,13 +246,55 @@ export function CoupleLandingPage() {
       />
       <MarketingTopbar />
       <main>
-        <section className="mx-auto max-w-6xl px-6 pt-16 pb-8 md:px-10 md:pt-[76px]">
+        <section className="mx-auto max-w-6xl px-6 pt-14 pb-10 md:px-10 md:pt-[72px]">
+          <ScrollReveal>
+            <div className="mx-auto max-w-3xl text-center">
+              <Eyebrow className="mb-5 block">Free wedding planning</Eyebrow>
+              <h1 className="text-[40px] font-extrabold leading-[1.02] tracking-[-0.03em] text-ink md:text-[56px]">
+                Plan your wedding for free, start to finish.
+              </h1>
+              <p className="mx-auto mt-5 max-w-[56ch] text-[16px] leading-relaxed text-muted md:text-[18px]">
+                Find vendors, work out what it costs, and get every task done, without hiring a
+                planner. Free tools and guides, plus a free app that keeps it all in one place.
+              </p>
+            </div>
+          </ScrollReveal>
+          <ScrollReveal delayMs={60}>
+            <div className="mx-auto mt-8 max-w-3xl">
+              <VendorSearch states={DIRECTORY_STATES} />
+              <p className="mt-4 text-center text-[14px] text-muted">
+                Not sure what you want?{" "}
+                <Link
+                  href="/plan/venue-quiz"
+                  className="font-semibold text-accent underline-offset-2 hover:underline"
+                >
+                  Take the venue quiz →
+                </Link>
+              </p>
+            </div>
+          </ScrollReveal>
+        </section>
+
+        <section className="mx-auto max-w-6xl px-6 py-10 md:px-10">
+          <ScrollReveal>
+            <AudienceCopyHeader
+              eyebrow="Free planning tools"
+              title="Tools that do the math for you."
+              subhead="Calculators, a venue quiz and a vendor directory you can use right now, no sign-up needed."
+            />
+          </ScrollReveal>
+          <div className="mt-10">
+            <PlanToolGrid />
+          </div>
+        </section>
+
+        <section id="app" className="scroll-mt-24 mx-auto max-w-6xl px-6 pt-16 pb-8 md:px-10">
           <div className="grid items-center gap-12 md:grid-cols-2 md:gap-16">
             <ScrollReveal>
               <Eyebrow className="mb-5 block">Free wedding planning app</Eyebrow>
-              <h1 className="max-w-[18ch] text-[42px] font-extrabold leading-[1.02] tracking-[-0.03em] text-ink md:text-[52px] lg:text-[60px]">
+              <h2 className="max-w-[18ch] text-[36px] font-extrabold leading-[1.04] tracking-[-0.03em] text-ink md:text-[46px]">
                 Plan your whole wedding in one free app.
-              </h1>
+              </h2>
               <p className="mt-6 max-w-[50ch] text-[16px] leading-relaxed text-muted md:text-[19px]">
                 A wedding checklist, budget tracker, guest list with online
                 RSVP, seating chart, and wedding website, all connected. Change
@@ -344,8 +333,6 @@ export function CoupleLandingPage() {
           subhead="Your checklist, vendors, guests, seating, timeline, and website all read from the same plan."
         />
 
-        <ToolsSection />
-
         <HowItWorksSection />
 
         <AssistantSection />
@@ -353,6 +340,10 @@ export function CoupleLandingPage() {
         <CapabilitiesPanel />
 
         <MarketingFaq items={FAQS} heading="Wedding planning questions" />
+
+        <section className="mx-auto max-w-6xl px-6 py-14 md:px-10">
+          <NewsletterSignup source="home" />
+        </section>
 
         <FinalCta />
       </main>
