@@ -32,6 +32,7 @@ const COMPARE = [
 
 const PLAN = [
   { href: "/plan", label: "Free planning tools" },
+  { href: "/ideas", label: "Ideas & advice" },
   { href: "/plan/venue-quiz", label: "Venue quiz" },
   { href: "/plan/wedding-cost-calculator", label: "Cost calculator" },
   { href: "/plan/wedding-alcohol-calculator", label: "Alcohol calculator" },

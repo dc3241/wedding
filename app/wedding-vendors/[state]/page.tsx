@@ -7,6 +7,7 @@ import { JsonLd } from "@/components/marketing/json-ld";
 import { Card } from "@/components/ui/card";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { VENDOR_CATEGORIES } from "@/lib/directory/categories";
+import { getDirectoryCities, isIndexableCity } from "@/lib/directory/cities";
 import { getListingsByState } from "@/lib/directory/data";
 import { DIRECTORY_STATES, stateBySlug } from "@/lib/directory/states";
 import { breadcrumbJsonLd, pageMetadata } from "@/lib/seo";
@@ -37,7 +38,12 @@ export async function generateMetadata({
 export default async function StatePage({ params }: { params: Promise<{ state: string }> }) {
   const state = stateBySlug((await params).state);
   if (!state) notFound();
-  const listings = await getListingsByState(state.code);
+  const [listings, allCities] = await Promise.all([
+    getListingsByState(state.code),
+    getDirectoryCities(),
+  ]);
+  // MEDIA-06: only cities with enough listings to stand on their own.
+  const cities = allCities.filter((c) => c.state === state.code && isIndexableCity(c)).slice(0, 24);
 
   return (
     <DirectoryShell>
@@ -96,6 +102,24 @@ export default async function StatePage({ params }: { params: Promise<{ state: s
             stateName={state.name}
           />
         )}
+
+        {cities.length ? (
+          <section className="mt-10">
+            <h2 className="text-[18px] font-bold text-ink">Browse by city</h2>
+            <ul className="mt-4 flex flex-wrap gap-2">
+              {cities.map((c) => (
+                <li key={c.slug}>
+                  <Link
+                    href={`/wedding-vendors/${state.slug}/city/${c.slug}`}
+                    className="inline-block rounded-[var(--radius-pill)] border border-hairline bg-surface px-3.5 py-1.5 text-[13.5px] font-semibold text-ink no-underline hover:border-accent"
+                  >
+                    {c.city} <span className="text-muted">{c.total}</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
 
         <Card className="mt-10 grid gap-6 p-6 md:grid-cols-3">
           {[

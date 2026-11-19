@@ -1,3 +1,4 @@
+import { ArticleTile, type ArticleCard } from "@/components/articles/article-list";
 import { DemoCta } from "@/components/demo/demo-cta";
 import {
   AudienceCopyHeader,
@@ -229,7 +230,11 @@ function HowItWorksSection() {
   );
 }
 
-export function CoupleLandingPage() {
+export function CoupleLandingPage({
+  latestArticles = [],
+}: {
+  latestArticles?: readonly ArticleCard[];
+}) {
   return (
     <div className="min-h-full bg-canvas text-ink">
       <JsonLd data={organizationJsonLd()} />
@@ -287,6 +292,32 @@ export function CoupleLandingPage() {
             <PlanToolGrid />
           </div>
         </section>
+
+        {latestArticles.length ? (
+          <section className="mx-auto max-w-6xl px-6 py-10 md:px-10">
+            <div className="flex items-end justify-between gap-4">
+              <div>
+                <Eyebrow className="mb-2 block">Ideas & advice</Eyebrow>
+                <h2 className="text-[26px] font-extrabold tracking-[-0.02em] text-ink md:text-[32px]">
+                  Latest from the blog
+                </h2>
+              </div>
+              <Link
+                href="/ideas"
+                className="shrink-0 text-[14.5px] font-semibold text-accent underline-offset-2 hover:underline"
+              >
+                All articles →
+              </Link>
+            </div>
+            <ul className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {latestArticles.map((a) => (
+                <li key={a.slug}>
+                  <ArticleTile article={a} />
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
 
         <section id="app" className="scroll-mt-24 mx-auto max-w-6xl px-6 pt-16 pb-8 md:px-10">
           <div className="grid items-center gap-12 md:grid-cols-2 md:gap-16">

@@ -2,6 +2,8 @@ import type { MetadataRoute } from "next";
 import { MIN_INDEXABLE_LISTINGS, VENDOR_CATEGORIES } from "@/lib/directory/categories";
 import { getCategoryCounts, getPublishedSlugs, getStateCounts } from "@/lib/directory/data";
 import { DIRECTORY_STATES, stateByCode } from "@/lib/directory/states";
+import { getPublishedArticles } from "@/lib/articles/data";
+import { getDirectoryCities, isIndexableCity } from "@/lib/directory/cities";
 import { absoluteUrl, MARKETING_ROUTES } from "@/lib/seo";
 
 export const revalidate = 3600;
@@ -52,5 +54,27 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     }),
   ];
 
-  return [...marketing, ...directory];
+  const articles: MetadataRoute.Sitemap = (await getPublishedArticles(null, 200)).map((a) => ({
+    url: absoluteUrl(`/ideas/${a.slug}`),
+    lastModified: a.published_at,
+    changeFrequency: "monthly" as const,
+    priority: 0.6,
+  }));
+
+  const cities: MetadataRoute.Sitemap = (await getDirectoryCities())
+    .filter(isIndexableCity)
+    .flatMap((c) => {
+      const s = stateByCode(c.state);
+      return s
+        ? [
+            {
+              url: absoluteUrl(`/wedding-vendors/${s.slug}/city/${c.slug}`),
+              changeFrequency: "weekly" as const,
+              priority: 0.6,
+            },
+          ]
+        : [];
+    });
+
+  return [...marketing, ...directory, ...cities, ...articles];
 }
