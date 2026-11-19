@@ -25,6 +25,7 @@ const ALL_MARKETING_ROUTES = [
   { path: "/for-venues", changeFrequency: "monthly", priority: 0.9 },
   { path: "/for-couples", changeFrequency: "monthly", priority: 0.9 },
   { path: "/plan", changeFrequency: "weekly", priority: 0.9 },
+  { path: "/ideas", changeFrequency: "daily", priority: 0.9 },
   { path: "/plan/venue-quiz", changeFrequency: "monthly", priority: 0.8 },
   { path: "/plan/wedding-cost-calculator", changeFrequency: "monthly", priority: 0.8 },
   { path: "/plan/wedding-alcohol-calculator", changeFrequency: "monthly", priority: 0.8 },

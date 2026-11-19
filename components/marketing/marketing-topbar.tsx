@@ -23,7 +23,7 @@ const B2B_NAV: readonly NavItem[] = [
  */
 const COUPLE_NAV: readonly NavItem[] = [
   { id: "plan", label: "Planning tools", href: "/plan", hash: false },
-  { id: "quiz", label: "Venue quiz", href: "/plan/venue-quiz", hash: false },
+  { id: "ideas", label: "Ideas", href: "/ideas", hash: false },
   { id: "vendors", label: "Find vendors", href: "/wedding-vendors", hash: false },
   { id: "app", label: "The app", href: "/#app", hash: true },
   { id: "pricing", label: "Pricing", href: "/pricing", hash: false },

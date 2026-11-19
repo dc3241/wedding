@@ -60,6 +60,7 @@ const NAV: NavBlock[] = [
     label: "Couples",
     items: [
       { href: "/admin/couples/bank", label: "Content bank", tooltip: "Couples content bank", icon: bankIcon },
+      { href: "/admin/articles", label: "Articles", tooltip: "Ideas articles", icon: bankIcon },
     ],
   },
   {

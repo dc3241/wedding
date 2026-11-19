@@ -3,6 +3,7 @@ import {
   CoupleLandingPage,
 } from "@/components/marketing/couple-landing-page";
 import { LandingPage } from "@/components/marketing/landing-page";
+import { formatArticleDate, getPublishedArticles } from "@/lib/articles/data";
 import { B2B_MARKETING_ENABLED } from "@/lib/marketing-flags";
 import { getPostLoginPath } from "@/lib/post-login-path";
 import { pageMetadata } from "@/lib/seo";
@@ -37,5 +38,14 @@ export default async function HomePage() {
     redirect(await getPostLoginPath(supabase));
   }
 
-  return B2B_MARKETING_ENABLED ? <LandingPage /> : <CoupleLandingPage />;
+  if (B2B_MARKETING_ENABLED) return <LandingPage />;
+
+  const latest = (await getPublishedArticles(null, 3)).map((a) => ({
+    slug: a.slug,
+    title: a.title,
+    dek: a.dek,
+    pillar: a.pillar,
+    date: formatArticleDate(a.published_at),
+  }));
+  return <CoupleLandingPage latestArticles={latest} />;
 }
