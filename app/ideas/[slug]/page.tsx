@@ -1,8 +1,10 @@
-import { ArticleBody, readingMinutes } from "@/components/articles/article-body";
+import { ArticleBody, partnerSlugsIn, readingMinutes } from "@/components/articles/article-body";
 import { JsonLd } from "@/components/marketing/json-ld";
 import { MarketingFooter } from "@/components/marketing/marketing-footer";
 import { MarketingTopbar } from "@/components/marketing/marketing-topbar";
 import { NewsletterSignup } from "@/components/marketing/newsletter-signup";
+import { PartnerSlot } from "@/components/partners/partner-slot";
+import { getPartnersBySlugs } from "@/lib/partners-data";
 import { ButtonLink } from "@/components/ui/button";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { formatArticleDate, getArticleBySlug, getPublishedArticles } from "@/lib/articles/data";
@@ -33,6 +35,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
   const article = await getArticleBySlug((await params).slug);
   if (!article) notFound();
 
+  const inlinePartners = await getPartnersBySlugs(partnerSlugsIn(article.body));
   const related = (await getPublishedArticles(article.pillar, 4))
     .filter((a) => a.slug !== article.slug)
     .slice(0, 3);
@@ -78,7 +81,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
             {formatArticleDate(article.published_at)} · {readingMinutes(article.body)} min read
           </p>
           <div className="mt-8">
-            <ArticleBody source={article.body} />
+            <ArticleBody source={article.body} partners={inlinePartners} />
           </div>
         </article>
 
@@ -95,6 +98,10 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
               Start your free plan
             </ButtonLink>
           </div>
+        </section>
+
+        <section className="mx-auto max-w-[720px] px-6 pb-10 empty:hidden">
+          <PartnerSlot placement="article" max={2} />
         </section>
 
         <section className="mx-auto max-w-[720px] px-6 pb-10">

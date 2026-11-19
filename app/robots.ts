@@ -21,6 +21,7 @@ export default function robots(): MetadataRoute.Robots {
         "/contracts",
         "/calendar",
         "/api/",
+        "/go/",
         "/styleguide",
       ],
     },

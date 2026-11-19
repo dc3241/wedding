@@ -86,3 +86,20 @@ export async function getCategoryCounts(): Promise<Record<string, Record<string,
   }
   return out;
 }
+
+/** MEDIA-08: listings with a paid featured window running now (max 3). */
+export async function getFeaturedListings(
+  stateCode: string,
+  categories: readonly string[],
+): Promise<DirectoryListing[]> {
+  const { data, error } = await createAnonServerClient().rpc("directory_featured", {
+    p_state: stateCode,
+    p_categories: [...categories],
+  });
+  if (error) {
+    // Before the migration is pasted this simply shows no featured row.
+    console.error("directory_featured:", error.message);
+    return [];
+  }
+  return (data ?? []) as DirectoryListing[];
+}

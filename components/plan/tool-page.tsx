@@ -1,6 +1,7 @@
 import { MarketingFooter } from "@/components/marketing/marketing-footer";
 import { MarketingTopbar } from "@/components/marketing/marketing-topbar";
 import { NewsletterSignup } from "@/components/marketing/newsletter-signup";
+import { PartnerSlot } from "@/components/partners/partner-slot";
 import { ButtonLink } from "@/components/ui/button";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { PLAN_TOOLS } from "@/lib/plan-tools";
@@ -23,7 +24,7 @@ export function ToolPage({
   eyebrow: string;
   title: string;
   intro: string;
-  /** Newsletter source tag, e.g. "tool:alcohol". */
+  /** Newsletter source tag and partner placement, e.g. "tool:alcohol". */
   source: string;
   /** One sentence on how the app continues this tool. */
   appPitch: string;
@@ -67,6 +68,10 @@ export function ToolPage({
               Start your free plan
             </ButtonLink>
           </div>
+        </section>
+
+        <section className="mx-auto max-w-4xl px-6 pb-10 empty:hidden md:px-10">
+          <PartnerSlot placement={source} />
         </section>
 
         <section className="mx-auto max-w-4xl px-6 pb-10 md:px-10">

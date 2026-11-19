@@ -61,6 +61,8 @@ const NAV: NavBlock[] = [
     items: [
       { href: "/admin/couples/bank", label: "Content bank", tooltip: "Couples content bank", icon: bankIcon },
       { href: "/admin/articles", label: "Articles", tooltip: "Ideas articles", icon: bankIcon },
+      { href: "/admin/partners", label: "Partners", tooltip: "Affiliate & sponsor links", icon: outreachIcon },
+      { href: "/admin/featured", label: "Featured listings", tooltip: "Featured directory listings", icon: overviewIcon },
     ],
   },
   {

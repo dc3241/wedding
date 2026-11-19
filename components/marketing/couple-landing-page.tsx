@@ -14,6 +14,7 @@ import { MarketingFaq } from "@/components/marketing/marketing-faq";
 import { MarketingFooter } from "@/components/marketing/marketing-footer";
 import { MarketingTopbar } from "@/components/marketing/marketing-topbar";
 import { NewsletterSignup } from "@/components/marketing/newsletter-signup";
+import { PartnerSlot } from "@/components/partners/partner-slot";
 import { VendorSearch } from "@/components/marketing/vendor-search";
 import { PlanToolGrid } from "@/components/plan/plan-tool-grid";
 import { ScrollReveal } from "@/components/marketing/scroll-reveal";
@@ -371,6 +372,10 @@ export function CoupleLandingPage({
         <CapabilitiesPanel />
 
         <MarketingFaq items={FAQS} heading="Wedding planning questions" />
+
+        <section className="mx-auto max-w-6xl px-6 pt-14 empty:hidden md:px-10">
+          <PartnerSlot placement="home" />
+        </section>
 
         <section className="mx-auto max-w-6xl px-6 py-14 md:px-10">
           <NewsletterSignup source="home" />

@@ -47,6 +47,8 @@ const ALL_MARKETING_ROUTES = [
     changeFrequency: "monthly",
     priority: 0.8,
   },
+  { path: "/advertise", changeFrequency: "monthly", priority: 0.4 },
+  { path: "/disclosure", changeFrequency: "yearly", priority: 0.3 },
   { path: "/contact", changeFrequency: "yearly", priority: 0.3 },
   { path: "/privacy", changeFrequency: "yearly", priority: 0.3 },
 ] as const;

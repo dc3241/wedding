@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { DirectoryShell } from "@/components/directory/directory-shell";
 import { JsonLd } from "@/components/marketing/json-ld";
 import { NewsletterSignup } from "@/components/marketing/newsletter-signup";
+import { PartnerSlot } from "@/components/partners/partner-slot";
 import { Card } from "@/components/ui/card";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { listingNoun, VENDOR_CATEGORIES } from "@/lib/directory/categories";
@@ -136,6 +137,8 @@ export default async function CityPage({ params }: { params: Params }) {
             </p>
           </div>
         </Card>
+
+        <PartnerSlot placement="directory" />
 
         <NewsletterSignup source={`city:${state.code}:${city.slug}`.slice(0, 80)} compact />
       </div>

@@ -11,7 +11,9 @@ import {
   MIN_INDEXABLE_LISTINGS,
   VENDOR_CATEGORIES,
 } from "@/lib/directory/categories";
-import { getListingsByCategories } from "@/lib/directory/data";
+import { getFeaturedListings, getListingsByCategories } from "@/lib/directory/data";
+import { FeaturedStrip } from "@/components/directory/featured-strip";
+import { PartnerSlot } from "@/components/partners/partner-slot";
 import { stateBySlug } from "@/lib/directory/states";
 import { breadcrumbJsonLd, pageMetadata } from "@/lib/seo";
 
@@ -43,7 +45,10 @@ export async function CategoryStatePage({
   const cat = categoryByPath(categoryPath);
   const state = stateBySlug(stateSlug);
   if (!cat || !state) notFound();
-  const listings = await getListingsByCategories(state.code, cat.categories);
+  const [listings, featured] = await Promise.all([
+    getListingsByCategories(state.code, cat.categories),
+    getFeaturedListings(state.code, cat.categories),
+  ]);
   const path = `/wedding-vendors/${state.slug}/${cat.path}`;
 
   return (
@@ -92,6 +97,7 @@ export async function CategoryStatePage({
       </section>
 
       <div className="mx-auto max-w-6xl px-6 py-10 md:px-10">
+        <FeaturedStrip listings={featured} stateSlug={state.slug} />
         {listings.length === 0 ? (
           <Card className="p-10 text-center">
             <p className="text-[17px] font-bold">
@@ -113,6 +119,7 @@ export async function CategoryStatePage({
             nounPlural={cat.plural.replace("Wedding ", "").toLowerCase()}
           />
         )}
+        <PartnerSlot placement="directory" className="mt-10" />
       </div>
     </DirectoryShell>
   );

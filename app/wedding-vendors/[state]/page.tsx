@@ -2,13 +2,15 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { DirectoryShell } from "@/components/directory/directory-shell";
+import { FeaturedStrip } from "@/components/directory/featured-strip";
 import { VenueBrowser } from "@/components/directory/venue-browser";
+import { PartnerSlot } from "@/components/partners/partner-slot";
 import { JsonLd } from "@/components/marketing/json-ld";
 import { Card } from "@/components/ui/card";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { VENDOR_CATEGORIES } from "@/lib/directory/categories";
 import { getDirectoryCities, isIndexableCity } from "@/lib/directory/cities";
-import { getListingsByState } from "@/lib/directory/data";
+import { getFeaturedListings, getListingsByState } from "@/lib/directory/data";
 import { DIRECTORY_STATES, stateBySlug } from "@/lib/directory/states";
 import { breadcrumbJsonLd, pageMetadata } from "@/lib/seo";
 
@@ -38,9 +40,10 @@ export async function generateMetadata({
 export default async function StatePage({ params }: { params: Promise<{ state: string }> }) {
   const state = stateBySlug((await params).state);
   if (!state) notFound();
-  const [listings, allCities] = await Promise.all([
+  const [listings, allCities, featured] = await Promise.all([
     getListingsByState(state.code),
     getDirectoryCities(),
+    getFeaturedListings(state.code, ["venue"]),
   ]);
   // MEDIA-06: only cities with enough listings to stand on their own.
   const cities = allCities.filter((c) => c.state === state.code && isIndexableCity(c)).slice(0, 24);
@@ -85,6 +88,7 @@ export default async function StatePage({ params }: { params: Promise<{ state: s
       </section>
 
       <div className="mx-auto max-w-6xl px-6 py-10 md:px-10">
+        <FeaturedStrip listings={featured} stateSlug={state.slug} />
         {listings.length === 0 ? (
           <Card className="p-10 text-center">
             <p className="text-[17px] font-bold">We&apos;re still adding {state.name}.</p>
@@ -120,6 +124,8 @@ export default async function StatePage({ params }: { params: Promise<{ state: s
             </ul>
           </section>
         ) : null}
+
+        <PartnerSlot placement="directory" className="mt-10" />
 
         <Card className="mt-10 grid gap-6 p-6 md:grid-cols-3">
           {[

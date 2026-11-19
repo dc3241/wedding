@@ -3,6 +3,7 @@ import { JsonLd } from "@/components/marketing/json-ld";
 import { MarketingFooter } from "@/components/marketing/marketing-footer";
 import { MarketingTopbar } from "@/components/marketing/marketing-topbar";
 import { NewsletterSignup } from "@/components/marketing/newsletter-signup";
+import { PartnerSlot } from "@/components/partners/partner-slot";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { formatArticleDate, getPublishedArticles } from "@/lib/articles/data";
 import { breadcrumbJsonLd, pageMetadata } from "@/lib/seo";
@@ -64,6 +65,9 @@ export default async function IdeasPage() {
               </p>
             </div>
           )}
+        </section>
+        <section className="mx-auto max-w-6xl px-6 pb-10 empty:hidden md:px-10">
+          <PartnerSlot placement="ideas" />
         </section>
         <section className="mx-auto max-w-6xl px-6 pb-16 md:px-10">
           <NewsletterSignup source="ideas" />
