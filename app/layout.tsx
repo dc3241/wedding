@@ -1,37 +1,51 @@
 import type { Metadata } from "next";
-import {
-  Cormorant_Garamond,
-  Figtree,
-  Great_Vibes,
-  Hanken_Grotesk,
-} from "next/font/google";
+import localFont from "next/font/local";
 import { Analytics } from "@vercel/analytics/next";
 import { B2B_MARKETING_ENABLED } from "@/lib/marketing-flags";
 import { OG_IMAGES, SITE_NAME, SITE_URL } from "@/lib/seo";
 import "./globals.css";
 
-const figtree = Figtree({
+/*
+ * Fonts are self-hosted from app/fonts (latin subset, same weights as the
+ * old next/font/google setup) so builds never depend on fetching Google
+ * Fonts — that fetch intermittently failed Vercel builds. Files come from
+ * Fontsource; all four families are SIL Open Font License (see LICENSE-*).
+ */
+const figtree = localFont({
   variable: "--font-sans",
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "800"],
+  display: "swap",
+  src: [
+    { path: "./fonts/figtree-latin-400-normal.woff2", weight: "400", style: "normal" },
+    { path: "./fonts/figtree-latin-500-normal.woff2", weight: "500", style: "normal" },
+    { path: "./fonts/figtree-latin-600-normal.woff2", weight: "600", style: "normal" },
+    { path: "./fonts/figtree-latin-800-normal.woff2", weight: "800", style: "normal" },
+  ],
 });
 
-const hankenGrotesk = Hanken_Grotesk({
+const hankenGrotesk = localFont({
   variable: "--ws-font-sans",
-  subsets: ["latin"],
-  weight: ["400", "500"],
+  display: "swap",
+  src: [
+    { path: "./fonts/hanken-grotesk-latin-400-normal.woff2", weight: "400", style: "normal" },
+    { path: "./fonts/hanken-grotesk-latin-500-normal.woff2", weight: "500", style: "normal" },
+  ],
 });
 
-const cormorantGaramond = Cormorant_Garamond({
+const cormorantGaramond = localFont({
   variable: "--font-serif",
-  subsets: ["latin"],
-  weight: ["500", "600"],
+  display: "swap",
+  fallback: ["Georgia", "serif"],
+  src: [
+    { path: "./fonts/cormorant-garamond-latin-500-normal.woff2", weight: "500", style: "normal" },
+    { path: "./fonts/cormorant-garamond-latin-600-normal.woff2", weight: "600", style: "normal" },
+  ],
 });
 
-const greatVibes = Great_Vibes({
+const greatVibes = localFont({
   variable: "--font-script",
-  subsets: ["latin"],
-  weight: "400",
+  display: "swap",
+  fallback: ["cursive"],
+  src: [{ path: "./fonts/great-vibes-latin-400-normal.woff2", weight: "400", style: "normal" }],
 });
 
 const defaultTitle = B2B_MARKETING_ENABLED
