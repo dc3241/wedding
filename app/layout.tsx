@@ -78,10 +78,12 @@ export default function RootLayout({
       lang="en"
       className={`${figtree.variable} ${hankenGrotesk.variable} ${cormorantGaramond.variable} ${greatVibes.variable} h-full antialiased`}
     >
+      <head>
+        <ImpactTracking />
+      </head>
       <body className="min-h-full flex flex-col font-sans">
         {children}
         <Analytics />
-        <ImpactTracking />
       </body>
     </html>
   );

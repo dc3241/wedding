@@ -1,5 +1,3 @@
-import Script from "next/script";
-
 /**
  * impact.com partner tracking tag (affiliate network verification + link
  * tracking). Loaded only on the production deployment so preview builds and
@@ -13,10 +11,8 @@ const IMPACT_INIT = `(function(i,m,p,a,c,t){c.ire_o=p;c[p]=c[p]||function(){(c[p
 export function ImpactTracking() {
   if (process.env.VERCEL_ENV !== "production") return null;
   return (
-    <Script
-      id="impact-tracking"
-      strategy="afterInteractive"
-      dangerouslySetInnerHTML={{ __html: IMPACT_INIT }}
-    />
+    // Plain <script> (not next/script) so it is in the server-rendered <head>
+    // HTML, where impact.com's site verification looks for it.
+    <script id="impact-tracking" dangerouslySetInnerHTML={{ __html: IMPACT_INIT }} />
   );
 }
