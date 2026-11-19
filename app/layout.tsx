@@ -6,6 +6,7 @@ import {
   Hanken_Grotesk,
 } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
+import { ImpactTracking } from "@/components/marketing/impact-tracking";
 import { B2B_MARKETING_ENABLED } from "@/lib/marketing-flags";
 import { OG_IMAGES, SITE_NAME, SITE_URL } from "@/lib/seo";
 import "./globals.css";
@@ -80,6 +81,7 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col font-sans">
         {children}
         <Analytics />
+        <ImpactTracking />
       </body>
     </html>
   );
