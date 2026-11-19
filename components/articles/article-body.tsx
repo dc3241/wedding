@@ -1,3 +1,5 @@
+import { PartnerCardView } from "@/components/partners/partner-card";
+import type { PartnerCard } from "@/lib/partners";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
@@ -8,11 +10,13 @@ import type { ReactNode } from "react";
  * Blocks: "## " / "### " headings, "- " or "* " bullets, "1. " numbered
  * lists, "> " quotes, blank-line paragraphs.
  * Inline: **bold**, *italic*, [label](https://… or /path).
+ * Partner card: a line that is only [[partner:slug]] (MEDIA-07).
  */
 
 type Block =
   | { kind: "h2" | "h3" | "p" | "quote"; text: string }
-  | { kind: "ul" | "ol"; items: string[] };
+  | { kind: "ul" | "ol"; items: string[] }
+  | { kind: "partner"; slug: string };
 
 export function parseBlocks(src: string): Block[] {
   const lines = src.replace(/\r\n?/g, "\n").split("\n");
@@ -31,7 +35,10 @@ export function parseBlocks(src: string): Block[] {
       continue;
     }
     let m: RegExpMatchArray | null;
-    if ((m = line.match(/^###\s+(.*)$/))) {
+    if ((m = line.match(/^\[\[partner:([a-z0-9-]{1,80})\]\]$/))) {
+      flush();
+      blocks.push({ kind: "partner", slug: m[1] });
+    } else if ((m = line.match(/^###\s+(.*)$/))) {
       flush();
       blocks.push({ kind: "h3", text: m[1] });
     } else if ((m = line.match(/^##?\s+(.*)$/))) {
@@ -108,7 +115,22 @@ function renderInline(text: string, keyBase: string): ReactNode[] {
   return out;
 }
 
-export function ArticleBody({ source }: { source: string }) {
+/** Slugs named by [[partner:slug]] lines, so the page can fetch them. */
+export function partnerSlugsIn(source: string): string[] {
+  return [
+    ...new Set(
+      parseBlocks(source).flatMap((b) => (b.kind === "partner" ? [b.slug] : [])),
+    ),
+  ];
+}
+
+export function ArticleBody({
+  source,
+  partners = {},
+}: {
+  source: string;
+  partners?: Record<string, PartnerCard>;
+}) {
   const blocks = parseBlocks(source);
   return (
     <div className="space-y-5 text-[16.5px] leading-[1.75] text-ink">
@@ -152,6 +174,18 @@ export function ArticleBody({ source }: { source: string }) {
                 {renderInline(b.text, k)}
               </blockquote>
             );
+          case "partner": {
+            const card = partners[b.slug];
+            if (!card) return null;
+            return (
+              <aside key={k} className="not-prose">
+                <p className="mb-1.5 text-[12px] font-semibold uppercase tracking-[0.08em] text-muted">
+                  {card.kind === "sponsor" ? "Sponsored" : "Partner pick · we may earn a commission"}
+                </p>
+                <PartnerCardView card={card} />
+              </aside>
+            );
+          }
           default:
             return <p key={k}>{renderInline(b.text, k)}</p>;
         }

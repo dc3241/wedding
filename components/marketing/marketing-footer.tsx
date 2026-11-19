@@ -45,6 +45,8 @@ const PLAN = [
 
 const COMPANY = [
   { href: "/login", label: "Sign in" },
+  { href: "/advertise", label: "Advertise" },
+  { href: "/disclosure", label: "Disclosure" },
   { href: "/contact", label: "Contact" },
   { href: "/privacy", label: "Privacy" },
 ] as const;

@@ -151,7 +151,7 @@ export function ArticleEditor({ article }: { article: EditorArticle }) {
             />
             <p className="mt-2 text-[12.5px] text-muted">
               ## Heading · ### Subheading · - bullet · 1. numbered · &gt; tip · **bold** · *italic* ·
-              [label](/plan)
+              [label](/plan) · [[partner:slug]] on its own line (shows on the live page)
             </p>
           </>
         ) : (

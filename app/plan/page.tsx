@@ -2,6 +2,7 @@ import { JsonLd } from "@/components/marketing/json-ld";
 import { MarketingFooter } from "@/components/marketing/marketing-footer";
 import { MarketingTopbar } from "@/components/marketing/marketing-topbar";
 import { NewsletterSignup } from "@/components/marketing/newsletter-signup";
+import { PartnerSlot } from "@/components/partners/partner-slot";
 import { PlanToolGrid } from "@/components/plan/plan-tool-grid";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { breadcrumbJsonLd, pageMetadata } from "@/lib/seo";
@@ -37,6 +38,9 @@ export default function PlanHubPage() {
         </section>
         <section className="mx-auto max-w-6xl px-6 pb-12 md:px-10">
           <PlanToolGrid />
+        </section>
+        <section className="mx-auto max-w-6xl px-6 pb-10 empty:hidden md:px-10">
+          <PartnerSlot placement="plan-hub" />
         </section>
         <section className="mx-auto max-w-6xl px-6 pb-16 md:px-10">
           <NewsletterSignup source="plan-hub" />
