@@ -31,7 +31,11 @@ const COMPARE = [
 ] as const;
 
 const PLAN = [
-  { href: "/wedding-vendors", label: "Find venues" },
+  { href: "/plan", label: "Free planning tools" },
+  { href: "/plan/venue-quiz", label: "Venue quiz" },
+  { href: "/plan/wedding-cost-calculator", label: "Cost calculator" },
+  { href: "/plan/wedding-alcohol-calculator", label: "Alcohol calculator" },
+  { href: "/wedding-vendors", label: "Find vendors" },
   { href: "/wedding-planning-checklist", label: "Checklist" },
   { href: "/wedding-guest-list", label: "Guest list" },
   { href: "/wedding-seating-chart", label: "Seating chart" },

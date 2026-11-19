@@ -17,13 +17,15 @@ const B2B_NAV: readonly NavItem[] = [
   { id: "pricing", label: "Pricing", href: "/pricing", hash: false },
 ];
 
-/** COUPLES-PIVOT: "/" is the couple landing; nav points at couple guides. */
+/**
+ * COUPLES-PIVOT + MEDIA-01: "/" is the media front page. Nav leads with the
+ * free tools and the directory; the app is one stop, not the whole site.
+ */
 const COUPLE_NAV: readonly NavItem[] = [
-  { id: "features", label: "Features", href: "/#features", hash: true },
-  { id: "checklist", label: "Checklist", href: "/wedding-planning-checklist", hash: false },
-  { id: "budget", label: "Budget", href: "/wedding-budget-tracking", hash: false },
-  { id: "guests", label: "Guest list", href: "/wedding-guest-list", hash: false },
-  { id: "venues", label: "Find venues", href: "/wedding-vendors", hash: false },
+  { id: "plan", label: "Planning tools", href: "/plan", hash: false },
+  { id: "quiz", label: "Venue quiz", href: "/plan/venue-quiz", hash: false },
+  { id: "vendors", label: "Find vendors", href: "/wedding-vendors", hash: false },
+  { id: "app", label: "The app", href: "/#app", hash: true },
   { id: "pricing", label: "Pricing", href: "/pricing", hash: false },
 ];
 
