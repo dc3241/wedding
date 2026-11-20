@@ -288,6 +288,24 @@ export default async function BillingPage({
           ) : null}
         </Card>
 
+        {/* PLANNER-HELP-01: permanent couple entry point. */}
+        {!isPlanner ? (
+          <Card className="mt-4 flex flex-wrap items-center justify-between gap-4 p-6">
+            <div>
+              <h2 className="text-[15px] font-medium text-ink">
+                Talk to a real planner
+              </h2>
+              <p className="mt-1 max-w-[46ch] text-[13px] text-muted">
+                Zoom calls from $49 for a quick question, $99 for a full hour,
+                or $179/month for ongoing support.
+              </p>
+            </div>
+            <ButtonLink href="/account/planner-help" variant="default">
+              See options
+            </ButtonLink>
+          </Card>
+        ) : null}
+
         {/* VENUE-08: venue subscribers see plan + cadence pricing (not the upgrade CTA). */}
         {isVenuePlan ? (
           <Card className="flex flex-col p-6">
