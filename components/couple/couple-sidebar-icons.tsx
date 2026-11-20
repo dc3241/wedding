@@ -127,6 +127,13 @@ export const billingIcon = (
   </>
 );
 
+export const plannerHelpIcon = (
+  <>
+    <path d="M3.5 5.5A1.5 1.5 0 0 1 5 4h10a1.5 1.5 0 0 1 1.5 1.5v6.5A1.5 1.5 0 0 1 15 13.5H9l-3.5 3v-3H5A1.5 1.5 0 0 1 3.5 12V5.5Z" />
+    <path d="M7 8h6M7 10.5h3.5" />
+  </>
+);
+
 export const contactIcon = (
   <>
     <rect x="3" y="4.5" width="14" height="11" rx="1.5" />

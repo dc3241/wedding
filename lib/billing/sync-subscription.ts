@@ -2,6 +2,12 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type Stripe from "stripe";
 import { getCouplePriceId } from "@/lib/billing/plans";
+import {
+  applyPlannerCheckout,
+  isPlannerCheckout,
+  isPlannerSupportSubscription,
+  syncPlannerSupportSubscription,
+} from "@/lib/planner-sessions/grants";
 import { getStripe } from "@/lib/stripe";
 import { createServiceRoleClient } from "@/utils/supabase/service-role";
 
@@ -195,6 +201,13 @@ async function applyVenuePlanFromSubscription(
 export async function syncSubscriptionFromStripe(
   subscription: Stripe.Subscription,
 ): Promise<void> {
+  // PLANNER-HELP-01: the monthly planner-support plan lives in its own table
+  // and must never overwrite the account's assistant `subscriptions` row.
+  if (isPlannerSupportSubscription(subscription)) {
+    await syncPlannerSupportSubscription(subscription);
+    return;
+  }
+
   const customerId =
     typeof subscription.customer === "string"
       ? subscription.customer
@@ -236,6 +249,11 @@ export async function syncSubscriptionById(
 export async function markSubscriptionCanceled(
   subscription: Stripe.Subscription,
 ): Promise<void> {
+  if (isPlannerSupportSubscription(subscription)) {
+    await syncPlannerSupportSubscription(subscription);
+    return;
+  }
+
   const customerId =
     typeof subscription.customer === "string"
       ? subscription.customer
@@ -328,6 +346,12 @@ export async function applyCheckoutSession(
   session: Stripe.Checkout.Session,
 ): Promise<void> {
   if (session.metadata?.purpose === "proposal_payment") {
+    return;
+  }
+
+  // PLANNER-HELP-01: session credits, not assistant entitlement.
+  if (isPlannerCheckout(session)) {
+    await applyPlannerCheckout(session);
     return;
   }
 

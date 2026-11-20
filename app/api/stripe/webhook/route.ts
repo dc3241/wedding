@@ -3,14 +3,21 @@ import type Stripe from "stripe";
 import {
   applyCheckoutSession,
   markSubscriptionCanceled,
-  syncSubscriptionById,
   syncSubscriptionFromStripe,
 } from "@/lib/billing/sync-subscription";
+import {
+  grantFromSupportInvoice,
+  isPlannerSupportSubscription,
+  syncPlannerSupportSubscription,
+} from "@/lib/planner-sessions/grants";
 import { getStripe } from "@/lib/stripe";
 
 export const runtime = "nodejs";
 
-async function handleInvoiceEvent(invoice: Stripe.Invoice): Promise<void> {
+async function handleInvoiceEvent(
+  invoice: Stripe.Invoice,
+  paid: boolean,
+): Promise<void> {
   const subscriptionRef = invoice.parent?.subscription_details?.subscription;
 
   if (!subscriptionRef) {
@@ -20,7 +27,18 @@ async function handleInvoiceEvent(invoice: Stripe.Invoice): Promise<void> {
   const subscriptionId =
     typeof subscriptionRef === "string" ? subscriptionRef : subscriptionRef.id;
 
-  await syncSubscriptionById(subscriptionId);
+  // PLANNER-HELP-01: monthly support grants two sessions per paid invoice.
+  const subscription = await getStripe().subscriptions.retrieve(subscriptionId);
+  if (isPlannerSupportSubscription(subscription)) {
+    if (paid) {
+      await grantFromSupportInvoice(invoice, subscription);
+    } else {
+      await syncPlannerSupportSubscription(subscription);
+    }
+    return;
+  }
+
+  await syncSubscriptionFromStripe(subscription);
 }
 
 export async function POST(req: Request) {
@@ -73,8 +91,10 @@ export async function POST(req: Request) {
         );
         break;
       case "invoice.payment_succeeded":
+        await handleInvoiceEvent(event.data.object as Stripe.Invoice, true);
+        break;
       case "invoice.payment_failed":
-        await handleInvoiceEvent(event.data.object as Stripe.Invoice);
+        await handleInvoiceEvent(event.data.object as Stripe.Invoice, false);
         break;
       default:
         break;

@@ -53,6 +53,7 @@ const NAV: NavBlock[] = [
       { href: "/admin/slideshows", label: "Slideshows", tooltip: "Slideshows", icon: ideationIcon },
       { href: "/admin/videos", label: "Videos", tooltip: "Videos", icon: ideationIcon },
       { href: "/admin/product-shots", label: "Product screens", tooltip: "Product screens", icon: productShotIcon },
+      { href: "/admin/planner-sessions", label: "Planner sessions", tooltip: "Planner sessions", icon: outreachIcon },
     ],
   },
   {

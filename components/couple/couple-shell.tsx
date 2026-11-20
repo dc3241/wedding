@@ -13,6 +13,7 @@ import {
   customizeIcon,
   logoutIcon,
   menuIcon,
+  plannerHelpIcon,
   RailIcon,
   sectionIcon,
   weddingIcon,
@@ -437,6 +438,15 @@ export function CoupleShell({
                 label="Your wedding"
                 icon={weddingIcon}
                 active={false}
+                collapsed={collapsed}
+              />
+            ) : null}
+            {accountKind === "personal" ? (
+              <RailLink
+                href="/account/planner-help"
+                label="Talk to a planner"
+                icon={plannerHelpIcon}
+                active={isPathActive(pathname, "/account/planner-help")}
                 collapsed={collapsed}
               />
             ) : null}
